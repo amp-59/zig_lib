@@ -17,17 +17,19 @@ pub const AboutSrc = blk: {
     break :blk *const [len:0]u8;
 };
 pub fn about(comptime s: [:0]const u8) AboutSrc {
-    var lhs: [:0]const u8 = s;
-    lhs = builtin.message_prefix ++ lhs;
-    lhs = lhs ++ builtin.message_suffix;
-    const len: usize = lhs.len;
-    if (builtin.message_style) |style| {
-        lhs = style ++ lhs ++ builtin.message_no_style;
+    comptime {
+        var lhs: [:0]const u8 = s;
+        lhs = builtin.message_prefix ++ lhs;
+        lhs = lhs ++ builtin.message_suffix;
+        const len: usize = lhs.len;
+        if (builtin.message_style) |style| {
+            lhs = style ++ lhs ++ builtin.message_no_style;
+        }
+        if (len >= builtin.message_indent) {
+            @compileError(s ++ " is too long");
+        }
+        return lhs ++ " " ** (builtin.message_indent - len);
     }
-    if (len >= builtin.message_indent) {
-        @compileError(s ++ " is too long");
-    }
-    return lhs ++ " " ** (builtin.message_indent - len);
 }
 /// Returns the apparent length of the first colon in the about string.
 pub fn aboutCentre(about_s: AboutSrc) usize {
@@ -44,16 +46,14 @@ pub fn aboutCentre(about_s: AboutSrc) usize {
     return 0;
 }
 pub inline fn aboutInit(comptime about_s: AboutSrc, comptime len: usize) [len]u8 {
-    comptime {
-        const ret: [len -% about_s.len]u8 = undefined;
-        return (about_s ++ ret).*;
-    }
+    const ret: [len -% about_s.len]u8 = undefined;
+    return (about_s ++ ret).*;
 }
 pub const about_blank_s: AboutSrc = about("");
 pub const AboutDest = @TypeOf(@constCast(about_blank_s));
 pub const about_exit_s: AboutSrc = about("exit");
 pub const about_err_len: comptime_int = about_blank_s.len + debug.about.error_s.len;
-pub fn ci(comptime value: comptime_int) []const u8 {
+pub inline fn ci(comptime value: comptime_int) []const u8 {
     if (value < 0) {
         const s: []const u8 = @typeName([-value]void);
         return "-" ++ s[1 .. s.len -% 5];
@@ -62,7 +62,7 @@ pub fn ci(comptime value: comptime_int) []const u8 {
         return s[1 .. s.len -% 5];
     }
 }
-pub fn cx(comptime value: anytype) []const u8 {
+pub inline fn cx(comptime value: anytype) []const u8 {
     const S: type = @TypeOf(value);
     const T = [:value]S;
     const s_type_name: []const u8 = @typeName(S);
@@ -122,13 +122,46 @@ pub fn print(end: [*]u8, buf: [*]u8) void {
     @setRuntimeSafety(false);
     debug.write(buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
 }
+const lit_char: [256][*:0]const u8 = .{
+    "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07",
+    "\\x08", "\\t",   "\\n",   "\\x0b", "\\x0c", "\\r",   "\\x0e", "\\x0f",
+    "\\x10", "\\x11", "\\x12", "\\x13", "\\x14", "\\x15", "\\x16", "\\x17",
+    "\\x18", "\\x19", "\\x1a", "\\x1b", "\\x1c", "\\x1d", "\\x1e", "\\x1f",
+    " ",     "!",     "\\\"",  "#",     "$",     "%",     "&",     "'",
+    "(",     ")",     "*",     "+",     ",",     "-",     ".",     "/",
+    "0",     "1",     "2",     "3",     "4",     "5",     "6",     "7",
+    "8",     "9",     ":",     ";",     "<",     "=",     ">",     "?",
+    "@",     "A",     "B",     "C",     "D",     "E",     "F",     "G",
+    "H",     "I",     "J",     "K",     "L",     "M",     "N",     "O",
+    "P",     "Q",     "R",     "S",     "T",     "U",     "V",     "W",
+    "X",     "Y",     "Z",     "[",     "\\\\",  "]",     "^",     "_",
+    "`",     "a",     "b",     "c",     "d",     "e",     "f",     "g",
+    "h",     "i",     "j",     "k",     "l",     "m",     "n",     "o",
+    "p",     "q",     "r",     "s",     "t",     "u",     "v",     "w",
+    "x",     "y",     "z",     "{",     "|",     "}",     "~",     "\\x7f",
+    "\\x80", "\\x81", "\\x82", "\\x83", "\\x84", "\\x85", "\\x86", "\\x87",
+    "\\x88", "\\x89", "\\x8a", "\\x8b", "\\x8c", "\\x8d", "\\x8e", "\\x8f",
+    "\\x90", "\\x91", "\\x92", "\\x93", "\\x94", "\\x95", "\\x96", "\\x97",
+    "\\x98", "\\x99", "\\x9a", "\\x9b", "\\x9c", "\\x9d", "\\x9e", "\\x9f",
+    "\\xa0", "\\xa1", "\\xa2", "\\xa3", "\\xa4", "\\xa5", "\\xa6", "\\xa7",
+    "\\xa8", "\\xa9", "\\xaa", "\\xab", "\\xac", "\\xad", "\\xae", "\\xaf",
+    "\\xb0", "\\xb1", "\\xb2", "\\xb3", "\\xb4", "\\xb5", "\\xb6", "\\xb7",
+    "\\xb8", "\\xb9", "\\xba", "\\xbb", "\\xbc", "\\xbd", "\\xbe", "\\xbf",
+    "\\xc0", "\\xc1", "\\xc2", "\\xc3", "\\xc4", "\\xc5", "\\xc6", "\\xc7",
+    "\\xc8", "\\xc9", "\\xca", "\\xcb", "\\xcc", "\\xcd", "\\xce", "\\xcf",
+    "\\xd0", "\\xd1", "\\xd2", "\\xd3", "\\xd4", "\\xd5", "\\xd6", "\\xd7",
+    "\\xd8", "\\xd9", "\\xda", "\\xdb", "\\xdc", "\\xdd", "\\xde", "\\xdf",
+    "\\xe0", "\\xe1", "\\xe2", "\\xe3", "\\xe4", "\\xe5", "\\xe6", "\\xe7",
+    "\\xe8", "\\xe9", "\\xea", "\\xeb", "\\xec", "\\xed", "\\xee", "\\xef",
+    "\\xf0", "\\xf1", "\\xf2", "\\xf3", "\\xf4", "\\xf5", "\\xf6", "\\xf7",
+    "\\xf8", "\\xf9", "\\xfa", "\\xfb", "\\xfc", "\\xfd", "\\xfe", "\\xff",
+};
 pub fn stringLiteralChar(byte: u8) []const u8 {
-    switch (byte) {
-        inline else => |value| return comptime blk: {
-            const res = @typeName([:&[1]u8{value}][]const u8);
-            break :blk res[3 .. res.len -% 12];
-        },
-    }
+    return lit_char[byte][0..switch (byte) {
+        32...33, 35...91, 93...126 => 1,
+        9...10, 13, 34, 92 => 2,
+        0...8, 11...12, 14...31, 127...255 => 4,
+    }];
 }
 pub const StringLiteralFormat = struct {
     value: []const u8,
@@ -179,8 +212,7 @@ pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usi
 }
 fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
-    const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-    var value: if (@bitSizeOf(U) < 8) u8 else U = 0;
+    var value: if (@bitSizeOf(T) < 8) u8 else @TypeOf(@abs(T{})) = 0;
     var len: u16 = 0;
     if (radix != 10) {
         len += 2;
@@ -191,12 +223,24 @@ fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     }
     return len;
 }
+inline fn isUndefined(comptime value: anytype) bool {
+    const type_name = @typeName([:&value]*const @TypeOf(value));
+    if (type_name.len < 11) {
+        return false;
+    }
+    const a: *align(1) const usize = @ptrCast(type_name[2..11]);
+    const b: *align(1) const usize = @ptrCast("undefine");
+    return a.* == b.*;
+}
 pub fn length(
     comptime U: type,
     abs_value: if (@bitSizeOf(U) < 8) u8 else U,
     comptime radix: u7,
 ) usize {
     @setRuntimeSafety(false);
+    if (@inComptime() and isUndefined(abs_value)) {
+        return 9;
+    }
     if (@bitSizeOf(U) == 1) {
         return 1;
     }
@@ -264,7 +308,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const min_digits_count: comptime_int = length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: comptime_int = length(Abs, max_abs_value, fmt_spec.radix);
         pub const specification: PolynomialFormatSpec = fmt_spec;
-        pub const StaticString = mem.StaticString(max_len);
+        pub const StaticString = mem.array.StaticString(max_len);
         const max_len: comptime_int = blk: {
             var len: comptime_int = 0;
             if (fmt_spec.radix > max_abs_value) {
@@ -283,15 +327,16 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             break :blk len;
         };
         pub fn formatWrite(format: Format, array: anytype) void {
-            @setRuntimeSafety(false);
-            const buf: [*]u8 = @ptrCast(array.referOneUndefined());
-            array.define(strlen(writeInt(buf, format.value), buf));
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             return strlen(writeInt(buf, format.value), buf);
         }
         pub fn writeInt(buf: [*]u8, value: Int) [*]u8 {
             @setRuntimeSafety(false);
+            if (@inComptime() and isUndefined(value)) {
+                return strcpyEqu(buf, "undefined");
+            }
             if (Abs != Int) {
                 buf[0] = '-';
             }
@@ -300,11 +345,11 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 ptr[0..prefix.len].* = prefix.*;
                 ptr += prefix.len;
             }
-            var abs: Abs = @bitCast(if (value < 0) 1 +% ~value else value);
             if (fmt_spec.radix > max_abs_value) {
                 ptr[0] = if (value == 0) '0' else '1';
-                ptr += 1;
+                return ptr + 1;
             } else if (fmt_spec.separator) |separator| {
+                var abs: Abs = @abs(value);
                 var count: usize = switch (fmt_spec.width) {
                     .min => length(Abs, abs, fmt_spec.radix),
                     .max => max_digits_count,
@@ -323,6 +368,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 }
                 return ret;
             } else {
+                var abs: Abs = @abs(value);
                 var count: usize = switch (fmt_spec.width) {
                     .min => length(Abs, abs, fmt_spec.radix),
                     .max => max_digits_count,
@@ -337,7 +383,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
         }
         pub fn lengthInt(value: Int) usize {
-            const abs: Abs = @bitCast(if (value < 0) 1 +% ~value else value);
+            const abs: Abs = @abs(value);
             var len: usize = 0;
             if (fmt_spec.prefix) |prefix| {
                 len +%= prefix.len;
@@ -714,24 +760,9 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             fmt_spec.no_style.len +%
             NewIntFormat.max_len +%
             @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len);
-        fn formatWriteDelta(format: Format, array: anytype) void {
-            if (format.old_value == format.new_value) {
-                array.writeMany("(+0)");
-            } else if (format.new_value > format.old_value) {
-                const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
-                array.writeOne('(');
-                array.writeMany(fmt_spec.inc_style);
-                array.writeFormat(del_fmt);
-                array.writeMany(fmt_spec.no_style);
-                array.writeOne(')');
-            } else {
-                const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
-                array.writeOne('(');
-                array.writeMany(fmt_spec.dec_style);
-                array.writeFormat(del_fmt);
-                array.writeMany(fmt_spec.no_style);
-                array.writeOne(')');
-            }
+
+        pub fn formatWriteDelta(format: Format, array: anytype) void {
+            return array.define(format.formatWriteDeltaBuf(@ptrCast(array.referOneUndefined())));
         }
         fn formatWriteDeltaBuf(format: Format, buf: [*]u8) usize {
             var len: usize = 0;
@@ -785,12 +816,7 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             return len;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
-            const old_fmt: OldIntFormat = .{ .value = format.old_value };
-            const new_fmt: NewIntFormat = .{ .value = format.new_value };
-            array.writeFormat(old_fmt);
-            format.formatWriteDelta(array);
-            array.writeMany(fmt_spec.arrow_style);
-            array.writeFormat(new_fmt);
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             const old_fmt: OldIntFormat = .{ .value = format.old_value };
@@ -830,30 +856,8 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
         const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
         pub fn formatWrite(format: Format, array: anytype) void {
-            const old_fmt: Bytes = bytes(format.old_value);
-            const new_fmt: Bytes = bytes(format.new_value);
-            old_fmt.formatWrite(array);
-            if (format.old_value != format.new_value) {
-                if (format.old_value > format.new_value) {
-                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
-                    array.writeOne('(');
-                    array.writeMany(fmt_spec.dec_style);
-                    array.writeFormat(del_fmt);
-                    array.writeMany(fmt_spec.no_style);
-                    array.writeOne(')');
-                } else {
-                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
-                    array.writeOne('(');
-                    array.writeMany(fmt_spec.inc_style);
-                    array.writeFormat(del_fmt);
-                    array.writeMany(fmt_spec.no_style);
-                    array.writeOne(')');
-                }
-                array.writeMany(" => ");
-                new_fmt.formatWrite(array);
-            }
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
-        // TODO: Merge this with the body for ChangedIntFormat.
         pub fn formatWriteBufFull(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             const old_fmt: Bytes = bytes(format.old_value);
@@ -1135,6 +1139,7 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             array.writeOne('}');
         }
         pub fn formatLength(format: Format) usize {
+            var len: usize = 0;
             const old_lower_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_lower };
             const old_upper_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_upper };
             const old_lower_s: OldGenericPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
@@ -1143,39 +1148,42 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             const new_upper_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_upper };
             const new_lower_s: NewGenericPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
             const new_upper_s: NewGenericPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
-            var len: usize = 0;
             const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
             const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
             var idx: usize = 0;
             const old_lower_s_count: usize = old_lower_s.len();
             const old_upper_s_count: usize = old_upper_s.len();
+            while (idx != old_lower_s_count) : (idx +%= 1) {
+                if (old_upper_s.readOneAt(idx) != old_lower_s.readOneAt(idx)) {
+                    break;
+                }
+            }
+            len +%= idx +% 1;
             len +%= old_upper_s_count -% old_lower_s_count;
+            len +%= old_lower_s_count -% idx;
             if (format.old_lower != format.new_lower) {
                 len +%= lower_del_fmt.formatLengthDelta();
             }
+            len +%= 2;
+            len +%= old_upper_s_count -% idx;
             if (format.old_upper != format.new_upper) {
                 len +%= upper_del_fmt.formatLengthDelta();
             }
-            while (idx != old_lower_s_count) : (idx +%= 1) {
-                if (old_upper_s.readOneAt(idx) != old_lower_s.readOneAt(idx)) {
-                    len +%= idx +% 1 +%
-                        (old_lower_s_count -% idx) +% 2 +%
-                        (old_upper_s_count -% idx) +% 1 +% 4;
-                    break;
-                }
-            }
+            len +%= 5;
             idx = 0;
-            const new_lower_s_count: usize = new_lower_s.len();
-            const new_upper_s_count: usize = new_upper_s.len();
-            len +%= new_upper_s_count -% new_lower_s_count;
+            const new_lower_s_count: u64 = new_lower_s.len();
+            const new_upper_s_count: u64 = new_upper_s.len();
             while (idx != new_lower_s_count) : (idx +%= 1) {
                 if (new_upper_s.readOneAt(idx) != new_lower_s.readOneAt(idx)) {
-                    len +%= idx +% 1 +%
-                        (new_lower_s_count -% idx) +% 2 +%
-                        (new_upper_s_count -% idx) +% 1;
                     break;
                 }
             }
+            len +%= idx +% 1;
+            len +%= new_upper_s_count -% new_lower_s_count;
+            len +%= new_lower_s_count -% idx;
+            len +%= 2;
+            len +%= new_upper_s_count -% idx;
+            len +%= 1;
             return len;
         }
         pub fn init(
@@ -1974,20 +1982,26 @@ pub const static = struct {
         }
     }
 };
-pub fn requireComptime(comptime T: type) bool {
+fn __indicateComptime(comptime T: type) T {
+    return undefined;
+}
+inline fn requireComptime(comptime T: type) bool {
+    return @inComptime() or @typeInfo(@TypeOf(.{__indicateComptime(T)})).Struct.fields[0].is_comptime;
+}
+pub fn requireComptimeOld(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .ComptimeFloat, .ComptimeInt, .Type => {
             return true;
         },
         .Pointer => |pointer_info| {
-            return requireComptime(pointer_info.child);
+            return requireComptimeOld(pointer_info.child);
         },
         .Array => |array_info| {
-            return requireComptime(array_info.child);
+            return requireComptimeOld(array_info.child);
         },
         .Struct => {
             inline for (@typeInfo(T).Struct.fields) |field| {
-                if (requireComptime(field.type)) {
+                if (requireComptimeOld(field.type)) {
                     return true;
                 }
             }
@@ -1995,7 +2009,7 @@ pub fn requireComptime(comptime T: type) bool {
         },
         .Union => {
             inline for (@typeInfo(T).Union.fields) |field| {
-                if (requireComptime(field.type)) {
+                if (requireComptimeOld(field.type)) {
                     return true;
                 }
             }
@@ -2398,7 +2412,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime T: type) type {
         .Struct => return StructFormat(spec, T),
         .Union => return UnionFormat(spec, T),
         .Enum => return EnumFormat(spec, T),
-        .EnumLiteral => return EnumLiteralFormat(spec, T),
+        .EnumLiteral => return EnumLiteralFormat,
         .ComptimeInt => return ComptimeIntFormat,
         .Int => return IntFormat(spec, T),
         .Pointer => |pointer_info| switch (pointer_info.size) {
@@ -2475,7 +2489,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
 
-                if (spec.enable_comptime_iterator and comptime requireComptime(child)) {
+                if (requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         writeFormat(array, sub_format);
@@ -2505,7 +2519,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             } else {
                 @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
                 len +%= 2;
-                if (spec.enable_comptime_iterator and comptime requireComptime(child)) {
+                if (requireComptime(child)) {
                     inline for (format.value) |element| {
                         const element_format: ChildFormat = .{ .value = element };
                         len +%= element_format.formatWriteBuf(buf + len);
@@ -2531,7 +2545,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         }
         pub fn formatLength(format: anytype) usize {
             var len: usize = type_name.len +% 2;
-            if (spec.enable_comptime_iterator and comptime requireComptime(child)) {
+            if (requireComptime(child)) {
                 inline for (format.value) |value| {
                     const element_format: ChildFormat = .{ .value = value };
                     len +%= element_format.formatLength() +% 2;
@@ -3182,9 +3196,16 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     }
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null) {
-                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                            writeFieldInitializer(array, field_name_format, field_format);
-                            fields_len +%= 1;
+                        if (requireComptime(field.type)) {
+                            if (comptime !mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                                writeFieldInitializer(array, field_name_format, field_format);
+                                fields_len +%= 1;
+                            }
+                        } else {
+                            if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                                writeFieldInitializer(array, field_name_format, field_format);
+                                fields_len +%= 1;
+                            }
                         }
                     } else {
                         writeFieldInitializer(array, field_name_format, field_format);
@@ -3349,9 +3370,16 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 }
                 const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                 if (spec.omit_default_fields and field.default_value != null) {
-                    if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                        len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
-                        fields_len +%= 1;
+                    if (requireComptime(field.type)) {
+                        if (comptime !mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
+                            fields_len +%= 1;
+                        }
+                    } else {
+                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
+                            fields_len +%= 1;
+                        }
                     }
                 } else {
                     len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
@@ -3728,7 +3756,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: usize = 1 +% meta.maxDeclLength(Enum);
-        pub fn formatWrite(format: Format, array: anytype) void {
+        pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatWrite(.{ .value = @intFromEnum(format.value) }, array);
             }
@@ -3736,7 +3764,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
             array.writeOne('.');
             writeFormat(array, tag_name_format);
         }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatWriteBuf(.{ .value = @intFromEnum(format.value) }, buf);
@@ -3745,7 +3773,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
             buf[0] = '.';
             return 1 +% tag_name_format.formatWriteBuf(buf + 1);
         }
-        pub fn formatLength(format: Format) usize {
+        pub fn formatLength(format: anytype) usize {
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatLength(.{ .value = @intFromEnum(format.value) });
             }
@@ -3973,7 +4001,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
-                if (spec.enable_comptime_iterator and comptime requireComptime(child)) {
+                if (requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         writeFormat(array, sub_format);
@@ -4011,7 +4039,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 len +%= type_name.len;
                 @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
                 len +%= 2;
-                if (spec.enable_comptime_iterator and comptime requireComptime(child)) {
+                if (requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         len +%= sub_format.formatWriteBuf(buf + len);
@@ -4047,7 +4075,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                     len +%= 1;
                 }
                 len +%= type_name.len +% 2;
-                if (spec.enable_comptime_iterator and comptime requireComptime(child)) {
+                if (requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         len +%= sub_format.formatLength() +% 2;
@@ -6192,32 +6220,40 @@ pub const Type = struct {
         return @TypeOf(ux(@as(Int, undefined)));
     }
     pub inline fn Xb(comptime Int: type) type {
-        if (@typeInfo(Int).Int.signedness == .signed) {
-            return @TypeOf(ib(@as(Int, undefined)));
-        } else {
-            return @TypeOf(ub(@as(Int, undefined)));
-        }
+        return GenericPolynomialFormat(.{
+            .bits = @bitSizeOf(Int),
+            .prefix = "0b",
+            .radix = 0b10,
+            .signedness = @typeInfo(Int).Int.signedness,
+            .width = .max,
+        });
     }
     pub inline fn Xd(comptime Int: type) type {
-        if (@typeInfo(Int).Int.signedness == .signed) {
-            return @TypeOf(id(@as(Int, undefined)));
-        } else {
-            return @TypeOf(ud(@as(Int, undefined)));
-        }
+        return GenericPolynomialFormat(.{
+            .bits = @bitSizeOf(Int),
+            .prefix = null,
+            .radix = 10,
+            .signedness = @typeInfo(Int).Int.signedness,
+            .width = .min,
+        });
     }
     pub inline fn Xx(comptime Int: type) type {
-        if (@typeInfo(Int).Int.signedness == .signed) {
-            return @TypeOf(ix(@as(Int, undefined)));
-        } else {
-            return @TypeOf(ux(@as(Int, undefined)));
-        }
+        return GenericPolynomialFormat(.{
+            .bits = @bitSizeOf(Int),
+            .prefix = "0x",
+            .radix = 0x10,
+            .signedness = @typeInfo(Int).Int.signedness,
+            .width = .min,
+        });
     }
     pub inline fn Xo(comptime Int: type) type {
-        if (@typeInfo(Int).Int.signedness == .signed) {
-            unreachable;
-        } else {
-            return @TypeOf(uo(@as(Int, undefined)));
-        }
+        return GenericPolynomialFormat(.{
+            .bits = @bitSizeOf(Int),
+            .prefix = "0o",
+            .radix = 0o10,
+            .signedness = @typeInfo(Int).Int.signedness,
+            .width = .min,
+        });
     }
     pub const UDel = GenericChangedIntFormat(.{
         .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },

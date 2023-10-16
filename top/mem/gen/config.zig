@@ -7,9 +7,9 @@ pub const word_size_type: type = u64;
 pub const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
-    .logging = mem.spec.allocator.logging.silent,
-    .errors = mem.spec.allocator.errors.noexcept,
-    .options = mem.spec.allocator.options.fast,
+    .logging = mem.dynamic.spec.logging.silent,
+    .errors = mem.dynamic.spec.errors.noexcept,
+    .options = mem.dynamic.spec.options.fast,
 });
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_offset = 0x40000000,
