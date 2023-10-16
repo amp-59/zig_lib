@@ -831,7 +831,7 @@ pub const about = opaque {
     const futex_wait_s: fmt.AboutSrc = fmt.about("futex-wait");
     const futex_wake_s: fmt.AboutSrc = fmt.about("futex-wake");
     const futex_wake_op_s: fmt.AboutSrc = fmt.about("futex-wake-op");
-    pub inline fn exe(buf: []u8) u64 {
+    pub fn exe(buf: []u8) usize {
         const rc: i64 = asm volatile (
             \\syscall
             : [_] "={rax}" (-> isize),
@@ -844,17 +844,18 @@ pub const about = opaque {
         return if (rc < 0) ~@as(u64, 0) else @intCast(rc);
     }
     fn forkNotice(pid: u64) void {
+        @setRuntimeSafety(false);
         var buf: [560]u8 = undefined;
-        const ud64: fmt.Type.Ud64 = .{ .value = pid };
         buf[0..fork_s.len].* = fork_s.*;
         var ptr: [*]u8 = buf[fork_s.len..];
         ptr[0..4].* = "pid=".*;
         ptr += 4;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, pid);
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) + 1]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn waitNotice(id: WaitSpec.For, ret: Return) void {
+        @setRuntimeSafety(false);
         const if_signaled: bool = Status.ifSignaled(ret.status);
         const if_stopped: bool = Status.ifStopped(ret.status);
         const code: u64 = if (if_signaled) Status.termSignal(ret.status) else if (if_stopped) Status.stopSignal(ret.status) else Status.exitStatus(ret.status);
@@ -872,7 +873,7 @@ pub const about = opaque {
         ud64.value = code;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) + 1]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn signalActionNotice(signo: sys.SignalCode, handler: SignalAction.Handler) void {
         if (return) {}
@@ -884,25 +885,32 @@ pub const about = opaque {
         debug.logAlwaysAIO(&buf, &[_][]const u8{ sig_s, "SIG", @tagName(signo), " -> ", handler_s, "\n" });
     }
     fn signalStackNotice(new_st: SignalStack, maybe_old_st: ?*SignalStack) void {
-        if (return) {}
         var buf: [560]u8 = undefined;
+        buf[0..sig_s.len].* = sig_s.*;
+        var ptr: [*]u8 = buf[sig_s.len..];
         if (maybe_old_st) |old_st| {
-            debug.logAlwaysAIO(&buf, &[_][]const u8{
-                sig_s,  fmt.old.ux64(old_st.addr).readAll(),
-                "..",   fmt.old.ux64(old_st.addr +% old_st.len).readAll(),
-                " -> ", fmt.old.ux64(new_st.addr).readAll(),
-                "..",   fmt.old.ux64(new_st.addr +% new_st.len).readAll(),
-                "\n",
-            });
+            ptr = fmt.writeUx64(ptr, old_st.addr);
+            ptr[0..2].* = "..".*;
+            ptr += 2;
+            ptr = fmt.writeUx64(ptr, old_st.addr +% old_st.len);
+            ptr[0..4].* = " -> ".*;
+            ptr += 4;
+            fmt.writeUx64(ptr, new_st.addr);
+            ptr[0..2].* = "..".*;
+            ptr += 2;
+            ptr = fmt.writeUx64(ptr, new_st.addr +% new_st.len);
+            ptr[0] = '\n';
         } else {
-            debug.logAlwaysAIO(&buf, &[_][]const u8{
-                sig_s, fmt.old.ux64(new_st.addr).readAll(),
-                "..",  fmt.old.ux64(new_st.addr +% new_st.len).readAll(),
-                "\n",
-            });
+            ptr = fmt.writeUx64(ptr, new_st.addr);
+            ptr[0..2].* = "..".*;
+            ptr += 2;
+            ptr = fmt.writeUx64(ptr, new_st.addr +% new_st.len);
+            ptr[0] = '\n';
         }
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWaitNotice(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
@@ -930,6 +938,7 @@ pub const about = opaque {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeAttempt(futex: *u32, count: u64) void {
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
@@ -949,6 +958,7 @@ pub const about = opaque {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeNotice(futex: *u32, count: u64, ret: u64) void {
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
@@ -972,6 +982,7 @@ pub const about = opaque {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
@@ -1003,6 +1014,7 @@ pub const about = opaque {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp, ret: u64) void {
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
@@ -1037,20 +1049,15 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: SignalAction.Handler) void {
+    fn signalActionError(rt_sigaction_error: anyerror, signo: sys.SignalCode, handler: SignalAction.Handler) void {
+        @setRuntimeSafety(false);
         const handler_raw: usize = @bitCast(handler);
         var ux64: fmt.Type.Ux64 = .{ .value = handler_raw };
         var buf: [256]u8 = undefined;
-        buf[0..sig_s.len].* = sig_s.*;
-        var ptr: [*]u8 = buf[sig_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, @errorName(rt_sigaction_error));
-        ptr += @errorName(rt_sigaction_error).len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, sig_s, @errorName(rt_sigaction_error));
         ptr[0..5].* = ", SIG".*;
         ptr += 5;
-        @memcpy(ptr, @tagName(signo));
-        ptr += @tagName(signo).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(signo));
         ptr[0..4].* = " -> ".*;
         ptr += 4;
         if (handler_raw > 1) {
@@ -1062,14 +1069,10 @@ pub const about = opaque {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn signalStackError(sigaltstack_error: anytype, new_st: SignalStack) void {
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ux64 = .{ .value = new_st.addr };
-        buf[0..sig_s.len].* = sig_s.*;
-        var ptr: [*]u8 = buf[sig_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, @errorName(sigaltstack_error));
-        ptr += @errorName(sigaltstack_error).len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, sig_s, @errorName(sigaltstack_error));
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
         ptr += 2;
@@ -1079,16 +1082,11 @@ pub const about = opaque {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
-        buf[0..futex_wait_s.len].* = futex_wait_s.*;
-        var ptr: [*]u8 = buf[futex_wait_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, @errorName(futex_error));
-        ptr += @errorName(futex_error).len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wait_s, @errorName(futex_error));
         ptr[0..8].* = ", futex=".*;
         ptr += 8;
         ptr += ux64.formatWriteBuf(ptr);
@@ -1109,16 +1107,11 @@ pub const about = opaque {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
-        buf[0..futex_wait_s.len].* = futex_wait_s.*;
-        var ptr: [*]u8 = buf[futex_wait_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, @errorName(futex_error));
-        ptr += @errorName(futex_error).len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wake_s, @errorName(futex_error));
         ptr[0..7].* = "futex=@".*;
         ptr += 7;
         ptr += ux64.formatWriteBuf(ptr);
@@ -1136,11 +1129,7 @@ pub const about = opaque {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
-        var ptr: [*]u8 = buf[futex_wait_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, @errorName(futex_error));
-        ptr += @errorName(futex_error).len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wake_op_s, @errorName(futex_error));
         var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex1) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
         ptr[0..10].* = ", futex1=@".*;
@@ -1170,8 +1159,9 @@ pub const about = opaque {
     }
     pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) noreturn {
         @setRuntimeSafety(false);
-        var act: SignalAction = undefined;
-        updateExceptionHandlers(&act);
+        updateExceptionHandlers(null);
+        const pid: u32 = getProcessId();
+        const tid: u32 = getThreadId();
         var buf: [8192]u8 = undefined;
         buf[0..3].* = "SIG".*;
         var ptr: [*]u8 = buf[3..];
@@ -1179,8 +1169,6 @@ pub const about = opaque {
         ptr[0..12].* = " at address ".*;
         ptr += 12;
         ptr += fmt.ux64(info.fields.fault.addr).formatWriteBuf(ptr);
-        const pid: u32 = getProcessId();
-        const tid: u32 = getThreadId();
         var ud64: fmt.Type.Ud64 = .{ .value = pid };
         ptr[0..6].* = ", pid=".*;
         ptr += 6;
