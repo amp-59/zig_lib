@@ -17,8 +17,13 @@
 //! perf:           cpu-clock		52,600
 //! perf:           task-clock		50,470
 //! perf:           page-faults		1
-const zl = @import("../zig_lib.zig");
-
+//const zl = @import("../zig_lib.zig");
+const zl = struct {
+    const mem = @import("../top/mem.zig");
+    const fmt = @import("../top/fmt.zig");
+    const debug = @import("../top/debug.zig");
+    const start = @import("../top/start.zig");
+};
 pub usingnamespace zl.start;
 
 pub const signal_handlers = .{
@@ -355,9 +360,9 @@ pub fn main() void {
     //zigLibContainerFormatter(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerV2Formatter(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerWriteSlices(&futex0, &futex1, count1, count2, ret);
-    //zigLibContainerV2WriteSlices(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerWriteArrays(&futex0, &futex1, count1, count2, ret);
     //zigLibOptimisedMessage(&futex0, &futex1, count1, count2, ret);
     //zigLibOptimisedMessage2(&futex0, &futex1, count1, count2, ret);
     zigLibOptimisedMessage3(&futex0, &futex1, count1, count2, ret);
 }
+//
