@@ -916,22 +916,6 @@ pub const PTrace = enum(usize) {
     set_sigmask = 0x420b,
     seccomp_get_filter = 0x420c,
     get_syscall_info = 0x420e,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
-        buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        return len;
-    }
-    pub fn formatLength(format: @This()) usize {
-        @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
-        var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        return len;
-    }
 };
 pub const AF = packed struct(usize) {
     UNIX: bool = false,
@@ -1106,22 +1090,6 @@ pub const IPPORT = enum(usize) {
     EFSSERVER = 0x208,
     USERRESERVED = 0x1388,
     RESERVED = 0x400,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
-        buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        return len;
-    }
-    pub fn formatLength(format: @This()) usize {
-        @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
-        var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        return len;
-    }
 };
 pub const SignalAction = packed struct(usize) {
     no_child_stop: bool = false,
@@ -1351,42 +1319,10 @@ pub const FIO = enum(usize) {
     CLEX = 0x5451,
     ASYNC = 0x5452,
     QSIZE = 0x5460,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
-        buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        return len;
-    }
-    pub fn formatLength(format: @This()) usize {
-        @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
-        var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        return len;
-    }
 };
 pub const UTIME = enum(usize) {
     OMIT = 0x3ffffffe,
     NOW = 0x3fffffff,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
-        buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        return len;
-    }
-    pub fn formatLength(format: @This()) usize {
-        @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
-        var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        return len;
-    }
 };
 pub const Seek = packed struct(usize) {
     e0: enum(u2) {
@@ -1777,22 +1713,6 @@ pub const AUX = enum(usize) {
     L2_CACHEGEOMETRY = 0x2d,
     L3_CACHESIZE = 0x2e,
     L3_CACHEGEOMETRY = 0x2f,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
-        buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        return len;
-    }
-    pub fn formatLength(format: @This()) usize {
-        @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
-        var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        return len;
-    }
 };
 pub const FLOCK = packed struct(usize) {
     WRLCK: bool = false,
@@ -1845,22 +1765,6 @@ pub const F = enum(usize) {
     SETOWN = 0x8,
     GETOWN = 0x9,
     DUPFD_CLOEXEC = 0x406,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
-        buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        return len;
-    }
-    pub fn formatLength(format: @This()) usize {
-        @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
-        var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        return len;
-    }
 };
 pub const SI = packed struct(usize) {
     e0: enum(u32) {
@@ -2033,22 +1937,6 @@ pub const SEGV = enum(usize) {
     ACCERR = 0x2,
     BNDERR = 0x3,
     PKUERR = 0x4,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
-        buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        return len;
-    }
-    pub fn formatLength(format: @This()) usize {
-        @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
-        var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        return len;
-    }
 };
 pub const FS = packed struct(usize) {
     SECRM_FL: bool = false,

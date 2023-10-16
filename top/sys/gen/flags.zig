@@ -6,8 +6,8 @@ const math = @import("../../math.zig");
 const debug = @import("../../debug.zig");
 const decls = @import("../decls.zig");
 const config = @import("./config.zig");
-pub const Array = mem.StaticString(64 * 1024 * 1024);
-pub const ArrayGST = mem.StaticString(1024 * 1024);
+pub const Array = mem.array.StaticString(64 * 1024 * 1024);
+pub const ArrayGST = mem.array.StaticString(1024 * 1024);
 const prefer_gst = false;
 const GST = struct {
     array: *ArrayGST,
@@ -245,6 +245,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             var shr_amt: usize = 0;
             var shl_rem: usize = 0;
             var enum_idx: usize = 0;
+            if (isEnum(format)) return;
             if (prefer_gst) {
                 for (format.value.sets, 0..) |set, idx| {
                     if (set.tag == .E) {
@@ -372,6 +373,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             const unit: usize = 1;
             var shr_amt: usize = 0;
             var shl_rem: usize = 0;
+            if (isEnum(format)) return;
             array.writeMany("pub fn formatLength(format:@This())usize{\n");
             array.writeMany("@setRuntimeSafety(false);\n");
             array.writeMany("if(@as(" ++ @typeName(backing_integer) ++ ",@bitCast(format))==0) return 0;");
@@ -465,12 +467,15 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             }
             return max;
         }
+
+        fn isEnum(format: Format) bool {
+            return format.value.sets.len == 1 and
+                format.value.sets[0].tag == .E;
+        }
         pub fn formatWrite(format: Format, array: *Array, gst: GST) void {
             array.writeMany("pub const ");
             array.writeMany(format.value.type_name);
-            if (format.value.sets.len == 1 and
-                format.value.sets[0].tag == .E)
-            {
+            if (isEnum(format)) {
                 array.writeMany("=enum(" ++ @typeName(backing_integer) ++ "){\n");
                 writeEnumField(array, format.value.sets[0], 0);
             } else {
