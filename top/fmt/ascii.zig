@@ -75,7 +75,7 @@ pub fn isPrint(c: u8) bool {
 pub fn countPrinting(bytes: []const u8) usize {
     var ret: usize = 0;
     for (bytes) |byte| {
-        ret +%= isPrint(byte);
+        ret +%= @intFromBool(isPrint(byte));
     }
     return ret;
 }
