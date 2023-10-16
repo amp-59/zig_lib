@@ -47,18 +47,15 @@ const optional_module_slice_type: types.ProtoTypeDescrMap = .{
 const optional_dependencies_slice_type: types.ProtoTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?[]const types.ModuleDependency" } },
     .write = &.{ .type_decl = .{ .name = "types.ModuleDependencies" } },
-};
-const hmacro_slice_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_decl = .{ .name = "?[]const types.HMacro" } },
-    .write = &.{ .type_decl = .{ .name = "types.HMacros" } },
+    .parse = &.{ .type_decl = .{ .name = "types.ModuleDependencies" } },
 };
 const build_id_type: types.ProtoTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?types.BuildId" } },
     .parse = &types.ProtoTypeDescr.init(types.BuildId),
 };
-const linker_flags_type: types.ProtoTypeDescrMap = .{
-    .store = &types.ProtoTypeDescr.init(?[]const types.LinkerFlags),
-    .parse = &.{ .type_decl = .{ .name = "types.LinkerFlags" } },
+const link_flags_type: types.ProtoTypeDescrMap = .{
+    .store = &types.ProtoTypeDescr.init(?[]const types.LinkFlags),
+    .parse = &.{ .type_decl = .{ .name = "types.LinkFlags" } },
 };
 const optimize_type: types.ProtoTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?builtin.OptimizeMode" } },
@@ -75,9 +72,10 @@ const output_format_type: types.ProtoTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?builtin.ObjectFormat" } },
     .parse = &types.ProtoTypeDescr.init(builtin.ObjectFormat),
 };
-const cflags_type: types.ProtoTypeDescrMap = .{
+const flags_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?[]const []const u8),
-    .write = &.{ .type_decl = .{ .name = "types.CFlags" } },
+    .write = &.{ .type_decl = .{ .name = "types.ExtraFlags" } },
+    .parse = &.{ .type_decl = .{ .name = "types.ExtraFlags" } },
 };
 pub const scope: []const types.ProtoTypeDescr.Declaration = &.{
     .{ .name = "PathUnion", .defn = .{
@@ -573,15 +571,24 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "dependencies",
+            .string = "--deps",
             .tag = .{ .optional_field = .mapped },
             .type = optional_dependencies_slice_type,
             .descr = &.{"Define module dependencies for the current target"},
         },
         .{
             .name = "cflags",
+            .string = "-cflags",
             .tag = .{ .optional_field = .mapped },
-            .type = cflags_type,
+            .type = flags_type,
             .descr = &.{"Set extra flags for the next position C source files"},
+        },
+        .{
+            .name = "rcflags",
+            .string = "-rcflags",
+            .tag = .{ .optional_field = .mapped },
+            .type = flags_type,
+            .descr = &.{"Set extra flags for the next positional .rc source files"},
         },
         .{
             .name = "link_libc",
@@ -609,10 +616,10 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Bind global references locally"},
         },
         .{
-            .name = "lflags",
+            .name = "link_flags",
             .string = "-z",
             .tag = .{ .optional_field = .repeatable_tag },
-            .type = linker_flags_type,
+            .type = link_flags_type,
             .descr = &.{
                 "Set linker extension flags:",
                 "  nodelete                   Indicate that the object cannot be deleted from a process",
