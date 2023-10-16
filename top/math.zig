@@ -307,29 +307,10 @@ pub fn order(a: anytype, b: anytype) Order {
     }
 }
 pub fn Absolute(comptime T: type) type {
-    const bit_size_of: u16 = @bitSizeOf(T);
-    if (bit_size_of == 0) {
-        return comptime_int;
-    }
-    return @Type(.{ .Int = .{
-        .bits = @max(8, bit_size_of),
-        .signedness = .unsigned,
-    } });
+    return @TypeOf(@abs(@as(T, undefined)));
 }
 pub fn absoluteDiff(x: anytype, y: anytype) Absolute(@TypeOf(x + y)) {
     return @max(x, y) -% @min(x, y);
-}
-pub inline fn absoluteVal(value: anytype) Absolute(@TypeOf(value)) {
-    @setRuntimeSafety(false);
-    const Int: type = @TypeOf(value);
-    const Abs: type = Absolute(Int);
-    if (Int == comptime_int and value < 0) {
-        return -value;
-    }
-    if (Int != Abs and value < 0) {
-        return @intCast(-value);
-    }
-    return @intCast(value);
 }
 /// Returns the sum of arg1 and b. Returns an error on overflow.
 pub fn mul(comptime T: type, arg1: T, arg2: T) error{MulCausedOverflow}!T {
@@ -418,7 +399,7 @@ pub fn rotl(comptime T: type, value: T, rot_amt: anytype) T {
 }
 pub fn shl(comptime T: type, value: T, shift_amt: anytype) T {
     const ShiftAmount = @TypeOf(shift_amt);
-    const abs_shift_amt: Absolute(ShiftAmount) = absoluteVal(shift_amt);
+    const abs_shift_amt: Absolute(ShiftAmount) = @abs(shift_amt);
     const casted_shift_amt = blk: {
         if (@typeInfo(T) == .Vector) {
             const C = @typeInfo(T).Vector.child;
@@ -445,7 +426,7 @@ pub fn shl(comptime T: type, value: T, shift_amt: anytype) T {
 }
 pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
     const ShiftAmount = @TypeOf(shift_amt);
-    const abs_shift_amt: Absolute(ShiftAmount) = absoluteVal(shift_amt);
+    const abs_shift_amt: Absolute(ShiftAmount) = @abs(shift_amt);
     const casted_shift_amt = blk: {
         if (@typeInfo(T) == .Vector) {
             const C = @typeInfo(T).Vector.child;
