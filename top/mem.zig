@@ -6,18 +6,13 @@ const math = @import("./math.zig");
 const proc = @import("./proc.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-
-const _reference = @import("./reference.zig");
-const _container = @import("./container.zig");
-const _allocator = @import("./allocator.zig");
-const _list = @import("./list.zig");
-
-const mem = @This();
-pub usingnamespace _reference;
-pub usingnamespace _container;
-pub usingnamespace _allocator;
-pub usingnamespace _list;
+pub const namespace = @This();
+pub const list = @import("./list.zig");
+pub const array = @import("./array.zig");
+pub const pointer = @import("./pointer.zig");
+pub const dynamic = @import("./dynamic.zig");
 const word_bit_size: comptime_int = @bitSizeOf(usize);
+pub const @"undefined": usize = 12297829382473034410;
 pub const Advice = enum(usize) {
     normal = 0,
     random = 1,
@@ -177,8 +172,7 @@ pub noinline fn monitor(comptime T: type, ptr: *T) void {
 }
 fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
     if (address_space.set(AddressSpace.specification.divisions)) {
-        return map(AddressSpace.map_spec, .{}, .{}, //
-            AddressSpace.specification.addressable_byte_address(), AddressSpace.specification.addressable_byte_count());
+        return map(AddressSpace.map_spec, .{}, .{}, AddressSpace.specification.addressable_byte_address(), AddressSpace.specification.addressable_byte_count());
     }
 }
 fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
@@ -216,7 +210,7 @@ fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, index
         return address_space.unset(index);
     }
 }
-fn releaseStaticUnset(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
+inline fn releaseStaticUnset(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
     if (comptime AddressSpace.arena(index).options.thread_safe) {
         return address_space.atomicUnset(index);
     } else {
@@ -530,28 +524,6 @@ pub fn fd(comptime fd_spec: FdSpec, flags: sys.flags.MemFd, pathname: [:0]const 
         }
         return memfd_create_error;
     }
-}
-pub fn literalView(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
-    return .{ .impl = .{ .auto = @as(*const [s.len:0]u8, @ptrCast(s.ptr)).* } };
-}
-pub fn view(s: []const u8) mem.StructuredStreamView(u8, null, 1, struct {}, .{}) {
-    return .{ .impl = .{
-        .lb_word = @intFromPtr(s.ptr),
-        .up_word = @intFromPtr(s.ptr + s.len),
-        .ss_word = @intFromPtr(s.ptr),
-    } };
-}
-pub fn StaticStream(comptime child: type, comptime count: u64) type {
-    return mem.StructuredAutomaticStreamVector(child, null, count, @alignOf(child), .{});
-}
-pub fn StaticArray(comptime child: type, comptime count: u64) type {
-    return mem.StructuredAutomaticVector(child, null, count, @alignOf(child), .{});
-}
-pub fn StaticView(comptime child: type, comptime count: u64) type {
-    return mem.StructuredAutomaticView(child, null, count, @alignOf(child), .{});
-}
-pub fn StaticString(comptime count: u64) type {
-    return StaticArray(u8, count);
 }
 /// Potential features of a referenced value in memory:
 /// |->_~~~~~~_~~~~_------------------------------_--|
@@ -903,7 +875,7 @@ fn testIdenticalUnion(comptime T: type, comptime union_info: builtin.Type.Union,
         return false;
     } else {
         return testEqual(union_info.tag_type.?, arg1, arg2) and
-            mem.testEqualString(
+            testEqualString(
             @as(*const [@sizeOf(T)]u8, @ptrCast(&arg1)),
             @as(*const [@sizeOf(T)]u8, @ptrCast(&arg2)),
         );
@@ -1016,7 +988,7 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     }
     var idx: usize = 0;
     while (idx != l_values.len) {
-        if (!mem.testEqual(T, l_values[idx], r_values[idx])) {
+        if (!testEqual(T, l_values[idx], r_values[idx])) {
             return false;
         }
         idx +%= 1;
@@ -1562,12 +1534,12 @@ pub const SimpleAllocator = struct {
         .logging = .{ .Release = false },
     };
     pub fn unmapAll(allocator: *Allocator) void {
-        mem.unmap(unmap_spec, allocator.start, allocator.finish -% allocator.start);
+        unmap(unmap_spec, allocator.start, allocator.finish -% allocator.start);
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
-    pub fn fromArena(arena: mem.Arena) Allocator {
-        mem.map(map_spec, .{}, .{}, arena.lb_addr, 4096);
+    pub fn fromArena(arena: Arena) Allocator {
+        map(map_spec, .{}, .{}, arena.lb_addr, 4096);
         return .{
             .start = arena.lb_addr,
             .next = arena.lb_addr,
@@ -1585,14 +1557,14 @@ pub const SimpleAllocator = struct {
         const mask: usize = alignment -% 1;
         return (allocator.next +% mask) & ~mask;
     }
-    pub fn addGeneric(allocator: *Allocator, size: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
+    pub fn addGeneric(allocator: *Allocator, size: usize, alignment: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
         @setRuntimeSafety(builtin.is_safe);
         const new_max_len: usize = len +% 2;
         if (max_len.* == 0) {
-            ptr.* = allocateRaw(allocator, size *% init_len, 8);
+            ptr.* = allocateRaw(allocator, size *% init_len, alignment);
             max_len.* = init_len;
         } else if (len == max_len.*) {
-            ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+            ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, alignment);
             max_len.* = new_max_len;
         }
         return ptr.* +% (size *% len);
@@ -1669,106 +1641,6 @@ pub const SimpleAllocator = struct {
         }
     }
 };
-pub fn GenericSimpleArray(comptime T: type) type {
-    return struct {
-        values: []T,
-        values_len: usize,
-        const Array = @This();
-        const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
-        pub fn appendOne(array: *Array, allocator: *Allocator, value: T) void {
-            if (array.values_len == array.values.len) {
-                array.values = allocator.reallocate(T, array.values, array.values_len *% 2);
-            }
-            array.values[array.values_len] = value;
-            array.values_len +%= 1;
-        }
-        pub fn appendSlice(array: *Array, allocator: *Allocator, values: []const T) void {
-            if (array.values_len +% values.len > array.values.len) {
-                array.values = allocator.reallocate(T, array.values, (array.values_len +% values.len) *% 2);
-            }
-            for (values) |value| {
-                array.values[array.values_len] = value;
-                array.values_len +%= 1;
-            }
-        }
-        pub fn readAll(array: *const Array) []const T {
-            return array.values[0..array.values_len];
-        }
-        pub fn referAll(array: *Array) []T {
-            return array.values[0..array.values_len];
-        }
-        pub fn popOne(array: *Array) T {
-            array.values_len -%= 1;
-            return array.values[array.values_len];
-        }
-        pub fn init(allocator: *Allocator, count: u64) Array {
-            return .{
-                .values = allocator.allocate(T, count),
-                .values_len = 0,
-            };
-        }
-        pub fn deinit(array: *Array, allocator: *Allocator) void {
-            allocator.deallocate(T, array.values);
-        }
-    };
-}
-pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
-    return struct {
-        pairs: []*Pair,
-        pairs_len: usize,
-        const Array = @This();
-        const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
-        const Pair = struct {
-            key: Key,
-            val: Value,
-        };
-        pub fn put(array: *Array, allocator: *Allocator, key: Key, val: Value) void {
-            array.appendOne(allocator, .{ .key = key, .val = val });
-        }
-        pub fn get(array: *const Array, key: Key) ?Value {
-            for (array.pairs) |pair| {
-                if (testEqualMemory(Key, pair.key, key)) {
-                    return pair.val;
-                }
-            }
-            return null;
-        }
-        pub fn refer(array: *const Array, key: Key) ?*Value {
-            for (array.pairs) |pair| {
-                if (testEqualMemory(Key, pair.key, key)) {
-                    return &pair.val;
-                }
-            }
-            return null;
-        }
-        pub fn remove(array: *Array, key: Key) void {
-            const end: *Pair = array.pairs[array.pairs_len -% 1];
-            for (array.pairs) |*pair| {
-                if (testEqualMemory(Key, pair.*.key, key)) {
-                    pair.* = end;
-                    array.pairs_len -%= 1;
-                }
-            }
-        }
-        pub fn appendOne(array: *Array, allocator: *Allocator, pair: Pair) void {
-            if (array.pairs_len == array.pairs.len) {
-                array.pairs = allocator.reallocate(*Pair, array.pairs, array.pairs_len *% 2);
-            }
-            array.pairs[array.pairs_len] = allocator.create(Pair);
-            array.pairs[array.pairs_len].* = pair;
-            array.pairs_len +%= 1;
-        }
-        pub fn readAll(array: *const Array) []const *Pair {
-            return array.pairs[0..array.pairs_len];
-        }
-        pub fn init(allocator: *Allocator, count: u64) Array {
-            return .{
-                .pairs = allocator.allocate(*Pair, count),
-                .pairs_len = 0,
-            };
-        }
-    };
-}
 pub fn GenericOptionalArrays(comptime Allocator: type, comptime Int: type, comptime TaggedUnion: type) type {
     const U = packed struct {
         buf: [*]Elem = @ptrFromInt(@alignOf(Elem)),
@@ -1877,7 +1749,7 @@ pub fn GenericOptionals(comptime Allocator: type, comptime TaggedUnion: type) ty
         fn createInternal(im: *Im, allocator: *Allocator, tag: ImTag, size_of: usize) usize {
             @setRuntimeSafety(builtin.is_safe);
             const ret: usize = allocator.allocateRaw(size_of, 8);
-            const addr: *usize = @ptrFromInt(allocator.addGeneric(8, 1, @ptrCast(&im.buf), &im.buf_max_len, im.buf_len));
+            const addr: *usize = @ptrFromInt(allocator.addGeneric(8, @alignOf(TaggedUnion), 1, @ptrCast(&im.buf), &im.buf_max_len, im.buf_len));
             addr.* = ret | (@as(usize, @intFromEnum(tag)) << shift_amt);
             im.buf_len +%= 1;
             return ret;
@@ -2320,10 +2192,10 @@ fn GenericMultiSet(
                 comptime return directory[index].field_name;
             }
         }
-        pub fn get(multi_set: *const MultiSet, comptime index: addr_spec.index_type) addr_spec.value_type {
+        pub inline fn get(multi_set: *const MultiSet, comptime index: addr_spec.index_type) addr_spec.value_type {
             return @field(multi_set.fields, fieldName(index)).get(arenaIndex(index));
         }
-        pub fn set(multi_set: *MultiSet, comptime index: addr_spec.index_type) void {
+        pub inline fn set(multi_set: *MultiSet, comptime index: addr_spec.index_type) void {
             @field(multi_set.fields, fieldName(index)).set(arenaIndex(index));
         }
         pub fn exchange(
@@ -2337,10 +2209,10 @@ fn GenericMultiSet(
         pub fn unset(multi_set: *MultiSet, comptime index: addr_spec.index_type) void {
             @field(multi_set.fields, fieldName(index)).unset(arenaIndex(index));
         }
-        pub fn atomicSet(multi_set: *MultiSet, comptime index: addr_spec.index_type) bool {
+        pub inline fn atomicSet(multi_set: *MultiSet, comptime index: addr_spec.index_type) bool {
             return @field(multi_set.fields, fieldName(index)).atomicSet(arenaIndex(index));
         }
-        pub fn atomicUnset(multi_set: *MultiSet, comptime index: addr_spec.index_type) bool {
+        pub inline fn atomicUnset(multi_set: *MultiSet, comptime index: addr_spec.index_type) bool {
             return @field(multi_set.fields, fieldName(index)).atomicUnset(arenaIndex(index));
         }
         pub fn atomicExchange(
@@ -2682,10 +2554,10 @@ pub const RegularMultiArena = struct {
         comptime return multi_arena.divisions;
     }
     pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
-        comptime return bits.alignA64(multi_arena.up_addr -% multi_arena.lb_addr, multi_arena.alignment);
+        return bits.alignA64(multi_arena.up_addr -% multi_arena.lb_addr, multi_arena.alignment);
     }
-    pub fn capacityEach(comptime multi_arena: MultiArena) u64 {
-        comptime return @divExact(capacityAll(multi_arena), multi_arena.divisions);
+    pub inline fn capacityEach(comptime multi_arena: MultiArena) u64 {
+        return @divExact(capacityAll(multi_arena), multi_arena.divisions);
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
         return @as(Index(multi_arena), @intCast((addr -% multi_arena.lb_addr) / capacityEach(multi_arena)));
@@ -2964,31 +2836,31 @@ pub fn GenericDiscreteAddressSpace(comptime addr_spec: DiscreteAddressSpaceSpec)
         pub const Index: type = addr_spec.index_type;
         pub const Value: type = addr_spec.value_type;
         pub const specification: DiscreteAddressSpaceSpec = addr_spec;
-        pub fn get(address_space: *const DiscreteAddressSpace, comptime index: Index) bool {
+        pub inline fn get(address_space: *const DiscreteAddressSpace, comptime index: Index) bool {
             return address_space.impl.get(index);
         }
-        pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+        pub inline fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             const ret: addr_spec.value_type = address_space.get(index);
             if (ret) address_space.impl.unset(index);
             return ret;
         }
-        pub fn set(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+        pub inline fn set(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             const ret: addr_spec.value_type = !address_space.get(index);
             if (ret) address_space.impl.set(index);
             return ret;
         }
-        pub fn transform(address_space: *DiscreteAddressSpace, comptime index: Index, if_state: Value, to_state: Value) bool {
+        pub inline fn transform(address_space: *DiscreteAddressSpace, comptime index: Index, if_state: Value, to_state: Value) bool {
             const ret: Value = address_space.get(index);
             if (ret == if_state) address_space.impl.transform(index, if_state, to_state);
             return !ret;
         }
-        pub fn atomicUnset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+        pub inline fn atomicUnset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             return addr_spec.list[index].options.thread_safe and address_space.impl.atomicUnset(index);
         }
-        pub fn atomicSet(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+        pub inline fn atomicSet(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             return addr_spec.list[index].options.thread_safe and address_space.impl.atomicSet(index);
         }
-        pub fn atomicExchange(
+        pub inline fn atomicExchange(
             address_space: *DiscreteAddressSpace,
             comptime index: Index,
             comptime if_state: addr_spec.value_type,
@@ -3083,106 +2955,12 @@ pub fn GenericElementaryAddressSpace(comptime addr_spec: ElementaryAddressSpaceS
 }
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     const T = extern struct {
-        pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
-            if (@TypeOf(AddressSpace.specification) == DiscreteAddressSpaceSpec) {
-                return AddressSpace.about.formatWriteDiscrete(address_space, array);
-            } else {
-                return AddressSpace.about.formatWriteRegular(address_space, array);
-            }
-        }
-        pub fn formatLength(address_space: AddressSpace) u64 {
-            if (@TypeOf(AddressSpace.specification) == DiscreteAddressSpaceSpec) {
-                return AddressSpace.about.formatLengthDiscrete(address_space);
-            } else {
-                return AddressSpace.about.formatLengthRegular(address_space);
-            }
-        }
         pub fn invert(addr: usize) AddressSpace.Index {
             return @as(AddressSpace.Index, @intCast(AddressSpace.specification.invert(addr)));
         }
         pub fn SubSpace(comptime label_or_index: anytype) type {
             return GenericSubSpace(AddressSpace.specification.subspace.?, label_or_index);
         }
-        const about = struct {
-            const about_set_s: []const u8 = fmt.about("set");
-            const about_set_1_s: []const u8 = fmt.about("unset");
-            fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
-                var arena_index: AddressSpace.Index = 0;
-                array.writeMany(about_set_s);
-                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (!address_space.impl.get(arena_index)) {
-                        array.writeFormat(fmt.ud64(arena_index));
-                        array.writeCount(2, ", ".*);
-                    }
-                }
-                arena_index = 0;
-                array.writeMany(about_set_1_s);
-                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (address_space.impl.get(arena_index)) {
-                        array.writeFormat(fmt.ud64(arena_index));
-                        array.writeCount(2, ", ".*);
-                    }
-                }
-            }
-            fn formatLengthRegular(address_space: AddressSpace) u64 {
-                var len: usize = 0;
-                var arena_index: AddressSpace.Index = 0;
-                len +%= about_set_s.len;
-                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (!address_space.impl.get(arena_index)) {
-                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
-                        len +%= 2;
-                    }
-                }
-                arena_index = 0;
-                len +%= about_set_1_s.len;
-                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (address_space.impl.get(arena_index)) {
-                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
-                        len +%= 2;
-                    }
-                }
-                return len;
-            }
-            fn formatWriteDiscrete(address_space: AddressSpace, array: anytype) void {
-                comptime var arena_index: AddressSpace.Index = 0;
-                array.writeMany(about_set_s);
-                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (!address_space.impl.get(arena_index)) {
-                        array.writeFormat(fmt.ud64(arena_index));
-                        array.writeCount(2, ", ".*);
-                    }
-                }
-                arena_index = 0;
-                array.writeMany(about_set_1_s);
-                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (address_space.impl.get(arena_index)) {
-                        array.writeFormat(fmt.ud64(arena_index));
-                        array.writeCount(2, ", ".*);
-                    }
-                }
-            }
-            fn formatLengthDiscrete(address_space: AddressSpace) u64 {
-                var len: usize = 0;
-                comptime var arena_index: AddressSpace.Index = 0;
-                len +%= about_set_s.len;
-                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
-                        len +%= 2;
-                    }
-                }
-                arena_index = 0;
-                len +%= about_set_1_s.len;
-                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
-                    if (!address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
-                        len +%= 2;
-                    }
-                }
-                return len;
-            }
-        };
     };
     return T;
 }
@@ -3588,146 +3366,6 @@ pub const spec = struct {
             };
         };
     };
-    pub const reinterpret = struct {
-        pub const flat: mem.ReinterpretSpec = .{};
-        pub const ptr: mem.ReinterpretSpec = .{
-            .reference = .{ .dereference = &.{} },
-        };
-        pub const fmt: mem.ReinterpretSpec = reinterpretRecursively(.{
-            .reference = ptr.reference,
-            .aggregate = .{ .iterate = true },
-            .composite = .{ .format = true },
-            .symbol = .{ .tag_name = true },
-        });
-        pub const print: mem.ReinterpretSpec = reinterpretRecursively(.{
-            .reference = ptr.reference,
-            .aggregate = .{ .iterate = true },
-            .composite = .{ .format = true },
-            .symbol = .{ .tag_name = true },
-        });
-        pub const follow: mem.ReinterpretSpec = blk: {
-            var rs_0: mem.ReinterpretSpec = .{};
-            var rs_1: mem.ReinterpretSpec = .{ .reference = .{
-                .dereference = &rs_0,
-            } };
-            rs_1.reference.dereference = &rs_0;
-            rs_0 = .{ .reference = .{
-                .dereference = &rs_1,
-            } };
-            break :blk rs_1;
-        };
-        fn reinterpretRecursively(comptime reinterpret_spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
-            var rs_0: mem.ReinterpretSpec = reinterpret_spec;
-            var rs_1: mem.ReinterpretSpec = reinterpret_spec;
-            rs_0.reference.dereference = &rs_1;
-            rs_1.reference.dereference = &rs_0;
-            return rs_1;
-        }
-    };
-    pub const allocator = struct {
-        pub const options = struct {
-            pub const small: mem.ArenaAllocatorOptions = .{
-                .count_branches = false,
-                .count_allocations = false,
-                .count_useful_bytes = false,
-                .check_parametric = false,
-                .prefer_remap = false,
-            };
-            // TODO: Describe conditions where this is better.
-            pub const fast: mem.ArenaAllocatorOptions = .{
-                .count_branches = false,
-                .count_allocations = true,
-                .count_useful_bytes = true,
-                .check_parametric = false,
-                .require_geometric_growth = true,
-            };
-            pub const debug: mem.ArenaAllocatorOptions = .{
-                .count_branches = true,
-                .count_allocations = true,
-                .count_useful_bytes = true,
-                .check_parametric = true,
-                .trace_state = true,
-                .trace_clients = true,
-            };
-            pub const small_composed: mem.ArenaAllocatorOptions = .{
-                .count_branches = false,
-                .count_allocations = false,
-                .count_useful_bytes = false,
-                .check_parametric = false,
-                .prefer_remap = false,
-                .require_map = false,
-                .require_unmap = false,
-            };
-            pub const fast_composed: mem.ArenaAllocatorOptions = .{
-                .count_branches = false,
-                .count_allocations = true,
-                .count_useful_bytes = true,
-                .check_parametric = false,
-                .require_geometric_growth = true,
-                .require_map = false,
-                .require_unmap = false,
-            };
-            pub const debug_composed: mem.ArenaAllocatorOptions = .{
-                .count_branches = true,
-                .count_allocations = true,
-                .count_useful_bytes = true,
-                .check_parametric = true,
-                .trace_state = true,
-                .trace_clients = true,
-                .require_map = false,
-                .require_unmap = false,
-            };
-        };
-        pub const logging = struct {
-            pub const verbose: mem.AllocatorLogging = .{
-                .head = true,
-                .sentinel = true,
-                .metadata = true,
-                .branches = true,
-                .illegal = true,
-                .map = debug.spec.logging.acquire_error.verbose,
-                .unmap = debug.spec.logging.release_error.verbose,
-                .remap = debug.spec.logging.success_error.verbose,
-                .advise = debug.spec.logging.success_error.verbose,
-                .allocate = true,
-                .reallocate = true,
-                .reinterpret = true,
-                .deallocate = true,
-            };
-            pub const silent: mem.AllocatorLogging = .{
-                .head = false,
-                .sentinel = false,
-                .metadata = false,
-                .branches = false,
-                .illegal = false,
-                .map = debug.spec.logging.acquire_error.silent,
-                .unmap = debug.spec.logging.release_error.silent,
-                .remap = debug.spec.logging.success_error.silent,
-                .advise = debug.spec.logging.success_error.silent,
-                .allocate = false,
-                .reallocate = false,
-                .reinterpret = false,
-                .deallocate = false,
-            };
-        };
-        pub const errors = struct {
-            pub const zen: mem.AllocatorErrors = .{
-                .map = .{ .throw = mmap.errors.mem },
-                .remap = .{ .throw = mremap.errors.all },
-                .unmap = .{ .abort = munmap.errors.all },
-            };
-            pub const noexcept: mem.AllocatorErrors = .{
-                .map = .{},
-                .remap = .{},
-                .unmap = .{},
-            };
-            pub const critical: mem.AllocatorErrors = .{
-                .map = .{ .throw = mmap.errors.mem },
-                .remap = .{ .throw = mremap.errors.all },
-                .unmap = .{ .throw = munmap.errors.all },
-            };
-        };
-    };
 };
 pub fn cpy(comptime T: type, dest: [*]T, src: []const T) void {
     @setRuntimeSafety(false);
@@ -3756,4 +3394,125 @@ pub fn setEqu(comptime T: type, dest: [*]T, value: T, len: usize) [*]T {
     @setRuntimeSafety(false);
     @memset(dest[0..len], value);
     return dest + len;
+}
+pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
+    @setRuntimeSafety(false);
+    return @as(*child, @ptrFromInt(s_lb_addr));
+}
+pub fn pointerMany(comptime child: type, s_lb_addr: u64) [*]child {
+    @setRuntimeSafety(false);
+    return @as([*]child, @ptrFromInt(s_lb_addr));
+}
+pub fn pointerManyWithSentinel(
+    comptime child: type,
+    addr: u64,
+    comptime sentinel: child,
+) [*:sentinel]child {
+    @setRuntimeSafety(false);
+    return @as([*:sentinel]child, @ptrFromInt(addr));
+}
+pub fn pointerSlice(comptime child: type, addr: u64, count: u64) []child {
+    @setRuntimeSafety(false);
+    return @as([*]child, @ptrFromInt(addr))[0..count];
+}
+pub fn pointerSliceWithSentinel(
+    comptime child: type,
+    addr: u64,
+    count: u64,
+    comptime sentinel: child,
+) [:sentinel]child {
+    @setRuntimeSafety(false);
+    return @as([*]child, @ptrFromInt(addr))[0..count :sentinel];
+}
+pub inline fn pointerCount(
+    comptime child: type,
+    addr: u64,
+    comptime count: u64,
+) *[count]child {
+    @setRuntimeSafety(false);
+    return @ptrFromInt(addr);
+}
+pub inline fn pointerCountWithSentinel(
+    comptime child: type,
+    addr: u64,
+    comptime count: u64,
+    comptime sentinel: child,
+) *[count:sentinel]child {
+    @setRuntimeSafety(false);
+    return @as(*[count:sentinel]child, @ptrFromInt(addr));
+}
+pub inline fn pointerOpaque(comptime child: type, any: *const anyopaque) *const child {
+    @setRuntimeSafety(false);
+    return @as(*align(@max(1, @alignOf(child))) const child, @ptrCast(@alignCast(any)));
+}
+pub inline fn pointerOneAligned(
+    comptime child: type,
+    addr: u64,
+    comptime alignment: u64,
+) *align(alignment) child {
+    @setRuntimeSafety(false);
+    return @as(*align(alignment) child, @ptrFromInt(addr));
+}
+pub inline fn pointerManyAligned(
+    comptime child: type,
+    addr: u64,
+    comptime alignment: u64,
+) [*]align(alignment) child {
+    @setRuntimeSafety(false);
+    return @as([*]align(alignment) child, @ptrFromInt(addr));
+}
+pub inline fn pointerManyWithSentinelAligned(
+    comptime child: type,
+    addr: u64,
+    comptime sentinel: child,
+    comptime alignment: u64,
+) [*:sentinel]align(alignment) child {
+    @setRuntimeSafety(false);
+    return @as([*:sentinel]align(alignment) child, @ptrFromInt(addr));
+}
+pub inline fn pointerSliceAligned(
+    comptime child: type,
+    addr: u64,
+    count: u64,
+    comptime alignment: u64,
+) []align(alignment) child {
+    @setRuntimeSafety(false);
+    return @as([*]align(alignment) child, @ptrFromInt(addr))[0..count];
+}
+pub inline fn pointerSliceWithSentinelAligned(
+    comptime child: type,
+    addr: u64,
+    count: u64,
+    comptime sentinel: child,
+    comptime alignment: u64,
+) [:sentinel]align(alignment) child {
+    @setRuntimeSafety(false);
+    return @as([*]align(alignment) child, @ptrFromInt(addr))[0..count :sentinel];
+}
+pub inline fn pointerCountAligned(
+    comptime child: type,
+    addr: u64,
+    comptime count: u64,
+    comptime alignment: u64,
+) *align(alignment) [count]child {
+    @setRuntimeSafety(false);
+    return @as(*align(alignment) [count]child, @ptrFromInt(addr));
+}
+pub inline fn pointerCountWithSentinelAligned(
+    comptime child: type,
+    addr: u64,
+    comptime count: u64,
+    comptime sentinel: child,
+    comptime alignment: u64,
+) *align(alignment) [count:sentinel]child {
+    @setRuntimeSafety(false);
+    return @as(*align(alignment) [count:sentinel]child, @ptrFromInt(addr));
+}
+pub inline fn pointerOpaqueAligned(
+    comptime child: type,
+    any: *const anyopaque,
+    comptime alignment: u64,
+) *const child {
+    @setRuntimeSafety(false);
+    return @as(*align(alignment) const child, @ptrCast(any));
 }
