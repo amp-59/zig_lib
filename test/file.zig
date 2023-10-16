@@ -362,7 +362,7 @@ fn testPreClean() !void {
 }
 fn testBasicDirectoryIterator() !void {
     const AddressSpace = mem.spec.address_space.exact_8;
-    const Allocator = mem.GenericArenaAllocator(.{
+    const Allocator = mem.dynamic.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 0,
     });
