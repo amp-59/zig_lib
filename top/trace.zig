@@ -21,7 +21,7 @@ pub const WorkingFile = struct {
     itr: builtin.parse.TokenIterator,
     loc: LineLocation,
 };
-pub const FileMap = mem.GenericSimpleMap([:0]const u8, WorkingFile);
+pub const FileMap = mem.array.GenericSimpleMap([:0]const u8, WorkingFile);
 
 pub const logging_default: debug.Logging.Default = .{
     .Acquire = false,
@@ -161,7 +161,7 @@ fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: usize, column: 
     var ptr: [*]u8 = buf;
     ptr[0..11].* = "\x1b[38;5;247m".*;
     ptr += 11;
-    ptr = fmt.strcpyEqu(ptr, pathname);
+    ptr = file.CompoundPath.writeDisplayPath(buf, pathname);
     ptr[0] = ':';
     ptr += 1;
     ptr += ud64.formatWriteBuf(ptr);
@@ -313,8 +313,8 @@ fn writeCompileErrorCaretTrace(buf: [*]u8, trace: *const debug.Trace, width: u64
 }
 fn writeReferenceTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: usize) [*]u8 {
     @setRuntimeSafety(false);
-    buf[0..26].* = "\x1b[38;5;247mreferenced by:\n".*;
-    var ptr: [*]u8 = buf + 26;
+    buf[0..30].* = "\x1b[38;5;247mreferenced by:\n\x1b[0m".*;
+    var ptr: [*]u8 = buf + 30;
     var refs: [*]CompileReferenceTrace = @ptrCast(extra + start + CompileSourceLocation.len);
     var idx: usize = 0;
     while (idx != ref_len) : (idx +%= 1) {
