@@ -285,12 +285,18 @@ pub fn BestInt(comptime T: type) type {
     if (@bitSizeOf(T) <= @bitSizeOf(usize)) {
         return @Type(.{ .Int = .{
             .bits = @bitSizeOf(usize),
-            .signedness = @typeInfo(T).Int.signedness,
+            .signedness = switch (@typeInfo(T)) {
+                .Int => |int_info| int_info.signedness,
+                else => .unsigned,
+            },
         } });
     } else {
         return @Type(.{ .Int = .{
             .bits = realBitSize(@bitSizeOf(T)),
-            .signedness = @typeInfo(T).Int.signedness,
+            .signedness = switch (@typeInfo(T)) {
+                .Int => |int_info| int_info.signedness,
+                else => .unsigned,
+            },
         } });
     }
 }
@@ -351,8 +357,10 @@ pub fn AlignBitSizeBelow(comptime T: type) type {
 }
 pub fn AlignBitSizeAbove(comptime T: type) type {
     var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
-    int_type_info.bits = alignRealBitSizeAbove(int_type_info.bits);
-    return @Type(.{ .Int = int_type_info });
+    return @Type(.{ .Int = .{
+        .bits = alignRealBitSizeAbove(int_type_info.bits),
+        .signedness = int_type_info.signedness,
+    } });
 }
 
 /// Return the smallest integer type capable of storing `value`
