@@ -1348,7 +1348,7 @@ pub const Instruction = struct {
                         if (rip.disp != 0) {
                             ptr[0..3].* = if (rip.disp < 0) " - ".* else " + ".*;
                             ptr += 3;
-                            ptr += fmt.ux32(math.absoluteVal(rip.disp)).formatWriteBuf(ptr);
+                            ptr += fmt.ux32(@abs(rip.disp)).formatWriteBuf(ptr);
                         }
                         ptr[0] = ']';
                         ptr += 1;
@@ -1396,7 +1396,7 @@ pub const Instruction = struct {
                                     ptr[0] = '-';
                                     ptr += 1;
                                 }
-                                ptr += fmt.ux32(math.absoluteVal(sib.disp)).formatWriteBuf(ptr);
+                                ptr += fmt.ux32(@abs(sib.disp)).formatWriteBuf(ptr);
                                 any = true;
                             }
                             ptr[0] = ']';
