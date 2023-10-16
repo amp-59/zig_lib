@@ -134,7 +134,8 @@ pub const Target = struct {
             glsl450 = 41,
             vulkan = 42,
             plan9 = 43,
-            other = 44,
+            illumos = 44,
+            other = 45,
         };
         pub const Version = struct {
             major: usize,
