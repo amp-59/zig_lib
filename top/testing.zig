@@ -10,7 +10,7 @@ const meta = @import("./meta.zig");
 const algo = @import("./algo.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-pub fn announce(src: builtin.SourceLocation) void {
+pub inline fn announce(src: builtin.SourceLocation) void {
     var buf: [4096]u8 = undefined;
     buf[0] = '\r';
     buf[1 .. tab.kill.line_right.len +% 1].* = tab.kill.line_right;
@@ -304,30 +304,35 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     debug.write(array.readAll());
     return array.readAll().len;
 }
-const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, mem.spec.reinterpret.fmt);
+const reinterpret_spec: mem.array.ReinterpretSpec = builtin.define(
+    "reinterpret_spec",
+    mem.array.ReinterpretSpec,
+    mem.array.spec.reinterpret.fmt,
+);
 pub fn printBufN(comptime n: usize, any: anytype) void {
     var buf: [n]u8 = undefined;
     debug.write(buf[0..any.formatWriteBuf(&buf)]);
 }
 pub fn printN(comptime n: usize, any: anytype) void {
-    var array: mem.StaticString(n) = undefined;
+    var array: mem.array.StaticString(n) = undefined;
     array.undefineAll();
     array.writeAny(reinterpret_spec, any);
     debug.write(array.readAll());
 }
 const Static = struct {
-    const Allocator = mem.GenericArenaAllocator(.{
+    const Allocator = mem.dynamic.GenericArenaAllocator(.{
         .arena_index = 48,
-        .errors = mem.spec.allocator.errors.noexcept,
-        .logging = mem.spec.allocator.logging.silent,
+        .errors = mem.dynamic.spec.errors.noexcept,
+        .logging = mem.dynamic.spec.logging.silent,
         .AddressSpace = mem.spec.address_space.regular_128,
     });
     const Array = Allocator.StructuredVector(u8);
-    var address_space: Allocator.allocator_spec.AddressSpace = .{};
+    var address_space: Allocator.AddressSpace = .{};
     var allocator: ?Allocator = null;
     var array: ?Array = null;
 };
 pub fn print(any: anytype) void {
+    @setRuntimeSafety(false);
     const allocator: *Static.Allocator = blk: {
         if (Static.allocator) |*allocator| {
             break :blk allocator;
