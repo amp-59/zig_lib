@@ -579,11 +579,11 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
         }
         pub const Graphics = struct {
             const AddressSpace = builtin.VirtualAddressSpace();
-            const IOAllocator = mem.GenericArenaAllocator(.{
+            const IOAllocator = mem.dynamic.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
                 .arena_index = AddressSpace.specification.count() -% 1,
-                .errors = mem.spec.allocator.errors.noexcept,
-                .logging = mem.spec.allocator.logging.silent,
+                .errors = mem.dynamic.spec.errors.noexcept,
+                .logging = mem.dynamic.spec.logging.silent,
             });
             const IOPrintArray = IOAllocator.StructuredHolder(u8);
             pub fn show(list: List, address_space: *AddressSpace) !void {
@@ -594,7 +594,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                    array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major.aligned_byte_address()),
                         "+",        fmt.ud64(tmp.links.major.alignment()),
@@ -606,7 +606,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.major.alignment()),
@@ -622,7 +622,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                         tmp.index +%= 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.prev().?.alignment()),
@@ -639,7 +639,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                         tmp.links = links;
                         tmp.index +%= 1;
                     } else {
-                        array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",         fmt.ud64(tmp.links.prev().?.alignment()),
@@ -1079,13 +1079,13 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
         }
         pub const Graphics = struct {
             const AddressSpace = builtin.VirtualAddressSpace();
-            const IOAllocator = mem.GenericArenaAllocator(.{
+            const IOAllocator = mem.dynamic.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
-                .arena_index = AddressSpace.addr_spec.count() -% 1,
-                .errors = list_spec.allocator.errors.noexcept,
-                .logging = list_spec.allocator.logging.silent,
+                .arena_index = AddressSpace.specification.count() -% 1,
+                .errors = mem.dynamic.spec.errors.noexcept,
+                .logging = mem.dynamic.spec.logging.silent,
             });
-            const IOPrintArray = IOAllocator.Holder(u8);
+            const IOPrintArray = IOAllocator.StructuredHolder(u8);
             pub fn show(list: List, address_space: *AddressSpace) !void {
                 var allocator: IOAllocator = try IOAllocator.init(address_space);
                 defer allocator.deinit(address_space);
@@ -1094,7 +1094,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                    array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major),
                         ',',        fmt.ux64(tmp.links.minor),
@@ -1104,7 +1104,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major),
                             ',',       fmt.ux64(tmp.links.minor),
@@ -1117,7 +1117,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                         tmp.index +%= 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?),
                             " <- (",   fmt.ux64(tmp.links.major),
@@ -1130,7 +1130,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                         tmp.links = links;
                         tmp.index +%= 1;
                     } else {
-                        try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?),
                             " <- (",     fmt.ux64(tmp.links.major),
@@ -1141,149 +1141,8 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                         });
                     }
                 }
-                debug.write(array.readAll());
+                debug.write(array.readAll(allocator));
             }
         };
     });
 }
-pub const Node4 = opaque {
-    pub const U = 0;
-    pub const H = 3 << 48;
-    pub const A = 2 << 48;
-    pub const F = 1 << 48;
-    pub const size: u64 = 8;
-    pub const kind_mask: u64 = 0b11111111_11111111_000000000000000000000000000000000000000000000000;
-    pub const link_mask: u64 = 0b00000000_00000000_111111111111111111111111111111111111111111111111;
-    pub fn refer(node_addr: u64) *u64 {
-        return @as(*u64, @ptrFromInt(node_addr));
-    }
-    pub fn write(node_addr: u64, word: u64) void {
-        @as(*u64, @ptrFromInt(node_addr)).* = word;
-    }
-    pub fn toggle(node_addr: u64) void {
-        @as(*u64, @ptrFromInt(node_addr)).* ^= Node4.H;
-    }
-    pub fn clear(node_addr: u64) void {
-        @as(*u64, @ptrFromInt(node_addr)).* = 0;
-    }
-    pub fn kind(node_addr: u64) u64 {
-        return @as(*u64, @ptrFromInt(node_addr)).* & Node4.kind_mask;
-    }
-    pub fn link(node_addr: u64) u64 {
-        return @as(*u64, @ptrFromInt(node_addr)).* & Node4.link_mask;
-    }
-    pub fn read(node_addr: u64) u64 {
-        return refer(node_addr).*;
-    }
-    pub fn move(s_node_addr: u64, t_node_addr: u64) void {
-        refer(s_node_addr).* = read(t_node_addr);
-        clear(t_node_addr);
-    }
-    pub fn create(t_s_node_addr: u64, t_u_node_addr: u64, t_f_node_addr: u64) void {
-        Node4.write(t_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.write(t_f_node_addr, Node4.F | t_u_node_addr);
-        Node4.write(t_u_node_addr, Node4.U | t_s_node_addr);
-    }
-    pub fn allocate(t_next_addr: u64, s_next_next_addr: u64, s_next_addr: u64, r_node_addr: u64) void {
-        Node4.write(t_next_addr, Node4.F | s_next_next_addr);
-        if (s_next_addr == r_node_addr) {
-            Node4.write(s_next_addr, Node4.A | t_next_addr);
-        } else {
-            Node4.write(s_next_addr, Node4.F | r_node_addr);
-            Node4.write(r_node_addr, Node4.A | t_next_addr);
-        }
-    }
-    pub fn reallocate(l_node_addr: u64, t_node_addr: u64, t_next_addr: u64, r_next_addr: u64) void {
-        if (l_node_addr == t_node_addr) {
-            Node4.write(l_node_addr, Node4.A | t_next_addr);
-        } else {
-            Node4.write(l_node_addr, Node4.F | t_node_addr);
-            Node4.write(t_node_addr, Node4.A | t_next_addr);
-        }
-        Node4.write(t_next_addr, Node4.F | r_next_addr);
-    }
-    pub fn appendFlush(r_end: u64, t_end: u64) u64 {
-        const l_u_node_addr: u64 = r_end -% Node4.size;
-        const t_u_node_addr: u64 = t_end -% Node4.size;
-        const l_s_node_addr: u64 = Node4.link(l_u_node_addr);
-        const t_f_node_addr: u64 = l_u_node_addr;
-        Node4.write(t_u_node_addr, Node4.U | l_s_node_addr);
-        Node4.write(t_f_node_addr, Node4.F | t_u_node_addr);
-        Node4.write(l_s_node_addr, Node4.H | t_u_node_addr);
-        return t_f_node_addr;
-    }
-    pub fn appendBridged(r_end: u64, t_s_node_addr: u64, t_end: u64) u64 {
-        const l_u_node_addr: u64 = r_end -% Node4.size;
-        const t_u_node_addr: u64 = t_end -% Node4.size;
-        const t_f_node_addr: u64 = t_s_node_addr +% Node4.size;
-        Node4.write(t_u_node_addr, Node4.U | t_s_node_addr);
-        Node4.write(t_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.write(l_u_node_addr, Node4.U | t_s_node_addr);
-        Node4.write(t_f_node_addr, Node4.F | t_u_node_addr);
-        return t_f_node_addr;
-    }
-    pub fn prependBridged(t_s_node_addr: u64, t_end: u64, r_s_node_addr: u64) u64 {
-        const t_f_node_addr: u64 = t_s_node_addr +% Node4.size;
-        const t_u_node_addr: u64 = t_end -% Node4.size;
-        Node4.write(t_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.write(t_u_node_addr, Node4.U | r_s_node_addr);
-        Node4.write(t_f_node_addr, Node4.F | t_u_node_addr);
-        return t_f_node_addr;
-    }
-    pub fn insertFlushBridged(l_s_node_addr: u64, l_u_node_addr: u64, t_end: u64, r_s_node_addr: u64) u64 {
-        const t_u_node_addr: u64 = t_end -% Node4.size;
-        Node4.write(l_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.write(l_u_node_addr, Node4.F | t_u_node_addr);
-        Node4.write(t_u_node_addr, Node4.U | r_s_node_addr);
-        return l_u_node_addr;
-    }
-    pub fn insertBridgedBridged(l_u_node_addr: u64, t_s_node_addr: u64, t_end: u64, r_s_node_addr: u64) u64 {
-        const t_f_node_addr: u64 = t_s_node_addr +% Node4.size;
-        const t_u_node_addr: u64 = t_end -% Node4.size;
-        Node4.write(l_u_node_addr, Node4.U | t_s_node_addr);
-        Node4.write(t_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.write(t_f_node_addr, Node4.F | t_u_node_addr);
-        Node4.write(t_u_node_addr, Node4.U | r_s_node_addr);
-        return t_f_node_addr;
-    }
-    pub fn flushConsolidate(r_node_addr: u64) u64 {
-        return bits.cmov64(Node4.kind(r_node_addr) == Node4.F, Node4.link(r_node_addr), r_node_addr);
-    }
-    pub fn prependFlush(t_s_node_addr: u64, r_s_node_addr: u64, r_end: u64) u64 {
-        const r_u_node_addr: u64 = r_end -% Node4.size;
-        const t_f_node_addr: u64 = t_s_node_addr +% Node4.size;
-        const t_u_node_addr: u64 = Node4.link(r_s_node_addr);
-        const r_f_node_addr: u64 = flushConsolidate(r_s_node_addr +% Node4.size);
-        Node4.write(t_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.write(t_f_node_addr, Node4.F | r_f_node_addr);
-        Node4.clear(r_s_node_addr);
-        if (t_u_node_addr == r_u_node_addr)
-            Node4.write(t_u_node_addr, Node4.U | t_s_node_addr);
-        return t_f_node_addr;
-    }
-    pub fn insertBridgedFlush(l_u_node_addr: u64, t_s_node_addr: u64, r_s_node_addr: u64, r_end: u64) u64 {
-        const t_f_node_addr: u64 = t_s_node_addr +% Node4.size;
-        const t_u_node_addr: u64 = Node4.link(r_s_node_addr);
-        const r_u_node_addr: u64 = r_end -% Node4.size;
-        const r_node_addr: u64 = r_s_node_addr +% Node4.size;
-        const r_f_node_addr: u64 = flushConsolidate(r_node_addr);
-        Node4.write(l_u_node_addr, Node4.U | t_s_node_addr);
-        Node4.write(t_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.write(t_f_node_addr, Node4.F | r_f_node_addr);
-        Node4.clear(r_s_node_addr);
-        if (t_u_node_addr == r_u_node_addr)
-            Node4.write(r_u_node_addr, Node4.U | t_s_node_addr);
-        return t_f_node_addr;
-    }
-    pub fn insertFlushFlush(l_s_node_addr: u64, l_u_node_addr: u64, r_s_node_addr: u64, r_end: u64) u64 {
-        const r_u_node_addr: u64 = r_end -% Node4.size;
-        const t_u_node_addr: u64 = Node4.link(r_s_node_addr);
-        const r_f_node_addr: u64 = flushConsolidate(r_s_node_addr +% Node4.size);
-        Node4.write(l_u_node_addr, Node4.F | r_f_node_addr);
-        Node4.write(l_s_node_addr, Node4.H | t_u_node_addr);
-        Node4.clear(r_s_node_addr);
-        if (t_u_node_addr == r_u_node_addr)
-            Node4.write(r_u_node_addr, Node4.U | l_s_node_addr);
-        return l_u_node_addr;
-    }
-};
