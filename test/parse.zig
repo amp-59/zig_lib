@@ -39,7 +39,7 @@ fn testReadLEB128(comptime T: type, encoded: []const u8) !T {
     return v1[0];
 }
 fn testReadLEB128Seq(comptime T: type, comptime N: usize, encoded: []const u8) !void {
-    var reader = mem.view(encoded);
+    var reader = mem.array.view(encoded);
     var i: usize = 0;
     while (i < N) : (i += 1) {
         _ = try parse.readLEB128(T, reader.readAll());
@@ -56,7 +56,7 @@ fn testEquivalentLEBFormatAndParse() !void {
     const I16 = fmt.GenericLEB128Format(i16);
     const I32 = fmt.GenericLEB128Format(i32);
     const I64 = fmt.GenericLEB128Format(i64);
-    var array: mem.StaticString(4096) = undefined;
+    var array: mem.array.StaticString(4096) = undefined;
     array.undefineAll();
     for (0..1000) |_| {
         const uint: u64 = rng.readOne(u64);
