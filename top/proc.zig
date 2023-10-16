@@ -810,25 +810,19 @@ pub inline fn initializeRuntime() void {
         comptime return;
     }
 }
-fn updateExceptionHandlers(act: *const SignalAction) void {
+fn updateExceptionHandlers(act: ?*const SignalAction) void {
     @setRuntimeSafety(false);
-    const sa_new_addr: u64 = @intFromPtr(act);
-    inline for ([_]struct { bool, u32 }{
+    for ([_]struct { bool, u32 }{
         .{ builtin.signal_handlers.SegmentationFault, sys.SIG.SEGV },
         .{ builtin.signal_handlers.IllegalInstruction, sys.SIG.ILL },
         .{ builtin.signal_handlers.BusError, sys.SIG.BUS },
         .{ builtin.signal_handlers.FloatingPointError, sys.SIG.FPE },
-        .{ builtin.signal_handlers.Trap, sys.SIG.FPE },
+        .{ builtin.signal_handlers.Trap, sys.SIG.TRAP },
     }) |pair| {
         if (pair[0]) {
-            sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, @sizeOf(@TypeOf(act.mask)) });
+            sys.call_noexcept(.rt_sigaction, void, .{ pair[1], @intFromPtr(act), 0, @sizeOf(@TypeOf(act.?.mask)) });
         }
     }
-}
-fn setSignalAction(signo: u64, noalias new_action: *const SignalAction, noalias old_action: ?*SignalAction) void {
-    const sa_new_addr: u64 = @intFromPtr(new_action);
-    const sa_old_addr: u64 = if (old_action) |action| @intFromPtr(action) else 0;
-    sys.call_noexcept(.rt_sigaction, void, .{ signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)) });
 }
 pub const about = opaque {
     const sig_s: fmt.AboutSrc = fmt.about("sig");
