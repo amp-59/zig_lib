@@ -200,7 +200,7 @@ pub const AppendSpec = struct {
         close: sys.ErrorPolicy = .{ .throw = file.spec.close.errors.all },
     };
     const Logging = struct {
-        open: debug.Logging.AcquireError = .{},
+        open: debug.Logging.AttemptAcquireError = .{},
         write: debug.Logging.SuccessError = .{},
         close: debug.Logging.ReleaseError = .{},
     };
@@ -417,15 +417,20 @@ pub fn allLoggingTypes() !void {
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
 pub fn allPanicDeclarations() void {
-    var array: mem.StaticString(4096) = undefined;
+    var array: mem.array.StaticString(32768) = undefined;
     array.undefineAll();
     const names: []const []const u8 = &.{
         "panic",
         "panicInactiveUnionField",
         "panicOutOfBounds",
         "panicSentinelMismatch",
+        "checkNonScalarSentinel",
         "panicStartGreaterThanEnd",
         "panicUnwrapError",
+
+        "StackTrace",
+        "addErrRetTraceAddr",
+        "returnError",
     };
     inline for (names) |name| {
         array.writeMany(
