@@ -496,6 +496,7 @@ pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, c
     futex_spec.errors,
     futex_spec.return_type,
 ) {
+    @setRuntimeSafety(false);
     const logging: debug.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
         about.futexWakeOpAttempt(futex1, futex2, count1, count2, wake_op);
@@ -625,8 +626,8 @@ pub noinline fn clone(comptime clone_spec: CloneSpec, flags: sys.flags.Clone, st
     cl_ctx.* = .{ .call = function, .ret = ret, .args = args };
     const rc: i64 = asm volatile (
         \\syscall # clone3
-        : [ret] "={rax}" (-> i64),
-        : [cl_sysno] "{rax}" (sys.Fn.clone3),
+        : [ret] "={rax}" (-> isize),
+        : [cl_sysno] "{rax}" (@intFromEnum(sys.Fn.clone3)),
           [cl_args_addr] "{rdi}" (cl_args_addr),
           [cl_args_size] "{rsi}" (cl_args_size),
         : "rcx", "r11", "memory"
@@ -727,7 +728,7 @@ pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry
     return null;
 }
 pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     for (vars) |key_value| {
         var idx: usize = blk: {
             var idx: usize = 0;
@@ -756,6 +757,20 @@ pub fn restoreRuntime() callconv(.Naked) void {
             : [number] "{rax}" (15),
             : "rcx", "r11", "memory"
         ),
+    }
+}
+pub inline fn initializeAbsoluteState(vars: [][*:0]u8) void {
+    if (@typeInfo(builtin.AbsoluteState) == .Struct) {
+        if (@hasField(builtin.AbsoluteState, "cwd")) {
+            if (environmentValue(vars, "PWD")) |cwd| {
+                builtin.absolute_state.ptr.cwd = cwd;
+            }
+        }
+        if (@hasField(builtin.AbsoluteState, "home")) {
+            if (environmentValue(vars, "HOME")) |home| {
+                builtin.absolute_state.ptr.home = home;
+            }
+        }
     }
 }
 pub inline fn initializeRuntime() void {
