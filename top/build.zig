@@ -26,7 +26,7 @@ pub const ExecPhase = enum(u8) {
     /// implied by the primary command.
     /// Transcript items from this phase are titled with `cmdline-2`.
     ///
-    /// zig build [task] [flags] <primary_command> [cmd_args] -- [run_args]
+    /// zig build [task] [flags] <primary_command> [cmd_args] ++ [run_args]
     ///          (a)    (b)     (c)               (d)           (e)
     ///
     /// a) Which task to execute for the primary command. Overriding task default.
@@ -190,13 +190,15 @@ pub const BuilderSpec = struct {
         /// constants and caching special modules.
         enable_build_config: bool = true,
         /// Compile builder features as required.
-        extensions_policy: enum { none, emergency } = .emergency,
+        extensions_policy: enum { none, emergency } = .none,
         /// Output naming strategy.
         naming_policy: enum { directories, first_name, full_name } = .full_name,
         /// Name separators for identifiers, commands, and output file names.
         namespace_separator: struct { id: u8 = '_', cmd: u8 = '.', fs: u8 = '-' } = .{},
         /// Name of the top 'builder' node.
         top_node: [:0]const u8 = "top",
+        /// Special switch used to split arguments between task command and run command.
+        append_run_args_string: [:0]const u8 = "++",
         /// Name of the special command used to list available commands.
         list_command: ?[:0]const u8 = "--list",
         /// Name of the special command used to request stack traces for executables.
