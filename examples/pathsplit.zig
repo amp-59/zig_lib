@@ -4,13 +4,12 @@ const fmt = zl.fmt;
 const proc = zl.proc;
 const file = zl.file;
 const meta = zl.meta;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
-pub const AddressSpace = spec.address_space.regular_128;
+pub const AddressSpace = mem.spec.address_space.regular_128;
 pub const logging_default: debug.Logging.Default = .{
     .Attempt = true,
     .Success = true,
@@ -73,10 +72,10 @@ pub fn GenericPathSplit(comptime path_split_spec: PathSplitSpec) type {
     });
 }
 pub fn main(args: [][*:0]u8) !void {
-    const Allocator = mem.GenericArenaAllocator(.{
+    const Allocator = mem.dynamic.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 0,
-        .options = spec.allocator.options.debug,
+        .options = mem.dynamic.spec.options.debug,
     });
     const PathSplit = GenericPathSplit(.{ .Allocator = Allocator });
     var address_space: AddressSpace = .{};
@@ -84,8 +83,8 @@ pub fn main(args: [][*:0]u8) !void {
     for (args) |arg| {
         var path_split: PathSplit = try PathSplit.init(&allocator, meta.manyToSlice(arg));
         defer path_split.deinit(&allocator);
-        var array: mem.StaticString(1024 * 512) = .{};
-        array.writeAny(spec.reinterpret.fmt, fmt.any(path_split));
+        var array: mem.array.StaticString(1024 * 512) = .{};
+        array.writeAny(mem.array.spec.reinterpret.fmt, fmt.any(path_split));
         debug.write(array.readAll());
     }
 }

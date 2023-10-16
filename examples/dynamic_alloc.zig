@@ -9,11 +9,11 @@ const builtin = zl.builtin;
 pub const AddressSpace = mem.spec.address_space.regular_128;
 pub usingnamespace zl.start;
 
-const Allocator = mem.GenericArenaAllocator(.{
+const Allocator = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
-    .logging = allocator.spec.logging.silent,
-    .errors = allocator.spec.errors.noexcept,
+    .logging = mem.dynamic.spec.logging.silent,
+    .errors = mem.dynamic.spec.errors.noexcept,
 });
 const Array = Allocator.StructuredHolder(u8);
 
@@ -24,7 +24,7 @@ pub fn main() !void {
     var array: Array = Array.init(&allocator);
     defer array.deinit(&allocator);
 
-    array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
+    array.appendAny(mem.array.spec.reinterpret.fmt, &allocator, .{
         "example ",
         fmt.ud64(@intFromPtr(&allocator)),
         " using dynamic memory\n",

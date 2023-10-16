@@ -3,13 +3,12 @@ const mem = zl.mem;
 const file = zl.file;
 const proc = zl.proc;
 const meta = zl.meta;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
-pub const AddressSpace = spec.address_space.exact_8;
+pub const AddressSpace = mem.spec.address_space.exact_8;
 pub const runtime_assertions: bool = false;
 pub const logging_override = .{
     .Attempt = false,
@@ -20,11 +19,11 @@ pub const logging_override = .{
     .Fault = false,
 };
 
-const Allocator = mem.GenericArenaAllocator(.{
+const Allocator = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
     .options = .{ .require_filo_free = false },
-    .logging = spec.allocator.logging.silent,
+    .logging = mem.dynamic.spec.logging.silent,
 });
 const DirStream = file.GenericDirStream(.{ .Allocator = Allocator });
 
