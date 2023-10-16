@@ -412,7 +412,24 @@ pub fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, lim: T, arg
     @setCold(true);
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const ptr: [*]u8 = about.writeIntCastTruncatedBits(meta.BestInt(T), U, &buf, lim, arg);
+    const ptr: [*]u8 = about.writeIntCastTruncatedBits(T, U, &buf, lim, arg);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+}
+pub fn invalidEnumValueError(comptime T: type, type_name: []const u8, values: []const T, value: T, ret_addr: ?usize) Error {
+    @setCold(true);
+    @setRuntimeSafety(false);
+    var buf: [4096]u8 = undefined;
+    const ptr: [*]u8 = about.writeInvalidEnumValue(T, type_name, values, value);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
+    return error.IntCastTruncatedBits;
+}
+pub fn invalidEnumValueFault(comptime T: type, type_name: []const u8, values: []const T, value: T, ret_addr: usize) noreturn {
+    @setCold(true);
+    @setRuntimeSafety(false);
+    var buf: [4096]u8 = undefined;
+    const ptr: [*]u8 = about.writeInvalidEnumValue(T, type_name, values, value);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
@@ -484,22 +501,22 @@ pub fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, resul
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
-pub fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize, ret_addr: ?usize) Error {
+pub fn incorrectAlignmentError(child_type_name: []const u8, address: usize, alignment: usize, ret_addr: ?usize) Error {
     @setCold(true);
     @setRuntimeSafety(false);
-    const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
+    const remainder: usize = address & (alignment -% 1);
     var buf: [4096]u8 = undefined;
-    const ptr: [*]u8 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
+    const ptr: [*]u8 = about.writeIncorrectAlignment(child_type_name, &buf, address, alignment, remainder);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.IncorrectAlignment;
 }
-pub fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize, ret_addr: usize) noreturn {
+pub fn incorrectAlignmentFault(child_type_name: []const u8, address: usize, alignment: usize, ret_addr: usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
+    const remainder: usize = address & (alignment -% 1);
     var buf: [4096]u8 = undefined;
-    const ptr: [*]u8 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
+    const ptr: [*]u8 = about.writeIncorrectAlignment(child_type_name, &buf, address, alignment, remainder);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
@@ -537,24 +554,26 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
     return error.UnexpectedValue;
 }
 pub fn sampleAllReports() void {
-    inline for (.{ u16, u32, u64, usize, i16, i32, i64, isize }) |T| {
-        comptime var arg1: comptime_int = ~@as(T, 0);
-        comptime var arg2: comptime_int = ~@as(T, 0);
-        var result: T = 2;
-        const remainder: T = 2;
-        expectEqual(T, arg1, arg2) catch {};
-        expectNotEqual(T, arg1, arg2) catch {};
-        expectAbove(T, arg1, arg2) catch {};
-        expectBelow(T, arg1, arg2) catch {};
-        expectAboveOrEqual(T, arg1, arg2) catch {};
-        expectBelowOrEqual(T, arg1, arg2) catch {};
-        subCausedOverflowError(T, arg1, arg2, null) catch {};
-        addCausedOverflowError(T, arg1, arg2, null) catch {};
-        mulCausedOverflowError(T, arg1, arg2, null) catch {};
-        exactDivisionWithRemainderError(T, arg1, arg2, result, remainder, null) catch {};
-        if (@typeInfo(T).Int.signedness == .unsigned)
-            incorrectAlignmentError(*T, arg2, remainder, null) catch {};
+    //inline for (.{ u16, u32, u64, usize, i16, i32, i64, isize }) |T| {
+    const T = usize;
+    comptime var arg1: comptime_int = ~@as(T, 0);
+    comptime var arg2: comptime_int = ~@as(T, 0);
+    var result: T = 2;
+    const remainder: T = 2;
+    expectEqual(T, arg1, arg2) catch {};
+    expectNotEqual(T, arg1, arg2) catch {};
+    expectAbove(T, arg1, arg2) catch {};
+    expectBelow(T, arg1, arg2) catch {};
+    expectAboveOrEqual(T, arg1, arg2) catch {};
+    expectBelowOrEqual(T, arg1, arg2) catch {};
+    subCausedOverflowError(T, arg1, arg2, null) catch {};
+    addCausedOverflowError(T, arg1, arg2, null) catch {};
+    mulCausedOverflowError(T, arg1, arg2, null) catch {};
+    exactDivisionWithRemainderError(T, arg1, arg2, result, remainder, null) catch {};
+    if (@typeInfo(T).Int.signedness == .unsigned) {
+        incorrectAlignmentError(@typeName(T), arg2, remainder, null) catch {};
     }
+    //}
     var _u8: u8 = 128;
     var _u16: u16 = 32768;
     var _u32: u32 = 2147483648;
@@ -617,14 +636,12 @@ pub fn read(comptime n: u64) struct { buf: [n]u8, len: u64 } {
     };
 }
 const special = struct {
-    /// Namespace containing definition of `printStackTrace`.
-    const trace = @import("./trace.zig");
-
     /// Used by panic functions if executable is static linked with special
     /// module object `trace.o`.
     extern fn printStackTrace(*const Trace, usize, usize) void;
     extern fn printSourceCodeAtAddress(*const Trace, usize) void;
     extern fn printSourceCodeAtAddresses(*const Trace, usize, [*]usize, usize) void;
+    pub const trace = @import("./trace.zig");
 };
 pub const printStackTrace = blk: {
     if (builtin.want_stack_traces and
@@ -673,7 +690,7 @@ pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), 
 pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.want_stack_traces and logging_general.Fault) {
+    if (builtin.have_stack_traces) {
         printStackTrace(&builtin.trace, ret_addr orelse @returnAddress(), 0);
     }
     @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
@@ -783,10 +800,10 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..12].* = "start index ".*;
         var ptr: [*]u8 = buf[12..];
-        ptr += fmt.writeUd64(ptr, lower);
+        ptr = fmt.writeUd64(ptr, lower);
         ptr[0..26].* = " is larger than end index ".*;
         ptr += 26;
-        ptr += fmt.writeUd64(ptr, upper);
+        ptr = fmt.writeUd64(ptr, upper);
         builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
@@ -822,11 +839,11 @@ pub noinline fn aboutWhere(about_s: []const u8, message: []const u8, ret_addr: ?
     ptr = fmt.strcpyEqu(ptr, message);
     ptr[0..6].* = ", pid=".*;
     ptr += 6;
-    ptr += fmt.writeUd64(ptr, pid);
+    ptr = fmt.writeUd64(ptr, pid);
     if (pid != tid) {
         ptr[0..6].* = ", tid=".*;
         ptr += 6;
-        ptr += fmt.writeUd64(ptr, tid);
+        ptr = fmt.writeUd64(ptr, tid);
     }
     if (mb_src) |src| {
         ptr[0..2].* = ", ".*;
@@ -883,7 +900,7 @@ pub const about = struct {
         buf[0..fmt.about_exit_s.len].* = fmt.about_exit_s.*;
         ptr[0..3].* = "rc=".*;
         ptr += 3;
-        ptr += fmt.writeUd64(ptr, rc);
+        ptr = fmt.writeUd64(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -894,7 +911,7 @@ pub const about = struct {
         var ptr: [*]u8 = writeAboutError(&buf, error_p0_s, error_name);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr += fmt.writeUd64(ptr, rc);
+        ptr = fmt.writeUd64(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -908,7 +925,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, message);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr += fmt.writeUd64(ptr, rc);
+        ptr = fmt.writeUd64(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -941,7 +958,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, message);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr += fmt.writeUd64(ptr, rc);
+        ptr = fmt.writeUd64(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -959,17 +976,15 @@ pub const about = struct {
     }
     fn writeComparisonFailed(comptime T: type, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var ud: fmt.Type.Xd(T) = .{ .value = arg1 };
-        var ptr: [*]u8 = buf + ud.formatWriteBuf(buf);
+        const writeDec = fmt.writeDec(T);
+        var ptr: [*]u8 = writeDec(buf, arg1);
         ptr = fmt.strcpyEqu(ptr, symbol);
-        ud.value = arg2;
-        ptr += ud.formatWriteBuf(ptr);
-        if (math.absoluteVal(@min(arg1, arg2)) > 10_000) {
+        ptr = fmt.writeDec(T)(ptr, arg2);
+        if (@abs(@min(arg1, arg2)) > 10_000) {
             ptr[0..7].* = ", i.e. ".*;
             ptr += 7;
             if (arg1 > arg2) {
-                ud.value = arg1 -% arg2;
-                ptr += ud.formatWriteBuf(ptr);
+                ptr = writeDec(ptr, arg1 -% arg2);
                 ptr = fmt.strcpyEqu(ptr, symbol);
                 ptr[0] = '0';
                 ptr += 1;
@@ -977,8 +992,7 @@ pub const about = struct {
                 ptr[0] = '0';
                 ptr += 1;
                 ptr = fmt.strcpyEqu(ptr, symbol);
-                ud.value = arg2 -% arg1;
-                ptr += ud.formatWriteBuf(ptr);
+                ptr = writeDec(ptr, arg2 -% arg1);
             }
         }
         return ptr;
@@ -1093,7 +1107,7 @@ pub const about = struct {
         ptr += 3;
         xd.value = arg2;
         ptr += xd.formatWriteBuf(ptr);
-        if (math.absoluteVal(@min(arg1, arg2)) > 10_000) {
+        if (@abs(@min(arg1, arg2)) > 10_000) {
             ptr[0..7].* = ", i.e. ".*;
             ptr += 7;
             xd.value = lim;
@@ -1116,7 +1130,7 @@ pub const about = struct {
         ptr += 3;
         xd.value = arg2;
         ptr += xd.formatWriteBuf(ptr);
-        if (math.absoluteVal(@min(arg1, arg2)) > 10_000) {
+        if (@abs(@min(arg1, arg2)) > 10_000) {
             ptr[0..7].* = ", i.e. ".*;
             ptr += 7;
             xd.value = lim;
@@ -1164,23 +1178,20 @@ pub const about = struct {
     }
     fn writeIncorrectAlignment(type_name: []const u8, buf: [*]u8, address: usize, alignment: usize, remainder: usize) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var xdsize: fmt.Type.Xd(usize) = .{ .value = alignment };
-        var ptr: [*]u8 = fmt.strcpyEqu(buf, type_name);
-        ptr[0..7].* = " align(".*;
-        ptr += 7;
-        ptr += xdsize.formatWriteBuf(ptr);
-        ptr[0..24].* = "): incorrect alignment: ".*;
-        ptr += 24;
-        xdsize.value = address;
-        ptr += xdsize.formatWriteBuf(ptr);
+        buf[0..7].* = "*align(".*;
+        var ptr: [*]u8 = fmt.writeUd64(buf + 7, alignment);
+        ptr[0..2].* = ") ".*;
+        ptr += 2;
+        ptr = fmt.strcpyEqu(ptr, type_name);
+        ptr[0..23].* = ": incorrect alignment: ".*;
+        ptr += 23;
+        ptr = fmt.writeUx64(ptr, address);
         ptr[0..4].* = " == ".*;
         ptr += 4;
-        xdsize.value = address -% remainder;
-        ptr += xdsize.formatWriteBuf(ptr);
+        ptr = fmt.writeUx64(ptr, address -% remainder);
         ptr[0] = '+';
         ptr += 1;
-        xdsize.value = remainder;
-        ptr += xdsize.formatWriteBuf(ptr);
+        ptr = fmt.writeUx64(ptr, remainder);
         return ptr;
     }
 };
