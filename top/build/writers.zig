@@ -613,7 +613,10 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
         ptr += types.ModuleDependencies.formatWriteBuf(.{ .value = dependencies }, ptr);
     }
     if (cmd.cflags) |cflags| {
-        ptr += types.CFlags.formatWriteBuf(.{ .value = cflags }, ptr);
+        ptr += types.ExtraFlags.formatWriteBuf(.{ .value = cflags }, ptr);
+    }
+    if (cmd.rcflags) |rcflags| {
+        ptr += types.ExtraFlags.formatWriteBuf(.{ .value = rcflags }, ptr);
     }
     if (cmd.link_libc) {
         ptr[0..4].* = "-lc\x00".*;
@@ -635,8 +638,8 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
         ptr[0..11].* = "-Bsymbolic\x00".*;
         ptr += 11;
     }
-    if (cmd.lflags) |lflags| {
-        for (lflags) |value| {
+    if (cmd.link_flags) |link_flags| {
+        for (link_flags) |value| {
             ptr[0..3].* = "-z\x00".*;
             ptr += 3;
             ptr = fmt.strcpyEqu(ptr, @tagName(value));
@@ -1181,7 +1184,10 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
         len +%= types.ModuleDependencies.formatLength(.{ .value = dependencies });
     }
     if (cmd.cflags) |cflags| {
-        len +%= types.CFlags.formatLength(.{ .value = cflags });
+        len +%= types.ExtraFlags.formatLength(.{ .value = cflags });
+    }
+    if (cmd.rcflags) |rcflags| {
+        len +%= types.ExtraFlags.formatLength(.{ .value = rcflags });
     }
     if (cmd.link_libc) {
         len +%= 4;
@@ -1198,8 +1204,8 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
     if (cmd.symbolic) {
         len +%= 11;
     }
-    if (cmd.lflags) |lflags| {
-        for (lflags) |value| {
+    if (cmd.link_flags) |link_flags| {
+        for (link_flags) |value| {
             len +%= 3;
             len +%= @tagName(value).len;
             len +%= 1;
@@ -2273,6 +2279,10 @@ export fn formatWriteBufLLCCommand(cmd: *tasks.LLCCommand, buf: [*]u8) callconv(
         ptr[0..22].* = "--r600-ir-structurize\x00".*;
         ptr += 22;
     }
+    if (cmd.rdf_dump) {
+        ptr[0..11].* = "--rdf-dump\x00".*;
+        ptr += 11;
+    }
     if (cmd.relax_elf_relocations) {
         ptr[0..24].* = "--relax-elf-relocations\x00".*;
         ptr += 24;
@@ -2544,6 +2554,9 @@ export fn formatLengthLLCCommand(cmd: *tasks.LLCCommand) callconv(.C) usize {
     }
     if (cmd.r600_ir_structurize) {
         len +%= 22;
+    }
+    if (cmd.rdf_dump) {
+        len +%= 11;
     }
     if (cmd.relax_elf_relocations) {
         len +%= 24;

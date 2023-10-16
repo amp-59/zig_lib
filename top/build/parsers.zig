@@ -563,6 +563,12 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
                 dest[0] = types.Module.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
                 cmd.modules = dest[0..1];
             }
+        } else if (mem.testEqualString("--deps", arg)) {
+            cmd.dependencies = types.ModuleDependencies.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+        } else if (mem.testEqualString("-cflags", arg)) {
+            cmd.cflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+        } else if (mem.testEqualString("-rcflags", arg)) {
+            cmd.rcflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
         } else if (mem.testEqualString("-lc", arg)) {
             cmd.link_libc = true;
         } else if (mem.testEqualString("-rdynamic", arg)) {
@@ -1154,6 +1160,8 @@ export fn formatParseArgsLLCCommand(cmd: *tasks.LLCCommand, allocator: *types.Al
             cmd.print_pipeline_passes = true;
         } else if (mem.testEqualString("--r600-ir-structurize", arg)) {
             cmd.r600_ir_structurize = true;
+        } else if (mem.testEqualString("--rdf-dump", arg)) {
+            cmd.rdf_dump = true;
         } else if (mem.testEqualString("--relax-elf-relocations", arg)) {
             cmd.relax_elf_relocations = true;
         } else {
@@ -1216,7 +1224,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-const build_help: [:0]const u8 =
+const build_help: [:0]const u8 = 
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -1297,6 +1305,9 @@ const build_help: [:0]const u8 =
     \\    --image-base                    Set base address for executable image
     \\    -D                              Define C macros available within the `@cImport` namespace
     \\    --mod                           Define modules available as dependencies for the current target
+    \\    --deps                          Define module dependencies for the current target
+    \\    -cflags                         Set extra flags for the next position C source files
+    \\    -rcflags                        Set extra flags for the next positional .rc source files
     \\    -lc                             Link libc
     \\    -rdynamic                       Add all symbols to the dynamic symbol table
     \\    -dynamic                        Force output to be dynamically linked
@@ -1331,7 +1342,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 =
+const archive_help: [:0]const u8 = 
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -1350,7 +1361,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -1363,7 +1374,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const harec_help: [:0]const u8 =
+const harec_help: [:0]const u8 = 
     \\    -a
     \\    -o      Output file
     \\    -T
@@ -1372,7 +1383,7 @@ const harec_help: [:0]const u8 =
     \\
     \\
 ;
-const tblgen_help: [:0]const u8 =
+const tblgen_help: [:0]const u8 = 
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
     \\    -d                              Add file dependencies
@@ -1419,7 +1430,7 @@ const tblgen_help: [:0]const u8 =
     \\
     \\
 ;
-const llc_help: [:0]const u8 =
+const llc_help: [:0]const u8 = 
     \\    --color                                     Use colors in output (default=autodetect)
     \\    -I                                          Add directories to include search path
     \\    -O                                          Optimization level. [-O0, -O1, -O2, or -O3] (default='-O2')
@@ -1505,17 +1516,18 @@ const llc_help: [:0]const u8 =
     \\    --poison-checking-function-local            Check that returns are non-poison (for testing)
     \\    --print-pipeline-passes                     Print a '-passes' compatible string describing the pipeline (best-effort only).
     \\    --r600-ir-structurize                       Use StructurizeCFG IR pass
+    \\    --rdf-dump                                  -
     \\    --relax-elf-relocations                     Emit GOTPCRELX/REX_GOTPCRELX instead of GOTPCREL on x86-64 ELF
     \\
     \\
 ;
-const fetch_help: [:0]const u8 =
+const fetch_help: [:0]const u8 = 
     \\    fetch
     \\    --global-cache-dir      Override the global cache directory
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout

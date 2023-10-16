@@ -8,9 +8,9 @@ const notation: enum { slice, ptrcast, memcpy } = .slice;
 const memcpy: enum { builtin, mach, fmt } = .fmt;
 const CallingConvention = enum { C, Zig };
 const combine_char: bool = true;
-pub const Array = mem.StaticString(64 * 1024 * 1024);
-pub const Array2 = mem.StaticString(64 * 1024);
-pub const Array256 = mem.StaticString(256);
+pub const Array = mem.array.StaticString(64 * 1024 * 1024);
+pub const Array2 = mem.array.StaticString(64 * 1024);
+pub const Array256 = mem.array.StaticString(256);
 fn writeSetRuntimeSafety(array: *Array) void {
     array.writeMany("@setRuntimeSafety(false);\n");
 }
@@ -740,7 +740,7 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
             },
             .literal => |literal| switch (literal) {
                 .string => writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00'),
-                else => unhandledCommandField(param_spec),
+                else => unhandledCommandField(param_spec, @src()),
             },
             .field => |field| switch (field) {
                 .boolean => {
@@ -752,7 +752,7 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
                     writeKindString(array, param_spec.name, variant);
                     writeNull(array, variant);
                 },
-                else => unhandledCommandField(param_spec),
+                else => unhandledCommandField(param_spec, @src()),
             },
             .optional_field => |optional_field| {
                 switch (optional_field) {
@@ -802,7 +802,7 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
                         writeIfClose(array);
                         writeIfClose(array);
                     },
-                    else => unhandledCommandField(param_spec),
+                    else => unhandledCommandField(param_spec, @src()),
                 }
             },
         }
@@ -1079,6 +1079,18 @@ fn writeAddOptionalRepeatableFormatter(
     array.writeMany(field_name);
     array.writeMany("=dest[0..1];\n");
     writeIfClose(array);
+}
+fn writeAddOptionalFormatter(
+    array: *Array,
+    calling_convention: CallingConvention,
+    field_name: []const u8,
+    type_name: []const u8,
+) void {
+    array.writeMany("cmd.");
+    array.writeMany(field_name);
+    array.writeMany("=");
+    writeParseArgsFrom(array, calling_convention, type_name);
+    array.writeMany(";\n");
 }
 fn writeAddOptionalRepeatableString(
     array: *Array,
@@ -1447,7 +1459,7 @@ fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention,
                         writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
                         writeIfElse(array);
                     },
-                    else => unhandledCommandField(param_spec),
+                    else => unhandledCommandField(param_spec, @src()),
                 },
                 .optional_field => |optional_field| switch (optional_field) {
                     .string => {
@@ -1491,17 +1503,13 @@ fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention,
                         writeIfElse(array);
                     },
                     .mapped => {
-                        writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
-                        writeAssignSpecifierFormatParser(
+                        writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                        writeAddOptionalFormatter(
                             array,
                             calling_convention,
                             param_spec.name,
-                            param_spec.string.len +% 1,
-                            .{ .yes = param_spec.type.parse.?.* },
+                            param_spec.type.parse.?.type_decl.name.?,
                         );
-                        writeElse(array);
-                        writeAssignSpecifier(array, param_spec.name, .{ .yes = "null" });
-                        writeIfClose(array);
                         writeIfElse(array);
                     },
                     .repeatable_string => {
@@ -1551,10 +1559,27 @@ fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention,
                         do_discard = false;
                         writeIfElse(array);
                     },
-                    else => unhandledCommandField(param_spec),
+                    .formatter => {
+                        if (isSquishable(param_spec.string)) {
+                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
+                        } else {
+                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                            writeNext(array, calling_convention);
+                        }
+                        writeAddOptionalFormatter(
+                            array,
+                            calling_convention,
+                            param_spec.name,
+                            param_spec.type.parse.?.type_decl.name.?,
+                        );
+                        do_discard = false;
+                        writeIfElse(array);
+                    },
+                    else => unhandledCommandField(param_spec, @src()),
                 },
                 .literal => {},
-                else => unhandledCommandField(param_spec),
+                else => unhandledCommandField(param_spec, @src()),
             }
         }
     }
@@ -1733,10 +1758,13 @@ fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.
     len +%= 2;
     @panic(buf[0..len]);
 }
-fn unhandledCommandField(param_spec: types.ParamSpec) void {
+fn unhandledCommandField(param_spec: types.ParamSpec, src: anytype) void {
     var buf: [4096]u8 = undefined;
     var ptr: [*]u8 = fmt.strcpyEqu(&buf, param_spec.name);
     ptr[0..5].* = "tag: ".*;
+    ptr += fmt.sourceLocation(src, @returnAddress()).formatWriteBuf(ptr);
+    ptr[0..2].* = ": ".*;
+    ptr += 2;
     ptr += fmt.render(.{ .infer_type_names = true }, param_spec.tag).formatWriteBuf(ptr);
     @panic(fmt.slice(ptr, &buf));
 }

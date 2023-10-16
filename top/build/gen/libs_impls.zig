@@ -11,7 +11,7 @@ const config = @import("./config.zig");
 const common = @import("./common_impls.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
-pub const Array = mem.StaticString(64 * 1024 * 1024);
+pub const Array = mem.array.StaticString(64 * 1024 * 1024);
 const MajorVariant = enum {
     library,
     autoloader,
