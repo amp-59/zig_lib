@@ -13,8 +13,8 @@ pub const SignalAction = extern struct {
     handler: Handler = .{ .set = .default },
     flags: sys.flags.SignalAction,
     restorer: *const fn () callconv(.Naked) void = restoreRuntime,
-    mask: [2]u32 = .{0} ** 2,
-    const Handler = extern union {
+    mask: u64 = 0,
+    const Handler = packed union {
         set: enum(usize) { ignore = 1, default = 0 },
         handler: *const fn (sys.SignalCode) void,
         action: *const fn (sys.SignalCode, *const SignalInfo, ?*const anyopaque) void,
@@ -810,7 +810,7 @@ pub inline fn initializeRuntime() void {
         comptime return;
     }
 }
-fn updateExceptionHandlers(act: ?*const SignalAction) void {
+fn updateExceptionHandlers(act: [*c]const SignalAction) void {
     @setRuntimeSafety(false);
     for ([_]struct { bool, u32 }{
         .{ builtin.signal_handlers.SegmentationFault, sys.SIG.SEGV },
@@ -820,7 +820,7 @@ fn updateExceptionHandlers(act: ?*const SignalAction) void {
         .{ builtin.signal_handlers.Trap, sys.SIG.TRAP },
     }) |pair| {
         if (pair[0]) {
-            sys.call_noexcept(.rt_sigaction, void, .{ pair[1], @intFromPtr(act), 0, @sizeOf(@TypeOf(act.?.mask)) });
+            sys.call_noexcept(.rt_sigaction, void, .{ pair[1], @intFromPtr(act), 0, 8 });
         }
     }
 }
