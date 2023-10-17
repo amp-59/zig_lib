@@ -822,7 +822,7 @@ fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
     const mid_len: usize = math.div64(aligned_bytes, @sizeOf(U));
     return @as([*]const U, @ptrFromInt(ab_addr))[0..mid_len];
 }
-fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
+inline fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
     var idx: usize = 0;
     while (idx != array_info.len) : (idx +%= 1) {
         if (!testEqual(array_info.child, arg1[idx], arg2[idx])) {
@@ -831,7 +831,7 @@ fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg
     }
     return true;
 }
-fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
+inline fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
     if (arg1.len != arg2.len) {
         return false;
     }
@@ -846,7 +846,7 @@ fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer,
     }
     return true;
 }
-fn testEqualPointer(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
+inline fn testEqualPointer(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
     if (@typeInfo(pointer_info.child) != .Fn) {
         return arg1 == arg2;
     }
@@ -858,7 +858,7 @@ fn testIdenticalStruct(comptime T: type, comptime struct_info: builtin.Type.Stru
     }
     return testEqualStruct(T, struct_info, arg1, arg2);
 }
-fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, arg1: T, arg2: T) bool {
+inline fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, arg1: T, arg2: T) bool {
     inline for (struct_info.fields) |field| {
         if (!testEqual(
             field.type,
@@ -881,7 +881,7 @@ fn testIdenticalUnion(comptime T: type, comptime union_info: builtin.Type.Union,
         );
     }
 }
-fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
+inline fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
     if (union_info.tag_type) |tag_type| {
         if (@intFromEnum(arg1) != @intFromEnum(arg2)) {
             return false;
@@ -900,7 +900,7 @@ fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg
     }
     return testIdenticalUnion(T, union_info, arg1, arg2);
 }
-fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Optional, arg1: T, arg2: T) bool {
+inline fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Optional, arg1: T, arg2: T) bool {
     if (@typeInfo(optional_info.child) == .Pointer and
         @typeInfo(optional_info.child).Pointer.size != .Slice and
         @typeInfo(optional_info.child).Pointer.size != .C)
