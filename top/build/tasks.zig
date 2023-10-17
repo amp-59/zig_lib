@@ -65,7 +65,7 @@ pub const BuildCommand = struct {
     /// Only run [limit] first LLVM optimization passes
     passes: ?usize = null,
     /// Set the directory of the root package
-    main_pkg_path: ?[]const u8 = null,
+    main_mod_path: ?[]const u8 = null,
     /// Enable Position Independent Code
     pic: ?bool = null,
     /// Enable Position Independent Executable
@@ -500,10 +500,10 @@ pub const BuildCommand = struct {
             ptr[0] = 0;
             ptr += 1;
         }
-        if (cmd.main_pkg_path) |main_pkg_path| {
-            ptr[0..16].* = "--main-pkg-path\x00".*;
+        if (cmd.main_mod_path) |main_mod_path| {
+            ptr[0..16].* = "--main-mod-path\x00".*;
             ptr += 16;
-            ptr = fmt.strcpyEqu(ptr, main_pkg_path);
+            ptr = fmt.strcpyEqu(ptr, main_mod_path);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -741,10 +741,10 @@ pub const BuildCommand = struct {
         }
         if (cmd.lld) |lld| {
             if (lld) {
-                ptr[0..6].* = "-fLLD\x00".*;
+                ptr[0..6].* = "-flld\x00".*;
                 ptr += 6;
             } else {
-                ptr[0..9].* = "-fno-LLD\x00".*;
+                ptr[0..9].* = "-fno-lld\x00".*;
                 ptr += 9;
             }
         }
@@ -1147,9 +1147,9 @@ pub const BuildCommand = struct {
             len +%= fmt.Type.Ud64.formatLength(.{ .value = passes });
             len +%= 1;
         }
-        if (cmd.main_pkg_path) |main_pkg_path| {
+        if (cmd.main_mod_path) |main_mod_path| {
             len +%= 16;
-            len +%= main_pkg_path.len;
+            len +%= main_mod_path.len;
             len +%= 1;
         }
         if (cmd.pic) |pic| {
@@ -1693,9 +1693,9 @@ pub const BuildCommand = struct {
             array.writeFormat(fmt.ud64(passes));
             array.writeOne(0);
         }
-        if (cmd.main_pkg_path) |main_pkg_path| {
-            array.writeMany("--main-pkg-path\x00");
-            array.writeMany(main_pkg_path);
+        if (cmd.main_mod_path) |main_mod_path| {
+            array.writeMany("--main-mod-path\x00");
+            array.writeMany(main_mod_path);
             array.writeOne(0);
         }
         if (cmd.pic) |pic| {
@@ -1876,9 +1876,9 @@ pub const BuildCommand = struct {
         }
         if (cmd.lld) |lld| {
             if (lld) {
-                array.writeMany("-fLLD\x00");
+                array.writeMany("-flld\x00");
             } else {
-                array.writeMany("-fno-LLD\x00");
+                array.writeMany("-fno-lld\x00");
             }
         }
         if (cmd.compiler_rt) |compiler_rt| {
@@ -2260,10 +2260,10 @@ pub const BuildCommand = struct {
                 } else {
                     return;
                 }
-            } else if (mem.testEqualString("--main-pkg-path", arg)) {
+            } else if (mem.testEqualString("--main-mod-path", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.main_pkg_path = mem.terminate(args[args_idx], 0);
+                    cmd.main_mod_path = mem.terminate(args[args_idx], 0);
                 } else {
                     return;
                 }
@@ -2471,9 +2471,9 @@ pub const BuildCommand = struct {
                 } else {
                     return;
                 }
-            } else if (mem.testEqualString("-fLLD", arg)) {
+            } else if (mem.testEqualString("-flld", arg)) {
                 cmd.lld = true;
-            } else if (mem.testEqualString("-fno-LLD", arg)) {
+            } else if (mem.testEqualString("-fno-lld", arg)) {
                 cmd.lld = false;
             } else if (mem.testEqualString("-fcompiler-rt", arg)) {
                 cmd.compiler_rt = true;
@@ -5590,7 +5590,7 @@ pub const FormatCommand = struct {
         }
     }
 };
-const build_help: [:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -5619,7 +5619,7 @@ const build_help: [:0]const u8 =
     \\                                      ReleaseFast    Optimizations on, safety off
     \\                                      ReleaseSmall   Size optimizations on, safety off
     \\    -fopt-bisect-limit              Only run [limit] first LLVM optimization passes
-    \\    --main-pkg-path                 Set the directory of the root package
+    \\    --main-mod-path                 Set the directory of the root package
     \\    -f[no-]PIC                      Enable Position Independent Code
     \\    -f[no-]PIE                      Enable Position Independent Executable
     \\    -f[no-]lto                      Enable Link Time Optimization
@@ -5657,7 +5657,7 @@ const build_help: [:0]const u8 =
     \\    --dynamic-linker                Set the dynamic interpreter path
     \\    --sysroot                       Set the system root directory
     \\    --entry                         Set the entrypoint symbol name
-    \\    -f[no-]LLD                      Use LLD as the linker
+    \\    -f[no-]lld                      Use LLD as the linker
     \\    -f[no-]compiler-rt              (default) Include compiler-rt symbols in output
     \\    -rpath                          Add directory to the runtime library search path
     \\    -f[no-]each-lib-rpath           Ensure adding rpath for each used dynamic library
@@ -5708,7 +5708,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -5727,7 +5727,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -5740,7 +5740,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const harec_help: [:0]const u8 = 
+const harec_help: [:0]const u8 =
     \\    -a
     \\    -o      Output file
     \\    -T
@@ -5749,7 +5749,7 @@ const harec_help: [:0]const u8 =
     \\
     \\
 ;
-const tblgen_help: [:0]const u8 = 
+const tblgen_help: [:0]const u8 =
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
     \\    -d                              Add file dependencies
@@ -5796,7 +5796,7 @@ const tblgen_help: [:0]const u8 =
     \\
     \\
 ;
-const llc_help: [:0]const u8 = 
+const llc_help: [:0]const u8 =
     \\    --color                                     Use colors in output (default=autodetect)
     \\    -I                                          Add directories to include search path
     \\    -O                                          Optimization level. [-O0, -O1, -O2, or -O3] (default='-O2')
@@ -5887,13 +5887,13 @@ const llc_help: [:0]const u8 =
     \\
     \\
 ;
-const fetch_help: [:0]const u8 = 
+const fetch_help: [:0]const u8 =
     \\    fetch
     \\    --global-cache-dir      Override the global cache directory
     \\
     \\
 ;
-const format_help: [:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout

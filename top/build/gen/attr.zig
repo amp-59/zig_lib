@@ -284,8 +284,8 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Only run [limit] first LLVM optimization passes"},
         },
         .{
-            .name = "main_pkg_path",
-            .string = "--main-pkg-path",
+            .name = "main_mod_path",
+            .string = "--main-mod-path",
             .tag = .{ .optional_field = .string },
             .type = optional_string_type,
             .descr = &.{"Set the directory of the root package"},
@@ -485,8 +485,8 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "lld",
-            .string = "-fLLD",
-            .and_no = .{ .string = "-fno-LLD" },
+            .string = "-flld",
+            .and_no = .{ .string = "-fno-lld" },
             .descr = &.{"Use LLD as the linker"},
         },
         .{
