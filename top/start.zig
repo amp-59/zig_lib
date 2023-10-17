@@ -15,22 +15,11 @@ pub var stack: usize = undefined;
 pub fn Start(comptime entry: anytype) type {
     return struct {
         pub fn _start() callconv(.Naked) void {
-            asm volatile (switch (builtin.cpu.arch) {
-                    .x86_64 =>
-                    \\ xorl %%ebp, %%ebp
-                    \\ movq %%rsp, %[stack]
-                    \\ andq $-16, %%rsp
-                    \\ callq %[start:P]
-                    ,
-                    .aarch64, .aarch64_be =>
-                    \\ mov fp, #0
-                    \\ mov lr, #0
-                    \\ mov x0, sp
-                    \\ str x0, %[stack]
-                    \\ b %[start]
-                    ,
-                    else => @compileError("unsupported arch"),
-                }
+            asm volatile (
+                \\ xorl %%ebp, %%ebp
+                \\ movq %%rsp, %[stack]
+                \\ andq $-16, %%rsp
+                \\ callq %[start:P]
                 : [stack] "=m" (stack),
                 : [start] "X" (&entry),
             );
