@@ -279,10 +279,10 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
         ptr[0] = 0;
         ptr += 1;
     }
-    if (cmd.main_pkg_path) |main_pkg_path| {
-        ptr[0..16].* = "--main-pkg-path\x00".*;
+    if (cmd.main_mod_path) |main_mod_path| {
+        ptr[0..16].* = "--main-mod-path\x00".*;
         ptr += 16;
-        ptr = fmt.strcpyEqu(ptr, main_pkg_path);
+        ptr = fmt.strcpyEqu(ptr, main_mod_path);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -520,10 +520,10 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
     }
     if (cmd.lld) |lld| {
         if (lld) {
-            ptr[0..6].* = "-fLLD\x00".*;
+            ptr[0..6].* = "-flld\x00".*;
             ptr += 6;
         } else {
-            ptr[0..9].* = "-fno-LLD\x00".*;
+            ptr[0..9].* = "-fno-lld\x00".*;
             ptr += 9;
         }
     }
@@ -928,9 +928,9 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
         len +%= fmt.Type.Ud64.formatLength(.{ .value = passes });
         len +%= 1;
     }
-    if (cmd.main_pkg_path) |main_pkg_path| {
+    if (cmd.main_mod_path) |main_mod_path| {
         len +%= 16;
-        len +%= main_pkg_path.len;
+        len +%= main_mod_path.len;
         len +%= 1;
     }
     if (cmd.pic) |pic| {
