@@ -109,6 +109,7 @@ pub const BinaryOutput = enum(u8) {
     lib = @intFromEnum(File.Tag.output_lib),
     obj = @intFromEnum(File.Tag.output_obj),
 };
+
 pub const Lists = extern struct {
     buf: [len]List,
     const Key = extern union { tag: Tag, info: Info, id: u32 };
@@ -362,7 +363,7 @@ pub const Macro = struct {
             ptr = fmt.strcpyEqu(ptr, value);
         }
         ptr[0] = 0;
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return @intFromPtr(ptr + 1) -% @intFromPtr(buf);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 2 +% format.name.len;
