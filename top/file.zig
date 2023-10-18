@@ -2606,22 +2606,19 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
-        ptr += ud64.formatWriteBuf(ptr);
+        fmt.writeUd64(ptr, fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = flags.formatWriteBuf(ptr);
-        if (ud64.value != 0) {
-            ptr += ud64.value;
+        const len: usize = flags.formatWriteBuf(ptr);
+        if (len != 0) {
+            ptr += len;
             ptr[0..2].* = ", ".*;
             ptr += 2;
         }
-        ud64.value = act_len;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, act_len);
         ptr[0] = '/';
         ptr += 1;
-        ud64.value = max_len;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, max_len);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
@@ -2641,9 +2638,9 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = flags.formatWriteBuf(ptr);
-        if (ud64.value != 0) {
-            ptr += ud64.value;
+        const len: usize = flags.formatWriteBuf(ptr);
+        if (len != 0) {
+            ptr += len;
             ptr[0..2].* = ", ".*;
             ptr += 2;
         }
