@@ -1,5 +1,6 @@
 const zl = @import("../../zig_lib.zig");
 pub usingnamespace zl.start;
+
 const do_it: bool = true;
 pub const want_stack_traces = true;
 pub const panic_return_value: u8 = 0;
@@ -93,5 +94,5 @@ pub fn main() void {
     causePanicStartGreaterThanEnd();
     causePanicUnwrapError(error.Which, 1);
     //}
-    //causePanicSentinelMismatchNonScalarSentinel();
+    causePanicSentinelMismatchNonScalarSentinel();
 }
