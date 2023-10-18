@@ -148,7 +148,7 @@ fn testEntryAutoLoader() !void {
         var buf: [4096]u8 = undefined;
         var len: usize = 0;
         const zig_exe: []const u8 = builtin.root.zig_exe;
-        const paths: []const build.Path = &.{build.Path.create(&.{ builtin.root.main_pkg_path, @src().file })};
+        const paths: []const build.Path = &.{build.Path.create(&.{ builtin.root.main_mod_path, @src().file })};
         len = core.formatWriteBuf(@constCast(&cmd1), zig_exe, paths, &buf);
         debug.write(buf[0..len]);
         try debug.expect(len == core.formatLength(@constCast(&cmd1), zig_exe, paths));
