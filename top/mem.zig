@@ -120,56 +120,6 @@ pub const Bytes = struct {
         return amt.count *% (@as(usize, 1) << @intFromEnum(amt.unit));
     }
 };
-pub noinline fn monitor(comptime T: type, ptr: *T) void {
-    const in: T = ptr.*;
-    switch (T) {
-        u8, bool => asm volatile (
-            \\pause
-            \\0:
-            \\mov %[done], %al
-            \\cmpb %al, %[in]
-            \\je 0b
-            :
-            : [done] "p" (ptr),
-              [in] "r" (in),
-            : "al", "memory"
-        ),
-        u16 => asm volatile (
-            \\pause
-            \\0:
-            \\mov %[done], %ax
-            \\cmp %ax, %[in]
-            \\je 0b
-            :
-            : [done] "p" (ptr),
-              [in] "r" (in),
-            : "ax", "memory"
-        ),
-        u32 => asm volatile (
-            \\pause
-            \\0:
-            \\movl %[done], %eax
-            \\cmpl %eax, %[in]
-            \\je 0b
-            :
-            : [done] "p" (ptr),
-              [in] "r" (in),
-            : "eax", "memory"
-        ),
-        u64 => asm volatile (
-            \\pause
-            \\0:
-            \\movq %[done], %rax
-            \\cmpq %rax, %[in]
-            \\je 0b
-            :
-            : [ptr] "p" (ptr),
-              [in] "r" (in),
-            : "rax", "memory"
-        ),
-        else => @compileError("???"),
-    }
-}
 fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
     if (address_space.set(AddressSpace.specification.divisions)) {
         return map(AddressSpace.map_spec, .{}, .{}, AddressSpace.specification.addressable_byte_address(), AddressSpace.specification.addressable_byte_count());
