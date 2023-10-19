@@ -281,15 +281,15 @@ pub const arith = struct {
     pub const safety: bool = false;
     pub export fn addcarryxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
-        const ov1: struct { u64, u1 } = @addWithOverflow(arg2, arg3);
-        const ov2: struct { u64, u1 } = @addWithOverflow(ov1[0], arg1);
+        const ov1 = @addWithOverflow(arg2, arg3);
+        const ov2 = @addWithOverflow(ov1[0], arg1);
         out1.* = ov2[0];
         out2.* = ov1[1] | ov2[1];
     }
     pub export fn subborrowxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
-        const ov1: struct { u64, u1 } = @subWithOverflow(arg2, arg3);
-        const ov2: struct { u64, u1 } = @subWithOverflow(ov1[0], arg1);
+        const ov1 = @subWithOverflow(arg2, arg3);
+        const ov2 = @subWithOverflow(ov1[0], arg1);
         out1.* = ov2[0];
         out2.* = ov1[1] | ov2[1];
     }

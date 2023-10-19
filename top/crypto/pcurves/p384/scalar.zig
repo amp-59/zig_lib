@@ -110,7 +110,7 @@ pub const Scalar = struct {
         return Scalar{ .fe = n.fe.invert() };
     }
     /// Return true if n is a quadratic residue mod L.
-    pub fn isSquare(n: Scalar) Scalar {
+    pub fn isSquare(n: Scalar) bool {
         return n.fe.isSquare();
     }
     /// Return the square root of L, or NotSquare if there isn't any solutions.
