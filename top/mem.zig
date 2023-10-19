@@ -2988,6 +2988,29 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
+    pub fn aboutAddrLenFlagsNotice(about_s: fmt.AboutSrc, addr: usize, len: usize, flags: sys.flags.MemMap) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        const fmt_len: usize = flags.formatWriteBuf(ptr + 2);
+        if (fmt_len != 0) {
+            ptr += 2;
+            ptr += 2 +% fmt_len;
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+        }
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
+    }
     fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: usize, len: usize, description_s: []const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
