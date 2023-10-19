@@ -2513,8 +2513,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
-        ud64.value = offset;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, offset);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         var ux64: fmt.Type.Ux64 = .{ .value = addr };
@@ -2525,8 +2524,7 @@ pub const about = struct {
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = len;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, len);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
@@ -2587,14 +2585,14 @@ pub const about = struct {
         ptr[0..3].* = "fd=".*;
         ptr += 3;
         var ud64: fmt.Type.Ud64 = .{ .value = act_len };
+        _ = ud64;
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += fmt.ud64(max_len).formatWriteBuf(ptr);
         ptr[0] = '/';
         ptr += 1;
-        ud64.value = max_len;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, max_len);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
@@ -2606,7 +2604,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        fmt.writeUd64(ptr, fd);
+        ptr = fmt.writeUd64(ptr, fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         const len: usize = flags.formatWriteBuf(ptr);
@@ -2634,8 +2632,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
-        ud64.value = offset;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, offset);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         const len: usize = flags.formatWriteBuf(ptr);
@@ -2644,12 +2641,10 @@ pub const about = struct {
             ptr[0..2].* = ", ".*;
             ptr += 2;
         }
-        ud64.value = act_len;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, act_len);
         ptr[0] = '/';
         ptr += 1;
-        ud64.value = max_len;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, max_len);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
@@ -2661,14 +2656,12 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..fd1_s.len].* = fd1_s.*;
         ptr += fd1_s.len;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd1 };
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, fd1);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr[0..fd2_s.len].* = fd2_s.*;
         ptr += fd2_s.len;
-        ud64.value = fd2;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, fd2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2691,8 +2684,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = ':';
         ptr += 1;
-        ud64.value = dev.minor;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, dev.minor);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2926,16 +2918,13 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
-        ud64.value = dest_fd;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, dest_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = act_count;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, act_count);
         ptr[0] = '/';
         ptr += 1;
-        ud64.value = max_count;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         ud64.value = src_fd;
@@ -2955,16 +2944,13 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
-        ud64.value = dest_fd;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, dest_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = act_count;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, act_count);
         ptr[0] = '/';
         ptr += 1;
-        ud64.value = max_count;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         ud64.value = src_fd;
@@ -3001,8 +2987,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
-        ud64.value = offset;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, offset);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3086,8 +3071,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
-        ud64.value = offset;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, offset);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += ux64.formatWriteBuf(ptr);
@@ -3097,8 +3081,7 @@ pub const about = struct {
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = len;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, len);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -3198,8 +3181,7 @@ pub const about = struct {
         ptr += 2;
         ptr[0..fd2_s.len].* = fd2_s.*;
         ptr += fd2_s.len;
-        ud64.value = fd2;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, fd2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3287,16 +3269,13 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
-        ud64.value = dest_fd;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, dest_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = 0;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, 0);
         ptr[0] = '/';
         ptr += 1;
-        ud64.value = max_count;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (offset) |off| {
@@ -3315,16 +3294,13 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
-        ud64.value = dest_fd;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, dest_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ud64.value = 0;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, 0);
         ptr[0] = '/';
         ptr += 1;
-        ud64.value = max_count;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (src_offset) |off| {
@@ -3367,8 +3343,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
-        ud64.value = offset;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, offset);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3386,8 +3361,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
-        ud64.value = offset;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, offset);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += flags.formatWriteBuf(ptr);
@@ -3576,22 +3550,11 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
     }
-    fn describePerms(buf: []u8, perms: Perms) void {
-        @setRuntimeSafety(false);
-        if (perms.read) {
-            buf[0] = 'r';
-        }
-        if (perms.write) {
-            buf[1] = 'w';
-        }
-        if (perms.execute) {
-            buf[2] = 'x';
-        }
-    }
     fn describeMode(file_mode: Mode) [10]u8 {
         @setRuntimeSafety(false);
-        var ret: [10]u8 = [1]u8{'-'} ** 10;
-        ret[0] = switch (file_mode.kind) {
+        var buf: [10]u8 = undefined;
+        @memset(buf[0..10], '-');
+        buf[0] = switch (file_mode.kind) {
             .unknown => '-',
             .directory => 'd',
             .regular => 'f',
@@ -3601,12 +3564,19 @@ pub const about = struct {
             .named_pipe => 'p',
             .symbolic_link => 'l',
         };
-        describePerms(ret[1..], file_mode.owner);
-        describePerms(ret[4..], file_mode.group);
-        describePerms(ret[7..], file_mode.other);
-        return ret;
+        if (file_mode.owner.read) buf[1] = 'r';
+        if (file_mode.owner.write) buf[2] = 'w';
+        if (file_mode.owner.execute) buf[3] = 'x';
+        if (file_mode.group.read) buf[4] = 'r';
+        if (file_mode.group.write) buf[5] = 'w';
+        if (file_mode.group.execute) buf[6] = 'x';
+        if (file_mode.other.read) buf[7] = 'r';
+        if (file_mode.other.write) buf[8] = 'w';
+        if (file_mode.other.execute) buf[9] = 'x';
+        return buf;
     }
     fn describeKind(kind: Kind) []const u8 {
+        @setRuntimeSafety(false);
         switch (kind) {
             .unknown => return unknown_file_s,
             .regular => return regular_file_s,
@@ -3619,18 +3589,16 @@ pub const about = struct {
         }
     }
     pub fn writeStatus(buf: [*]u8, st: *const Status) [*]u8 {
+        @setRuntimeSafety(false);
         buf[0..6].* = "inode=".*;
         var ptr: [*]u8 = buf + 6;
-        var ud64: fmt.Type.Ud64 = .{ .value = st.ino };
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, st.ino);
         ptr[0..6].* = ", dev=".*;
         ptr += 6;
-        ud64.value = st.dev >> 8;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, st.dev >> 8);
         ptr[0] = ':';
         ptr += 1;
-        ud64.value = st.dev & 0xff;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, st.dev & 0xff);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(st.mode);
@@ -3661,18 +3629,8 @@ pub const about = struct {
     fn writePollFds(buf: [*]u8, pollfds: []PollFd) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
-        var tmp: [24]u8 = undefined;
-        var fd_fmt: fmt.Type.Ud64 = undefined;
         for (pollfds) |*pollfd| {
-            fd_fmt = .{ .value = pollfd.fd };
-            const len: usize = fmt.ud64(pollfd.fd).formatWriteBuf(&tmp);
-            ptr[0..4].* = "    ".*;
-            ptr += (4 -% len);
-            ptr = fmt.strcpyEqu(ptr, tmp[0..len]);
-            ptr[0] = ':';
-            ptr += 1;
-            @memset(ptr[0..11], ' ');
-            ptr += 11;
+            ptr += fmt.writeSideBarIndex(ptr, 4, pollfd.fd);
             ptr += writeEvents(ptr, pollfd, "expect=", 4);
             ptr += writeEvents(ptr, pollfd, " actual=", 6);
             ptr[0] = '\n';
