@@ -176,8 +176,8 @@ pub const BuilderSpec = struct {
         init_config_zig_sources: bool = true,
         /// Nodes with this name prefix are hidden in pre.
         init_hidden_by_name_prefix: ?u8 = '_',
-        /// (Recommended) Pass --main-pkg-path=<build_root> for all compile commands.
-        init_main_pkg_path: bool = true,
+        /// (Recommended) Pass --main-mod-path=<build_root> for all compile commands.
+        init_main_mod_path: bool = true,
         /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
         init_cache_root: bool = true,
         /// (Recommended) Pass --global-cache-dir=<cache_root> for all compile commands.
@@ -545,9 +545,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .unmap = builder_spec.errors.unmap,
         };
         const dyn_loader_logging = .{
-            .show_unchanged_symbols = false,
-            .show_mangled_symbols = true,
-            .show_anonymous_symbols = false,
             .open = builder_spec.logging.open,
             .seek = builder_spec.logging.seek,
             .stat = builder_spec.logging.stat,
@@ -1617,7 +1614,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     node.zigExe(),        "build-lib",
                     "--cache-dir",        node.cacheRoot(),
                     "--global-cache-dir", node.globalCacheRoot(),
-                    "--main-pkg-path",    node.buildRoot(),
+                    "--main-mod-path",    node.buildRoot(),
                     "--mod",              zig_lib_module,
                 }) |arg|
                     node.addCmdArg(allocator).* = @constCast(arg);
@@ -1746,8 +1743,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             about.aboutNode(node, .add_stack_traces_debug_executables, .want_stack_traces, .enable_flag);
                         }
                     }
-                    if (builder_spec.options.init_main_pkg_path) {
-                        node.tasks.cmd.build.main_pkg_path = node.buildRoot();
+                    if (builder_spec.options.init_main_mod_path) {
+                        node.tasks.cmd.build.main_mod_path = node.buildRoot();
                     }
                     if (builder_spec.options.init_cache_root) {
                         node.tasks.cmd.build.cache_root = node.cacheRoot();
@@ -2915,8 +2912,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return stats.status == builder_spec.options.system_expected_status;
         }
-        pub const FunctionPointers = extern struct {
-            proc: extern struct {
+        pub const FunctionPointers = struct {
+            proc: struct {
                 executeCommandClone: *const fn (
                     // Call parameters:
                     address_space: *AddressSpace,
@@ -2933,7 +2930,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     len: usize,
                 ) void,
             },
-            build: extern struct {
+            build: struct {
                 formatWriteBuf: *const fn (
                     p_0: *tasks.BuildCommand,
                     p_1: []const u8,
@@ -2951,7 +2948,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_2: [][*:0]u8,
                 ) void,
             },
-            format: extern struct {
+            format: struct {
                 formatWriteBuf: *const fn (
                     p_0: *tasks.FormatCommand,
                     p_1: []const u8,
@@ -2969,7 +2966,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_2: [][*:0]u8,
                 ) void,
             },
-            archive: extern struct {
+            archive: struct {
                 formatWriteBuf: *const fn (
                     p_0: *tasks.ArchiveCommand,
                     p_1: []const u8,
@@ -2987,7 +2984,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_2: [][*:0]u8,
                 ) void,
             },
-            objcopy: extern struct {
+            objcopy: struct {
                 formatWriteBuf: *const fn (
                     p_0: *tasks.ObjcopyCommand,
                     p_1: []const u8,
@@ -3005,17 +3002,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_2: [][*:0]u8,
                 ) void,
             },
-            about: extern struct {
-                perf: extern struct {
+            about: struct {
+                perf: struct {
                     openFds: *const @TypeOf(PerfEvents.openFds),
                     readResults: *const @TypeOf(PerfEvents.readResults),
                     writeResults: *const @TypeOf(PerfEvents.writeResults),
                 },
-                elf: extern struct {
+                elf: struct {
                     writeBinary: *const @TypeOf(DynamicLoader.about.writeBinary),
                     writeBinaryDifference: *const @TypeOf(DynamicLoader.about.writeBinaryDifference),
                 },
-                generic: extern struct {
+                generic: struct {
                     aboutTask: *const @TypeOf(about.aboutTask),
                     printErrors: *const @TypeOf(about.printErrors),
                     writeTaskDataConfig: *const @TypeOf(about.writeTaskDataConfig),
@@ -3339,6 +3336,30 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     key_tag: u16 = 0,
                 },
             };
+            fn lengthAndWalkInternal(len1: usize, node: *Node, width: *ColumnWidth) usize {
+                @setRuntimeSafety(false);
+                var len: usize = lengthAndWalkInternalDetail(len1, node, width);
+                var itr: Node.Iterator = Node.Iterator.init(node);
+                while (itr.next()) |next_node| {
+                    len +%= width.cols.name +% next_node.descr.len;
+                    len +%= lengthAndWalkInternal(len1 +% 2, next_node, width);
+                    len +%= 1;
+                }
+                return len;
+            }
+            fn lengthAndWalkInternalDetail(len1: usize, node: *Node, width: *ColumnWidth) usize {
+                @setRuntimeSafety(false);
+                var len: usize = 0;
+                for (node.getFiles()) |*fs| {
+                    len +%= len1;
+                    len +%= 2;
+                    if (!fs.key.flags.is_cached) {
+                        len +%= (width.cols.file +% width.cols.path) -% (len1 +% 2);
+                    }
+                    len +%= 1;
+                }
+                return len;
+            }
             fn writeAndWalkColumnWidths(len1: usize, node: *const Node, width: *ColumnWidth) void {
                 @setRuntimeSafety(false);
                 var itr: Node.Iterator = Node.Iterator.init(node);
@@ -3380,30 +3401,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr0 = writeAndWalkInternal(ptr0, &buf1, 0, node, &width);
                 fmt.print(ptr0, buf0);
                 allocator.restore(save);
-            }
-            fn lengthAndWalkInternal(len1: usize, node: *Node, width: *ColumnWidth) usize {
-                @setRuntimeSafety(false);
-                var len: usize = lengthAndWalkInternalDetail(len1, node, width);
-                var itr: Node.Iterator = Node.Iterator.init(node);
-                while (itr.next()) |next_node| {
-                    len +%= width.cols.name +% next_node.descr.len;
-                    len +%= lengthAndWalkInternal(len1 +% 2, next_node, width);
-                    len +%= 1;
-                }
-                return len;
-            }
-            fn lengthAndWalkInternalDetail(len1: usize, node: *Node, width: *ColumnWidth) usize {
-                @setRuntimeSafety(false);
-                var len: usize = 0;
-                for (node.getFiles()) |*fs| {
-                    len +%= len1;
-                    len +%= 2;
-                    if (!fs.key.flags.is_cached) {
-                        len +%= (width.cols.file +% width.cols.path) -% (len1 +% 2);
-                    }
-                    len +%= 1;
-                }
-                return len;
             }
             fn writeAndWalkInternalDetail(buf0: [*]u8, buf1: [*]u8, len1: usize, node: *Node, keep_going: bool, width: *ColumnWidth) [*]u8 {
                 @setRuntimeSafety(false);
