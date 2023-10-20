@@ -326,10 +326,10 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
             break :blk len;
         };
-        pub fn formatWrite(format: Format, array: anytype) void {
+        pub inline fn formatWrite(format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             return strlen(writeInt(buf, format.value), buf);
         }
         pub fn writeInt(buf: [*]u8, value: Int) [*]u8 {
