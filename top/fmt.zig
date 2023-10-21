@@ -3083,6 +3083,19 @@ fn writeTrailingCommaBuf(buf: [*]u8, omit_trailing_comma: bool, fields_len: usiz
     }
     return len;
 }
+fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: IdentifierFormat, field_format: anytype) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    var len: usize = 0;
+    buf[0] = '.';
+    len +%= 1;
+    len +%= field_name_format.formatWriteBuf(buf + len);
+    @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
+    len +%= 3;
+    len +%= field_format.formatWriteBuf(buf + len);
+    @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+    len +%= 2;
+    return len;
+}
 pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     if (spec.decls.forward_formatter) {
         if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
@@ -3215,19 +3228,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 writeTrailingComma(array, omit_trailing_comma, fields_len);
             }
         }
-        fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: IdentifierFormat, field_format: anytype) usize {
-            @setRuntimeSafety(builtin.is_safe);
-            var len: usize = 0;
-            buf[0] = '.';
-            len +%= 1;
-            len +%= field_name_format.formatWriteBuf(buf + len);
-            @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
-            len +%= 3;
-            len +%= field_format.formatWriteBuf(buf + len);
-            @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
-            len +%= 2;
-            return len;
-        }
+
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
@@ -3411,9 +3412,6 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         const Int: type = meta.LeastRealBitSize(Union);
         const max_len: usize = blk: {
             if (show_enum_field) {
-                // e.g. bit_field(u32){ .PHDR | .NOTE | .DYNAMIC }
-                // The combined length of every field name + 3; every name has
-                // a space and a dot to its left, and a space to its right.
                 var len: usize = 0;
                 const enum_info: builtin.Type = @typeInfo(fields[0].type);
                 inline for (enum_info.Enum.fields) |field| {
@@ -3421,20 +3419,11 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     len +%= field_name_format.formatLength();
                 }
                 len +%= fields.len *% 3;
-                // The length of 'bit_field('
                 len +%= 10;
-                // The length of the integer tag_type name
                 len +%= tag_type_name.len;
-                // The length of ') {'
                 len +%= 3;
-                // The length of '}'
                 len +%= 1;
-                // The number of fields - 1, for each potential '|' between
-                // tag names.
                 len +%= fields.len -% 1;
-                // The maximum length of the potential remainder value + 4; the
-                // remainder is separated by "~|", to show the bits of the value
-                // which did not match, and has spaces on each side.
                 len +%= 2 +% 1 +% IntFormat(enum_info.Enum.tag_type).max_len +% 1;
                 break :blk len;
             } else {
@@ -3669,19 +3658,6 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 array.overwriteCountBack(2, " }".*);
             }
         }
-        fn formatWriteBufField(buf: [*]u8, field_name_format: IdentifierFormat, field_format: anytype) usize {
-            @setRuntimeSafety(builtin.is_safe);
-            var len: usize = 0;
-            buf[len] = '.';
-            len +%= 1;
-            len +%= field_name_format.formatWriteBuf(buf + len);
-            @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
-            len +%= 3;
-            len +%= field_format.formatWriteBuf(buf + len);
-            @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
-            len +%= 2;
-            return len;
-        }
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             if (show_enum_field) {
@@ -3708,16 +3684,13 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                         } else {
                             const FieldFormat: type = AnyFormat(spec, field.type);
                             const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            len +%= formatWriteBufField(buf + len, field_name_format, field_format);
+                            len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
                         }
                     }
                 }
                 @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
                 return len;
             }
-        }
-        fn formatLengthField(field_name_format: IdentifierFormat, field_format: anytype) usize {
-            return 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
         }
         pub fn formatLength(format: anytype) usize {
             if (show_enum_field) {
@@ -3740,7 +3713,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                         } else {
                             const FieldFormat: type = AnyFormat(spec, field.type);
                             const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            len +%= formatLengthField(field_name_format, field_format);
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                         }
                     }
                 }
