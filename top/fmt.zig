@@ -1392,10 +1392,10 @@ pub fn isValidId(values: []const u8) bool {
     }
     return builtin.parse.keyword(values) == null;
 }
-pub fn typeName(comptime T: type) []const u8 {
+pub inline fn typeName(comptime T: type) []const u8 {
     const type_info: builtin.Type = @typeInfo(T);
     const type_name: [:0]const u8 = @typeName(T);
-    comptime switch (type_info) {
+    switch (type_info) {
         .Pointer => |pointer_info| {
             return typeDeclSpecifier(type_info) ++ typeName(pointer_info.child);
         },
@@ -1415,7 +1415,7 @@ pub fn typeName(comptime T: type) []const u8 {
             return typeNameDemangle(type_name, "__opaque");
         },
         else => return type_name,
-    };
+    }
 }
 inline fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const u8) []const u8 {
     comptime {
