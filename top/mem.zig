@@ -2960,7 +2960,7 @@ fn defaultValue(comptime multi_arena: anytype) multi_arena.Implementation() {
     }
     return tmp;
 }
-pub const about = opaque {
+pub const about = struct {
     const map_s: fmt.AboutSrc = fmt.about("map");
     const acq_s: fmt.AboutSrc = fmt.about("acq");
     const rel_s: fmt.AboutSrc = fmt.about("rel");
@@ -3120,6 +3120,29 @@ pub const about = opaque {
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
+    }
+    pub fn aboutAddrLenFlagsError(about_s: fmt.AboutSrc, error_name: []const u8, addr: usize, len: usize, flags: sys.flags.MemMap) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        const fmt_len: usize = flags.formatWriteBuf(ptr + 2);
+        if (fmt_len != 0) {
+            ptr += 2;
+            ptr += 2 +% fmt_len;
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+        }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
