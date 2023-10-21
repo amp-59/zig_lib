@@ -367,14 +367,14 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
         addr, len, @bitCast(prot), @bitCast(flags), 0, 0,
     }))) |ret| {
         if (logging.Acquire) {
-            about.aboutAddrLenNotice(about.map_s, addr, len);
+            about.aboutAddrLenFlagsNotice(about.map_s, addr, len, flags);
         }
         if (map_spec.return_type != void) {
             return ret;
         }
     } else |map_error| {
         if (logging.Error) {
-            about.aboutAddrLenError(about.map_s, @errorName(map_error), addr, len);
+            about.aboutAddrLenFlagsError(about.map_s, @errorName(map_error), addr, len, flags);
         }
         return map_error;
     }
