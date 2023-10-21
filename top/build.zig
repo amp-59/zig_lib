@@ -247,10 +247,10 @@ pub const BuilderSpec = struct {
         /// Use library traces for compile error messages.
         trace_compile_errors: bool = true,
         /// (Devel.) Exclude `writeErrors` from dynamic extensions.
-        eager_compile_errors: bool = true,
+        eager_compile_errors: bool = false,
         /// (Devel.) Start dependencies in new threads regardless of
         /// total number.
-        eager_multi_threading: bool = false,
+        eager_multi_threading: bool = true,
         /// (Devel.) Restore dynamic environment from the cache.
         restore_dyn_env: bool = false,
         /// (Devel.) Save dynamic environment to the cache.
