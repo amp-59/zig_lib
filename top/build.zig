@@ -247,10 +247,10 @@ pub const BuilderSpec = struct {
         /// Use library traces for compile error messages.
         trace_compile_errors: bool = true,
         /// (Devel.) Exclude `writeErrors` from dynamic extensions.
-        eager_compile_errors: bool = false,
+        eager_compile_errors: bool = true,
         /// (Devel.) Start dependencies in new threads regardless of
         /// total number.
-        eager_multi_threading: bool = true,
+        eager_multi_threading: bool = false,
         /// (Devel.) Restore dynamic environment from the cache.
         restore_dyn_env: bool = false,
         /// (Devel.) Save dynamic environment to the cache.
@@ -3009,8 +3009,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     writeResults: *const @TypeOf(PerfEvents.writeResults),
                 },
                 elf: struct {
-                    writeBinary: *const @TypeOf(DynamicLoader.about.writeBinary),
-                    writeBinaryDifference: *const @TypeOf(DynamicLoader.about.writeBinaryDifference),
+                    writeBinary: *const @TypeOf(DynamicLoader.compare.writeBinary),
+                    writeBinaryDifference: *const @TypeOf(DynamicLoader.compare.writeBinaryDifference),
                 },
                 generic: struct {
                     aboutTask: *const @TypeOf(about.aboutTask),
@@ -3281,9 +3281,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 if (node.extra.info_after) |after| {
                     if (node.extra.info_before) |before| {
-                        ptr = DynamicLoader.about.writeBinaryDifference(ptr, before, after, width);
+                        ptr = DynamicLoader.compare.writeBinaryDifference(ptr, before, after, width);
                     } else {
-                        ptr = DynamicLoader.about.writeBinaryDifference(ptr, after, after, width);
+                        ptr = DynamicLoader.compare.writeBinary(ptr, after, width);
                     }
                 }
                 return ptr;
@@ -3402,6 +3402,38 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 fmt.print(ptr0, buf0);
                 allocator.restore(save);
             }
+            const bar = struct {
+                const what_s: [:0]const u8 = "???";
+                const endl_s: [:0]const u8 = "\x1b[0m\n";
+                const del_s: [:0]const u8 = "\x08\x08\x08\x08";
+                const spc_bs: [:0]const u8 = "    ";
+                const spc_ws: [:0]const u8 = "    ";
+                const bar_bs: [:0]const u8 = "|   ";
+                const bar_ws: [:0]const u8 = "│   ";
+                const links_to_bs: [:0]const u8 = " --> ";
+                const links_to_ws: [:0]const u8 = " ⟶  ";
+                const file_arrow_bs: [:0]const u8 = del_s ++ "|-> ";
+                const file_arrow_ws: [:0]const u8 = del_s ++ "├── ";
+                const last_file_arrow_bs: [:0]const u8 = del_s ++ "`-> ";
+                const last_file_arrow_ws: [:0]const u8 = del_s ++ "└── ";
+                const link_arrow_bs: [:0]const u8 = file_arrow_bs;
+                const link_arrow_ws: [:0]const u8 = file_arrow_ws;
+                const last_link_arrow_bs: [:0]const u8 = last_file_arrow_bs;
+                const last_link_arrow_ws: [:0]const u8 = last_file_arrow_ws;
+                const dir_arrow_bs: [:0]const u8 = del_s ++ "|---+ ";
+                const dir_arrow_ws: [:0]const u8 = del_s ++ "├───┬ ";
+                const last_dir_arrow_bs: [:0]const u8 = del_s ++ "`---+ ";
+                const last_dir_arrow_ws: [:0]const u8 = del_s ++ "└───┬ ";
+                const empty_dir_arrow_bs: [:0]const u8 = del_s ++ "|-- ";
+                const empty_dir_arrow_ws: [:0]const u8 = del_s ++ "├── ";
+                const last_empty_dir_arrow_bs: [:0]const u8 = del_s ++ "`-- ";
+                const last_empty_dir_arrow_ws: [:0]const u8 = del_s ++ "└── ";
+                const about_dirs_s: [:0]const u8 = "dirs:           ";
+                const about_files_s: [:0]const u8 = "files:          ";
+                const about_links_s: [:0]const u8 = "links:          ";
+                const about_depth_s: [:0]const u8 = "depth:          ";
+                const about_errors_s: [:0]const u8 = "errors:         ";
+            };
             fn writeAndWalkInternalDetail(buf0: [*]u8, buf1: [*]u8, len1: usize, node: *Node, keep_going: bool, width: *ColumnWidth) [*]u8 {
                 @setRuntimeSafety(false);
                 const files: []types.File = node.getFiles();
