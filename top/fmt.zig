@@ -1475,8 +1475,8 @@ pub fn typeTypeName(comptime type_id: builtin.TypeId) []const u8 {
         .EnumLiteral => "enum literal",
     };
 }
-pub fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
-    return switch (type_info) {
+pub inline fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
+    switch (type_info) {
         .Array, .Pointer, .Optional => {
             const type_name: []const u8 = @typeName(@Type(type_info));
             const child_type_name: []const u8 = @typeName(@field(type_info, @tagName(type_info)).child);
