@@ -1517,10 +1517,10 @@ pub inline fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
                 },
             }
         },
-        .Opaque => "opaque",
-        .ErrorSet => "error",
+        .Opaque => return "opaque",
+        .ErrorSet => return "error",
         else => @compileError(@typeName(@Type(type_info))),
-    };
+    }
 }
 const EscapedStringFormatSpec = struct {
     single_quote: []const u8 = "\'",
@@ -2680,9 +2680,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             switch (type_info) {
                 .Struct => |struct_info| {
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        array.writeMany(comptime typeDeclSpecifier(type_info) ++ " {}");
+                        array.writeMany(typeDeclSpecifier(type_info) ++ " {}");
                     } else {
-                        array.writeMany(comptime typeDeclSpecifier(type_info) ++ " { ");
+                        array.writeMany(typeDeclSpecifier(type_info) ++ " { ");
                         inline for (struct_info.fields) |field| {
                             writeStructField(array, field.name, field.type, meta.defaultValue(field));
                         }
@@ -2702,9 +2702,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Union => |union_info| {
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        array.writeMany(comptime typeDeclSpecifier(type_info) ++ " {}");
+                        array.writeMany(typeDeclSpecifier(type_info) ++ " {}");
                     } else {
-                        array.writeMany(comptime typeDeclSpecifier(type_info) ++ " { ");
+                        array.writeMany(typeDeclSpecifier(type_info) ++ " { ");
                         inline for (union_info.fields) |field| {
                             writeUnionField(array, field.name, field.type);
                         }
@@ -2724,9 +2724,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Enum => |enum_info| {
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        array.writeMany(comptime typeDeclSpecifier(type_info) ++ " {}");
+                        array.writeMany(typeDeclSpecifier(type_info) ++ " {}");
                     } else {
-                        array.writeMany(comptime typeDeclSpecifier(type_info) ++ " { ");
+                        array.writeMany(typeDeclSpecifier(type_info) ++ " { ");
                         inline for (enum_info.fields) |field| {
                             writeEnumField(array, field.name);
                         }
@@ -2843,7 +2843,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             var len: usize = 0;
             switch (type_info) {
                 .Struct => |struct_info| {
-                    const decl_spec_s = comptime meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
                         @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
                         len +%= decl_spec_s.len;
@@ -2872,7 +2872,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                     }
                 },
                 .Union => |union_info| {
-                    const decl_spec_s = comptime meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
                         @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
                         len +%= decl_spec_s.len;
@@ -2901,7 +2901,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                     }
                 },
                 .Enum => |enum_info| {
-                    const decl_spec_s = comptime meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
                         @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
                         len +%= decl_spec_s.len;
@@ -2991,7 +2991,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             const type_info: builtin.Type = @typeInfo(format.value);
             switch (type_info) {
                 .Struct => |struct_info| {
-                    const decl_spec_s = comptime meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
                         len +%= decl_spec_s.len;
                         len +%= 3;
@@ -3010,7 +3010,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                     }
                 },
                 .Union => |union_info| {
-                    const decl_spec_s = comptime meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
                         len +%= decl_spec_s.len;
                         len +%= 3;
