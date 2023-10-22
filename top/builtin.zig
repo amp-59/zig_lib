@@ -2372,10 +2372,10 @@ inline fn wrappingMulReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 *% arg2;
 }
 inline fn normalDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* /= arg2;
+    arg1.* = @divTrunc(arg1.*, arg2);
 }
 inline fn normalDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 / arg2;
+    return @divTrunc(arg1, arg2);
 }
 inline fn normalOrReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 | arg2;
@@ -2628,10 +2628,6 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
             return arg2;
         }
     }
-}
-pub fn ptr(comptime T: type) *T {
-    var ret: T = zero(T);
-    return &ret;
 }
 pub fn diff(comptime T: type, arg1: T, arg2: T) T {
     return subWrap(T, max(T, arg1, arg2), min(T, arg1, arg2));
