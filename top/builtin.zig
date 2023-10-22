@@ -327,17 +327,6 @@ pub inline fn setErrorPolicy(
     debug.assert(@hasDecl(S, "error_policy"));
     S.error_policy.* = new;
 }
-/// `S` must be a container type. This function should be called within `S`, to
-/// declare a pointer with the name `error_policy`.
-pub inline fn createErrorPolicy(
-    comptime S: type,
-    comptime new: InternalError(S.Error),
-) *InternalError(S.Error) {
-    debug.assert(@hasDecl(S, "Error"));
-    var value: *InternalError(S.Error) = ptr(InternalError(S.Error));
-    value.* = new;
-    return value;
-}
 pub fn BitCount(comptime T: type) type {
     if (@sizeOf(T) == 0) {
         return comptime_int;
