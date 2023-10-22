@@ -1,8 +1,7 @@
 const zl = @import("../../zig_lib.zig");
 pub usingnamespace zl.start;
-
 const do_it: bool = true;
-pub const want_stack_traces = true;
+pub const want_stack_traces = false;
 pub const panic_return_value: u8 = 0;
 pub const logging_override: zl.debug.Logging.Override = .{
     .Attempt = true,
@@ -87,6 +86,8 @@ fn causePanicOutOfBounds() void {
 pub fn main() void {
     //var b: bool = zl.mem.unstable(bool, true);
     //if (b) {
+    @import("./stack_overflow.zig").main();
+    causePanicSentinelMismatchNonScalarSentinel();
     causePanicOutOfBounds();
     causePanicInactiveUnionField();
     causePanicReachedUnreachable();
@@ -94,5 +95,4 @@ pub fn main() void {
     causePanicStartGreaterThanEnd();
     causePanicUnwrapError(error.Which, 1);
     //}
-    causePanicSentinelMismatchNonScalarSentinel();
 }
