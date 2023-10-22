@@ -1166,11 +1166,8 @@ pub const LoaderSpec = struct {
     errors: Errors = .{},
     AddressSpace: type,
     pub const Options = struct {
-        /// (.Devel) Debug output all matches in first round
-        print_first_round_matches: bool = false,
-        /// (.Devel) Debug output all unknown in the second round
-        print_second_round_summary: bool = false,
-
+        /// (.Devel) Debug output all matches.
+        print_final_summary: bool = false,
         sorting_policy: enum {
             /// Only sort symbol table entries if the symbol table entry size
             /// matches the symbol size. This allows sorting using a generic
