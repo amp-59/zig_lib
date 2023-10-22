@@ -2293,38 +2293,43 @@ inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalAddReturn(T, arg1.*, arg2);
 }
 inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
+    @setRuntimeSafety(false);
     const result = @addWithOverflow(arg1, arg2);
     if (runtime_assertions and result[1] != 0) {
-        debug.addCausedOverflowFault(T, arg1, arg2, @returnAddress());
+        debug.addCausedOverflowFault(T, math.extrema(T).max, arg1, arg2, @returnAddress());
     }
     return result[0];
 }
-inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalSubReturn(T, arg1.*, arg2);
 }
-inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
+    @setRuntimeSafety(false);
     const result = @subWithOverflow(arg1, arg2);
     if (runtime_assertions and result[1] != 0) {
-        debug.subCausedOverflowFault(T, arg1, arg2, @returnAddress());
+        const extrema: math.Extrema = math.extrema(T);
+        debug.subCausedOverflowFault(T, @as(T, if (arg2 < 0) extrema.max else extrema.min), arg1, arg2, @returnAddress());
     }
     return result[0];
 }
-inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalMulReturn(T, arg1.*, arg2);
 }
-inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
+    @setRuntimeSafety(false);
     const result = @mulWithOverflow(arg1, arg2);
     if (runtime_assertions and result[1] != 0) {
         debug.mulCausedOverflowFault(T, arg1, arg2, @returnAddress());
     }
     return result[0];
 }
-inline fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = exactDivisionReturn(T, arg1.*, arg2);
 }
-inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: T = arg1 / arg2;
-    const remainder: T = normalSubReturn(T, arg1, (result * arg2));
+fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+    @setRuntimeSafety(false);
+    const result: T = normalDivisionReturn(T, arg1, arg2);
+    const remainder: T = normalSubReturn(T, arg1, normalMulReturn(T, result, arg2));
     if (runtime_assertions and remainder != 0) {
         debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder, @returnAddress());
     }
