@@ -3,6 +3,7 @@ const bits = @import("./bits.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
+
 pub const TimeSpec = extern struct {
     sec: u64 = 0,
     nsec: u64 = 0,
@@ -138,85 +139,89 @@ pub const DateTime = extern struct {
         return dt.hour;
     }
     pub fn getYear(dt: DateTime) u64 {
-        return dt.year + 2000;
+        return dt.year +% 2000;
     }
     pub fn getMonth(dt: DateTime) u8 {
-        return dt.mon + 1;
+        return dt.mon +% 1;
     }
     pub fn getWeekDay(dt: DateTime) u8 {
-        return dt.wday + 1;
+        return dt.wday +% 1;
     }
     pub fn getMonthDay(dt: DateTime) u8 {
-        return dt.mday + 1;
+        return dt.mday +% 1;
     }
     pub fn getYearDay(dt: DateTime) u16 {
-        return dt.yday + 1;
+        return dt.yday +% 1;
     }
     pub fn init(epoch_seconds: u64) DateTime {
-        if (epoch_seconds < leap_epoch) {
-            proc.exitGroupFault("TODO: Dates before epoch", 2);
+        @setRuntimeSafety(false);
+        var secs: usize = epoch_seconds;
+        var years: usize = 0;
+        if (epoch_seconds >= leap_epoch) {
+            secs -%= leap_epoch;
         } else {
-            @setRuntimeSafety(false);
-            const secs: u64 = epoch_seconds - leap_epoch;
-            const days: u64 = secs / 86_400;
-            var rem_secs: u64 = secs % 86_400;
-            var rem_days: u64 = days % days_per_400y;
-            const qc_cycles: u64 = days / days_per_400y;
-            const c_cycles: u64 = blk: {
-                const cycles: u64 = rem_days / days_per_100y;
-                break :blk cycles - builtin.int(u64, cycles == 4);
-            };
-            rem_days -%= c_cycles *% days_per_100y;
-            const q_cycles: u64 = blk: {
-                const cycles: u64 = rem_days / days_per_4y;
-                break :blk cycles - builtin.int(u64, cycles == 25);
-            };
-            rem_days -%= q_cycles *% days_per_4y;
-            const rem_years: u64 = blk: {
-                const rem: u64 = rem_days / days_per_year;
-                break :blk rem - builtin.int(u64, rem == 4);
-            };
-            rem_days -%= rem_years *% days_per_year;
-            const years: u64 = rem_years +%
-                (4 *% q_cycles) +% (100 *% c_cycles) +% (400 *% qc_cycles);
-            const leap_day: u64 = blk: {
-                const b0: bool = rem_years == 0;
-                const b1: bool = builtin.int2v(bool, q_cycles != 0, c_cycles == 0);
-                break :blk builtin.int2v(u64, b0, b1);
-            };
-            const year_day: u64 = blk: {
-                const leap_days: u64 = rem_days +% 31 +% 28 +% leap_day;
-                const leap_year: u64 = days_per_year +% leap_day;
-                break :blk leap_days - bits.cmov64z(leap_year < leap_days, leap_year);
-            };
-            var months: u8 = 0;
-            while (rem_days > days_in_month[months]) : (months +%= 1) {
-                rem_days -%= days_in_month[months];
-            }
-            months -%= bits.cmov8z(months > 9, 12);
-            const year: u64 = years +% builtin.int(u64, months > 9);
-            return .{
-                .yday = @intCast(year_day),
-                .mday = @intCast(rem_days),
-                .wday = @intCast((days +% 3) % 7),
-                .mon = @intCast(months +% 2),
-                .hour = @intCast(rem_secs / 3600),
-                .min = @intCast((rem_secs / 60) % 60),
-                .sec = @intCast(rem_secs % 60),
-                .year = year,
-            };
+            years -%= 30;
         }
+        var days: usize = secs / 86_400;
+        var rem_secs: usize = secs % 86_400;
+        var rem_days: usize = days % days_per_400y;
+        const qc_cycles: usize = days / days_per_400y;
+        const c_cycles: usize = blk: {
+            const cycles: usize = rem_days / days_per_100y;
+            break :blk cycles -% @intFromBool(cycles == 4);
+        };
+        rem_days -%= c_cycles *% days_per_100y;
+        const q_cycles: usize = blk: {
+            const cycles: usize = rem_days / days_per_4y;
+            break :blk cycles -% @intFromBool(cycles == 25);
+        };
+        rem_days -%= q_cycles *% days_per_4y;
+        const rem_years: usize = blk: {
+            const rem: usize = rem_days / days_per_year;
+            break :blk rem -% @intFromBool(rem == 4);
+        };
+        rem_days -%= rem_years *% days_per_year;
+        years +%= rem_years +%
+            (4 *% q_cycles) +% (100 *% c_cycles) +% (400 *% qc_cycles);
+        const leap_day: usize = @intFromBool(rem_years == 0) |
+            (@intFromBool(q_cycles != 0) | @intFromBool(c_cycles == 0));
+        const year_day: usize = blk: {
+            const leap_days: usize = rem_days +% 31 +% 28 +% leap_day;
+            const leap_year: usize = days_per_year +% leap_day;
+            break :blk leap_days -% if (leap_year < leap_days) leap_year else 0;
+        };
+        var months: u8 = 0;
+        while (rem_days > days_in_month[months]) : (months +%= 1) {
+            rem_days -%= days_in_month[months];
+        }
+        if (epoch_seconds < leap_epoch) {
+            rem_days -%= 1;
+        }
+        if (months >= 10) {
+            months -%= 12;
+            years +%= 1;
+        }
+        return .{
+            .yday = @intCast(year_day),
+            .mday = @intCast(rem_days),
+            .wday = @intCast((days +% 3) % 7),
+            .mon = @intCast(months +% 2),
+            .hour = @intCast(rem_secs / 3600),
+            .min = @intCast((rem_secs / 60) % 60),
+            .sec = @intCast(rem_secs % 60),
+            .year = years,
+        };
     }
     pub fn pack(dt: DateTime) PackedDateTime {
         return .{
-            .bits = bits.shl64(dt.year, 48) |
-                bits.shl64(dt.wday, 45) | bits.shl64(dt.mon, 41) |
-                bits.shl64(dt.yday, 32) | bits.shl64(dt.mday, 24) |
-                bits.shl64(dt.hour, 16) | bits.shl64(dt.min, 8) |
-                dt.sec,
+            .bits = (dt.year << 48) |
+                (@as(u64, dt.wday) << 45) | (@as(u64, dt.mon) << 41) |
+                (@as(u64, dt.yday) << 32) | (@as(u64, dt.mday) << 24) |
+                (@as(u64, dt.hour) << 16) | (@as(u64, dt.min) << 8) | dt.sec,
         };
     }
 };
+
 pub const PackedDateTime = extern struct {
     bits: u64,
     pub fn getYear(pdt: PackedDateTime) u64 {
