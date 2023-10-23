@@ -332,7 +332,8 @@ pub const ForkSpec = struct {
 };
 pub const CloneSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.clone3.errors.all },
-    return_type: type = usize,
+    function_type: type = fn () void,
+    return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const FutexSpec = struct {
@@ -601,62 +602,74 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
         @as(*meta.Args(Fn), @ptrFromInt(args_addr)).*,
     );
 }
-pub noinline fn clone(comptime clone_spec: CloneSpec, flags: sys.flags.Clone, stack_addr: u64, stack_len: u64, result_ptr: anytype, function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
+pub inline fn cloneFromBuf(
+    comptime clone_spec: CloneSpec,
+    flags: sys.flags.Clone,
+    buf: []u8,
+    ret: *meta.Return(clone_spec.function_type),
+    call: clone_spec.function_type,
+    args: meta.Args(clone_spec.function_type),
+) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
+    return clone(clone_spec, flags, @intFromPtr(buf.ptr), buf.len, ret, call, args);
+}
+pub noinline fn clone(
+    comptime clone_spec: CloneSpec,
+    flags: sys.flags.Clone,
+    addr: usize,
+    len: u64,
+    ret: *meta.Return(clone_spec.function_type),
+    call: clone_spec.function_type,
+    args: meta.Args(clone_spec.function_type),
+) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
     @setRuntimeSafety(false);
     const Context = struct {
-        call: if (@typeInfo(@TypeOf(function)) == .Pointer)
-            @TypeOf(function)
-        else
-            *const @TypeOf(function),
-        ret: *meta.Return(@TypeOf(function)),
-        args: meta.Args(@TypeOf(function)),
+        ret: *meta.Return(clone_spec.function_type),
+        call: clone_spec.function_type,
+        args: meta.Args(clone_spec.function_type),
     };
     const cl_args: CloneArgs = .{
         .flags = flags,
-        .stack_addr = stack_addr,
-        .stack_len = stack_len,
-        .child_tid_addr = stack_addr,
-        .parent_tid_addr = stack_addr +% 0x10,
-        .tls_addr = stack_addr +% 0x20,
+        .stack_addr = addr,
+        .stack_len = len,
+        .child_tid_addr = addr,
+        .parent_tid_addr = addr +% 0x10,
+        .tls_addr = addr +% 0x20,
     };
-    const ret = if (@TypeOf(result_ptr) == void) @constCast(&result_ptr) else result_ptr;
-    const cl_args_addr: u64 = @intFromPtr(&cl_args);
-    const cl_args_size: u64 = @sizeOf(CloneArgs);
-    const cl_ctx: *Context = @ptrFromInt(stack_addr +% (stack_len -% @sizeOf(Context)));
-    cl_ctx.* = .{ .call = function, .ret = ret, .args = args };
-    const rc: i64 = asm volatile (
+    const plctx: *Context = @ptrFromInt((addr +% len) -% @sizeOf(Context));
+    plctx.* = .{ .call = call, .ret = ret, .args = args };
+    const rc: isize = asm volatile (
         \\syscall # clone3
         : [ret] "={rax}" (-> isize),
         : [cl_sysno] "{rax}" (@intFromEnum(sys.Fn.clone3)),
-          [cl_args_addr] "{rdi}" (cl_args_addr),
-          [cl_args_size] "{rsi}" (cl_args_size),
+          [cl_args_addr] "{rdi}" (&cl_args),
+          [cl_args_size] "{rsi}" (@sizeOf(CloneArgs)),
         : "rcx", "r11", "memory"
     );
-    if (rc == 0) {
-        const tl_stack_addr: u64 = asm volatile (
-            \\xorq  %%rbp,  %%rbp
-            \\movq  %%rsp,  %[tl_stack_addr]
-            : [tl_stack_addr] "=r" (-> u64),
-            :
-            : "rbp", "rsp", "memory"
-        );
-        const tl_ctx: *Context = @ptrFromInt(tl_stack_addr -% @sizeOf(Context));
-        tl_ctx.ret.* = @call(.never_inline, tl_ctx.call, tl_ctx.args);
-        exit(0);
+    if (rc != 0) {
+        if (clone_spec.errors.throw.len != 0) {
+            if (rc < 0) try builtin.throw(sys.ErrorCode, clone_spec.errors.throw, rc);
+        }
+        if (clone_spec.errors.abort.len != 0) {
+            if (rc < 0) builtin.abort(sys.ErrorCode, clone_spec.errors.abort, rc);
+        }
+        if (clone_spec.return_type == void) {
+            return;
+        }
+        if (clone_spec.return_type != noreturn) {
+            return @intCast(rc);
+        }
     }
-    if (clone_spec.errors.throw.len != 0) {
-        if (rc < 0) try builtin.zigErrorThrow(sys.ErrorCode, clone_spec.errors.throw, rc);
-    }
-    if (clone_spec.errors.abort.len != 0) {
-        if (rc < 0) builtin.zigErrorAbort(sys.ErrorCode, clone_spec.errors.abort, rc);
-    }
-    if (clone_spec.return_type == void) {
-        return;
-    }
-    if (clone_spec.return_type != noreturn) {
-        return @intCast(rc);
-    }
-    unreachable;
+    const stack: usize = asm volatile (
+        \\xorq  %%rbp,  %%rbp
+        \\movq  %%rsp,  %[stack]
+        \\andq  $-16,   %%rsp
+        : [stack] "=r" (-> usize),
+        :
+        : "rbp", "rsp", "memory"
+    );
+    const tlctx: *Context = @ptrFromInt(stack -% @sizeOf(Context));
+    tlctx.ret.* = @call(.never_inline, tlctx.call, tlctx.args);
+    exit(0);
 }
 /// Replaces argument at `index` with argument at `index` +% 1
 /// This is useful for extracting information from the program arguments in
