@@ -92,6 +92,8 @@ pub const BuildCommand = struct {
     single_threaded: ?bool = null,
     /// Places each function in a separate section
     function_sections: ?bool = null,
+    /// Places data in separate sections
+    data_sections: ?bool = null,
     /// Omit debug symbols
     strip: ?bool = null,
     /// Enable formatted safety panics
@@ -622,6 +624,15 @@ pub const BuildCommand = struct {
             } else {
                 ptr[0..23].* = "-fno-function-sections\x00".*;
                 ptr += 23;
+            }
+        }
+        if (cmd.data_sections) |data_sections| {
+            if (data_sections) {
+                ptr[0..16].* = "-fdata-sections\x00".*;
+                ptr += 16;
+            } else {
+                ptr[0..19].* = "-fno-data-sections\x00".*;
+                ptr += 19;
             }
         }
         if (cmd.strip) |strip| {
@@ -1243,6 +1254,13 @@ pub const BuildCommand = struct {
                 len +%= 23;
             }
         }
+        if (cmd.data_sections) |data_sections| {
+            if (data_sections) {
+                len +%= 16;
+            } else {
+                len +%= 19;
+            }
+        }
         if (cmd.strip) |strip| {
             if (strip) {
                 len +%= 8;
@@ -1789,6 +1807,13 @@ pub const BuildCommand = struct {
                 array.writeMany("-fno-function-sections\x00");
             }
         }
+        if (cmd.data_sections) |data_sections| {
+            if (data_sections) {
+                array.writeMany("-fdata-sections\x00");
+            } else {
+                array.writeMany("-fno-data-sections\x00");
+            }
+        }
         if (cmd.strip) |strip| {
             if (strip) {
                 array.writeMany("-fstrip\x00");
@@ -2319,6 +2344,10 @@ pub const BuildCommand = struct {
                 cmd.function_sections = true;
             } else if (mem.testEqualString("-fno-function-sections", arg)) {
                 cmd.function_sections = false;
+            } else if (mem.testEqualString("-fdata-sections", arg)) {
+                cmd.data_sections = true;
+            } else if (mem.testEqualString("-fno-data-sections", arg)) {
+                cmd.data_sections = false;
             } else if (mem.testEqualString("-fstrip", arg)) {
                 cmd.strip = true;
             } else if (mem.testEqualString("-fno-strip", arg)) {
@@ -5633,6 +5662,7 @@ const build_help: [:0]const u8 =
     \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
     \\    -f[no-]single-threaded          Code assumes there is only one thread
     \\    -f[no-]function-sections        Places each function in a separate section
+    \\    -f[no-]data-sections            Places data in separate sections
     \\    -f[no-]strip                    Omit debug symbols
     \\    -f[no-]formatted-panics         Enable formatted safety panics
     \\    -ofmt                           Override target object format:
