@@ -403,6 +403,15 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
             ptr += 23;
         }
     }
+    if (cmd.data_sections) |data_sections| {
+        if (data_sections) {
+            ptr[0..16].* = "-fdata-sections\x00".*;
+            ptr += 16;
+        } else {
+            ptr[0..19].* = "-fno-data-sections\x00".*;
+            ptr += 19;
+        }
+    }
     if (cmd.strip) |strip| {
         if (strip) {
             ptr[0..8].* = "-fstrip\x00".*;
@@ -1022,6 +1031,13 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
             len +%= 20;
         } else {
             len +%= 23;
+        }
+    }
+    if (cmd.data_sections) |data_sections| {
+        if (data_sections) {
+            len +%= 16;
+        } else {
+            len +%= 19;
         }
     }
     if (cmd.strip) |strip| {
