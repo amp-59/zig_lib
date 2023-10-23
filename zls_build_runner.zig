@@ -169,8 +169,7 @@ fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
         ptr[0] = '[';
         ptr[1] = '"';
         ptr += 2;
-        @memcpy(ptr, cfg.include_dirs[0]);
-        ptr += cfg.include_dirs[0].len;
+        ptr = zl.fmt.strcpyEqu(ptr, cfg.include_dirs[0]);
         ptr[0] = '"';
         ptr += 1;
         var dir_idx: usize = 1;
@@ -178,8 +177,7 @@ fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
             ptr[0] = ',';
             ptr[1] = '"';
             ptr += 2;
-            @memcpy(ptr, cfg.include_dirs[dir_idx]);
-            ptr += cfg.include_dirs[dir_idx].len;
+            ptr = zl.fmt.strcpyEqu(ptr, cfg.include_dirs[dir_idx]);
             ptr[0] = '"';
             ptr += 1;
         }
@@ -194,11 +192,9 @@ fn lengthModules(node: *Builder.Node) usize {
     var itr: Builder.Node.Iterator = Builder.Node.Iterator.init(node);
     var len: usize = 0;
     while (itr.next()) |sub_node| {
-        if (sub_node.tag == .group) {
+        if (sub_node.flags.is_group) {
             len +%= lengthModules(sub_node);
-        }
-        if (sub_node.tag == .worker and
-            sub_node.tasks.tag == .build and
+        } else if (sub_node.tasks.tag == .build and
             sub_node.flags.have_task_data)
         {
             if (sub_node.tasks.cmd.build.modules) |mods| {
@@ -213,11 +209,9 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Builder.Node) usize {
     var itr: Builder.Node.Iterator = Builder.Node.Iterator.init(node);
     var len: usize = 0;
     while (itr.next()) |sub_node| {
-        if (sub_node.tag == .group) {
+        if (sub_node.flags.is_group) {
             len +%= writeModulesBuf(pkgs, sub_node);
-        }
-        if (sub_node.tag == .worker and
-            sub_node.tasks.tag == .build and
+        } else if (sub_node.tasks.tag == .build and
             sub_node.flags.have_task_data)
         {
             if (sub_node.tasks.cmd.build.modules) |mods| {
