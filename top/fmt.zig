@@ -194,7 +194,7 @@ pub const StringLiteralFormat = struct {
 pub fn writeSideBarIndex(buf: [*]u8, width: usize, idx: usize) usize {
     @setRuntimeSafety(false);
     const len: usize = length(u64, idx, 10);
-    const rem: usize = builtin.message_indent -% (width +% 1);
+    const rem: usize = builtin.message_indent -| (width +% 1);
     var ptr: [*]u8 = strsetEqu(buf, ' ', width -| len);
     ptr += ud64(idx).formatWriteBuf(ptr);
     ptr[0] = ':';
