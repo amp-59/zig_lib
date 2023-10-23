@@ -293,20 +293,18 @@ pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type
     }
     return error_set;
 }
-/// Attempt to match a return value against a set of error codes--returning the
-/// corresponding zig error on success.
-pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: isize) ZigError(Value, values)!void {
+pub fn throw(comptime Value: type, comptime values: []const Value, ret: isize) ZigError(Value, values)!void {
     @setRuntimeSafety(false);
-    const E = ZigError(Value, values);
+    const Error = ZigError(Value, values);
     inline for (values) |value| {
         if (ret == @intFromEnum(value)) {
-            return @field(E, value.errorName());
+            return @field(Error, value.errorName());
         }
     }
 }
 /// Attempt to match a return value against a set of error codes--aborting the
 /// program on success.
-pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
+pub fn abort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     @setRuntimeSafety(false);
     var name: []const u8 = undefined;
     inline for (values) |value| {
