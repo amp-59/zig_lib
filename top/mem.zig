@@ -3005,8 +3005,6 @@ pub const about = struct {
         if (fmt_len != 0) {
             ptr += 2;
             ptr += 2 +% fmt_len;
-            ptr[0..2].* = ", ".*;
-            ptr += 2;
         }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
@@ -3140,8 +3138,6 @@ pub const about = struct {
         if (fmt_len != 0) {
             ptr += 2;
             ptr += 2 +% fmt_len;
-            ptr[0..2].* = ", ".*;
-            ptr += 2;
         }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
