@@ -4,6 +4,8 @@ const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
+pub const c = @import("./time_c.zig");
+
 pub const TimeSpec = extern struct {
     sec: u64 = 0,
     nsec: u64 = 0,
@@ -34,6 +36,8 @@ pub const days_per_year = 365;
 pub const days_per_4y = (days_per_year * 4) + 1;
 pub const days_per_400y = (days_per_year * 400) + 97;
 pub const days_per_100y = (days_per_year * 100) + 24;
+pub const secs_per_hour = 3600;
+pub const secs_per_day = 86400;
 pub const leap_epoch = 946_684_800 + (86_400 * (31 + 29));
 pub const ns_per_us = 1000;
 pub const ns_per_ms = 1000 * ns_per_us;
@@ -72,19 +76,19 @@ pub const Kind = enum(u64) {
     tai = CLOCK.TAI,
     const CLOCK = sys.CLOCK;
 };
-pub const Month = enum {
-    January,
-    February,
-    March,
-    April,
-    May,
-    June,
-    July,
-    August,
-    September,
-    October,
-    November,
-    December,
+pub const Month = enum(u8) {
+    January = 1,
+    February = 2,
+    March = 3,
+    April = 4,
+    May = 5,
+    June = 6,
+    July = 7,
+    August = 8,
+    September = 9,
+    October = 10,
+    November = 11,
+    December = 12,
 };
 pub const ClockSpec = struct {
     return_type: type = TimeSpec,
@@ -120,104 +124,72 @@ pub fn diff(arg1: TimeSpec, arg2: TimeSpec) TimeSpec {
     ret.nsec +%= bits.cmov64z(j, 1_000_000_000);
     return ret;
 }
-pub const DateTime = extern struct {
+pub const DateTime = packed struct {
     sec: u8,
     min: u8,
     hour: u8,
     mday: u8,
-    wday: u8,
-    mon: u8,
     yday: u16,
     year: u64,
-    pub fn getSecond(dt: DateTime) u8 {
-        return dt.sec;
-    }
-    pub fn getMinute(dt: DateTime) u8 {
-        return dt.min;
-    }
-    pub fn getHour(dt: DateTime) u8 {
-        return dt.hour;
-    }
-    pub fn getYear(dt: DateTime) u64 {
-        return dt.year +% 2000;
-    }
-    pub fn getMonth(dt: DateTime) u8 {
-        return dt.mon +% 1;
-    }
-    pub fn getWeekDay(dt: DateTime) u8 {
-        return dt.wday +% 1;
-    }
-    pub fn getMonthDay(dt: DateTime) u8 {
-        return dt.mday +% 1;
-    }
-    pub fn getYearDay(dt: DateTime) u16 {
-        return dt.yday +% 1;
-    }
-    pub fn init(epoch_seconds: u64) DateTime {
-        @setRuntimeSafety(false);
-        var secs: usize = epoch_seconds;
-        var years: usize = 0;
-        if (epoch_seconds >= leap_epoch) {
-            secs -%= leap_epoch;
-        } else {
-            years -%= 30;
+    wday: Weekday,
+    mon: Month,
+    pub fn init(epoch_seconds: usize) DateTime {
+        var secs: isize = @bitCast(epoch_seconds);
+        secs -%= leap_epoch;
+        var days: isize = @divTrunc(secs, secs_per_day);
+        var remsecs: isize = @truncate(@rem(secs, secs_per_day));
+        if (remsecs < 0) {
+            remsecs +%= secs_per_day;
+            days -%= 1;
         }
-        var days: usize = secs / 86_400;
-        var rem_secs: usize = secs % 86_400;
-        var rem_days: usize = days % days_per_400y;
-        const qc_cycles: usize = days / days_per_400y;
-        const c_cycles: usize = blk: {
-            const cycles: usize = rem_days / days_per_100y;
-            break :blk cycles -% @intFromBool(cycles == 4);
-        };
-        rem_days -%= c_cycles *% days_per_100y;
-        const q_cycles: usize = blk: {
-            const cycles: usize = rem_days / days_per_4y;
-            break :blk cycles -% @intFromBool(cycles == 25);
-        };
-        rem_days -%= q_cycles *% days_per_4y;
-        const rem_years: usize = blk: {
-            const rem: usize = rem_days / days_per_year;
-            break :blk rem -% @intFromBool(rem == 4);
-        };
-        rem_days -%= rem_years *% days_per_year;
-        years +%= rem_years +%
-            (4 *% q_cycles) +% (100 *% c_cycles) +% (400 *% qc_cycles);
-        const leap_day: usize = @intFromBool(rem_years == 0) |
-            (@intFromBool(q_cycles != 0) | @intFromBool(c_cycles == 0));
-        const year_day: usize = blk: {
-            const leap_days: usize = rem_days +% 31 +% 28 +% leap_day;
-            const leap_year: usize = days_per_year +% leap_day;
-            break :blk leap_days -% if (leap_year < leap_days) leap_year else 0;
-        };
-        var months: u8 = 0;
-        while (rem_days > days_in_month[months]) : (months +%= 1) {
-            rem_days -%= days_in_month[months];
+        var remdays: isize = @truncate(@rem(days, days_per_400y));
+        var wday: isize = @truncate(@rem(3 +% days, 7));
+        if (wday < 0) {
+            wday +%= 7;
         }
-        if (epoch_seconds < leap_epoch) {
-            rem_days -%= 1;
+        var qc_cycles: isize = @divTrunc(days, days_per_400y);
+        if (remdays < 0) {
+            remdays +%= days_per_400y;
+            qc_cycles -%= 1;
+        }
+        var c_cycles: isize = @divTrunc(remdays, days_per_100y);
+        if (c_cycles == 4) {
+            c_cycles -%= 1;
+        }
+        remdays -%= c_cycles *% days_per_100y;
+        var q_cycles: isize = @divTrunc(remdays, days_per_4y);
+        if (q_cycles == 25) {
+            q_cycles -%= 1;
+        }
+        remdays -%= q_cycles *% days_per_4y;
+        var remyears: isize = @divTrunc(remdays, days_per_year);
+        if (remyears == 4) {
+            remyears -%= 1;
+        }
+        remdays -%= remyears *% days_per_year;
+        var leap: isize = @intFromBool(!(remyears != 0) and ((q_cycles != 0) or !(c_cycles != 0)));
+        var yday: isize = remdays +% 59 +% leap;
+        if (yday >= days_per_year +% leap) {
+            yday -%= days_per_year +% leap;
+        }
+        var years: isize = (remyears +% (4 *% q_cycles) +% (100 *% c_cycles)) +% (400 *% qc_cycles);
+        var months: usize = 0;
+        while (days_in_month[months] <= remdays) : (months +%= 1) {
+            remdays -%= days_in_month[months];
         }
         if (months >= 10) {
             months -%= 12;
             years +%= 1;
         }
         return .{
-            .yday = @intCast(year_day),
-            .mday = @intCast(rem_days),
-            .wday = @intCast((days +% 3) % 7),
-            .mon = @intCast(months +% 2),
-            .hour = @intCast(rem_secs / 3600),
-            .min = @intCast((rem_secs / 60) % 60),
-            .sec = @intCast(rem_secs % 60),
-            .year = years,
-        };
-    }
-    pub fn pack(dt: DateTime) PackedDateTime {
-        return .{
-            .bits = (dt.year << 48) |
-                (@as(u64, dt.wday) << 45) | (@as(u64, dt.mon) << 41) |
-                (@as(u64, dt.yday) << 32) | (@as(u64, dt.mday) << 24) |
-                (@as(u64, dt.hour) << 16) | (@as(u64, dt.min) << 8) | dt.sec,
+            .year = @intCast(years +% 2000),
+            .mon = @enumFromInt(months +% 3),
+            .mday = @intCast(remdays +% 1),
+            .wday = @enumFromInt(wday),
+            .yday = @intCast(yday),
+            .hour = @intCast(@divTrunc(remsecs, secs_per_hour)),
+            .min = @intCast(@rem(@divTrunc(remsecs, 60), 60)),
+            .sec = @intCast(@rem(remsecs, 60)),
         };
     }
 };
@@ -225,7 +197,7 @@ pub const DateTime = extern struct {
 pub const PackedDateTime = extern struct {
     bits: u64,
     pub fn getYear(pdt: PackedDateTime) u64 {
-        return bits.shr64(pdt.bits, 48) + 2000;
+        return bits.shr64(pdt.bits, 48) +% 1900;
     }
     pub fn getSecond(pdt: PackedDateTime) u8 {
         return bits.mask8L(pdt.bits);
@@ -236,17 +208,17 @@ pub const PackedDateTime = extern struct {
     pub fn getHour(pdt: PackedDateTime) u8 {
         return bits.shr64TM(u8, pdt.bits, 16, 5);
     }
-    pub fn getMonth(pdt: PackedDateTime) u8 {
-        return bits.shr64TM(u8, pdt.bits, 41, 4) + 1;
-    }
-    pub fn getWeekDay(pdt: PackedDateTime) u8 {
-        return bits.shr64TM(u8, pdt.bits, 45, 3) + 1;
-    }
     pub fn getMonthDay(pdt: PackedDateTime) u8 {
-        return bits.shr64TM(u8, pdt.bits, 24, 5) + 1;
+        return bits.shr64TM(u8, pdt.bits, 24, 5);
     }
     pub fn getYearDay(pdt: PackedDateTime) u16 {
-        return bits.shr64TM(u16, pdt.bits, 32, 9) + 1;
+        return bits.shr64TM(u16, pdt.bits, 32, 9) +% 1;
+    }
+    pub fn getMonth(pdt: PackedDateTime) Month {
+        return @enumFromInt(bits.shr64TM(u8, pdt.bits, 41, 4) +% 1);
+    }
+    pub fn getWeekDay(pdt: PackedDateTime) Weekday {
+        return @enumFromInt(bits.shr64TM(u8, pdt.bits, 45, 3));
     }
     pub fn unpack(pdt: PackedDateTime) DateTime {
         return .{
