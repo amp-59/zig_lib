@@ -10,7 +10,7 @@ const builtin = @import("./builtin.zig");
 pub const panic = debug.panic;
 pub usingnamespace debug.panic_extra;
 pub usingnamespace ZigLibEntry;
-pub var stack: usize = undefined;
+pub var stack: usize = 0;
 
 pub fn Start(comptime entry: anytype) type {
     return struct {

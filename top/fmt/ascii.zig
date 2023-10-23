@@ -36,6 +36,14 @@ pub const control_code = struct {
     pub const unit_separator: u8 = 0x1F;
     pub const delete: u8 = 0x7F;
 };
+pub fn isWord(c: u8) bool {
+    switch (c) {
+        '0'...'9', 'A'...'Z', 'a'...'z', '_' => {
+            return true;
+        },
+        else => return false,
+    }
+}
 pub fn isAlphanumeric(c: u8) bool {
     switch (c) {
         '0'...'9', 'A'...'Z', 'a'...'z' => {
