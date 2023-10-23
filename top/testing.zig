@@ -310,18 +310,19 @@ const reinterpret_spec: mem.array.ReinterpretSpec = builtin.define(
     mem.array.spec.reinterpret.fmt,
 );
 pub fn printBufN(comptime n: usize, any: anytype) void {
+    @setRuntimeSafety(false);
     var buf: [n]u8 = undefined;
     const len: usize = fmt.any(any).formatWriteBuf(&buf);
     buf[len] = '\n';
     debug.write(buf[0 .. len +% 1]);
 }
 pub fn renderBufN(comptime render_spec: fmt.RenderSpec, comptime n: usize, any: anytype) void {
+    @setRuntimeSafety(false);
     var buf: [n]u8 = undefined;
     const len: usize = fmt.render(render_spec, any).formatWriteBuf(&buf);
     buf[len] = '\n';
     debug.write(buf[0 .. len +% 1]);
 }
-
 pub fn printN(comptime n: usize, any: anytype) void {
     var array: mem.array.StaticString(n) = undefined;
     array.undefineAll();
