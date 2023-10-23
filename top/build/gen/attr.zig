@@ -369,6 +369,12 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Places each function in a separate section"},
         },
         .{
+            .name = "data_sections",
+            .string = "-fdata-sections",
+            .and_no = .{ .string = "-fno-data-sections" },
+            .descr = &.{"Places data in separate sections"},
+        },
+        .{
             .name = "strip",
             .string = "-fstrip",
             .and_no = .{ .string = "-fno-strip" },

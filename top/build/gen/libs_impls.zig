@@ -532,7 +532,7 @@ pub fn main() !void {
     const array: *common.Array = allocator.create(common.Array);
     const FunctionPointers = build.GenericBuilder(.{}).FunctionPointers;
     try writeLoadFromSources(array, FunctionPointers, "about", .{
-        .elf = "zl.builtin.root.Builder.DynamicLoader.about",
+        .elf = "zl.builtin.root.Builder.DynamicLoader.compare",
         .perf = "zl.builtin.root.Builder.PerfEvents",
         .generic = "zl.builtin.root.Builder.about",
     });
