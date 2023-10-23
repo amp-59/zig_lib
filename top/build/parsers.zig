@@ -301,6 +301,10 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             cmd.function_sections = true;
         } else if (mem.testEqualString("-fno-function-sections", arg)) {
             cmd.function_sections = false;
+        } else if (mem.testEqualString("-fdata-sections", arg)) {
+            cmd.data_sections = true;
+        } else if (mem.testEqualString("-fno-data-sections", arg)) {
+            cmd.data_sections = false;
         } else if (mem.testEqualString("-fstrip", arg)) {
             cmd.strip = true;
         } else if (mem.testEqualString("-fno-strip", arg)) {
@@ -1267,6 +1271,7 @@ const build_help: [:0]const u8 =
     \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
     \\    -f[no-]single-threaded          Code assumes there is only one thread
     \\    -f[no-]function-sections        Places each function in a separate section
+    \\    -f[no-]data-sections            Places data in separate sections
     \\    -f[no-]strip                    Omit debug symbols
     \\    -f[no-]formatted-panics         Enable formatted safety panics
     \\    -ofmt                           Override target object format:
