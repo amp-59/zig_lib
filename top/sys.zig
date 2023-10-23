@@ -2199,10 +2199,10 @@ pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime retu
         unreachable;
     }
     if (errors.throw.len != 0) {
-        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
+        try builtin.throw(ErrorCode, errors.throw, ret);
     }
     if (errors.abort.len != 0) {
-        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
+        builtin.abort(ErrorCode, errors.abort, ret);
     }
     if (@sizeOf(return_type) == @sizeOf(usize)) {
         return @as(return_type, @bitCast(ret));
