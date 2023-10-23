@@ -295,6 +295,17 @@ pub fn cast(comptime Int: type, i: anytype) ?Int {
     }
     return null;
 }
+pub fn overflowLimit(comptime Int: type, i: anytype) ?Int {
+    @setRuntimeSafety(false);
+    const x: Extrema = extrema(Int);
+    if (i > x.max) {
+        return x.max;
+    }
+    if (i < x.min) {
+        return x.min;
+    }
+    return null;
+}
 pub fn order(a: anytype, b: anytype) Order {
     if (a == b) {
         return .eq;
