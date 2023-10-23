@@ -14,10 +14,7 @@ pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
     },
 });
 pub const DynamicLoader = zl.elf.GenericDynamicLoader(.{
-    .logging = .{
-        .show_elf_header = true,
-        .show_relocations = true,
-    },
+    .logging = .{},
     .errors = .{},
     .AddressSpace = LoaderSpace,
 });
@@ -73,11 +70,11 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         info1 = try ld.load(try findPath(&allocator, vars, name));
     }
     if (args.len == 2) {
-        debug.write(buf[0..fmt.strlen(DynamicLoader.about.writeBinary(buf, info1, width), buf)]);
+        debug.write(buf[0..fmt.strlen(DynamicLoader.compare.writeBinary(buf, info1, width), buf)]);
     } else for (args[2..]) |arg| {
         const name: [:0]u8 = mem.terminate(arg, 0);
         info2 = try ld.load(try findPath(&allocator, vars, name));
-        debug.write(buf[0..fmt.strlen(DynamicLoader.about.writeBinaryDifference(buf, info1, info2, width), buf)]);
+        debug.write(buf[0..fmt.strlen(DynamicLoader.compare.writeBinaryDifference(buf, info1, info2, width), buf)]);
         info1 = info2;
     }
 }
