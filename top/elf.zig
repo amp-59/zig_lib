@@ -2323,6 +2323,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         };
         pub const about = struct {
             fn writePercentage(buf: [*]u8, sym: *const Elf64_Sym, mat: compare.Match, sizes: *compare.Sizes) [*]u8 {
+                @setRuntimeSafety(false);
                 if (sym.st_size * 200 < sizes.new +% sizes.old or
                     mat.flags.is_insignificant)
                 {
