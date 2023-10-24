@@ -65,8 +65,8 @@ pub const ExecPhase = enum(u8) {
     ///    by run task.
     ///     Examples:
     ///     ;; Run the output of `elfcmp` build task with two file arguments on
-    ///        task completion.
-    ///     `zig build run elfcmp -- zig-out/bin/main.old zig-out/bin/main`
+    ///     ;; task completion.
+    ///     `zig build run elfcmp ++ zig-out/bin/main.old zig-out/bin/main`
     ///
     Command = 2,
     /// This phase executes the command queue, comprising all implicit
@@ -950,6 +950,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return buf[0..len];
             }
+            pub fn getPath(node: *const Node, key: types.File.Key) ?*types.Path {
+                @setRuntimeSafety(false);
+                if (node.getFile(key)) |fs| {
+                    if (node.getFilePath(fs)) |path| {
+                        return path;
+                    }
+                }
+                return null;
+            }
             pub fn getFilePath(node: *const Node, fs: *const types.File) ?*types.Path {
                 @setRuntimeSafety(false);
                 const paths: []types.Path = node.getPaths();
@@ -1548,7 +1557,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             "--entry",  "load",     "-z", "defs",
         };
         export const extn_args1 = [_][*:0]const u8{
-            "-OReleaseSmall",
+            "-ODebug",
             "-fstrip",
             "-fno-compiler-rt",
             "-fno-stack-check",
@@ -1820,7 +1829,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         inline fn buildTaskArgs(allocator: *Allocator, node: *Node) ?[][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             const paths: []types.Path = node.getPaths()[@as(usize, 1) +% @intFromBool(node.flags.have_config_root) ..];
-
             if (!node.flags.have_task_data) {
                 return taskArgs(allocator, node, .cmd_args);
             }
@@ -3681,15 +3689,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                 }
-                for ([2]types.BinaryOutput{ .obj, .lib }) |out| {
+                for (&[3]types.BinaryOutput{ .obj, .lib, .exe }) |out| {
                     ptr[0..13].* = "};\npub const ".*;
                     ptr += 13;
-                    if (out == .obj) {
-                        ptr[0..7].* = "compile".*;
-                    } else {
-                        ptr[0..7].* = "dynamic".*;
-                    }
-                    ptr += 7;
+                    ptr = fmt.strcpyEqu(ptr, switch (out) {
+                        .obj => "compile",
+                        .lib => "dynamic",
+                        .exe => "executable",
+                    });
                     ptr[0..52].* = "_units=[_]struct{@Type(.EnumLiteral),[:0]const u8}{\n".*;
                     ptr += 52;
                     for (node.getDepns()) |dep| {
