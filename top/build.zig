@@ -250,7 +250,7 @@ pub const BuilderSpec = struct {
         eager_compile_errors: bool = false,
         /// (Devel.) Start dependencies in new threads regardless of
         /// total number.
-        eager_multi_threading: bool = true,
+        eager_multi_threading: bool = false,
         /// (Devel.) Restore dynamic environment from the cache.
         restore_dyn_env: bool = false,
         /// (Devel.) Save dynamic environment to the cache.
@@ -1557,7 +1557,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             "--entry",  "load",     "-z", "defs",
         };
         export const extn_args1 = [_][*:0]const u8{
-            "-ODebug",
+            "-OReleaseSmall",
             "-fstrip",
             "-fno-compiler-rt",
             "-fno-stack-check",

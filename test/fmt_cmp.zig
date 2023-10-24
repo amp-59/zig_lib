@@ -356,26 +356,19 @@ pub fn main() void {
     var count2: u32 = 0;
     var ret: u64 = 2;
     const import = @cImport({});
-
     if (@hasDecl(import, "std")) {
         standardLibFormatter(&futex0, &futex1, count1, count2, ret);
-    }
-    if (@hasDecl(import, "zl")) {
+    } else if (@hasDecl(import, "zl")) {
         zigLibContainerFormatter(&futex0, &futex1, count1, count2, ret);
-    }
-    if (@hasDecl(import, "arraySlice")) {
+    } else if (@hasDecl(import, "arraySlice")) {
         zigLibContainerWriteSlices(&futex0, &futex1, count1, count2, ret);
-    }
-    if (@hasDecl(import, "arrayCount")) {
+    } else if (@hasDecl(import, "arrayCount")) {
         zigLibContainerWriteArrays(&futex0, &futex1, count1, count2, ret);
-    }
-    if (@hasDecl(import, "O1")) {
+    } else if (@hasDecl(import, "O1")) {
         zigLibOptimisedMessage(&futex0, &futex1, count1, count2, ret);
-    }
-    if (@hasDecl(import, "O2")) {
+    } else if (@hasDecl(import, "O2")) {
         zigLibOptimisedMessage2(&futex0, &futex1, count1, count2, ret);
-    }
-    if (@hasDecl(import, "O3")) {
+    } else {
         zigLibOptimisedMessage3(&futex0, &futex1, count1, count2, ret);
     }
 }
