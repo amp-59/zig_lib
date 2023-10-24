@@ -2174,75 +2174,29 @@ pub const stringLiteral = @as(*const fn ([]const u8) StringLiteralFormat, @ptrCa
 pub fn sourceLocation(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
 }
-pub fn yr(year: u64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 4 },
-    .range = .{ .min = 0, .max = 9999 },
-}) {
-    return .{ .value = year };
-}
-pub fn mon(month: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 2 },
-    .range = .{ .min = 1, .max = 12 },
-}) {
-    return .{ .value = month };
-}
-pub fn mday(month_day: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 2 },
-    .range = .{ .min = 1, .max = 31 },
-}) {
-    return .{ .value = month_day };
-}
-pub fn yday(year_day: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 4 },
-    .range = .{ .min = 1, .max = 366 },
-}) {
-    return .{ .value = year_day };
-}
-pub fn hr(hour: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 2 },
-    .range = .{ .min = 0, .max = 23 },
-}) {
-    return .{ .value = hour };
-}
-pub fn min(minute: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 2 },
-    .range = .{ .min = 0, .max = 59 },
-}) {
-    return .{ .value = minute };
-}
-pub fn sec(second: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 2 },
-    .range = .{ .min = 0, .max = 59 },
-}) {
-    return .{ .value = second };
-}
-/// Constructs DateTime formatter
-pub fn dt(value: time.DateTime) GenericDateTimeFormat(time.DateTime) {
+pub fn year(value: usize) Type.Year {
     return .{ .value = value };
 }
-/// Constructs packed DateTime formatter
-pub fn pdt(value: time.PackedDateTime) GenericDateTimeFormat(time.PackedDateTime) {
+pub fn mon(value: time.Month) Type.Month {
+    return .{ .value = @intFromEnum(value) };
+}
+pub fn mday(value: u8) Type.MonthDay {
+    return .{ .value = value };
+}
+pub fn yday(value: u8) Type.YearDay {
+    return .{ .value = value };
+}
+pub fn hour(value: u8) Type.Hour {
+    return .{ .value = value };
+}
+pub fn min(value: u8) Type.Minute {
+    return .{ .value = value };
+}
+pub fn sec(value: u8) Type.Second {
+    return .{ .value = value };
+}
+/// Constructs DateTime formatter
+pub fn dt(value: time.DateTime) GenericDateTimeFormat(.{}) {
     return .{ .value = value };
 }
 pub fn nsec(value: u64) Type.NSec {
