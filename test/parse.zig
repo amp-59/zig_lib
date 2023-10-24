@@ -243,6 +243,10 @@ fn testParseUserInt() !void {
     try debug.expectEqual(isize, parse.noexcept.signed("-0b111"), -7);
     try debug.expectEqual(isize, parse.noexcept.signed("-0o111"), -73);
     try debug.expectEqual(isize, parse.noexcept.signed("-0x111"), -273);
+    try debug.expectEqual(u8, 255, try parse.any(u8, "255"));
+    try debug.expectError(anyerror!u8, error.IntCastTruncatedBits, parse.any(u8, "256"));
+    try debug.expectEqual(i8, 127, try parse.any(i8, "127"));
+    try debug.expectError(anyerror!i8, error.IntCastTruncatedBits, parse.any(i8, "128"));
 }
 fn testParseReusableIntExhaustive() !void {
     var rng: file.DeviceRandomBytes(4096) = .{};
