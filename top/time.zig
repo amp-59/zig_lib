@@ -3,9 +3,6 @@ const bits = @import("./bits.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-
-pub const c = @import("./time_c.zig");
-
 pub const TimeSpec = extern struct {
     sec: u64 = 0,
     nsec: u64 = 0,
@@ -61,7 +58,6 @@ pub const s_per_min = 60;
 pub const s_per_hour = s_per_min * 60;
 pub const s_per_day = s_per_hour * 24;
 pub const s_per_week = s_per_day * 7;
-
 pub const Kind = enum(u64) {
     realtime = CLOCK.REALTIME,
     monotonic = CLOCK.MONOTONIC,
@@ -96,7 +92,6 @@ pub const ClockSpec = struct {
 };
 pub const ClockGetTime = *fn (Kind, *TimeSpec) u64;
 pub const GetTimeOfDay = *fn (*TimeVal, *TimeZone) u64;
-
 pub fn get(comptime clock_spec: ClockSpec, kind: Kind) sys.ErrorUnion(clock_spec.errors, TimeSpec) {
     var ts: TimeSpec = undefined;
     if (meta.wrap(sys.call(.clock_gettime, clock_spec.errors, void, .{ @intFromEnum(kind), @intFromPtr(&ts) }))) {
@@ -193,7 +188,6 @@ pub const DateTime = packed struct {
         };
     }
 };
-
 pub const PackedDateTime = extern struct {
     bits: u64,
     pub fn getYear(pdt: PackedDateTime) u64 {
