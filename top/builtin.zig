@@ -2633,9 +2633,11 @@ pub fn diff(comptime T: type, arg1: T, arg2: T) T {
 pub fn cmov(comptime T: type, b: bool, argt: T, argf: T) T {
     return if (b) argt else argf;
 }
-pub fn isComptime() bool {
-    var b: bool = false;
-    return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
+fn __indicateComptime(comptime T: type) T {
+    return undefined;
+}
+pub inline fn requireComptime(comptime T: type) bool {
+    return @inComptime() or @typeInfo(@TypeOf(.{__indicateComptime(T)})).Struct.fields[0].is_comptime;
 }
 pub inline fn ptrCast(comptime T: type, any: anytype) T {
     @setRuntimeSafety(false);
