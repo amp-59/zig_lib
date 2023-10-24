@@ -82,11 +82,10 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const crypto: *Node = group.addBuild(allocator, test_build_cmd, "crypto", "test/crypto.zig");
     const zig: *Node = group.addBuild(allocator, test_build_cmd, "zig", "test/zig.zig");
     const mem: *Node = group.addBuild(allocator, test_build_cmd, "mem", "test/mem.zig");
-    const grep: *Node = group.addRun(allocator, "grep", &.{ "/usr/bin/grep", "Node", "./build.zig" });
-    mem.flags.want_stack_traces = true;
+    const proc: *Node = group.addBuild(allocator, test_build_cmd, "proc", "test/proc.zig");
+    const elfcmp: *Node = group.addBuild(allocator, test_build_cmd, "elfcmp", "test/elfcmp.zig");
     const mem2: *Node = group.addBuild(allocator, test_build_cmd, "mem2", "test/mem2.zig");
     const x86: *Node = group.addBuild(allocator, test_build_cmd, "x86", "test/x86.zig");
-    const proc: *Node = group.addBuild(allocator, test_build_cmd, "proc", "test/proc.zig");
     const rng: *Node = group.addBuild(allocator, test_build_cmd, "rng", "test/rng.zig");
     const ecdsa: *Node = group.addBuild(allocator, test_build_cmd, "ecdsa", "test/crypto/ecdsa.zig");
     const aead: *Node = group.addBuild(allocator, test_build_cmd, "aead", "test/crypto/aead.zig");
@@ -99,6 +98,18 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const pcurves: *Node = group.addBuild(allocator, test_build_cmd, "pcurves", "test/crypto/pcurves.zig");
     const algo: *Node = group.addBuild(allocator, test_build_cmd, "algo", "test/algo.zig");
     const fmt_cmp: *Node = group.addBuild(allocator, test_build_cmd, "fmt_cmp", "test/fmt_cmp.zig");
+    const grep: *Node = group.addRun(allocator, "grep", &.{ "/usr/bin/grep", "Node", "./build.zig" });
+
+    mem.flags.want_stack_traces = true;
+    traceGroup(allocator, group.addGroup(allocator, "trace", null));
+
+    elfcmp.dependOn(allocator, meta);
+    elfcmp.dependOn(allocator, builtin);
+    meta.tasks.cmd.build.strip = false;
+    builtin.tasks.cmd.build.strip = false;
+    elfcmp.addRunArg(allocator).* = meta.getPath(.{ .tag = .output_generic }).?.concatenate(allocator);
+    elfcmp.addRunArg(allocator).* = builtin.getPath(.{ .tag = .output_generic }).?.concatenate(allocator);
+
     test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     test_build_cmd.dependencies = &.{.{ .name = "@build" }};
     const build_stress: *Node = group.addBuild(allocator, test_build_cmd, "build_stress", "test/build.zig");
@@ -116,7 +127,12 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     x86.flags.want_stack_traces = true;
     const test_symbols: *Node = group.addBuild(allocator, test_build_cmd, "test_symbols", "test/symbols.zig");
     langGroup(allocator, group.addGroup(allocator, "lang", null));
-    traceGroup(allocator, group.addGroup(allocator, "trace", null));
+    build_stress.addToplevelArgs(allocator);
+    serial.addToplevelArgs(allocator);
+    elf.dependOn(allocator, test_symbols);
+    elf.dependOn(allocator, test_parsers);
+    elf.dependOn(allocator, test_writers);
+
     x86.descr = "Test x86 assembler/disassembler";
     decls.descr = "Test compilation of all public declarations recursively";
     builtin.descr = "Test builtin functions";
@@ -150,12 +166,9 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     build_stress.descr = "Try to produce builder errors";
     serial.descr = "Test data serialisation functions";
     elf.descr = "Test ELF iterator";
-    build_stress.addToplevelArgs(allocator);
-    serial.addToplevelArgs(allocator);
-    elf.dependOn(allocator, test_symbols);
-    elf.dependOn(allocator, test_parsers);
-    elf.dependOn(allocator, test_writers);
+    elfcmp.descr = "Test ELF comparison";
 }
+
 pub fn userGroup(allocator: *build.Allocator, group: *Node) void {
     var user_build_cmd: build.BuildCommand = build_cmd;
     user_build_cmd.modules = &.{};
@@ -248,14 +261,12 @@ pub fn buildRunnerTestGroup(allocator: *build.Allocator, group: *Node) void {
     } };
     test_build_cmd.kind = .lib;
     test_build_cmd.dynamic = true;
-
     const proc_auto: *Node = group.addBuild(allocator, test_build_cmd, "proc", "top/build/proc.auto.zig");
     const about_auto: *Node = group.addBuild(allocator, test_build_cmd, "about", "top/build/about.auto.zig");
     const build_auto: *Node = group.addBuild(allocator, test_build_cmd, "build", "top/build/build.auto.zig");
     const format_auto: *Node = group.addBuild(allocator, test_build_cmd, "format", "top/build/format.auto.zig");
     const archive_auto: *Node = group.addBuild(allocator, test_build_cmd, "archive", "top/build/archive.auto.zig");
     const objcopy_auto: *Node = group.addBuild(allocator, test_build_cmd, "objcopy", "top/build/objcopy.auto.zig");
-
     build_runner.descr = "Test library build runner using the library build program";
     dynamic_extensions.descr = "Test library build runner usage of dynamic extensions";
     zls_build_runner.descr = "Test ZLS special build runner";
@@ -264,7 +275,6 @@ pub fn buildRunnerTestGroup(allocator: *build.Allocator, group: *Node) void {
     format_auto.descr = "source root for `FormatCommand` functions";
     archive_auto.descr = "source root for `ArchiveCommand` functions";
     objcopy_auto.descr = "source root for `ObjcopyCommand` functions";
-
     for ([_]*Node{
         build_runner, dynamic_extensions, zls_build_runner,
     }) |node| {
@@ -310,15 +320,22 @@ pub fn targetgenGroup(allocator: *build.Allocator, group: *Node) void {
     impls_target.dependOn(allocator, impls_arch);
     format.addDepn(allocator, .format, impls_target, .run);
 }
+fn regenGroup(allocator: *build.Allocator, group: *Node) void {
+    const regen: *Node = group.addBuild(allocator, build_cmd, "rebuild", "top/build/gen/rebuild_impls.zig");
+    regen.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
+    regen.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
+}
 pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
     buildRunnerTestGroup(allocator, toplevel.addGroupWithTask(allocator, "br", .build));
     testGroup(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
-    userGroup(allocator, toplevel.addGroupWithTask(allocator, "user", .build));
-    exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "examples", .build));
-    memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
-    sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
-    buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
-    targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
+    if (false) {
+        userGroup(allocator, toplevel.addGroupWithTask(allocator, "user", .build));
+        exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "examples", .build));
+        memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
+        sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
+        buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
+        targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
+    }
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
