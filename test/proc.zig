@@ -62,14 +62,15 @@ fn testFutexWakeOp(futex1: *u32, futex2: *u32) void {
     proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .Assign, .cmp = .Equal, .to = 0x20, .from = 0x10 }) catch {};
 }
 fn testCloneAndFutex() !void {
+    var ret: void = {};
     var allocator: mem.SimpleAllocator = .{};
     var futex1: u32 = 16;
     var futex2: u32 = 16;
-    try proc.clone(.{ .return_type = void }, .{}, allocator.allocateRaw(65536, 16), 65536, {}, &testFutexWait, .{&futex1});
+    try proc.clone(.{ .function_type = @TypeOf(&testFutexWait) }, .{}, allocator.allocateRaw(65536, 16), 65536, &ret, testFutexWait, .{&futex1});
     try time.sleep(.{}, .{ .nsec = 0x10000 });
-    try proc.clone(.{ .return_type = void }, .{}, allocator.allocateRaw(65536, 16), 65536, {}, &testFutexWakeOp, .{ &futex1, &futex2 });
+    try proc.clone(.{ .function_type = @TypeOf(&testFutexWakeOp) }, .{}, allocator.allocateRaw(65536, 16), 65536, &ret, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
-    try proc.clone(.{ .return_type = void }, .{}, allocator.allocateRaw(65536, 16), 65536, {}, &testFutexWake, .{&futex2});
+    try proc.clone(.{ .function_type = @TypeOf(&testFutexWake) }, .{}, allocator.allocateRaw(65536, 16), 65536, &ret, testFutexWake, .{&futex2});
     try debug.expectEqual(u32, 32, futex1);
     try debug.expectEqual(u32, 32, futex2);
 }
@@ -97,6 +98,25 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         }
     }
 }
+
+const TSS = mem.ThreadSafeSet(8, u16, u16);
+
+fn sleepAndSet(tss: *TSS) void {
+    time.sleep(.{ .errors = .{} }, .{ .nsec = 5000000 });
+    tss.set(0, 0);
+    proc.futexWake(.{ .errors = .{} }, tss.mutex(0), 1);
+}
+pub fn testFutexOnThreadSafeSet() !void {
+    var tss: TSS = .{};
+    tss.set(0, 2);
+    try debug.expectEqual(u16, tss.get(0), 2);
+    const futex: *u32 = tss.mutex(0);
+    var ret: void = {};
+    var buf: [4096]u8 = undefined;
+    try proc.cloneFromBuf(.{ .function_type = @TypeOf(&sleepAndSet) }, .{}, &buf, &ret, &sleepAndSet, .{&tss});
+    var exp: u32 = futex.*;
+    try proc.futexWait(.{}, futex, exp, &.{ .sec = 1 });
+}
 pub fn testUpdateSignal() !void {
     var new_action: proc.SignalAction = .{
         .flags = .{},
@@ -104,10 +124,10 @@ pub fn testUpdateSignal() !void {
     };
     try proc.updateSignalAction(.{}, .SEGV, new_action, null);
 }
-pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: anytype) !void {
-    _ = aux;
+pub fn main(_: [][*:0]u8, vars: [][*:0]u8, _: anytype) !void {
     if (builtin.strip_debug_info) {
         try testCloneAndFutex();
+        try testFutexOnThreadSafeSet();
     }
     try testUpdateSignal();
     try testFindNameInPath(vars);

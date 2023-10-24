@@ -606,7 +606,7 @@ pub inline fn cloneFromBuf(
     comptime clone_spec: CloneSpec,
     flags: sys.flags.Clone,
     buf: []u8,
-    ret: *volatile meta.Return(clone_spec.function_type),
+    ret: *meta.Return(clone_spec.function_type),
     call: clone_spec.function_type,
     args: meta.Args(clone_spec.function_type),
 ) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
@@ -617,7 +617,7 @@ pub noinline fn clone(
     flags: sys.flags.Clone,
     addr: usize,
     len: u64,
-    ret: *volatile meta.Return(clone_spec.function_type),
+    ret: *meta.Return(clone_spec.function_type),
     call: clone_spec.function_type,
     args: meta.Args(clone_spec.function_type),
 ) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
@@ -642,34 +642,34 @@ pub noinline fn clone(
         : [ret] "={rax}" (-> isize),
         : [cl_sysno] "{rax}" (@intFromEnum(sys.Fn.clone3)),
           [cl_args_addr] "{rdi}" (&plargs),
-          [cl_args_size] "{rsi}" (@sizeOf(CloneArgs)),
+          [cl_args_size] "{rsi}" (@as(usize, @sizeOf(CloneArgs))),
         : "rcx", "r11", "memory"
     );
-    if (rc != 0) {
-        if (clone_spec.errors.throw.len != 0) {
-            if (rc < 0) try builtin.throw(sys.ErrorCode, clone_spec.errors.throw, rc);
-        }
-        if (clone_spec.errors.abort.len != 0) {
-            if (rc < 0) builtin.abort(sys.ErrorCode, clone_spec.errors.abort, rc);
-        }
-        if (clone_spec.return_type == void) {
-            return;
-        }
-        if (clone_spec.return_type != noreturn) {
-            return @intCast(rc);
-        }
+    if (rc == 0) {
+        const stack: usize = asm volatile (
+            \\xorq  %%rbp,  %%rbp
+            \\movq  %%rsp,  %[stack]
+            \\andq  $-16,   %%rsp
+            : [stack] "=r" (-> usize),
+            :
+            : "rbp", "rsp", "memory"
+        );
+        const tlctx: *Context = @ptrFromInt(stack -% @sizeOf(Context));
+        tlctx.ret.* = @call(.never_inline, tlctx.call, tlctx.args);
+        exit(0);
     }
-    const stack: usize = asm volatile (
-        \\xorq  %%rbp,  %%rbp
-        \\movq  %%rsp,  %[stack]
-        \\andq  $-16,   %%rsp
-        : [stack] "=r" (-> usize),
-        :
-        : "rbp", "rsp", "memory"
-    );
-    const tlctx: *Context = @ptrFromInt(stack -% @sizeOf(Context));
-    tlctx.ret.* = @call(.never_inline, tlctx.call, tlctx.args);
-    exit(0);
+    if (clone_spec.errors.throw.len != 0) {
+        if (rc < 0) try builtin.throw(sys.ErrorCode, clone_spec.errors.throw, rc);
+    }
+    if (clone_spec.errors.abort.len != 0) {
+        if (rc < 0) builtin.abort(sys.ErrorCode, clone_spec.errors.abort, rc);
+    }
+    if (clone_spec.return_type == void) {
+        return;
+    }
+    if (clone_spec.return_type != noreturn) {
+        return @intCast(rc);
+    }
 }
 /// Replaces argument at `index` with argument at `index` +% 1
 /// This is useful for extracting information from the program arguments in
