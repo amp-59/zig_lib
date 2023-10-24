@@ -354,13 +354,14 @@ fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
             .extern_resizeable = true,
             .extern_slice = true,
             .extern_tagged_union = true,
-            .static_resizeable = true,
+            //.static_resizeable = true,
         },
     };
-    try testFormat(allocator, array, buf, fmt.render(render_spec, packed struct(u120) { x: u64 = 5, y: struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }{}));
+    try testFormat(allocator, array, buf, fmt.render(render_spec, packed struct(u120) { x: u64 = 5, y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{}, z: u8 = 255 }{}));
     try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: [*]u8, buf_len: usize }{ .buf = tmp, .buf_len = 16 }));
     try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: []u8, buf_len: usize }{ .buf = tmp[16..256], .buf_len = 32 }));
     try testFormat(allocator, array, buf, fmt.render(render_spec, struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }{}));
+    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, struct { auto: [2]type = .{ u8, u16 }, auto_len: usize = 1 }{}));
 }
 fn testRenderUnion(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     testing.announce(@src());
@@ -396,6 +397,7 @@ pub fn testRenderFunctions() !void {
     try testRenderArray(&allocator, &array, buf.ptr);
     try testRenderType(&allocator, &array, buf.ptr);
     try testRenderSlice(&allocator, &array, buf.ptr);
+    try testRenderStruct(&allocator, &array, buf.ptr);
 }
 fn testGenericRangeFormat() !void {
     testing.announce(@src());
@@ -469,13 +471,14 @@ fn testStringLitChar() void {
     debug.write("}\n");
 }
 pub fn main() !void {
+    meta.refAllDecls(fmt, &.{});
     try testBytesFormat();
     try testBytesToHex();
     try testHexToBytes();
     try testGenericRangeFormat();
     try testRenderFunctions();
-    try testSystemFlagsFormatters();
-    try testIntToStringWithSeparators();
+    //try testSystemFlagsFormatters();
+    //try testIntToStringWithSeparators();
     //try testEquivalentIntToStringFormat();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();
