@@ -1202,9 +1202,17 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
     };
     return T;
 }
-pub fn GenericDateTimeFormat(comptime DateTime: type) type {
+pub const DateTimeFormatSpec = struct {
+    month_fn: meta.Generic = meta.generic(mon),
+    month_day_fn: meta.Generic = meta.generic(mday),
+    year_fn: meta.Generic = meta.generic(year),
+    hour_fn: meta.Generic = meta.generic(hour),
+    minute_fn: meta.Generic = meta.generic(min),
+    second_fn: meta.Generic = meta.generic(sec),
+};
+pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
     const T = struct {
-        value: DateTime,
+        value: time.DateTime,
         const Format: type = @This();
         pub const max_len: usize = 19;
         pub fn formatConvert(format: Format) mem.StaticString(max_len) {
@@ -1214,69 +1222,50 @@ pub fn GenericDateTimeFormat(comptime DateTime: type) type {
             return array;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
-            array.writeFormat(yr(format.value.getYear()));
+            array.writeFormat((format.value.year));
             array.writeOne('-');
-            array.writeFormat(mon(format.value.getMonth()));
+            array.writeFormat(@intFromEnum(mon(format.value.mon)));
             array.writeOne('-');
-            array.writeFormat(mday(format.value.getMonthDay()));
+            array.writeFormat(mday(format.value.mday));
             array.writeOne(' ');
-            array.writeFormat(hr(format.value.getHour()));
+            array.writeFormat(hour(format.value.hour));
             array.writeOne(':');
-            array.writeFormat(min(format.value.getMinute()));
+            array.writeFormat(min(format.value.min));
             array.writeOne(':');
-            array.writeFormat(sec(format.value.getSecond()));
-            if (@hasDecl(DateTime, "getNanoseconds")) {
-                array.writeOne('.');
-                array.writeFormat(sec(format.value.getNanoSecond()));
-                @compileError("TODO: sig.fig. Formatter");
-            }
+            array.writeFormat(sec(format.value.sec));
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            var ptr: [*]u8 = buf + yr(format.value.getYear()).formatWriteBuf(buf);
+            var ptr: [*]u8 = buf + dt_spec.year_fn.cast()(format.value.year).formatWriteBuf(buf);
             ptr[0] = '-';
             ptr += 1;
-            ptr += mon(format.value.getMonth()).formatWriteBuf(ptr);
+            ptr += dt_spec.month_fn.cast()(format.value.mon).formatWriteBuf(ptr);
             ptr[0] = '-';
             ptr += 1;
-            ptr += mday(format.value.getMonthDay()).formatWriteBuf(ptr);
+            ptr += dt_spec.month_day_fn.cast()(format.value.mday).formatWriteBuf(ptr);
             ptr[0] = ' ';
             ptr += 1;
-            ptr += hr(format.value.getHour()).formatWriteBuf(ptr);
+            ptr += dt_spec.hour_fn.cast()(format.value.hour).formatWriteBuf(ptr);
             ptr[0] = ':';
             ptr += 1;
-            ptr += min(format.value.getMinute()).formatWriteBuf(ptr);
+            ptr += dt_spec.minute_fn.cast()(format.value.min).formatWriteBuf(ptr);
             ptr[0] = ':';
             ptr += 1;
-            ptr += sec(format.value.getSecond()).formatWriteBuf(ptr);
+            ptr += dt_spec.second_fn.cast()(format.value.sec).formatWriteBuf(ptr);
             return @intFromPtr(ptr) -% @intFromPtr(buf);
         }
         pub fn formatLength(format: Format) usize {
-            if (builtin.is_small) {
-                if (@hasDecl(DateTime, "getNanoseconds")) {
-                    return "0000-00-00 00:00:00.000000000".len;
-                } else {
-                    return "0000-00-00 00:00:00".len;
-                }
-            } else {
-                var len: usize = 0;
-                len +%= yr(format.value.getYear()).formatLength();
-                len +%= 1;
-                len +%= mon(format.value.getMonth()).formatLength();
-                len +%= 1;
-                len +%= mday(format.value.getMonthDay()).formatLength();
-                len +%= 1;
-                len +%= hr(format.value.getHour()).formatLength();
-                len +%= 1;
-                len +%= min(format.value.getMinute()).formatLength();
-                len +%= 1;
-                len +%= sec(format.value.getSecond()).formatLength();
-                if (@hasDecl(DateTime, "getNanoseconds")) {
-                    len +%= 1;
-                    len +%= sec(format.value.getNanoseconds()).formatLength();
-                    @compileError("TODO: sig.fig. Formatter");
-                }
-                return len;
-            }
+            var len: usize = dt_spec.year_fn.cast()(format.value.year).formatWriteBuf();
+            len += 1;
+            len += dt_spec.month_fn.cast()(format.value.mon).formatLength();
+            len += 1;
+            len += dt_spec.month_day_fn.cast()(format.value.mday).formatLength();
+            len += 1;
+            len += dt_spec.hour_fn.cast()(format.value.hour).formatLength();
+            len += 1;
+            len += dt_spec.minute_fn.cast()(format.value.min).formatLength();
+            len += 1;
+            len += dt_spec.second_fn.cast()(format.value.sec).formatLength();
+            return len;
         }
     };
     return T;
