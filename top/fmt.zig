@@ -212,7 +212,7 @@ pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usi
 }
 fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
-    var value: if (@bitSizeOf(T) < 8) u8 else @TypeOf(@abs(T{})) = 0;
+    var value: if (@bitSizeOf(T) < 8) u8 else @TypeOf(@abs(@as(T, 0))) = 0;
     var len: u16 = 0;
     if (radix != 10) {
         len += 2;
