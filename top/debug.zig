@@ -27,6 +27,134 @@ pub const PanicSentinelMismatchFn = @TypeOf(panic_extra.panicSentinelMismatch);
 pub const PanicStartGreaterThanEndFn = @TypeOf(panic_extra.panicStartGreaterThanEnd);
 pub const PanicInactiveUnionFieldFn = @TypeOf(panic_extra.panicInactiveUnionField);
 pub const PanicUnwrapErrorFn = @TypeOf(panic_extra.panicUnwrapError);
+
+const Panic = union(enum(comptime_int)) {
+    message: []const u8,
+    returned_noreturn,
+    reached_unreachable,
+    branched_on_corrupt_value,
+    unwrapped_null,
+    unwrapped_error,
+    access_out_of_bounds: struct {
+        type_name: []const u8,
+        index: usize,
+        length: usize,
+    },
+    access_out_of_order: struct {
+        type_name: []const u8,
+        start: usize,
+        finish: usize,
+    },
+    mismatched_memcpy_lengths: struct {
+        type_name: []const u8,
+        dest_length: usize,
+        src_length: usize,
+    },
+    mismatched_for_loop_lengths: struct {
+        type_name: []const u8,
+        prev_index: usize,
+        prev_capture_length: usize,
+        next_capture_length: usize,
+    },
+    access_inactive_field: struct {
+        type_name: []const u8,
+        expected: []const u8,
+        found: []const u8,
+    },
+    memcpy_arguments_alias: struct {
+        type_name: []const u8,
+        dest_start: usize,
+        dest_finish: usize,
+        src_start: usize,
+        src_finish: usize,
+    },
+    cast_to_pointer_from_null: []const u8,
+    cast_to_error_from_invalid: struct {
+        type_name: []const u8,
+        code: u16,
+    },
+    cast_to_misaligned_pointer: struct {
+        type_name: []const u8,
+        address: usize,
+        alignment: usize,
+        remainder: usize,
+    },
+};
+pub noinline fn __panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usize) void {
+    @setRuntimeSafety(false);
+    var buf: [128]u8 = undefined;
+    var ptr: [*]u8 = switch (payload) {
+        .returned_noreturn => fmt.strcpyEqu(&buf, "@memcpy arguments alias"),
+        .reached_unreachable => fmt.strcpyEqu(&buf, "reached unreachable code"),
+        .branched_on_corrupt_value => fmt.strcpyEqu(&buf, "switch on corrupt value"),
+        .unwrapped_null => fmt.strcpyEqu(&buf, "unwrapped null"),
+        .unwrapped_error => fmt.strcpyEqu(&buf, "unwrapped error"),
+        .access_out_of_bounds => |params| blk: {
+            buf[0..6].* = "index ".*;
+            var ptr: [*]u8 = buf[5..];
+            if (params.length == 0) {
+                ptr[0..5].* = "ing (".*;
+                ptr += 5;
+                ptr = fmt.writeUd64(ptr, params.index);
+                ptr[0..18].* = ") into empty array".*;
+                break :blk ptr + 18;
+            } else {
+                ptr += 1;
+                ptr = fmt.writeUd64(ptr, params.index);
+                ptr[0..15].* = " above maximum ".*;
+                ptr += 15;
+                break :blk fmt.writeUd64(ptr, params.length -% 1);
+            }
+        },
+        .access_out_of_order => |params| blk: {
+            buf[0..12].* = "start index ".*;
+            var ptr: [*]u8 = buf[12..];
+            ptr = fmt.writeUd64(ptr, params.start);
+            ptr[0..26].* = " is larger than end index ".*;
+            ptr += 26;
+            break :blk fmt.writeUd64(ptr, params.finish);
+        },
+        .mismatched_memcpy_lengths => |params| blk: {
+            buf[0..8].* = "@memcpy ".*;
+            var ptr: [*]u8 = buf[8..];
+            if (params.dest_length > params.src_length) {
+                buf[0..44].* = "destination capacity exceeds source length: ".*;
+                ptr = fmt.writeUd64(ptr, params.dest_length);
+                ptr[0..3].* = " > ".*;
+                ptr += 3;
+                break :blk fmt.writeUd64(ptr, params.src_length);
+            } else {
+                buf[0..44].* = "source length exceeds destination capacity: ".*;
+                ptr = fmt.writeUd64(ptr, params.dest_length);
+                ptr[0..3].* = " > ".*;
+                ptr += 3;
+                break :blk fmt.writeUd64(ptr, params.src_length);
+            }
+        },
+        .mismatched_for_loop_lengths => |params| blk: {
+            buf[0..47].* = "multi-for loop capture with mismatched length: ".*;
+            var ptr: [*]u8 = fmt.writeUd64(buf[47..], params.prev_capture_length);
+            ptr[0..4].* = " != ".*;
+            ptr += 4;
+            break :blk fmt.writeUd64(ptr, params.next_capture_length);
+        },
+        .access_inactive_field => |params| blk: {
+            buf[0..23].* = "access of union field '".*;
+            var ptr: [*]u8 = fmt.strcpyEqu(buf[23..], params.found);
+            ptr[0..15].* = "' while field '".*;
+            ptr += 15;
+            ptr = fmt.strcpyEqu(ptr, params.expected);
+            ptr[0..11].* = "' is active".*;
+            break :blk ptr + 11;
+        },
+        .memcpy_arguments_alias => fmt.strcpyEqu(&buf, "@memcpy arguments alias"),
+        .cast_to_pointer_from_null => fmt.strcpyEqu(&buf, "cast from null"),
+        .cast_to_error_from_invalid => fmt.strcpyEqu(&buf, "cast to error from invalid"),
+        .cast_to_misaligned_pointer => fmt.strcpyEqu(&buf, "cast incorrect alignment"),
+        .message => |message| fmt.strcpyEqu(&buf, message),
+    };
+    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+}
 pub const AlarmFn = @TypeOf(alarm);
 pub const SignalHandlers = packed struct {
     /// Report receipt of signal 11 SIGSEGV.
@@ -433,37 +561,37 @@ pub fn invalidEnumValueFault(comptime T: type, type_name: []const u8, values: []
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
-pub fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
+pub fn subCausedOverflowError(comptime T: type, lim: T, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const ptr: [*]u8 = about.writeSubCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).min, arg1, arg2);
+    const ptr: [*]u8 = about.writeSubCausedOverflow(meta.BestInt(T), @typeName(T), &buf, lim, arg1, arg2);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.SubCausedOverflow;
 }
-pub fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
+pub fn subCausedOverflowFault(comptime T: type, lim: T, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const ptr: [*]u8 = about.writeSubCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).min, arg1, arg2);
+    const ptr: [*]u8 = about.writeSubCausedOverflow(meta.BestInt(T), @typeName(T), &buf, lim, arg1, arg2);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
-pub fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
+pub fn addCausedOverflowError(comptime T: type, lim: T, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const ptr: [*]u8 = about.writeAddCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).max, arg1, arg2);
+    const ptr: [*]u8 = about.writeAddCausedOverflow(meta.BestInt(T), @typeName(T), &buf, lim, arg1, arg2);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.AddCausedOverflow;
 }
-pub fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
+pub fn addCausedOverflowFault(comptime T: type, lim: T, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const ptr: [*]u8 = about.writeAddCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).max, arg1, arg2);
+    const ptr: [*]u8 = about.writeAddCausedOverflow(meta.BestInt(T), @typeName(T), &buf, lim, arg1, arg2);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
@@ -554,26 +682,28 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
     return error.UnexpectedValue;
 }
 pub fn sampleAllReports() void {
-    //inline for (.{ u16, u32, u64, usize, i16, i32, i64, isize }) |T| {
-    const T = usize;
-    comptime var arg1: comptime_int = ~@as(T, 0);
-    comptime var arg2: comptime_int = ~@as(T, 0);
-    var result: T = 2;
-    const remainder: T = 2;
-    expectEqual(T, arg1, arg2) catch {};
-    expectNotEqual(T, arg1, arg2) catch {};
-    expectAbove(T, arg1, arg2) catch {};
-    expectBelow(T, arg1, arg2) catch {};
-    expectAboveOrEqual(T, arg1, arg2) catch {};
-    expectBelowOrEqual(T, arg1, arg2) catch {};
-    subCausedOverflowError(T, arg1, arg2, null) catch {};
-    addCausedOverflowError(T, arg1, arg2, null) catch {};
-    mulCausedOverflowError(T, arg1, arg2, null) catch {};
-    exactDivisionWithRemainderError(T, arg1, arg2, result, remainder, null) catch {};
-    if (@typeInfo(T).Int.signedness == .unsigned) {
-        incorrectAlignmentError(@typeName(T), arg2, remainder, null) catch {};
+    if (false) {
+        inline for (.{ u16, u32, u64, usize, i16, i32, i64, isize }) |T| {
+            comptime var arg1: comptime_int = ~@as(T, 0);
+            comptime var arg2: comptime_int = ~@as(T, 0);
+            var result: T = 2;
+            const remainder: T = 2;
+            if (arg2 < arg1)
+                expectEqual(T, arg1, arg2) catch {};
+            expectNotEqual(T, arg1, arg2) catch {};
+            expectAbove(T, arg1, arg2) catch {};
+            expectBelow(T, arg1, arg2) catch {};
+            expectAboveOrEqual(T, arg1, arg2) catch {};
+            expectBelowOrEqual(T, arg1, arg2) catch {};
+            subCausedOverflowError(T, arg1, arg2, null) catch {};
+            addCausedOverflowError(T, arg1, arg2, null) catch {};
+            mulCausedOverflowError(T, arg1, arg2, null) catch {};
+            exactDivisionWithRemainderError(T, arg1, arg2, result, remainder, null) catch {};
+            if (@typeInfo(T).Int.signedness == .unsigned) {
+                incorrectAlignmentError(@typeName(T), arg2, remainder, null) catch {};
+            }
+        }
     }
-    //}
     var _u8: u8 = 128;
     var _u16: u16 = 32768;
     var _u32: u32 = 2147483648;
@@ -974,6 +1104,7 @@ pub const about = struct {
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
+
     fn writeComparisonFailed(comptime T: type, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
         const writeDec = fmt.writeDec(T);
