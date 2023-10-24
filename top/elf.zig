@@ -1955,6 +1955,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return size;
             }
             fn rangeOfNext(st_shdr: *const Elf64_Shdr, shndx: usize, max_idx: usize) struct { usize, usize } {
+                @setRuntimeSafety(builtin.is_safe);
                 for (1..max_idx) |sym_idx| {
                     if (symbolByIndex(st_shdr, sym_idx).st_shndx != shndx) {
                         continue;
