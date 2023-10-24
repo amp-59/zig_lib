@@ -1840,6 +1840,7 @@ pub const LowerCaseFormat = struct {
                 else => byte,
             };
         }
+        return format.value.len;
     }
     pub fn formatLength(format: Format) usize {
         return format.value.len;
@@ -1971,12 +1972,6 @@ pub const static = struct {
         }
     }
 };
-fn __indicateComptime(comptime T: type) T {
-    return undefined;
-}
-inline fn requireComptime(comptime T: type) bool {
-    return @inComptime() or @typeInfo(@TypeOf(.{__indicateComptime(T)})).Struct.fields[0].is_comptime;
-}
 pub fn requireComptimeOld(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .ComptimeFloat, .ComptimeInt, .Type => {
