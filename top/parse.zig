@@ -157,15 +157,10 @@ pub inline fn sigFigList(comptime T: type, comptime radix: u7) []const T {
 }
 pub fn any(comptime Int: type, str: []const u8) !Int {
     if (@typeInfo(Int).Int.signedness == .unsigned) {
-        if (math.cast(Int, try unsigned(str))) |ret| {
-            return ret;
-        }
+        return debug.expectCast(Int, try unsigned(str));
     } else {
-        if (math.cast(Int, try signed(str))) |ret| {
-            return ret;
-        }
+        return debug.expectCast(Int, try signed(str));
     }
-    return error.Overflow;
 }
 fn parseValidate(comptime T: type, str: []const u8, comptime radix: u7) !T {
     const sig_fig_list: []const T = comptime sigFigList(T, radix);
