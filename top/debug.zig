@@ -446,6 +446,15 @@ pub fn expectAbove(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
         return debug.comparisonFailedError(T, " > ", arg1, arg2, @returnAddress());
     }
 }
+pub fn expectError(comptime T: type, arg1: @typeInfo(T).ErrorUnion.error_set, arg2: T) debug.Unexpected!void {
+    if (arg2) |payload| {
+        return comparisonFailedErrorValue(@TypeOf(payload), @errorName(arg1), payload);
+    } else |err| {
+        if (arg1 != err) {
+            return comparisonFailedErrorError(@typeName(@TypeOf(arg1)), @errorName(arg1), @errorName(err));
+        }
+    }
+}
 pub fn expectCast(comptime T: type, value: anytype) Error!T {
     @setRuntimeSafety(false);
     const extrema: math.Extrema = math.extrema(T);
@@ -659,10 +668,21 @@ pub fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype
         .Int => about.writeComparisonFailed(T, symbol, ptr + 19, arg1, arg2),
         .Enum => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 19, @tagName(arg1)), symbol), @tagName(arg2)),
         .Type => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 19, @typeName(arg1)), symbol), @typeName(arg2)),
-        else => fmt.strcpyEqu(ptr, "unexpected value"),
+        else => fmt.strcpyEqu(ptr, " unexpected value"),
     };
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+}
+pub fn comparisonFailedErrorValue(comptime T: type, error_name: []const u8, arg2: T) Unexpected {
+    _ = arg2;
+    _ = error_name;
+    return error.UnexpectedValue;
+}
+pub fn comparisonFailedErrorError(type_name: []const u8, error_name1: []const u8, error_name2: []const u8) Unexpected {
+    _ = type_name;
+    _ = error_name2;
+    _ = error_name1;
+    return error.UnexpectedValue;
 }
 pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: ?usize) Unexpected {
     @setCold(true);
@@ -675,7 +695,7 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
         .Int => about.writeComparisonFailed(T, symbol, ptr + 14, arg1, arg2),
         .Enum => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 14, @tagName(arg1)), symbol), @tagName(arg2)),
         .Type => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 14, @typeName(arg1)), symbol), @typeName(arg2)),
-        else => fmt.strcpyEqu(ptr, "unexpected value"),
+        else => fmt.strcpyEqu(ptr, " unexpected value"),
     };
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
