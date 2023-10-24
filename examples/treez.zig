@@ -276,9 +276,9 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.directory);
-                try zl.meta.wrap(array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
+                try zl.meta.wrap(array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
                 if (track_max_depth) {
-                    status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
+                    status.max_depth = @max(u64, status.max_depth, depth +% 1);
                 }
                 writeAndWalk(allocator_0, allocator_1, array, alts_buf, link_buf, status, dir.fd, basename, depth +% 1) catch |any_error| {
                     if (quit_on_error) {
