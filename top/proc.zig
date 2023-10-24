@@ -606,7 +606,7 @@ pub inline fn cloneFromBuf(
     comptime clone_spec: CloneSpec,
     flags: sys.flags.Clone,
     buf: []u8,
-    ret: *meta.Return(clone_spec.function_type),
+    ret: *volatile meta.Return(clone_spec.function_type),
     call: clone_spec.function_type,
     args: meta.Args(clone_spec.function_type),
 ) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
@@ -617,17 +617,17 @@ pub noinline fn clone(
     flags: sys.flags.Clone,
     addr: usize,
     len: u64,
-    ret: *meta.Return(clone_spec.function_type),
+    ret: *volatile meta.Return(clone_spec.function_type),
     call: clone_spec.function_type,
     args: meta.Args(clone_spec.function_type),
 ) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
     @setRuntimeSafety(false);
     const Context = struct {
-        ret: *meta.Return(clone_spec.function_type),
+        ret: *volatile meta.Return(clone_spec.function_type),
         call: clone_spec.function_type,
         args: meta.Args(clone_spec.function_type),
     };
-    const cl_args: CloneArgs = .{
+    const plargs: CloneArgs = .{
         .flags = flags,
         .stack_addr = addr,
         .stack_len = len,
@@ -641,7 +641,7 @@ pub noinline fn clone(
         \\syscall # clone3
         : [ret] "={rax}" (-> isize),
         : [cl_sysno] "{rax}" (@intFromEnum(sys.Fn.clone3)),
-          [cl_args_addr] "{rdi}" (&cl_args),
+          [cl_args_addr] "{rdi}" (&plargs),
           [cl_args_size] "{rsi}" (@sizeOf(CloneArgs)),
         : "rcx", "r11", "memory"
     );
