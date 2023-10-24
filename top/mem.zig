@@ -773,10 +773,19 @@ fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
     return @as([*]const U, @ptrFromInt(ab_addr))[0..mid_len];
 }
 inline fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
-    var idx: usize = 0;
-    while (idx != array_info.len) : (idx +%= 1) {
-        if (!testEqual(array_info.child, arg1[idx], arg2[idx])) {
-            return false;
+    if (builtin.requireComptime(T)) comptime {
+        var idx: usize = 0;
+        while (idx != array_info.len) : (idx +%= 1) {
+            if (!testEqual(array_info.child, arg1[idx], arg2[idx])) {
+                return false;
+            }
+        }
+    } else {
+        var idx: usize = 0;
+        while (idx != array_info.len) : (idx +%= 1) {
+            if (!testEqual(array_info.child, arg1[idx], arg2[idx])) {
+                return false;
+            }
         }
     }
     return true;
@@ -788,10 +797,19 @@ inline fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.P
     if (arg1.ptr == arg2.ptr) {
         return true;
     }
-    var idx: usize = 0;
-    while (idx != arg1.len) : (idx +%= 1) {
-        if (!testEqual(pointer_info.child, arg1[idx], arg2[idx])) {
-            return false;
+    if (builtin.requireComptime(T)) comptime {
+        var idx: usize = 0;
+        while (idx != arg1.len) : (idx +%= 1) {
+            if (!testEqual(pointer_info.child, arg1[idx], arg2[idx])) {
+                return false;
+            }
+        }
+    } else {
+        var idx: usize = 0;
+        while (idx != arg1.len) : (idx +%= 1) {
+            if (!testEqual(pointer_info.child, arg1[idx], arg2[idx])) {
+                return false;
+            }
         }
     }
     return true;
