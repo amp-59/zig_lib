@@ -1565,7 +1565,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             "-ffunction-sections",
         };
         export const extn_args2 = [_][*:0]const u8{
-            "-OReleaseSmall",
+            "-ODebug",
             "-fstrip",
             "-fno-compiler-rt",
             "-fno-stack-check",
