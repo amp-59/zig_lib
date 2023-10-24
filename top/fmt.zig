@@ -2426,8 +2426,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             } else {
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
-
-                if (requireComptime(child)) {
+                if (builtin.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         writeFormat(array, sub_format);
@@ -2457,7 +2456,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             } else {
                 @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
                 len +%= 2;
-                if (requireComptime(child)) {
+                if (builtin.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const element_format: ChildFormat = .{ .value = element };
                         len +%= element_format.formatWriteBuf(buf + len);
@@ -2483,7 +2482,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         }
         pub fn formatLength(format: anytype) usize {
             var len: usize = type_name.len +% 2;
-            if (requireComptime(child)) {
+            if (builtin.requireComptime(child)) {
                 inline for (format.value) |value| {
                     const element_format: ChildFormat = .{ .value = value };
                     len +%= element_format.formatLength() +% 2;
@@ -3045,10 +3044,10 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             return ContainerFormat(spec, Struct);
         }
     }
+    const type_name = @typeName(Struct);
     const T = struct {
         value: Struct,
         const Format = @This();
-        const undef: Struct = @as(Struct, undefined);
         const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse (fields.len < 4);
         const max_len: usize = blk: {
@@ -3088,7 +3087,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             if (spec.infer_type_names) {
                 array.writeOne('.');
             } else {
-                array.writeMany(@typeName(Struct));
+                array.writeMany(type_name);
             }
             if (fields.len == 0) {
                 array.writeMany("{}");
@@ -3104,7 +3103,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                     if (field_type_info == .Union) {
                         if (field_type_info.Union.layout != .Auto) {
-                            const tag_field_name: []const u8 = field.name ++ spec.names.tag_field_suffix;
+                            comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
                             if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
                                 const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
                                 writeFieldInitializer(array, field_name_format, render(field_spec, view));
@@ -3113,7 +3112,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             }
                         }
                     } else if (field_type_info == .Pointer) {
-                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                         if (field_type_info.Pointer.size == .Many) {
                             if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(format.value, len_field_name)];
@@ -3137,7 +3136,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             }
                         }
                     } else if (field_type_info == .Array) {
-                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                         if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             writeFieldInitializer(array, field_name_format, render(field_spec, view));
@@ -3147,7 +3146,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     }
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null) {
-                        if (requireComptime(field.type)) {
+                        if (builtin.requireComptime(field.type)) {
                             if (comptime !mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                                 writeFieldInitializer(array, field_name_format, field_format);
                                 fields_len +%= 1;
@@ -3174,8 +3173,8 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 buf[len] = '.';
                 len +%= 1;
             } else {
-                @as(meta.TypeName(Struct), @ptrCast(buf)).* = @typeName(Struct).*;
-                len +%= @typeName(Struct).len;
+                buf[0..type_name.len].* = type_name.*;
+                len +%= type_name.len;
             }
             if (fields.len == 0) {
                 @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
@@ -3193,7 +3192,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                     if (field_type_info == .Union) {
                         if (field_type_info.Union.layout != .Auto) {
-                            const tag_field_name: []const u8 = field.name ++ spec.names.tag_field_suffix;
+                            comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
                             if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
                                 const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
                                 len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
@@ -3202,7 +3201,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             }
                         }
                     } else if (field_type_info == .Pointer) {
-                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                         if (field_type_info.Pointer.size == .Many) {
                             if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(format.value, len_field_name)];
@@ -3226,7 +3225,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             }
                         }
                     } else if (field_type_info == .Array) {
-                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                         if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
@@ -3275,7 +3274,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                 } else if (field_type_info == .Pointer) {
-                    const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                     if (field_type_info.Pointer.size == .Many) {
                         if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(format.value, len_field_name)];
@@ -3299,7 +3298,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                 } else if (field_type_info == .Array) {
-                    const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                     if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
                         const view = field_value[0..@field(format.value, len_field_name)];
                         len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
@@ -3309,7 +3308,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 }
                 const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                 if (spec.omit_default_fields and field.default_value != null) {
-                    if (requireComptime(field.type)) {
+                    if (builtin.requireComptime(field.type)) {
                         if (comptime !mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                             fields_len +%= 1;
@@ -3912,7 +3911,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
-                if (requireComptime(child)) {
+                if (builtin.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         writeFormat(array, sub_format);
@@ -3950,7 +3949,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 len +%= type_name.len;
                 @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
                 len +%= 2;
-                if (requireComptime(child)) {
+                if (builtin.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         len +%= sub_format.formatWriteBuf(buf + len);
@@ -3986,7 +3985,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                     len +%= 1;
                 }
                 len +%= type_name.len +% 2;
-                if (requireComptime(child)) {
+                if (builtin.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         len +%= sub_format.formatLength() +% 2;
@@ -6100,6 +6099,55 @@ pub const Type = struct {
         .radix = 10,
         .width = .{ .fixed = 9 },
         .range = .{ .min = 0, .max = 999999999 },
+    });
+    pub const Year = GenericPolynomialFormat(.{
+        .bits = 64,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 4 },
+        .range = .{ .min = 0, .max = 9999 },
+    });
+    pub const Month = GenericPolynomialFormat(.{
+        .bits = 8,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 2 },
+        .range = .{ .min = 1, .max = 12 },
+    });
+    pub const MonthDay = GenericPolynomialFormat(.{
+        .bits = 8,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 2 },
+        .range = .{ .min = 1, .max = 31 },
+    });
+    pub const YearDay = GenericPolynomialFormat(.{
+        .bits = 16,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 4 },
+        .range = .{ .min = 1, .max = 366 },
+    });
+    pub const Hour = GenericPolynomialFormat(.{
+        .bits = 8,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 2 },
+        .range = .{ .min = 0, .max = 23 },
+    });
+    pub const Minute = GenericPolynomialFormat(.{
+        .bits = 8,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 2 },
+        .range = .{ .min = 0, .max = 59 },
+    });
+    pub const Second = GenericPolynomialFormat(.{
+        .bits = 8,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 2 },
+        .range = .{ .min = 0, .max = 59 },
     });
     pub const U8xLEB128 = GenericLEB128Format(u8);
     pub const U16xLEB128 = GenericLEB128Format(u16);
