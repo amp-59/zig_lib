@@ -1,15 +1,6 @@
 const zl = @import("../zig_lib.zig");
-const sys = zl.sys;
-const fmt = zl.fmt;
-const mem = zl.mem;
-const file = zl.file;
-const meta = zl.meta;
-const mach = zl.mach;
-const proc = zl.proc;
-const debug = zl.debug;
-const thread = zl.thread;
-const builtin = zl.builtin;
 pub usingnamespace zl.start;
+pub const logging_default: zl.debug.Logging.Default = zl.debug.spec.logging.default.silent;
 pub const signal_handlers = .{
     .SegmentationFault = false,
     .IllegalInstruction = false,
@@ -17,13 +8,13 @@ pub const signal_handlers = .{
     .Trap = false,
     .FloatingPointError = false,
 };
-pub const AddressSpace = mem.GenericRegularAddressSpace(.{
+pub const AddressSpace = zl.mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
     .divisions = 32,
     .errors = .{ .acquire = .ignore, .release = .ignore },
 });
-const Allocator0 = mem.dynamic.GenericArenaAllocator(.{
+const Allocator0 = zl.mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
     .options = .{
@@ -48,10 +39,10 @@ const Allocator0 = mem.dynamic.GenericArenaAllocator(.{
         .trace_clients = false,
         .trace_state = false,
     },
-    .logging = mem.dynamic.spec.logging.silent,
-    .errors = mem.dynamic.spec.errors.noexcept,
+    .logging = zl.mem.dynamic.spec.logging.silent,
+    .errors = zl.mem.dynamic.spec.errors.noexcept,
 });
-const Allocator1 = mem.dynamic.GenericArenaAllocator(.{
+const Allocator1 = zl.mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 1,
     .options = .{
@@ -76,26 +67,26 @@ const Allocator1 = mem.dynamic.GenericArenaAllocator(.{
         .trace_clients = false,
         .trace_state = false,
     },
-    .logging = mem.dynamic.spec.logging.silent,
-    .errors = mem.dynamic.spec.errors.noexcept,
+    .logging = zl.mem.dynamic.spec.logging.silent,
+    .errors = zl.mem.dynamic.spec.errors.noexcept,
 });
-const PrintArray = mem.array.StaticString(4096);
+const PrintArray = zl.mem.array.StaticString(4096);
 const Array = Allocator1.StructuredStreamHolder(u8);
 const String0 = Allocator0.StructuredHolder(u8);
-const DirStream = file.GenericDirStream(.{
+const DirStream = zl.file.GenericDirStream(.{
     .Allocator = Allocator0,
     .options = .{},
-    .logging = file.spec.dir.logging.silent,
+    .logging = zl.file.spec.dir.logging.silent,
 });
-const Filter = meta.EnumBitField(file.Kind);
-const Names = mem.array.StaticArray([:0]const u8, max_pathname_args);
+const Filter = zl.meta.EnumBitField(zl.file.Kind);
+const Names = zl.mem.array.StaticArray([:0]const u8, max_pathname_args);
 const Status = packed struct {
-    flag: meta.maybe(print_in_second_thread, u32) = 0,
-    file_count: meta.maybe(count_files, u64) = 0,
-    dir_count: meta.maybe(count_dirs, u64) = 0,
-    link_count: meta.maybe(count_links, u64) = 0,
-    max_depth: meta.maybe(track_max_depth, u64) = 0,
-    errors: meta.maybe(count_errors, u64) = 0,
+    flag: zl.meta.maybe(print_in_second_thread, u32) = 0,
+    file_count: zl.meta.maybe(count_files, u64) = 0,
+    dir_count: zl.meta.maybe(count_dirs, u64) = 0,
+    link_count: zl.meta.maybe(count_links, u64) = 0,
+    max_depth: zl.meta.maybe(track_max_depth, u64) = 0,
+    errors: zl.meta.maybe(count_errors, u64) = 0,
 };
 fn done(status: *const volatile Status) bool {
     return status.flag != 0;
@@ -130,77 +121,74 @@ const last_empty_dir_arrow_s: [:0]const u8 = del_s ++ "`-- ";
 
 // config constants derived by `message_style` library configuration
 const about = .{
-    .dirs_s = fmt.about("dirs"),
-    .files_s = fmt.about("files"),
-    .links_s = fmt.about("links"),
-    .depth_s = fmt.about("depth"),
-    .errors_s = fmt.about("errors"),
+    .dirs_s = zl.fmt.about("dirs"),
+    .files_s = zl.fmt.about("files"),
+    .links_s = zl.fmt.about("links"),
+    .depth_s = zl.fmt.about("depth"),
+    .errors_s = zl.fmt.about("errors"),
 };
 
 // user config end
-const write_spec: file.WriteSpec = .{
+const write_spec: zl.file.WriteSpec = .{
     .errors = .{},
 };
-const map_spec: thread.MapSpec = .{
+const clone_spec: zl.proc.CloneSpec = .{
     .errors = .{},
-    .options = .{},
-};
-const thread_spec: proc.CloneSpec = .{
-    .errors = .{},
-    .return_type = u64,
+    .function_type = @TypeOf(&printAlong),
+    .return_type = usize,
 };
 fn show(status: Status) void {
     var array: PrintArray = .{};
     if (count_dirs) {
         array.writeMany(about.dirs_s);
-        array.writeFormat(fmt.udh(status.dir_count));
+        array.writeFormat(zl.fmt.udh(status.dir_count));
         array.writeOne('\n');
     }
     if (count_files) {
         array.writeMany(about.files_s);
-        array.writeFormat(fmt.udh(status.file_count));
+        array.writeFormat(zl.fmt.udh(status.file_count));
         array.writeOne('\n');
     }
     if (count_links) {
         array.writeMany(about.links_s);
-        array.writeFormat(fmt.udh(status.link_count));
+        array.writeFormat(zl.fmt.udh(status.link_count));
         array.writeOne('\n');
     }
     if (track_max_depth) {
         array.writeMany(about.depth_s);
-        array.writeFormat(fmt.udh(status.max_depth));
+        array.writeFormat(zl.fmt.udh(status.max_depth));
         array.writeOne('\n');
     }
     if (count_errors) {
         array.writeMany(about.errors_s);
-        array.writeFormat(fmt.udh(status.errors));
+        array.writeFormat(zl.fmt.udh(status.errors));
         array.writeOne('\n');
     }
-    file.write(.{ .errors = .{} }, 1, array.readAll());
+    zl.file.write(.{ .errors = .{} }, 1, array.readAll());
 }
 noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *Array) void {
     while (true) {
         const many: []u8 = array.referManyAt(allocator.*, array.index(allocator.*));
         if (many.len > 56) {
-            file.write(write_spec, 1, many);
+            zl.file.write(write_spec, 1, many);
             array.stream(many.len);
         }
         if (done(status)) break;
     }
     const many: []u8 = array.referManyAt(allocator.*, array.index(allocator.*));
     if (many.len > 56) {
-        file.write(write_spec, 1, many);
+        zl.file.write(write_spec, 1, many);
         array.stream(many.len);
     }
     show(status.*);
     status.flag = 0;
-    proc.futexWake(.{ .errors = .{} }, @volatileCast(&status.flag), 1);
+    zl.proc.futexWake(.{ .errors = .{} }, @volatileCast(&status.flag), 1);
 }
 fn getNames(args: [][*:0]u8) Names {
     var names: Names = .{};
     var i: u64 = 1;
     while (i != args.len) : (i +%= 1) {
-        names.writeOne(meta.manyToSlice(args[i]));
+        names.writeOne(zl.meta.manyToSlice(args[i]));
     }
     return names;
 }
@@ -214,10 +202,10 @@ fn writeReadLink(
 ) !void {
     const buf: []u8 = link_buf.referManyUndefined(4096);
     if (read_link) {
-        if (file.readLinkAt(.{}, dir_fd, base_name, buf)) |link_pathname| {
-            array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
+        if (zl.file.readLinkAt(.{}, dir_fd, base_name, buf)) |link_pathname| {
+            array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
         } else |readlink_err| {
-            array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+            array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
             if (quit_on_error) {
                 return readlink_err;
             }
@@ -226,10 +214,10 @@ fn writeReadLink(
             }
         }
     } else {
-        array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+        array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
     }
 }
-fn getSymbol(kind: file.Kind) [:0]const u8 {
+fn getSymbol(kind: zl.file.Kind) [:0]const u8 {
     switch (kind) {
         .regular => return "f ",
         .directory => return "d ",
@@ -271,7 +259,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_link_arrow_s else link_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.symbolic_link);
-                array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
+                array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
                 try writeReadLink(allocator_1, array, link_buf, status, dir.fd, basename);
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
@@ -280,7 +268,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_file_arrow_s else file_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(kind);
-                array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
+                array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
             },
             .directory => {
                 if (count_dirs) {
@@ -288,7 +276,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.directory);
-                try meta.wrap(array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
+                try zl.meta.wrap(array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
                 if (track_max_depth) {
                     status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
                 }
@@ -315,8 +303,8 @@ pub fn main(args: [][*:0]u8) !void {
     defer allocator_0.deinit(&address_space);
     var allocator_1: Allocator1 = Allocator1.init(&address_space);
     defer allocator_1.deinit(&address_space);
-    try meta.wrap(allocator_0.map(32768));
-    try meta.wrap(allocator_1.map(32768));
+    try zl.meta.wrap(allocator_0.map(32768));
+    try zl.meta.wrap(allocator_1.map(32768));
     for (names.readAll()) |arg| {
         var status: Status = .{};
         var array: Array = Array.init(&allocator_1);
@@ -329,20 +317,21 @@ pub fn main(args: [][*:0]u8) !void {
         array.writeMany(if (arg[arg.len -% 1] != '/') "/\n" else "\n");
         @memset(alts_buf.referManyAt(0), ' ');
         if (print_in_second_thread) {
+            var ret: void = {};
             var tid: u64 = undefined;
             var stack_buf: [16384]u8 align(16) = undefined;
             const stack_addr: u64 = @intFromPtr(&stack_buf);
-            tid = proc.clone(thread_spec, .{}, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
+            tid = zl.proc.clone(clone_spec, .{}, stack_addr, stack_buf.len, &ret, printAlong, .{ &status, &allocator_1, &array });
             writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
                 status.errors +%= 1;
             };
             status.flag = 255;
-            proc.futexWait(.{ .errors = .{} }, &status.flag, 255, &.{ .sec = 1 });
+            zl.proc.futexWait(.{ .errors = .{} }, &status.flag, 255, &.{ .sec = 1 });
         } else {
             writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
                 status.errors +%= 1;
             };
-            debug.write(array.readAll(allocator_1));
+            zl.debug.write(array.readAll(allocator_1));
             show(status);
         }
     }
