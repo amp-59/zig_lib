@@ -250,7 +250,7 @@ pub const BuilderSpec = struct {
         eager_compile_errors: bool = false,
         /// (Devel.) Start dependencies in new threads regardless of
         /// total number.
-        eager_multi_threading: bool = false,
+        eager_multi_threading: bool = true,
         /// (Devel.) Restore dynamic environment from the cache.
         restore_dyn_env: bool = false,
         /// (Devel.) Save dynamic environment to the cache.
@@ -4016,7 +4016,6 @@ pub const spec = struct {
 };
 // Error checks:
 //  Group node has command arguments entering `processCommands`.
-//  Circular dependency
 pub fn GenericCommand(comptime Command: type) type {
     const T = struct {
         const render_spec: fmt.RenderSpec = .{
@@ -4027,7 +4026,7 @@ pub fn GenericCommand(comptime Command: type) type {
         //    return fmt.render(render_spec, cmd.*).formatWriteBuf(buf);
         //}
         //const gen = @import("./gen.zig");
-        //const Editor = gen.StructEditor(Command);
+        //const Editor = gen.StructEditor(render_spec, Command);
         //pub const fieldEditDistance = Editor.fieldEditDistance;
         //pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
         //pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
