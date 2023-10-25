@@ -143,7 +143,7 @@ pub const Lists = extern struct {
         run_args = @bitCast(Info{ .idx = 6, .size_of = @sizeOf([*:0]u8), .init_len = 4, .align_of = @alignOf([*:0]u8) }),
     };
     pub const List = extern struct {
-        addr: usize,
+        addr: *const anyopaque,
         len: usize,
         max_len: usize,
         pub fn add(res: *List, allocator: *Allocator, key: Key) usize {
@@ -152,7 +152,7 @@ pub const Lists = extern struct {
                 key.info.size_of,
                 key.info.align_of,
                 key.info.init_len,
-                &res.addr,
+                @ptrCast(&res.addr),
                 &res.max_len,
                 res.len,
             );
@@ -161,7 +161,7 @@ pub const Lists = extern struct {
     pub fn set(lists: *Lists, comptime T: type, tag: Tag, val: []const T) void {
         @setRuntimeSafety(false);
         lists.buf[@intFromEnum(tag) & 0xff] = .{
-            .addr = @intFromPtr(val.ptr),
+            .addr = @ptrCast(val.ptr),
             .len = val.len,
             .max_len = val.len,
         };
