@@ -265,74 +265,19 @@ pub fn signed(str: []const u8) !isize {
 }
 pub fn readLEB128(comptime T: type, bytes: []const u8) !struct { T, u8 } {
     if (@typeInfo(T).Int.signedness == .signed) {
+        if (T == isize) {
+            return noexcept.signedLEB128(bytes.ptr);
+        }
         const res = noexcept.signedLEB128(bytes.ptr);
-        return .{ try debug.expectCast(T, res[0]), res[1] };
+        const val: T = try debug.expectCast(T, res[0]);
+        return .{ val, res[1] };
     } else {
+        if (T == usize) {
+            return noexcept.unsignedLEB128(bytes.ptr);
+        }
         const res = noexcept.unsignedLEB128(bytes.ptr);
-        return .{ try debug.expectCast(T, res[0]), res[1] };
-    }
-}
-pub fn readLEB128O(comptime T: type, bytes: []const u8) !struct { T, u8 } {
-    const Int = meta.Child(T);
-    const bit_size_of: comptime_int = @bitSizeOf(Int);
-    const max_idx: comptime_int = (bit_size_of +% 6) / 7;
-    const Shift = @Type(.{ .Int = .{
-        .bits = bit_size_of -% @clz(@as(Int, bit_size_of) -% 1),
-        .signedness = .unsigned,
-    } });
-    if (@typeInfo(Int).Int.signedness == .unsigned) {
-        var idx: Shift = 0;
-        var value: Int = 0;
-        while (idx != max_idx) {
-            const byte: Int = bytes[idx];
-            const ov = @shlWithOverflow(byte & 0x7f, idx *% 7);
-            idx +%= 1;
-            if (ov[1] != 0) {
-                return error.Overflow;
-            }
-            value |= ov[0];
-            if (byte & 0x80 == 0) {
-                return .{ if (T == Int) value else @enumFromInt(value), idx };
-            }
-        }
-        return error.Overflow;
-    } else {
-        const Abs = @Type(.{ .Int = .{
-            .signedness = .unsigned,
-            .bits = bit_size_of,
-        } });
-        var idx: Shift = 0;
-        var value: Abs = 0;
-        while (idx != max_idx) {
-            const byte: u8 = bytes[idx];
-            const ored: i8 = @bitCast(byte | 0x80);
-            const shift_amt: Shift = idx *% 7;
-            idx +%= 1;
-            const ov = @shlWithOverflow(@as(usize, byte) & 0x7f, shift_amt);
-            if (ov[1] != 0) {
-                if (byte & 0x80 != 0 or
-                    @as(Int, @intCast(ov[0])) >= 0 or
-                    ored >> @as(u3, @intCast(bit_size_of -% @as(u16, shift_amt))) != -1)
-                {
-                    return error.Overflow;
-                }
-            } else {
-                if (byte & 0x80 == 0 and
-                    @as(Int, @bitCast(ov[0])) < 0 and
-                    ored >> @as(u3, @intCast(bit_size_of -% @as(u16, shift_amt))) != -1)
-                {
-                    return error.Overflow;
-                }
-            }
-            value |= ov[0];
-            if (byte & 0x80 == 0) {
-                if (byte & 0x40 != 0 and idx != max_idx) {
-                    value |= @as(Abs, @bitCast(@as(Int, -1))) << (shift_amt +% 7);
-                }
-                return .{ if (T == Int) @as(Int, @bitCast(value)) else @as(T, @enumFromInt(@as(Int, @bitCast(value)))), idx };
-            }
-        }
-        return error.Overflow;
+        const val: T = try debug.expectCast(T, res[0]);
+        return .{ val, res[1] };
     }
 }
 pub const noexcept = struct {
@@ -340,9 +285,15 @@ pub const noexcept = struct {
         @setRuntimeSafety(false);
         if (@typeInfo(T) == .Int) {
             if (@typeInfo(T).Int.signedness == .signed) {
+                if (T == isize) {
+                    return noexcept.signedLEB128(bytes.ptr);
+                }
                 const res = noexcept.signedLEB128(bytes.ptr);
                 return .{ if (@typeInfo(T) == .Int) @intCast(res[0]), res[1] };
             } else {
+                if (T == usize) {
+                    return noexcept.unsignedLEB128(bytes.ptr);
+                }
                 const res = noexcept.unsignedLEB128(bytes.ptr);
                 return .{ @intCast(res[0]), res[1] };
             }
