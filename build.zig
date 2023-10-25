@@ -197,8 +197,7 @@ pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
     const perf: *Node = group.addBuild(allocator, example_build_cmd, "perf", "examples/perf_events.zig");
     const pathsplit: *Node = group.addBuild(allocator, example_build_cmd, "pathsplit", "examples/pathsplit.zig");
     const declprint: *Node = group.addBuild(allocator, example_build_cmd, "declprint", "examples/declprint.zig");
-    const treez: *Node = group.addBuild(allocator, example_build_cmd, "treez", "examples/treez.zig");
-    const elfcmp: *Node = group.addBuild(allocator, example_build_cmd, "elfcmp", "examples/elfcmp.zig");
+
     example_build_cmd.mode = .Debug;
     example_build_cmd.strip = false;
     cp.descr = "Shows copying from one file system path to another";
@@ -211,8 +210,6 @@ pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
     perf.descr = "Integrated performance";
     pathsplit.descr = "Useful for splitting paths into dirnames and basename";
     declprint.descr = "Useful for printing declarations";
-    treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
-    elfcmp.descr = "Wrapper for ELF size comparison";
 }
 pub fn memgenGroup(allocator: *build.Allocator, group: *Node) void {
     var memgen_format_cmd: build.FormatCommand = format_cmd;
@@ -328,14 +325,15 @@ fn regenGroup(allocator: *build.Allocator, group: *Node) void {
 pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
     buildRunnerTestGroup(allocator, toplevel.addGroupWithTask(allocator, "br", .build));
     testGroup(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
-    if (false) {
-        userGroup(allocator, toplevel.addGroupWithTask(allocator, "user", .build));
-        exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "examples", .build));
-        memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
-        sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
-        buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
-        targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
-    }
+    memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
+    sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
+    buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
+    targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
+
+    const treez: *Node = toplevel.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
+    const elfcmp: *Node = toplevel.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
+    treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
+    elfcmp.descr = "Wrapper for ELF size comparison";
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
