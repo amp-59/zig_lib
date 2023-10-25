@@ -30,39 +30,41 @@ pub const PanicUnwrapErrorFn = @TypeOf(panic_extra.panicUnwrapError);
 
 const Panic = union(enum(usize)) {
     message: []const u8,
-    returned_noreturn,
-    reached_unreachable,
-    branched_on_corrupt_value,
-    unwrapped_null,
-    unwrapped_error,
-    access_out_of_bounds: struct {
-        type_name: []const u8,
+    unwrapped_null: struct {
+        child_type_name: ?[]const u8 = null,
+    },
+    unwrapped_error: struct { // panicUnwrapError
+        error_set_type_name: ?[]const u8 = null,
+        error_name: []const u8,
+    },
+    access_out_of_bounds: struct { // panicOutOfBounds
+        child_type_name: ?[]const u8 = null,
         index: usize,
         length: usize,
     },
-    access_out_of_order: struct {
-        type_name: []const u8,
+    access_out_of_order: struct { // panicStartGreaterThanEnd
+        child_type_name: ?[]const u8 = null,
         start: usize,
         finish: usize,
     },
-    mismatched_memcpy_lengths: struct {
-        type_name: []const u8,
+    mismatched_memcpy_lengths: struct { // panicStartGreaterThanEnd
+        child_type_name: ?[]const u8 = null,
         dest_length: usize,
         src_length: usize,
     },
     mismatched_for_loop_lengths: struct {
-        type_name: []const u8,
+        child_type_name: ?[]const u8 = null,
         prev_index: usize,
         prev_capture_length: usize,
         next_capture_length: usize,
     },
     access_inactive_field: struct {
-        type_name: []const u8,
+        union_type_name: ?[]const u8 = null,
         expected: []const u8,
         found: []const u8,
     },
     memcpy_arguments_alias: struct {
-        type_name: []const u8,
+        child_type_name: ?[]const u8 = null,
         dest_start: usize,
         dest_finish: usize,
         src_start: usize,
@@ -70,21 +72,24 @@ const Panic = union(enum(usize)) {
     },
     cast_to_pointer_from_null: []const u8,
     cast_to_error_from_invalid: struct {
-        type_name: []const u8,
+        error_set_type_name: ?[]const u8 = null,
         code: u16,
     },
     cast_to_misaligned_pointer: struct {
-        type_name: []const u8,
+        type_name: ?[]const u8 = null,
         address: usize,
         alignment: usize,
         remainder: usize,
     },
+    returned_noreturn,
+    reached_unreachable,
+    branched_on_corrupt_condition,
 };
 pub noinline fn __panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usize) void {
     @setRuntimeSafety(false);
     var buf: [128]u8 = undefined;
     var ptr: [*]u8 = switch (payload) {
-        .returned_noreturn => fmt.strcpyEqu(&buf, "@memcpy arguments alias"),
+        .returned_noreturn => fmt.strcpyEqu(&buf, "function declared 'noreturn' returned"),
         .reached_unreachable => fmt.strcpyEqu(&buf, "reached unreachable code"),
         .branched_on_corrupt_value => fmt.strcpyEqu(&buf, "switch on corrupt value"),
         .unwrapped_null => fmt.strcpyEqu(&buf, "unwrapped null"),
