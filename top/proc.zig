@@ -1181,16 +1181,14 @@ pub const about = opaque {
         ptr = fmt.strcpyEqu(ptr, @tagName(sig));
         ptr[0..12].* = " at address ".*;
         ptr += 12;
-        ptr += fmt.ux64(info.fields.fault.addr).formatWriteBuf(ptr);
-        var ud64: fmt.Type.Ud64 = .{ .value = pid };
+        ptr = fmt.writeUx64(ptr, info.fields.fault.addr);
         ptr[0..6].* = ", pid=".*;
         ptr += 6;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.writeUd64(ptr, pid);
         if (pid != tid) {
             ptr[0..6].* = ", tid=".*;
             ptr += 6;
-            ud64.value = tid;
-            ptr += ud64.formatWriteBuf(ptr);
+            ptr = fmt.writeUd64(ptr, tid);
         }
         ptr[0..2].* = ", ".*;
         ptr += 2;
