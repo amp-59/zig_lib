@@ -262,8 +262,7 @@ pub fn alignRealBitSizeBelow(count: u16) u16 {
 /// Align `count` above to bitSizeOf smallest real word bit count
 pub fn alignRealBitSizeAbove(count: u16) u16 {
     switch (count) {
-        0 => return 0,
-        1...8 => return 8,
+        0...8 => return 8,
         9...16 => return 16,
         17...32 => return 32,
         33...64 => return 64,
@@ -345,10 +344,10 @@ pub fn realBitSize(comptime value: comptime_int) comptime_int {
     }
 }
 pub inline fn alignBitSizeOfBelow(comptime T: type) u16 {
-    return alignRealBitSizeBelow(@bitSizeOf(T));
+    return comptime alignRealBitSizeBelow(@bitSizeOf(T));
 }
 pub inline fn alignBitSizeOfAbove(comptime T: type) u16 {
-    return alignRealBitSizeAbove(@bitSizeOf(T));
+    return comptime alignRealBitSizeAbove(@bitSizeOf(T));
 }
 pub fn AlignBitSizeBelow(comptime T: type) type {
     var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
