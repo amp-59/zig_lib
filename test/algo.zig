@@ -28,7 +28,7 @@ pub fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
 pub fn print(buf: []u8, off: u64, ss: []const []const u8) void {
     file.write(.{ .errors = .{} }, 1, buf[0 .. off + write(buf, off, ss)]);
 }
-pub const Allocator = mem.GenericArenaAllocator(.{
+pub const Allocator = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = mem.spec.address_space.regular_128,
     .arena_index = 1,
     .logging = mem.dynamic.spec.logging.silent,
