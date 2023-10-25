@@ -26,7 +26,7 @@ pub const Process = enum(usize) {
         return @as(Process, @enumFromInt(val));
     }
 };
-pub const Event = extern struct {
+pub const Event = packed struct {
     /// Major type: hardware/software/tracepoint/etc.
     type: Type,
     /// Size of the attr structure, for fwd/bwd compat.
@@ -222,7 +222,7 @@ pub const Type = enum(u32) {
     breakpoint = 5,
     max = 6,
 };
-const Config = extern union {
+const Config = packed union {
     hardware: Count.Hardware,
     software: Count.Software,
     tracepoint: void,
@@ -365,7 +365,20 @@ pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: usize, ctl: Ev
 pub const PerfEventsSpec = struct {
     errors: Errors = .{},
     logging: Logging = .{},
-    counters: []const CounterPair = &default,
+    counters: []const CounterPair = &.{
+        .{ .type = .hardware, .counters = &.{
+            .{ .name = "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
+            .{ .name = "instructions\t\t", .config = .{ .hardware = .instructions } },
+            .{ .name = "cache-references\t", .config = .{ .hardware = .cache_references } },
+            .{ .name = "cache-misses\t\t", .config = .{ .hardware = .cache_misses } },
+            .{ .name = "branch-misses\t\t", .config = .{ .hardware = .branch_misses } },
+        } },
+        .{ .type = .software, .counters = &.{
+            .{ .name = "cpu-clock\t\t", .config = .{ .software = .cpu_clock } },
+            .{ .name = "task-clock\t\t", .config = .{ .software = .task_clock } },
+            .{ .name = "page-faults\t\t", .config = .{ .software = .page_faults } },
+        } },
+    },
     const Errors = struct {
         open: sys.ErrorPolicy = .{ .throw = spec.perf_event_open.errors.all },
         read: sys.ErrorPolicy = .{ .throw = file.spec.read.errors.all },
@@ -406,19 +419,15 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             .fd_close_on_exec = true,
         };
         pub fn openFds(perf_events: *PerfEvents) sys.ErrorUnion(events_spec.errors.open, void) {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             const leader_fd: *u32 = &perf_events.fds[0][0];
             leader_fd.* = ~@as(u32, 0);
-            var event: Event = undefined;
+            var event: Event = builtin.zero(Event);
             for (events_spec.counters, 0..) |set, set_idx| {
                 var idx: usize = 0;
                 while (idx != set.counters.len) : (idx +%= 1) {
-                    mem.zero(Event, &event);
-                    event = .{
-                        .flags = PerfEvents.event_flags,
-                        .type = set.type,
-                        .config = set.counters[idx].config,
-                    };
+                    event = builtin.zero(Event);
+                    event = .{ .flags = PerfEvents.event_flags, .type = set.type, .config = set.counters[idx].config };
                     perf_events.fds[set_idx][idx] = try meta.wrap(eventOpen(open(), &event, .self, .any, leader_fd.*, PerfEvents.fd_flags));
                 }
             }
@@ -427,27 +436,23 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             .throw = events_spec.errors.read.throw ++ events_spec.errors.close.throw,
             .abort = events_spec.errors.read.abort ++ events_spec.errors.close.abort,
         }, void) {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             for (events_spec.counters, 0..) |set, set_idx| {
                 var event_idx: usize = 0;
                 while (event_idx != set.counters.len) : (event_idx +%= 1) {
                     const res: [*]u8 = @ptrCast(&perf_events.res[set_idx][event_idx]);
                     debug.assertEqual(usize, 8, try meta.wrap(file.read(read(), perf_events.fds[set_idx][event_idx], res[0..8])));
                     try meta.wrap(file.close(close(), perf_events.fds[set_idx][event_idx]));
-                    if (false) {
-                        perf_events.fds[set_idx][event_idx] = @truncate(@as(u64, @bitCast((set.counters[event_idx].config))));
-                    }
                 }
             }
         }
         pub fn writeResults(perf_events: *PerfEvents, width: usize, buf: [*]u8) [*]u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             var ptr: [*]u8 = buf;
             for (events_spec.counters, 0..) |set, set_idx| {
-                var event_idx: usize = 0;
-                while (event_idx != set.counters.len) : (event_idx +%= 1) {
+                for (set.counters, 0..) |counter, event_idx| {
                     ptr += fmt.writeSideBarIndex(ptr, width, event_idx);
-                    ptr = fmt.strcpyEqu(ptr, set.counters[event_idx].name);
+                    ptr = fmt.strcpyEqu(ptr, counter.name);
                     ptr += fmt.udh(perf_events.res[set_idx][event_idx]).formatWriteBuf(ptr);
                     ptr[0] = '\n';
                     ptr += 1;
@@ -485,18 +490,4 @@ pub const spec = struct {
             };
         };
     };
-};
-const default = .{
-    .{ .type = .hardware, .counters = &.{
-        .{ .name = "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
-        .{ .name = "instructions\t\t", .config = .{ .hardware = .instructions } },
-        .{ .name = "cache-references\t", .config = .{ .hardware = .cache_references } },
-        .{ .name = "cache-misses\t\t", .config = .{ .hardware = .cache_misses } },
-        .{ .name = "branch-misses\t\t", .config = .{ .hardware = .branch_misses } },
-    } },
-    .{ .type = .software, .counters = &.{
-        .{ .name = "cpu-clock\t\t", .config = .{ .software = .cpu_clock } },
-        .{ .name = "task-clock\t\t", .config = .{ .software = .task_clock } },
-        .{ .name = "page-faults\t\t", .config = .{ .software = .page_faults } },
-    } },
 };
