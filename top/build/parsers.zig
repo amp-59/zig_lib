@@ -596,6 +596,8 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             } else if (mem.testEqualString("on", arg)) {
                 cmd.color = .on;
             }
+        } else if (mem.testEqualString("--debug-incremental", arg)) {
+            cmd.incremental_compilation = true;
         } else if (mem.testEqualString("-ftime-report", arg)) {
             cmd.time_report = true;
         } else if (mem.testEqualString("-fstack-report", arg)) {
@@ -1332,6 +1334,7 @@ const build_help: [:0]const u8 =
     \\                                      common-page-size=[bytes]   Set the common page size for ELF binaries
     \\                                      max-page-size=[bytes]      Set the max page size for ELF binaries
     \\    --color                         Enable or disable colored error messages
+    \\    --debug-incremental             Enable experimental feature: incremental compilation
     \\    -ftime-report                   Print timing diagnostics
     \\    -fstack-report                  Print stack size diagnostics
     \\    --verbose-link                  Display linker invocations
