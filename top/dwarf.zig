@@ -1711,7 +1711,7 @@ const about = struct {
         @setRuntimeSafety(is_safe);
         var buf: [512]u8 = undefined;
         var len: u64 = 0;
-        var ud64: fmt.Type.Ud64 = .{ .value = int };
+        var ud64: fmt.Ud64 = .{ .value = int };
         @memcpy(&buf, src.fn_name);
         len +%= src.fn_name.len;
         @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
@@ -1727,7 +1727,7 @@ const about = struct {
         @setRuntimeSafety(is_safe);
         var buf: [512]u8 = undefined;
         var len: u64 = 0;
-        var ud64: fmt.Type.Ud64 = .{ .value = unit.version };
+        var ud64: fmt.Ud64 = .{ .value = unit.version };
         @as(fmt.AboutDest, @ptrCast(&buf)).* = dwarf_s.*;
         len +%= dwarf_s.len;
         @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "ver=".*;
@@ -1753,7 +1753,7 @@ const about = struct {
         var buf: [32768]u8 = undefined;
         var tmp: [24]u8 = undefined;
         var len: usize = 0;
-        var id64: fmt.Type.Id64 = undefined;
+        var id64: fmt.Id64 = undefined;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = abbrev_tab_s.*;
         len +%= abbrev_tab_s.len;
         for (abbrev_tab.ents[0..abbrev_tab.ents_len]) |*ent| {
@@ -1800,7 +1800,7 @@ const about = struct {
     fn debugDieNotice(info_entry: *Die) void {
         @setRuntimeSafety(is_safe);
         var buf: [32768]u8 = undefined;
-        var id64: fmt.Type.Id64 = undefined;
+        var id64: fmt.Id64 = undefined;
         buf[0..debug_entry_s.len].* = debug_entry_s.*;
         var ptr: [*]u8 = buf[debug_entry_s.len..];
         ptr = fmt.strcpyEqu(ptr, @tagName(info_entry.head.tag));

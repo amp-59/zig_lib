@@ -2509,14 +2509,14 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..];
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
         ptr = fmt.writeUd64(ptr, offset);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        var ux64: fmt.Ux64 = .{ .value = addr };
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
         ptr += 2;
@@ -2536,7 +2536,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
@@ -2552,7 +2552,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
@@ -2567,7 +2567,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
         ud64.value = fd_len;
         ptr[0..2].* = ", ".*;
@@ -2584,7 +2584,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = act_len };
+        var ud64: fmt.Ud64 = .{ .value = act_len };
         _ = ud64;
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
@@ -2628,7 +2628,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
@@ -2680,7 +2680,7 @@ pub const about = struct {
         ptr += 10;
         ptr[0..6].* = ", dev=".*;
         ptr += 6;
-        var ud64: fmt.Type.Ud64 = .{ .value = dev.major };
+        var ud64: fmt.Ud64 = .{ .value = dev.major };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = ':';
         ptr += 1;
@@ -2708,7 +2708,7 @@ pub const about = struct {
     pub fn writeDirFd(buf: [*]u8, dir_fd_s: []const u8, dir_fd: usize) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = fmt.strcpyEqu(buf, dir_fd_s);
-        var ud64: fmt.Type.Ud64 = .{ .value = dir_fd };
+        var ud64: fmt.Ud64 = .{ .value = dir_fd };
         if (dir_fd > 1024) {
             ptr[0..3].* = "CWD".*;
             ptr += 3;
@@ -2755,7 +2755,7 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[about_s.len..], "fd=");
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
@@ -2914,7 +2914,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[send_s.len..].ptr;
         ptr[0..7].* = "src_fd=".*;
         ptr += 7;
-        var ud64: fmt.Type.Ud64 = .{ .value = src_fd };
+        var ud64: fmt.Ud64 = .{ .value = src_fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
@@ -2940,7 +2940,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[copy_s.len..].ptr;
         ptr[0..7].* = "src_fd=".*;
         ptr += 7;
-        var ud64: fmt.Type.Ud64 = .{ .value = src_fd };
+        var ud64: fmt.Ud64 = .{ .value = src_fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
@@ -2971,7 +2971,7 @@ pub const about = struct {
         ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0..10].* = ", offset=".*;
         ptr += 10;
-        var ud64: fmt.Type.Ud64 = .{ .value = offset };
+        var ud64: fmt.Ud64 = .{ .value = offset };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
@@ -2983,7 +2983,7 @@ pub const about = struct {
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
         ptr += 3;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
@@ -3061,8 +3061,8 @@ pub const about = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
-        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        var ud64: fmt.Ud64 = .{ .value = fd };
+        var ux64: fmt.Ux64 = .{ .value = addr };
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
@@ -3175,7 +3175,7 @@ pub const about = struct {
         ptr += 2;
         ptr[0..fd1_s.len].* = fd1_s.*;
         ptr += fd1_s.len;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd1 };
+        var ud64: fmt.Ud64 = .{ .value = fd1 };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
@@ -3265,7 +3265,7 @@ pub const about = struct {
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], @errorName(sendfile_error));
         ptr[0..9].* = ", src_fd=".*;
         ptr += 9;
-        var ud64: fmt.Type.Ud64 = .{ .value = src_fd };
+        var ud64: fmt.Ud64 = .{ .value = src_fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
@@ -3290,7 +3290,7 @@ pub const about = struct {
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], @errorName(copy_file_range_error));
         ptr[0..9].* = ", src_fd=".*;
         ptr += 9;
-        var ud64: fmt.Type.Ud64 = .{ .value = src_fd };
+        var ud64: fmt.Ud64 = .{ .value = src_fd };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", dest_fd=".*;
         ptr += 10;
@@ -3314,7 +3314,7 @@ pub const about = struct {
     fn aboutPathnameOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8, offset: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        var ud64: fmt.Type.Ud64 = .{ .value = offset };
+        var ud64: fmt.Ud64 = .{ .value = offset };
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
@@ -3332,7 +3332,7 @@ pub const about = struct {
     fn aboutFdOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, offset: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
@@ -3350,7 +3350,7 @@ pub const about = struct {
     fn aboutFdOffsetReadWriteError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, offset: usize, flags: sys.flags.ReadWrite) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ud64: fmt.Ud64 = .{ .value = fd };
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
@@ -3608,7 +3608,7 @@ pub const about = struct {
         ptr += fmt.bytes(st.size).formatWriteBuf(ptr);
         return ptr;
     }
-    fn writeUpdateOffset(buf: [*]u8, fd: fmt.Type.Udsize, off: fmt.Type.Udsize) [*]u8 {
+    fn writeUpdateOffset(buf: [*]u8, fd: fmt.Udsize, off: fmt.Udsize) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         var len: u64 = 4 -% fd.formatLength();
