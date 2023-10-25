@@ -26,6 +26,7 @@ pub const signal_handlers: debug.SignalHandlers = .{
     .FloatingPointError = true,
     .Trap = true,
 };
+const ThreadSafeSet = mem.ThreadSafeSet(8, u16, u16);
 const Array = mem.UnstructuredStreamView(8, 8, struct {}, .{});
 const Mapping = extern struct {
     lb_addr: u64,
@@ -98,16 +99,13 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         }
     }
 }
-
-const TSS = mem.ThreadSafeSet(8, u16, u16);
-
-fn sleepAndSet(tss: *TSS) void {
+fn sleepAndSet(tss: *ThreadSafeSet) void {
     time.sleep(.{ .errors = .{} }, .{ .nsec = 5000000 });
     tss.set(0, 0);
     proc.futexWake(.{ .errors = .{} }, tss.mutex(0), 1);
 }
 pub fn testFutexOnThreadSafeSet() !void {
-    var tss: TSS = .{};
+    var tss: ThreadSafeSet = .{};
     tss.set(0, 2);
     try debug.expectEqual(u16, tss.get(0), 2);
     const futex: *u32 = tss.mutex(0);
