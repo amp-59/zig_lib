@@ -56,7 +56,7 @@ fn writeOneInternal(comptime child: type, next: u64, value: child) void {
     reference.pointerOne(child, next).* = value;
 }
 fn writeCountInternal(comptime child: type, next: u64, comptime write_count: u64, values: [write_count]child) void {
-    reference.pointerCount(child, next, write_count).* = values;
+    for (values, 0..) |value, i| reference.pointerOne(child, next + i).* = value;
 }
 fn writeManyInternal(comptime child: type, next: u64, values: []const child) void {
     for (values, 0..) |value, i| reference.pointerOne(child, next + i).* = value;
@@ -550,7 +550,7 @@ pub const reinterpret = struct {
         var buf: [32768]u8 = undefined;
         const ptr: [*]u8 = &buf;
         var len: usize = 0;
-        var ud64: fmt.Type.Ud64 = @bitCast(t_len);
+        var ud64: fmt.Ud64 = @bitCast(t_len);
         @memcpy(ptr, format_type_name);
         len +%= format_type_name.len;
         len +%= ud64.formatWriteBuf(ptr + len);
@@ -3560,10 +3560,10 @@ pub fn AutomaticStructuredReadWriteStreamResize(comptime ctn_spec: Parameters3) 
         pub fn ahead(array: *Array) u64 {
             return math.divT64(array.impl.unstreamed_byte_count(), child_size);
         }
-        pub fn define(array: *Array, count: u64) u64 {
+        pub fn define(array: *Array, count: u64) void {
             array.impl.define(math.mul64(count, child_size));
         }
-        pub fn undefine(array: *Array, count: u64) u64 {
+        pub fn undefine(array: *Array, count: u64) void {
             array.impl.undefine(math.mul64(count, child_size));
         }
         pub fn stream(array: *Array, count: u64) u64 {
@@ -4166,10 +4166,10 @@ pub fn DynamicStructuredReadWriteResize(comptime ctn_spec: Parameters6) type {
         pub fn avail(array: *const Array) u64 {
             return math.divT64(array.impl.undefined_byte_count(), child_size);
         }
-        pub fn define(array: *Array, count: u64) u64 {
+        pub fn define(array: *Array, count: u64) void {
             array.impl.define(math.mul64(count, child_size));
         }
-        pub fn undefine(array: *Array, count: u64) u64 {
+        pub fn undefine(array: *Array, count: u64) void {
             array.impl.undefine(math.mul64(count, child_size));
         }
         pub fn init(allocator: *Allocator, count: u64) Allocator.allocate_void {
@@ -4550,10 +4550,10 @@ pub fn DynamicStructuredReadWriteStreamResize(comptime ctn_spec: Parameters7) ty
         pub fn ahead(array: *Array) u64 {
             return math.divT64(array.impl.unstreamed_byte_count(), child_size);
         }
-        pub fn define(array: *Array, count: u64) u64 {
+        pub fn define(array: *Array, count: u64) void {
             array.impl.define(math.mul64(count, child_size));
         }
-        pub fn undefine(array: *Array, count: u64) u64 {
+        pub fn undefine(array: *Array, count: u64) void {
             array.impl.undefine(math.mul64(count, child_size));
         }
         pub fn stream(array: *Array, count: u64) u64 {
@@ -5182,10 +5182,10 @@ pub fn DynamicUnstructuredReadWriteResize(comptime ctn_spec: Parameters10) type 
         pub fn avail(array: *const Array, comptime child: type) u64 {
             return math.divT64(array.impl.undefined_byte_count(), @sizeOf(child));
         }
-        pub fn define(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn define(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.define(amountOfTypeToBytes(amount, child));
         }
-        pub fn undefine(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn undefine(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(amount, child));
         }
         pub fn init(allocator: *Allocator, count: u64) Allocator.allocate_void {
@@ -5566,10 +5566,10 @@ pub fn DynamicUnstructuredReadWriteStreamResize(comptime ctn_spec: Parameters11)
         pub fn ahead(array: *Array, comptime child: type) u64 {
             return math.divT64(array.impl.unstreamed_byte_count(), @sizeOf(child));
         }
-        pub fn define(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn define(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.define(amountOfTypeToBytes(amount, child));
         }
-        pub fn undefine(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn undefine(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(amount, child));
         }
         pub fn stream(array: *Array, comptime child: type, amount: Amount) u64 {
@@ -6132,10 +6132,10 @@ pub fn StaticStructuredReadWriteResize(comptime ctn_spec: Parameters14) type {
         pub fn avail(array: *const Array) u64 {
             return math.divT64(array.impl.undefined_byte_count(), child_size);
         }
-        pub fn define(array: *Array, count: u64) u64 {
+        pub fn define(array: *Array, count: u64) void {
             array.impl.define(math.mul64(count, child_size));
         }
-        pub fn undefine(array: *Array, count: u64) u64 {
+        pub fn undefine(array: *Array, count: u64) void {
             array.impl.undefine(math.mul64(count, child_size));
         }
         pub fn init(allocator: *Allocator) Allocator.allocate_void {
@@ -6467,10 +6467,10 @@ pub fn StaticStructuredReadWriteStreamResize(comptime ctn_spec: Parameters15) ty
         pub fn ahead(array: *Array) u64 {
             return math.divT64(array.impl.unstreamed_byte_count(), child_size);
         }
-        pub fn define(array: *Array, count: u64) u64 {
+        pub fn define(array: *Array, count: u64) void {
             array.impl.define(math.mul64(count, child_size));
         }
-        pub fn undefine(array: *Array, count: u64) u64 {
+        pub fn undefine(array: *Array, count: u64) void {
             array.impl.undefine(math.mul64(count, child_size));
         }
         pub fn stream(array: *Array, count: u64) u64 {
@@ -7004,10 +7004,10 @@ pub fn StaticUnstructuredReadWriteResize(comptime ctn_spec: Parameters18) type {
         pub fn avail(array: *const Array, comptime child: type) u64 {
             return math.divT64(array.impl.undefined_byte_count(), @sizeOf(child));
         }
-        pub fn define(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn define(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.define(amountOfTypeToBytes(amount, child));
         }
-        pub fn undefine(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn undefine(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(amount, child));
         }
         pub fn init(allocator: *Allocator) Allocator.allocate_void {
@@ -7337,10 +7337,10 @@ pub fn StaticUnstructuredReadWriteStreamResize(comptime ctn_spec: Parameters19) 
         pub fn ahead(array: *Array, comptime child: type) u64 {
             return math.divT64(array.impl.unstreamed_byte_count(), @sizeOf(child));
         }
-        pub fn define(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn define(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.define(amountOfTypeToBytes(amount, child));
         }
-        pub fn undefine(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn undefine(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(amount, child));
         }
         pub fn stream(array: *Array, comptime child: type, amount: Amount) u64 {
@@ -7601,10 +7601,10 @@ pub fn ParametricStructuredReadWriteResize(comptime ctn_spec: Parameters20) type
         pub fn avail(array: *const Array, allocator: *const Allocator) u64 {
             return math.divT64(array.impl.undefined_byte_count(allocator), child_size);
         }
-        pub fn define(array: *Array, count: u64) u64 {
+        pub fn define(array: *Array, count: u64) void {
             array.impl.define(math.mul64(count, child_size));
         }
-        pub fn undefine(array: *Array, count: u64) u64 {
+        pub fn undefine(array: *Array, count: u64) void {
             array.impl.undefine(math.mul64(count, child_size));
         }
         pub fn init(allocator: *Allocator) Allocator.allocate_void {
@@ -7984,10 +7984,10 @@ pub fn ParametricStructuredReadWriteStreamResize(comptime ctn_spec: Parameters21
         pub fn ahead(array: *Array) u64 {
             return math.divT64(array.impl.unstreamed_byte_count(), child_size);
         }
-        pub fn define(array: *Array, count: u64) u64 {
+        pub fn define(array: *Array, count: u64) void {
             array.impl.define(math.mul64(count, child_size));
         }
-        pub fn undefine(array: *Array, count: u64) u64 {
+        pub fn undefine(array: *Array, count: u64) void {
             array.impl.undefine(math.mul64(count, child_size));
         }
         pub fn stream(array: *Array, count: u64) u64 {
@@ -8266,10 +8266,10 @@ pub fn ParametricUnstructuredReadWriteResize(comptime ctn_spec: Parameters22) ty
         pub fn avail(array: *const Array, comptime child: type, allocator: *const Allocator) u64 {
             return math.divT64(array.impl.undefined_byte_count(allocator), @sizeOf(child));
         }
-        pub fn define(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn define(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.define(amountOfTypeToBytes(amount, child));
         }
-        pub fn undefine(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn undefine(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(amount, child));
         }
         pub fn init(allocator: *Allocator) Allocator.allocate_void {
@@ -8649,10 +8649,10 @@ pub fn ParametricUnstructuredReadWriteStreamResize(comptime ctn_spec: Parameters
         pub fn ahead(array: *Array, comptime child: type) u64 {
             return math.divT64(array.impl.unstreamed_byte_count(), @sizeOf(child));
         }
-        pub fn define(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn define(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.define(amountOfTypeToBytes(amount, child));
         }
-        pub fn undefine(array: *Array, comptime child: type, amount: Amount) u64 {
+        pub fn undefine(array: *Array, comptime child: type, amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(amount, child));
         }
         pub fn stream(array: *Array, comptime child: type, amount: Amount) u64 {
