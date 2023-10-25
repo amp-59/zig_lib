@@ -405,7 +405,7 @@ pub const Assembler = struct {
                     if (parse.any(i32, as.source(tok))) |disp| {
                         res.disp = if (is_neg) -1 * disp else disp;
                     } else |err| switch (err) {
-                        error.Overflow => {
+                        error.IntCastTruncatedBits => {
                             if (is_neg) return err;
                             switch (res.base) {
                                 .none => {},
@@ -470,7 +470,7 @@ const ParseError = error{
     Overflow,
     InvalidCharacter,
     BadParse,
-} || Assembler.Error;
+} || Assembler.Error || debug.Error;
 pub const Register = enum(u7) {
     rax,
     rcx,
