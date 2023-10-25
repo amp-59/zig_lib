@@ -202,6 +202,8 @@ pub const BuildCommand = struct {
     } = null,
     /// Enable or disable colored error messages
     color: ?types.AutoOnOff = null,
+    /// Enable experimental feature: incremental compilation
+    incremental_compilation: bool = false,
     /// Print timing diagnostics
     time_report: bool = false,
     /// Print stack size diagnostics
@@ -889,6 +891,10 @@ pub const BuildCommand = struct {
             ptr[0] = 0;
             ptr += 1;
         }
+        if (cmd.incremental_compilation) {
+            ptr[0..20].* = "--debug-incremental\x00".*;
+            ptr += 20;
+        }
         if (cmd.time_report) {
             ptr[0..14].* = "-ftime-report\x00".*;
             ptr += 14;
@@ -1456,6 +1462,9 @@ pub const BuildCommand = struct {
             len +%= @tagName(color).len;
             len +%= 1;
         }
+        if (cmd.incremental_compilation) {
+            len +%= 20;
+        }
         if (cmd.time_report) {
             len +%= 14;
         }
@@ -2008,6 +2017,9 @@ pub const BuildCommand = struct {
             array.writeMany("--color\x00");
             array.writeMany(@tagName(color));
             array.writeOne(0);
+        }
+        if (cmd.incremental_compilation) {
+            array.writeMany("--debug-incremental\x00");
         }
         if (cmd.time_report) {
             array.writeMany("-ftime-report\x00");
@@ -2639,6 +2651,8 @@ pub const BuildCommand = struct {
                 } else if (mem.testEqualString("on", arg)) {
                     cmd.color = .on;
                 }
+            } else if (mem.testEqualString("--debug-incremental", arg)) {
+                cmd.incremental_compilation = true;
             } else if (mem.testEqualString("-ftime-report", arg)) {
                 cmd.time_report = true;
             } else if (mem.testEqualString("-fstack-report", arg)) {
@@ -5723,6 +5737,7 @@ const build_help: [:0]const u8 =
     \\                                      common-page-size=[bytes]   Set the common page size for ELF binaries
     \\                                      max-page-size=[bytes]      Set the max page size for ELF binaries
     \\    --color                         Enable or disable colored error messages
+    \\    --debug-incremental             Enable experimental feature: incremental compilation
     \\    -ftime-report                   Print timing diagnostics
     \\    -fstack-report                  Print stack size diagnostics
     \\    --verbose-link                  Display linker invocations
