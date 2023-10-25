@@ -28,7 +28,7 @@ pub const PanicStartGreaterThanEndFn = @TypeOf(panic_extra.panicStartGreaterThan
 pub const PanicInactiveUnionFieldFn = @TypeOf(panic_extra.panicInactiveUnionField);
 pub const PanicUnwrapErrorFn = @TypeOf(panic_extra.panicUnwrapError);
 
-const Panic = union(enum(comptime_int)) {
+const Panic = union(enum(usize)) {
     message: []const u8,
     returned_noreturn,
     reached_unreachable,
