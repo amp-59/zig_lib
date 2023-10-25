@@ -275,7 +275,7 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.passes) |passes| {
         ptr[0..19].* = "-fopt-bisect-limit\x3d".*;
         ptr += 19;
-        ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = passes }, ptr);
+        ptr += fmt.Ud64.formatWriteBuf(.{ .value = passes }, ptr);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -536,6 +536,15 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
             ptr += 9;
         }
     }
+    if (cmd.llvm) |llvm| {
+        if (llvm) {
+            ptr[0..7].* = "-fllvm\x00".*;
+            ptr += 7;
+        } else {
+            ptr[0..10].* = "-fno-llvm\x00".*;
+            ptr += 10;
+        }
+    }
     if (cmd.compiler_rt) |compiler_rt| {
         if (compiler_rt) {
             ptr[0..14].* = "-fcompiler-rt\x00".*;
@@ -597,14 +606,14 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.stack) |stack| {
         ptr[0..8].* = "--stack\x00".*;
         ptr += 8;
-        ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = stack }, ptr);
+        ptr += fmt.Ud64.formatWriteBuf(.{ .value = stack }, ptr);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.image_base) |image_base| {
         ptr[0..13].* = "--image-base\x00".*;
         ptr += 13;
-        ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = image_base }, ptr);
+        ptr += fmt.Ud64.formatWriteBuf(.{ .value = image_base }, ptr);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -938,7 +947,7 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
     }
     if (cmd.passes) |passes| {
         len +%= 19;
-        len +%= fmt.Type.Ud64.formatLength(.{ .value = passes });
+        len +%= fmt.Ud64.formatLength(.{ .value = passes });
         len +%= 1;
     }
     if (cmd.main_mod_path) |main_mod_path| {
@@ -1136,6 +1145,13 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
             len +%= 9;
         }
     }
+    if (cmd.llvm) |llvm| {
+        if (llvm) {
+            len +%= 7;
+        } else {
+            len +%= 10;
+        }
+    }
     if (cmd.compiler_rt) |compiler_rt| {
         if (compiler_rt) {
             len +%= 14;
@@ -1182,12 +1198,12 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
     }
     if (cmd.stack) |stack| {
         len +%= 8;
-        len +%= fmt.Type.Ud64.formatLength(.{ .value = stack });
+        len +%= fmt.Ud64.formatLength(.{ .value = stack });
         len +%= 1;
     }
     if (cmd.image_base) |image_base| {
         len +%= 13;
-        len +%= fmt.Type.Ud64.formatLength(.{ .value = image_base });
+        len +%= fmt.Ud64.formatLength(.{ .value = image_base });
         len +%= 1;
     }
     if (cmd.macros) |macros| {
@@ -1449,7 +1465,7 @@ export fn formatWriteBufObjcopyCommand(cmd: *tasks.ObjcopyCommand, zig_exe_ptr: 
     if (cmd.pad_to) |pad_to| {
         ptr[0..9].* = "--pad-to\x00".*;
         ptr += 9;
-        ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = pad_to }, ptr);
+        ptr += fmt.Ud64.formatWriteBuf(.{ .value = pad_to }, ptr);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1501,7 +1517,7 @@ export fn formatLengthObjcopyCommand(cmd: *tasks.ObjcopyCommand, zig_exe_ptr: [*
     }
     if (cmd.pad_to) |pad_to| {
         len +%= 9;
-        len +%= fmt.Type.Ud64.formatLength(.{ .value = pad_to });
+        len +%= fmt.Ud64.formatLength(.{ .value = pad_to });
         len +%= 1;
     }
     if (cmd.strip_debug) {
@@ -1978,7 +1994,7 @@ export fn formatWriteBufLLCCommand(cmd: *tasks.LLCCommand, buf: [*]u8) callconv(
     if (cmd.align_loops) |align_loops| {
         ptr[0..14].* = "--align-loops\x00".*;
         ptr += 14;
-        ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = align_loops }, ptr);
+        ptr += fmt.Ud64.formatWriteBuf(.{ .value = align_loops }, ptr);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -2335,7 +2351,7 @@ export fn formatLengthLLCCommand(cmd: *tasks.LLCCommand) callconv(.C) usize {
     }
     if (cmd.align_loops) |align_loops| {
         len +%= 14;
-        len +%= fmt.Type.Ud64.formatLength(.{ .value = align_loops });
+        len +%= fmt.Ud64.formatLength(.{ .value = align_loops });
         len +%= 1;
     }
     if (cmd.aarch64_use_aa) {

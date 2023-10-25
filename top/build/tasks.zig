@@ -135,6 +135,8 @@ pub const BuildCommand = struct {
     entry: ?[]const u8 = null,
     /// Use LLD as the linker
     lld: ?bool = null,
+    /// Use LLVM as the codegen backend
+    llvm: ?bool = null,
     /// (default) Include compiler-rt symbols in output
     compiler_rt: ?bool = null,
     /// Add directory to the runtime library search path
@@ -500,7 +502,7 @@ pub const BuildCommand = struct {
         if (cmd.passes) |passes| {
             ptr[0..19].* = "-fopt-bisect-limit\x3d".*;
             ptr += 19;
-            ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = passes }, ptr);
+            ptr += fmt.Ud64.formatWriteBuf(.{ .value = passes }, ptr);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -761,6 +763,15 @@ pub const BuildCommand = struct {
                 ptr += 9;
             }
         }
+        if (cmd.llvm) |llvm| {
+            if (llvm) {
+                ptr[0..7].* = "-fllvm\x00".*;
+                ptr += 7;
+            } else {
+                ptr[0..10].* = "-fno-llvm\x00".*;
+                ptr += 10;
+            }
+        }
         if (cmd.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
                 ptr[0..14].* = "-fcompiler-rt\x00".*;
@@ -822,14 +833,14 @@ pub const BuildCommand = struct {
         if (cmd.stack) |stack| {
             ptr[0..8].* = "--stack\x00".*;
             ptr += 8;
-            ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = stack }, ptr);
+            ptr += fmt.Ud64.formatWriteBuf(.{ .value = stack }, ptr);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.image_base) |image_base| {
             ptr[0..13].* = "--image-base\x00".*;
             ptr += 13;
-            ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = image_base }, ptr);
+            ptr += fmt.Ud64.formatWriteBuf(.{ .value = image_base }, ptr);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -1161,7 +1172,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.passes) |passes| {
             len +%= 19;
-            len +%= fmt.Type.Ud64.formatLength(.{ .value = passes });
+            len +%= fmt.Ud64.formatLength(.{ .value = passes });
             len +%= 1;
         }
         if (cmd.main_mod_path) |main_mod_path| {
@@ -1359,6 +1370,13 @@ pub const BuildCommand = struct {
                 len +%= 9;
             }
         }
+        if (cmd.llvm) |llvm| {
+            if (llvm) {
+                len +%= 7;
+            } else {
+                len +%= 10;
+            }
+        }
         if (cmd.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
                 len +%= 14;
@@ -1405,12 +1423,12 @@ pub const BuildCommand = struct {
         }
         if (cmd.stack) |stack| {
             len +%= 8;
-            len +%= fmt.Type.Ud64.formatLength(.{ .value = stack });
+            len +%= fmt.Ud64.formatLength(.{ .value = stack });
             len +%= 1;
         }
         if (cmd.image_base) |image_base| {
             len +%= 13;
-            len +%= fmt.Type.Ud64.formatLength(.{ .value = image_base });
+            len +%= fmt.Ud64.formatLength(.{ .value = image_base });
             len +%= 1;
         }
         if (cmd.macros) |macros| {
@@ -1913,6 +1931,13 @@ pub const BuildCommand = struct {
                 array.writeMany("-flld\x00");
             } else {
                 array.writeMany("-fno-lld\x00");
+            }
+        }
+        if (cmd.llvm) |llvm| {
+            if (llvm) {
+                array.writeMany("-fllvm\x00");
+            } else {
+                array.writeMany("-fno-llvm\x00");
             }
         }
         if (cmd.compiler_rt) |compiler_rt| {
@@ -2516,6 +2541,10 @@ pub const BuildCommand = struct {
                 cmd.lld = true;
             } else if (mem.testEqualString("-fno-lld", arg)) {
                 cmd.lld = false;
+            } else if (mem.testEqualString("-fllvm", arg)) {
+                cmd.llvm = true;
+            } else if (mem.testEqualString("-fno-llvm", arg)) {
+                cmd.llvm = false;
             } else if (mem.testEqualString("-fcompiler-rt", arg)) {
                 cmd.compiler_rt = true;
             } else if (mem.testEqualString("-fno-compiler-rt", arg)) {
@@ -3029,7 +3058,7 @@ pub const ObjcopyCommand = struct {
         if (cmd.pad_to) |pad_to| {
             ptr[0..9].* = "--pad-to\x00".*;
             ptr += 9;
-            ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = pad_to }, ptr);
+            ptr += fmt.Ud64.formatWriteBuf(.{ .value = pad_to }, ptr);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -3080,7 +3109,7 @@ pub const ObjcopyCommand = struct {
         }
         if (cmd.pad_to) |pad_to| {
             len +%= 9;
-            len +%= fmt.Type.Ud64.formatLength(.{ .value = pad_to });
+            len +%= fmt.Ud64.formatLength(.{ .value = pad_to });
             len +%= 1;
         }
         if (cmd.strip_debug) {
@@ -4321,7 +4350,7 @@ pub const LLCCommand = struct {
         if (cmd.align_loops) |align_loops| {
             ptr[0..14].* = "--align-loops\x00".*;
             ptr += 14;
-            ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = align_loops }, ptr);
+            ptr += fmt.Ud64.formatWriteBuf(.{ .value = align_loops }, ptr);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -4678,7 +4707,7 @@ pub const LLCCommand = struct {
         }
         if (cmd.align_loops) |align_loops| {
             len +%= 14;
-            len +%= fmt.Type.Ud64.formatLength(.{ .value = align_loops });
+            len +%= fmt.Ud64.formatLength(.{ .value = align_loops });
             len +%= 1;
         }
         if (cmd.aarch64_use_aa) {
@@ -5702,6 +5731,7 @@ const build_help: [:0]const u8 =
     \\    --sysroot                       Set the system root directory
     \\    --entry                         Set the entrypoint symbol name
     \\    -f[no-]lld                      Use LLD as the linker
+    \\    -f[no-]llvm                     Use LLVM as the codegen backend
     \\    -f[no-]compiler-rt              (default) Include compiler-rt symbols in output
     \\    -rpath                          Add directory to the runtime library search path
     \\    -f[no-]each-lib-rpath           Ensure adding rpath for each used dynamic library

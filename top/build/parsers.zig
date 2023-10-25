@@ -461,6 +461,10 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             cmd.lld = true;
         } else if (mem.testEqualString("-fno-lld", arg)) {
             cmd.lld = false;
+        } else if (mem.testEqualString("-fllvm", arg)) {
+            cmd.llvm = true;
+        } else if (mem.testEqualString("-fno-llvm", arg)) {
+            cmd.llvm = false;
         } else if (mem.testEqualString("-fcompiler-rt", arg)) {
             cmd.compiler_rt = true;
         } else if (mem.testEqualString("-fno-compiler-rt", arg)) {
@@ -1299,6 +1303,7 @@ const build_help: [:0]const u8 =
     \\    --sysroot                       Set the system root directory
     \\    --entry                         Set the entrypoint symbol name
     \\    -f[no-]lld                      Use LLD as the linker
+    \\    -f[no-]llvm                     Use LLVM as the codegen backend
     \\    -f[no-]compiler-rt              (default) Include compiler-rt symbols in output
     \\    -rpath                          Add directory to the runtime library search path
     \\    -f[no-]each-lib-rpath           Ensure adding rpath for each used dynamic library
