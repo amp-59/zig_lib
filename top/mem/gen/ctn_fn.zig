@@ -949,6 +949,8 @@ pub const Fn = enum(u8) {
     }
     pub fn returnType(ctn_fn_info: Fn) [:0]const u8 {
         switch (ctn_fn_info) {
+            .define,
+            .undefine,
             .defineAll,
             .undefineAll,
             .streamAll,

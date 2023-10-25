@@ -4,7 +4,7 @@ const builtin = @import("../../builtin.zig");
 
 pub const word_size_type: type = u64;
 
-pub const Allocator = mem.GenericArenaAllocator(.{
+pub const Allocator = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
     .logging = mem.dynamic.spec.logging.silent,

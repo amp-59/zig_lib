@@ -886,7 +886,7 @@ fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: types.Container, ptr_
     );
 }
 fn functionBodyUndefinedNotice(ctn_detail: types.Container, ctn_fn_info: ctn_fn.Fn) void {
-    var array: mem.StaticString(4096) = undefined;
+    var array: mem.array.StaticString(4096) = undefined;
     array.undefineAll();
     array.writeMany("function body undefined: ");
     array.writeMany(ctn_fn_info.fnName());

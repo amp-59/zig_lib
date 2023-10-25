@@ -16,7 +16,7 @@ const ctn_fn = @import("./ctn_fn.zig");
 pub usingnamespace @import("../../start.zig");
 pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
-const Array = mem.StaticString(1024 * 1024);
+const Array = mem.array.StaticString(1024 * 1024);
 const validate_all_serial: bool = false;
 const write_separate_source_files: bool = false;
 const truncate_spec: gen.TruncateSpec = .{
