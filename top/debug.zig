@@ -888,7 +888,7 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..6].* = "index ".*;
         var ptr: [*]u8 = buf[5..];
-        var ud64: fmt.Type.Ud64 = .{ .value = idx };
+        var ud64: fmt.Ud64 = .{ .value = idx };
         if (max_len == 0) {
             ptr[0..5].* = "ing (".*;
             ptr += 5;
@@ -912,7 +912,7 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..8].* = "address ".*;
         var ptr: [*]u8 = buf[8..];
-        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        var ux64: fmt.Ux64 = .{ .value = addr };
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..19].* = " above upper bound ".*;
         ptr += 19;
@@ -927,7 +927,7 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..8].* = "address ".*;
         var ptr: [*]u8 = buf[8..];
-        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        var ux64: fmt.Ux64 = .{ .value = addr };
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..19].* = " below lower bound ".*;
         ptr += 19;
@@ -1198,7 +1198,7 @@ pub const about = struct {
     }
     fn writeIntCastTruncatedBitsUnsignedFromUnsigned(comptime T: type, comptime U: type, buf: [*]u8, lim: U, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var ud: fmt.Type.Ud(U) = .{ .value = arg };
+        var ud: fmt.Ud(U) = .{ .value = arg };
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
         ptr += ud.formatWriteBuf(ptr);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), false);
@@ -1212,8 +1212,8 @@ pub const about = struct {
     }
     fn writeIntCastTruncatedBitsSignedFromUnsigned(comptime T: type, comptime U: type, buf: [*]u8, lim: T, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var id: fmt.Type.Id(T) = .{ .value = lim };
-        var ud: fmt.Type.Ud(U) = .{ .value = arg };
+        var id: fmt.Id(T) = .{ .value = lim };
+        var ud: fmt.Ud(U) = .{ .value = arg };
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
         ptr += ud.formatWriteBuf(ptr);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), false);
@@ -1226,8 +1226,8 @@ pub const about = struct {
     }
     fn writeIntCastTruncatedBitsUnsignedFromSigned(comptime T: type, comptime U: type, buf: [*]u8, lim: T, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var ud: fmt.Type.Ud(T) = .{ .value = lim };
-        var id: fmt.Type.Id(U) = .{ .value = arg };
+        var ud: fmt.Ud(T) = .{ .value = lim };
+        var id: fmt.Id(U) = .{ .value = arg };
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
         ptr += id.formatWriteBuf(ptr);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), arg < 0);
@@ -1240,7 +1240,7 @@ pub const about = struct {
     }
     fn writeIntCastTruncatedBitsSignedFromSigned(comptime T: type, comptime U: type, buf: [*]u8, lim: U, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var id: fmt.Type.Id(U) = .{ .value = arg };
+        var id: fmt.Id(U) = .{ .value = arg };
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
         ptr += id.formatWriteBuf(ptr);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), arg < 0);
@@ -1254,7 +1254,7 @@ pub const about = struct {
     }
     fn writeSubCausedOverflow(comptime T: type, what: []const u8, buf: [*]u8, lim: T, arg1: T, arg2: T) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var xd: fmt.Type.Xd(T) = .{ .value = arg1 };
+        var xd: fmt.Xd(T) = .{ .value = arg1 };
         var ptr: [*]u8 = fmt.strcpyEqu(buf, what);
         ptr[0..19].* = " integer overflow: ".*;
         ptr += 19;
@@ -1277,7 +1277,7 @@ pub const about = struct {
     }
     fn writeAddCausedOverflow(comptime T: type, what: []const u8, buf: [*]u8, lim: T, arg1: T, arg2: T) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var xd: fmt.Type.Xd(T) = .{ .value = arg1 };
+        var xd: fmt.Xd(T) = .{ .value = arg1 };
         var ptr: [*]u8 = fmt.strcpyEqu(buf, what);
         ptr[0..19].* = " integer overflow: ".*;
         ptr += 19;
@@ -1300,7 +1300,7 @@ pub const about = struct {
     }
     fn writeMulCausedOverflow(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var xd: fmt.Type.Xd(T) = .{ .value = arg1 };
+        var xd: fmt.Xd(T) = .{ .value = arg1 };
         var ptr: [*]u8 = fmt.strcpyEqu(buf, what);
         ptr[0..19].* = " integer overflow: ".*;
         ptr += 19;
@@ -1313,7 +1313,7 @@ pub const about = struct {
     }
     fn writeExactDivisionWithRemainder(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, result: T, remainder: T) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var xd: fmt.Type.Xd(T) = .{ .value = arg1 };
+        var xd: fmt.Xd(T) = .{ .value = arg1 };
         var ptr: [*]u8 = fmt.strcpyEqu(buf, what);
         ptr[0..34].* = ": exact division had a remainder: ".*;
         ptr += 34;
