@@ -7,6 +7,7 @@ const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
+
 pub const AboutSrc = blk: {
     var len: usize = 0;
     if (builtin.message_style) |style| {
@@ -122,6 +123,299 @@ pub fn print(end: [*]u8, buf: [*]u8) void {
     @setRuntimeSafety(false);
     debug.write(buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
 }
+pub inline fn ib8(value: i8) Ib8 {
+    return .{ .value = value };
+}
+pub inline fn ib16(value: i16) Ib16 {
+    return .{ .value = value };
+}
+pub inline fn ib32(value: i32) Ib32 {
+    return .{ .value = value };
+}
+pub inline fn ib64(value: i64) Ib64 {
+    return .{ .value = value };
+}
+pub inline fn ib128(value: i128) Ib128 {
+    return .{ .value = value };
+}
+pub inline fn io8(value: i8) Io8 {
+    return .{ .value = value };
+}
+pub inline fn io16(value: i16) Io16 {
+    return .{ .value = value };
+}
+pub inline fn io32(value: i32) Io32 {
+    return .{ .value = value };
+}
+pub inline fn io64(value: i64) Io64 {
+    return .{ .value = value };
+}
+pub inline fn io128(value: i128) Io128 {
+    return .{ .value = value };
+}
+pub inline fn id8(value: i8) Id8 {
+    return .{ .value = value };
+}
+pub inline fn id16(value: i16) Id16 {
+    return .{ .value = value };
+}
+pub inline fn id32(value: i32) Id32 {
+    return .{ .value = value };
+}
+pub inline fn id64(value: i64) Id64 {
+    return .{ .value = value };
+}
+pub inline fn id128(value: i128) Id128 {
+    return .{ .value = value };
+}
+pub inline fn ix8(value: i8) Ix8 {
+    return .{ .value = value };
+}
+pub inline fn ix16(value: i16) Ix16 {
+    return .{ .value = value };
+}
+pub inline fn ix32(value: i32) Ix32 {
+    return .{ .value = value };
+}
+pub inline fn ix64(value: i64) Ix64 {
+    return .{ .value = value };
+}
+pub inline fn ix128(value: i128) Ix128 {
+    return .{ .value = value };
+}
+pub inline fn iz8(value: i8) Iz8 {
+    return .{ .value = value };
+}
+pub inline fn iz16(value: i16) Iz16 {
+    return .{ .value = value };
+}
+pub inline fn iz32(value: i32) Iz32 {
+    return .{ .value = value };
+}
+pub inline fn iz64(value: i64) Iz64 {
+    return .{ .value = value };
+}
+pub inline fn iz128(value: i128) Iz128 {
+    return .{ .value = value };
+}
+pub inline fn ub8(value: u8) Ub8 {
+    return .{ .value = value };
+}
+pub inline fn ub16(value: u16) Ub16 {
+    return .{ .value = value };
+}
+pub inline fn ub32(value: u32) Ub32 {
+    return .{ .value = value };
+}
+pub inline fn ub64(value: u64) Ub64 {
+    return .{ .value = value };
+}
+pub inline fn uo8(value: u8) Uo8 {
+    return .{ .value = value };
+}
+pub inline fn uo16(value: u16) Uo16 {
+    return .{ .value = value };
+}
+pub inline fn uo32(value: u32) Uo32 {
+    return .{ .value = value };
+}
+pub inline fn uo64(value: u64) Uo64 {
+    return .{ .value = value };
+}
+pub inline fn uo128(value: u128) Uo128 {
+    return .{ .value = value };
+}
+pub inline fn ud8(value: u8) Ud8 {
+    return .{ .value = value };
+}
+pub inline fn ud16(value: u16) Ud16 {
+    return .{ .value = value };
+}
+pub inline fn ud32(value: u32) Ud32 {
+    return .{ .value = value };
+}
+pub fn ud64(value: u64) Ud64 {
+    return .{ .value = value };
+}
+pub inline fn ud128(value: u128) Ud128 {
+    return .{ .value = value };
+}
+pub inline fn ux8(value: u8) Ux8 {
+    return .{ .value = value };
+}
+pub inline fn esc(value: u8) Esc {
+    return .{ .value = value };
+}
+pub inline fn ux16(value: u16) Ux16 {
+    return .{ .value = value };
+}
+pub inline fn ux32(value: u32) Ux32 {
+    return .{ .value = value };
+}
+pub inline fn ux64(value: u64) Ux64 {
+    return .{ .value = value };
+}
+pub inline fn ux128(value: u128) Ux128 {
+    return .{ .value = value };
+}
+pub inline fn uz8(value: u8) Uz8 {
+    return .{ .value = value };
+}
+pub inline fn uz16(value: u16) Uz16 {
+    return .{ .value = value };
+}
+pub inline fn uz32(value: u32) Uz32 {
+    return .{ .value = value };
+}
+pub inline fn uz64(value: u64) Uz64 {
+    return .{ .value = value };
+}
+pub inline fn uz128(value: u128) Uz128 {
+    return .{ .value = value };
+}
+pub inline fn ubsize(value: usize) Ubsize {
+    return .{ .value = value };
+}
+pub inline fn uosize(value: usize) Uosize {
+    return .{ .value = value };
+}
+pub inline fn udsize(value: usize) Udsize {
+    return .{ .value = value };
+}
+pub inline fn uxsize(value: usize) Uxsize {
+    return .{ .value = value };
+}
+pub inline fn ibsize(value: isize) Ibsize {
+    return .{ .value = value };
+}
+pub inline fn iosize(value: isize) Iosize {
+    return .{ .value = value };
+}
+pub inline fn idsize(value: isize) Idsize {
+    return .{ .value = value };
+}
+pub inline fn ixsize(value: isize) Ixsize {
+    return .{ .value = value };
+}
+pub inline fn writeBin(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUbsize,
+        isize => return writeIbsize,
+        u64 => return writeUb64,
+        i64 => return writeIb64,
+        u8 => return writeUb8,
+        u16 => return writeUb16,
+        u32 => return writeUb32,
+        i8 => return writeIb8,
+        i16 => return writeIb16,
+        i32 => return writeIb32,
+        else => return Xb(T).writeInt,
+    }
+}
+pub inline fn writeOct(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUosize,
+        isize => return writeIosize,
+        u64 => return writeUo64,
+        i64 => return writeIo64,
+        u8 => return writeUo8,
+        u16 => return writeUo16,
+        u32 => return writeUo32,
+        i8 => return writeIo8,
+        i16 => return writeIo16,
+        i32 => return writeIo32,
+        else => return Xo(T).writeInt,
+    }
+}
+pub inline fn writeDec(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUdsize,
+        isize => return writeIdsize,
+        u64 => return writeUd64,
+        i64 => return writeId64,
+        u8 => return writeUd8,
+        u16 => return writeUd16,
+        u32 => return writeUd32,
+        i8 => return writeId8,
+        i16 => return writeId16,
+        i32 => return writeId32,
+        else => return Xd(T).writeInt,
+    }
+}
+pub inline fn writeHex(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUxsize,
+        isize => return writeIxsize,
+        u64 => return writeUx64,
+        i64 => return writeIx64,
+        u8 => return writeUx8,
+        u16 => return writeUx16,
+        u32 => return writeUx32,
+        i8 => return writeIx8,
+        i16 => return writeIx16,
+        i32 => return writeIx32,
+        else => return Xx(T).writeInt,
+    }
+}
+pub const writeIb8: fn ([*]u8, i8) [*]u8 = Ib8.writeInt;
+pub const writeIb16: fn ([*]u8, i16) [*]u8 = Ib16.writeInt;
+pub const writeIb32: fn ([*]u8, i32) [*]u8 = Ib32.writeInt;
+pub const writeIb64: fn ([*]u8, i64) [*]u8 = Ib64.writeInt;
+pub const writeIb128: fn ([*]u8, i128) [*]u8 = Ib128.writeInt;
+pub const writeIo8: fn ([*]u8, i8) [*]u8 = Io8.writeInt;
+pub const writeIo16: fn ([*]u8, i16) [*]u8 = Io16.writeInt;
+pub const writeIo32: fn ([*]u8, i32) [*]u8 = Io32.writeInt;
+pub const writeIo64: fn ([*]u8, i64) [*]u8 = Io64.writeInt;
+pub const writeIo128: fn ([*]u8, i128) [*]u8 = Io128.writeInt;
+pub const writeId8: fn ([*]u8, i8) [*]u8 = Id8.writeInt;
+pub const writeId16: fn ([*]u8, i16) [*]u8 = Id16.writeInt;
+pub const writeId32: fn ([*]u8, i32) [*]u8 = Id32.writeInt;
+pub const writeId64: fn ([*]u8, i64) [*]u8 = Id64.writeInt;
+pub const writeId128: fn ([*]u8, i128) [*]u8 = Id128.writeInt;
+pub const writeIx8: fn ([*]u8, i8) [*]u8 = Ix8.writeInt;
+pub const writeIx16: fn ([*]u8, i16) [*]u8 = Ix16.writeInt;
+pub const writeIx32: fn ([*]u8, i32) [*]u8 = Ix32.writeInt;
+pub const writeIx64: fn ([*]u8, i64) [*]u8 = Ix64.writeInt;
+pub const writeIx128: fn ([*]u8, i128) [*]u8 = Ix128.writeInt;
+pub const writeIz8: fn ([*]u8, i8) [*]u8 = Iz8.writeInt;
+pub const writeIz16: fn ([*]u8, i16) [*]u8 = Iz16.writeInt;
+pub const writeIz32: fn ([*]u8, i32) [*]u8 = Iz32.writeInt;
+pub const writeIz64: fn ([*]u8, i64) [*]u8 = Iz64.writeInt;
+pub const writeIz128: fn ([*]u8, i128) [*]u8 = Iz128.writeInt;
+pub const writeUb8: fn ([*]u8, u8) [*]u8 = Ub8.writeInt;
+pub const writeUb16: fn ([*]u8, u16) [*]u8 = Ub16.writeInt;
+pub const writeUb32: fn ([*]u8, u32) [*]u8 = Ub32.writeInt;
+pub const writeUb64: fn ([*]u8, u64) [*]u8 = Ub64.writeInt;
+pub const writeUo8: fn ([*]u8, u8) [*]u8 = Uo8.writeInt;
+pub const writeUo16: fn ([*]u8, u16) [*]u8 = Uo16.writeInt;
+pub const writeUo32: fn ([*]u8, u32) [*]u8 = Uo32.writeInt;
+pub const writeUo64: fn ([*]u8, u64) [*]u8 = Uo64.writeInt;
+pub const writeUo128: fn ([*]u8, u128) [*]u8 = Uo128.writeInt;
+pub const writeUd8: fn ([*]u8, u8) [*]u8 = Ud8.writeInt;
+pub const writeUd16: fn ([*]u8, u16) [*]u8 = Ud16.writeInt;
+pub const writeUd32: fn ([*]u8, u32) [*]u8 = Ud32.writeInt;
+pub const writeUd64: fn ([*]u8, u64) [*]u8 = Ud64.writeInt;
+pub const writeUd128: fn ([*]u8, u128) [*]u8 = Ud128.writeInt;
+pub const writeUx8: fn ([*]u8, u8) [*]u8 = Ux8.writeInt;
+pub const writeEsc: fn ([*]u8, u8) [*]u8 = Esc.writeInt;
+pub const writeUx16: fn ([*]u8, u16) [*]u8 = Ux16.writeInt;
+pub const writeUx32: fn ([*]u8, u32) [*]u8 = Ux32.writeInt;
+pub const writeUx64: fn ([*]u8, u64) [*]u8 = Ux64.writeInt;
+pub const writeUx128: fn ([*]u8, u128) [*]u8 = Ux128.writeInt;
+pub const writeUz8: fn ([*]u8, u8) [*]u8 = Uz8.writeInt;
+pub const writeUz16: fn ([*]u8, u16) [*]u8 = Uz16.writeInt;
+pub const writeUz32: fn ([*]u8, u32) [*]u8 = Uz32.writeInt;
+pub const writeUz64: fn ([*]u8, u64) [*]u8 = Uz64.writeInt;
+pub const writeUz128: fn ([*]u8, u128) [*]u8 = Uz128.writeInt;
+pub const writeUbsize: fn ([*]u8, usize) [*]u8 = Ubsize.writeInt;
+pub const writeUosize: fn ([*]u8, usize) [*]u8 = Uosize.writeInt;
+pub const writeUdsize: fn ([*]u8, usize) [*]u8 = Udsize.writeInt;
+pub const writeUxsize: fn ([*]u8, usize) [*]u8 = Uxsize.writeInt;
+pub const writeIbsize: fn ([*]u8, isize) [*]u8 = Ibsize.writeInt;
+pub const writeIosize: fn ([*]u8, isize) [*]u8 = Iosize.writeInt;
+pub const writeIdsize: fn ([*]u8, isize) [*]u8 = Idsize.writeInt;
+pub const writeIxsize: fn ([*]u8, isize) [*]u8 = Ixsize.writeInt;
+
 const lit_char: [256][*:0]const u8 = .{
     "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07",
     "\\x08", "\\t",   "\\n",   "\\x0b", "\\x0c", "\\r",   "\\x0e", "\\x0f",
@@ -2004,28 +2298,36 @@ pub fn requireComptimeOld(comptime T: type) bool {
         },
     }
 }
-pub inline fn ud(value: anytype) Type.Ud(@TypeOf(value)) {
+pub inline fn ud(value: anytype) Ud(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub inline fn udh(value: anytype) Type.Udh(@TypeOf(value)) {
+pub inline fn udh(value: anytype) Udh(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub inline fn ub(value: anytype) Type.Ub(@TypeOf(value)) {
+pub inline fn ub(value: anytype) Ub(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub inline fn ux(value: anytype) Type.Ux(@TypeOf(value)) {
+pub inline fn ux(value: anytype) Ux(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub inline fn id(value: anytype) Type.Id(@TypeOf(value)) {
+pub inline fn id(value: anytype) Id(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub inline fn idh(value: anytype) Type.Idh(@TypeOf(value)) {
+pub inline fn idh(value: anytype) Idh(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub inline fn ib(value: anytype) Type.Ib(@TypeOf(value)) {
+pub inline fn ib(value: anytype) Ib(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub inline fn ix(value: anytype) Type.Ix(@TypeOf(value)) {
+pub inline fn ix(value: anytype) Ix(if (@TypeOf(value) ==
+    comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
 pub fn bytes(count: usize) Bytes {
@@ -2050,13 +2352,13 @@ pub fn bytes(count: usize) Bytes {
     }
     return .{ .value = ret };
 }
-pub fn bloatDiff(old_size: usize, new_size: usize) Type.BloatDiff {
+pub fn bloatDiff(old_size: usize, new_size: usize) BloatDiff {
     return .{ .old_value = old_size, .new_value = new_size };
 }
-pub fn bytesDiff(old_size: usize, new_size: usize) Type.BytesDiff {
+pub fn bytesDiff(old_size: usize, new_size: usize) BytesDiff {
     return .{ .old_value = old_size, .new_value = new_size };
 }
-pub fn addrDiff(old_size: usize, new_size: usize) Type.AddrDiff {
+pub fn addrDiff(old_size: usize, new_size: usize) AddrDiff {
     return .{ .old_value = old_size, .new_value = new_size };
 }
 pub fn identifier(name: []const u8) IdentifierFormat {
@@ -2068,32 +2370,32 @@ pub const stringLiteral = @as(*const fn ([]const u8) StringLiteralFormat, @ptrCa
 pub fn sourceLocation(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
 }
-pub fn year(value: usize) Type.Year {
+pub fn year(value: usize) Year {
     return .{ .value = value };
 }
-pub fn mon(value: time.Month) Type.Month {
+pub fn mon(value: time.Month) Month {
     return .{ .value = @intFromEnum(value) };
 }
-pub fn mday(value: u8) Type.MonthDay {
+pub fn mday(value: u8) MonthDay {
     return .{ .value = value };
 }
-pub fn yday(value: u8) Type.YearDay {
+pub fn yday(value: u8) YearDay {
     return .{ .value = value };
 }
-pub fn hour(value: u8) Type.Hour {
+pub fn hour(value: u8) Hour {
     return .{ .value = value };
 }
-pub fn min(value: u8) Type.Minute {
+pub fn min(value: u8) Minute {
     return .{ .value = value };
 }
-pub fn sec(value: u8) Type.Second {
+pub fn sec(value: u8) Second {
     return .{ .value = value };
 }
 /// Constructs DateTime formatter
 pub fn dt(value: time.DateTime) GenericDateTimeFormat(.{}) {
     return .{ .value = value };
 }
-pub fn nsec(value: u64) Type.NSec {
+pub fn nsec(value: u64) NSec {
     return .{ .value = value };
 }
 fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.Signedness, comptime radix: u16) ChangedIntFormatSpec {
@@ -2162,7 +2464,7 @@ pub const RenderSpec = struct {
     enum_to_int: bool = false,
     infer_type_names: bool = false,
     infer_type_names_recursively: bool = false,
-    char_literal_formatter: type = Type.Esc,
+    char_literal_formatter: type = Esc,
     inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
     address_view: bool = false,
@@ -3402,7 +3704,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 if (@sizeOf(Union) > @sizeOf(usize)) {
                     array.writeMany("{}");
                 } else {
-                    const int_format: Type.Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
+                    const int_format: Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
                     array.writeMany("@bitCast(" ++ @typeName(Union) ++ ", ");
                     writeFormat(array, int_format);
                     array.writeMany(")");
@@ -3423,7 +3725,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     buf[0..2].* = "{}".*;
                     len +%= 2;
                 } else {
-                    const int_format: Type.Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
+                    const int_format: Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
                     buf[0 .. 11 +% @typeName(Union).len].* = ("@bitCast(" ++ @typeName(Union) ++ ", ").*;
                     len +%= 11 +% @typeName(Union).len;
                     len +%= int_format.formatWriteBuf(buf + len);
@@ -3446,7 +3748,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 if (@sizeOf(Union) > @sizeOf(usize)) {
                     len +%= type_name.len +% 2;
                 } else {
-                    const int_format: Type.Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
+                    const int_format: Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
                     len +%= ("@bitCast(" ++ @typeName(Union) ++ ", ").len;
                     len +%= int_format.formatLength();
                     len +%= 1;
@@ -3623,18 +3925,18 @@ pub const ComptimeIntFormat = struct {
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
     if (@typeInfo(Int).Int.signedness == .unsigned) {
         switch (spec.radix) {
-            2 => return Type.Ubsize,
-            8 => return Type.Uosize,
-            10 => return Type.Udsize,
-            16 => return Type.Uxsize,
+            2 => return Ubsize,
+            8 => return Uosize,
+            10 => return Udsize,
+            16 => return Uxsize,
             else => @compileError("invalid render radix"),
         }
     } else {
         switch (spec.radix) {
-            2 => return Type.Ibsize,
-            8 => return Type.Iosize,
-            10 => return Type.Idsize,
-            16 => return Type.Ixsize,
+            2 => return Ibsize,
+            8 => return Iosize,
+            10 => return Idsize,
+            16 => return Ixsize,
             else => @compileError("invalid render radix"),
         }
     }
@@ -4447,7 +4749,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         type_decl: Declaration,
         type_ref: Reference,
         const Format = @This();
-        pub var scope: []const Declaration = &.{};
         const tab = .{
             .decl = spec.tokens.decl[0..spec.tokens.decl.len].*,
             .lbrace = spec.tokens.lbrace[0..spec.tokens.lbrace.len].*,
@@ -4458,6 +4759,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             .colon = spec.tokens.colon[0..spec.tokens.colon.len].*,
             .indent = spec.tokens.indent[0..spec.tokens.indent.len].*,
         };
+        pub var scope: []const Declaration = &.{};
         pub const Reference = struct { spec: spec.token, type: *const Format };
         pub const Container = struct {
             spec: spec.token,
@@ -5109,1083 +5411,248 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
     };
     return U;
 }
-pub const standalone = struct {
-    pub inline fn bin(comptime Int: type, value: Int) Generic(Int).Array2 {
-        return Generic(Int).bin(value);
-    }
-    pub inline fn oct(comptime Int: type, value: Int) Generic(Int).Array8 {
-        return Generic(Int).oct(value);
-    }
-    pub inline fn dec(comptime Int: type, value: Int) Generic(Int).Array10 {
-        return Generic(Int).dec(value);
-    }
-    pub inline fn hex(comptime Int: type, value: Int) Generic(Int).Array16 {
-        return Generic(Int).hex(value);
-    }
-    pub const ub8 = Generic(u8).bin;
-    pub const ub16 = Generic(u16).bin;
-    pub const ub32 = Generic(u32).bin;
-    pub const ub64 = Generic(u64).bin;
-    pub const ubsize = Generic(usize).bin;
-    pub const uo8 = Generic(u8).oct;
-    pub const uo16 = Generic(u16).oct;
-    pub const uo32 = Generic(u32).oct;
-    pub const uo64 = Generic(u64).oct;
-    pub const uosize = Generic(usize).oct;
-    pub const ud8 = Generic(u8).dec;
-    pub const ud16 = Generic(u16).dec;
-    pub const ud32 = Generic(u32).dec;
-    pub const ud64 = Generic(u64).dec;
-    pub const udsize = Generic(usize).dec;
-    pub const ux8 = Generic(u8).hex;
-    pub const ux16 = Generic(u16).hex;
-    pub const ux32 = Generic(u32).hex;
-    pub const ux64 = Generic(u64).hex;
-    pub const uxsize = Generic(usize).hex;
-    pub const ib8 = Generic(i8).bin;
-    pub const ib16 = Generic(i16).bin;
-    pub const ib32 = Generic(i32).bin;
-    pub const ib64 = Generic(i64).bin;
-    pub const ibsize = Generic(isize).bin;
-    pub const io8 = Generic(i8).oct;
-    pub const io16 = Generic(i16).oct;
-    pub const io32 = Generic(i32).oct;
-    pub const io64 = Generic(i64).oct;
-    pub const iosize = Generic(isize).oct;
-    pub const id8 = Generic(i8).dec;
-    pub const id16 = Generic(i16).dec;
-    pub const id32 = Generic(i32).dec;
-    pub const id64 = Generic(i64).dec;
-    pub const idsize = Generic(isize).dec;
-    pub const ix8 = Generic(i8).hex;
-    pub const ix16 = Generic(i16).hex;
-    pub const ix32 = Generic(i32).hex;
-    pub const ix64 = Generic(i64).hex;
-    pub const ixsize = Generic(isize).hex;
-    pub const nsec = Generic(u64).nsec;
-    pub fn Generic(comptime Int: type) type {
-        const T = struct {
-            const Abs = math.Absolute(Int);
-            const len2: comptime_int = maxSigFig(Int, 2) +% 1;
-            const len8: comptime_int = maxSigFig(Int, 8) +% 1;
-            const len10: comptime_int = maxSigFig(Int, 10) +% 1;
-            const len16: comptime_int = maxSigFig(Int, 16) +% 1;
-            pub const Array2 = Array(len2);
-            pub const Array8 = Array(len8);
-            pub const Array10 = Array(len10);
-            pub const Array16 = Array(len16);
-            pub fn bin(value: Int) Array2 {
-                @setRuntimeSafety(false);
-                var ret: Array2 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    while (ret.len != 3) {
-                        ret.len -%= 1;
-                        ret.buf[ret.len] = '0';
-                    }
-                    ret.len -%= 2;
-                    @as(*[2]u8, @ptrCast(&ret.buf[ret.len])).* = "0b".*;
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @intCast(-value)
-                else
-                    @intCast(value);
-                while (abs_value != 0) : (abs_value /= 2) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 2)));
-                }
-                while (ret.len != 3) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0';
-                }
-                ret.len -%= 2;
-                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0b".*;
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
-            }
-            pub fn oct(value: Int) Array8 {
-                @setRuntimeSafety(false);
-                var ret: Array8 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    ret.len -%= 3;
-                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o0".*;
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @as(Abs, @intCast(-value))
-                else
-                    @as(Abs, @intCast(value));
-                while (abs_value != 0) : (abs_value /= 8) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 8)));
-                }
-                ret.len -%= 2;
-                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o".*;
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
-            }
-            pub fn dec(value: Int) Array10 {
-                @setRuntimeSafety(false);
-                var ret: Array10 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0';
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @as(Abs, @intCast(-value))
-                else
-                    @as(Abs, @intCast(value));
-                while (abs_value != 0) : (abs_value /= 10) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 10)));
-                }
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
-            }
-            pub fn hex(value: Int) Array16 {
-                @setRuntimeSafety(false);
-                var ret: Array16 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    ret.len -%= 3;
-                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x0".*;
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @as(Abs, @bitCast(-value))
-                else
-                    @as(Abs, @intCast(value));
-                while (abs_value != 0) : (abs_value /= 16) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = toSymbol(Abs, abs_value, 16);
-                }
-                ret.len -%= 2;
-                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x".*;
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
-            }
-            pub fn nsec(value: Int) Array10 {
-                @setRuntimeSafety(false);
-                var ret: Array10 = @This().dec(value);
-                while (ret.buf.len -% ret.len < 9) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0';
-                }
-                return ret;
-            }
-            fn Array(comptime len: comptime_int) type {
-                return struct {
-                    len: usize,
-                    buf: [len]u8 align(8),
-                    pub fn readAll(array: *const @This()) []const u8 {
-                        return array.buf[array.len..];
-                    }
-                };
-            }
-        };
-        return T;
-    }
-};
-pub inline fn ib8(value: i8) Type.Ib8 {
-    return .{ .value = value };
-}
-pub inline fn ib16(value: i16) Type.Ib16 {
-    return .{ .value = value };
-}
-pub inline fn ib32(value: i32) Type.Ib32 {
-    return .{ .value = value };
-}
-pub inline fn ib64(value: i64) Type.Ib64 {
-    return .{ .value = value };
-}
-pub inline fn ib128(value: i128) Type.Ib128 {
-    return .{ .value = value };
-}
-pub inline fn io8(value: i8) Type.Io8 {
-    return .{ .value = value };
-}
-pub inline fn io16(value: i16) Type.Io16 {
-    return .{ .value = value };
-}
-pub inline fn io32(value: i32) Type.Io32 {
-    return .{ .value = value };
-}
-pub inline fn io64(value: i64) Type.Io64 {
-    return .{ .value = value };
-}
-pub inline fn io128(value: i128) Type.Io128 {
-    return .{ .value = value };
-}
-pub inline fn id8(value: i8) Type.Id8 {
-    return .{ .value = value };
-}
-pub inline fn id16(value: i16) Type.Id16 {
-    return .{ .value = value };
-}
-pub inline fn id32(value: i32) Type.Id32 {
-    return .{ .value = value };
-}
-pub inline fn id64(value: i64) Type.Id64 {
-    return .{ .value = value };
-}
-pub inline fn id128(value: i128) Type.Id128 {
-    return .{ .value = value };
-}
-pub inline fn ix8(value: i8) Type.Ix8 {
-    return .{ .value = value };
-}
-pub inline fn ix16(value: i16) Type.Ix16 {
-    return .{ .value = value };
-}
-pub inline fn ix32(value: i32) Type.Ix32 {
-    return .{ .value = value };
-}
-pub inline fn ix64(value: i64) Type.Ix64 {
-    return .{ .value = value };
-}
-pub inline fn ix128(value: i128) Type.Ix128 {
-    return .{ .value = value };
-}
-pub inline fn iz8(value: i8) Type.Iz8 {
-    return .{ .value = value };
-}
-pub inline fn iz16(value: i16) Type.Iz16 {
-    return .{ .value = value };
-}
-pub inline fn iz32(value: i32) Type.Iz32 {
-    return .{ .value = value };
-}
-pub inline fn iz64(value: i64) Type.Iz64 {
-    return .{ .value = value };
-}
-pub inline fn iz128(value: i128) Type.Iz128 {
-    return .{ .value = value };
-}
-pub inline fn ub8(value: u8) Type.Ub8 {
-    return .{ .value = value };
-}
-pub inline fn ub16(value: u16) Type.Ub16 {
-    return .{ .value = value };
-}
-pub inline fn ub32(value: u32) Type.Ub32 {
-    return .{ .value = value };
-}
-pub inline fn ub64(value: u64) Type.Ub64 {
-    return .{ .value = value };
-}
-pub inline fn uo8(value: u8) Type.Uo8 {
-    return .{ .value = value };
-}
-pub inline fn uo16(value: u16) Type.Uo16 {
-    return .{ .value = value };
-}
-pub inline fn uo32(value: u32) Type.Uo32 {
-    return .{ .value = value };
-}
-pub inline fn uo64(value: u64) Type.Uo64 {
-    return .{ .value = value };
-}
-pub inline fn uo128(value: u128) Type.Uo128 {
-    return .{ .value = value };
-}
-pub inline fn ud8(value: u8) Type.Ud8 {
-    return .{ .value = value };
-}
-pub inline fn ud16(value: u16) Type.Ud16 {
-    return .{ .value = value };
-}
-pub inline fn ud32(value: u32) Type.Ud32 {
-    return .{ .value = value };
-}
-pub fn ud64(value: u64) Type.Ud64 {
-    return .{ .value = value };
-}
-pub inline fn ud128(value: u128) Type.Ud128 {
-    return .{ .value = value };
-}
-pub inline fn ux8(value: u8) Type.Ux8 {
-    return .{ .value = value };
-}
-pub inline fn esc(value: u8) Type.Esc {
-    return .{ .value = value };
-}
-pub inline fn ux16(value: u16) Type.Ux16 {
-    return .{ .value = value };
-}
-pub inline fn ux32(value: u32) Type.Ux32 {
-    return .{ .value = value };
-}
-pub inline fn ux64(value: u64) Type.Ux64 {
-    return .{ .value = value };
-}
-pub inline fn ux128(value: u128) Type.Ux128 {
-    return .{ .value = value };
-}
-pub inline fn uz8(value: u8) Type.Uz8 {
-    return .{ .value = value };
-}
-pub inline fn uz16(value: u16) Type.Uz16 {
-    return .{ .value = value };
-}
-pub inline fn uz32(value: u32) Type.Uz32 {
-    return .{ .value = value };
-}
-pub inline fn uz64(value: u64) Type.Uz64 {
-    return .{ .value = value };
-}
-pub inline fn uz128(value: u128) Type.Uz128 {
-    return .{ .value = value };
-}
-pub inline fn ubsize(value: usize) Type.Ubsize {
-    return .{ .value = value };
-}
-pub inline fn uosize(value: usize) Type.Uosize {
-    return .{ .value = value };
-}
-pub inline fn udsize(value: usize) Type.Udsize {
-    return .{ .value = value };
-}
-pub inline fn uxsize(value: usize) Type.Uxsize {
-    return .{ .value = value };
-}
-pub inline fn ibsize(value: isize) Type.Ibsize {
-    return .{ .value = value };
-}
-pub inline fn iosize(value: isize) Type.Iosize {
-    return .{ .value = value };
-}
-pub inline fn idsize(value: isize) Type.Idsize {
-    return .{ .value = value };
-}
-pub inline fn ixsize(value: isize) Type.Ixsize {
-    return .{ .value = value };
-}
-pub inline fn writeBin(comptime T: type) fn ([*]u8, T) [*]u8 {
-    switch (T) {
-        usize => return writeUbsize,
-        isize => return writeIbsize,
-        u64 => return writeUb64,
-        i64 => return writeIb64,
-        u8 => return writeUb8,
-        u16 => return writeUb16,
-        u32 => return writeUb32,
-        i8 => return writeIb8,
-        i16 => return writeIb16,
-        i32 => return writeIb32,
-        else => return Type.Xb(T).writeInt,
-    }
-}
-pub inline fn writeOct(comptime T: type) fn ([*]u8, T) [*]u8 {
-    switch (T) {
-        usize => return writeUosize,
-        isize => return writeIosize,
-        u64 => return writeUo64,
-        i64 => return writeIo64,
-        u8 => return writeUo8,
-        u16 => return writeUo16,
-        u32 => return writeUo32,
-        i8 => return writeIo8,
-        i16 => return writeIo16,
-        i32 => return writeIo32,
-        else => return Type.Xo(T).writeInt,
-    }
-}
-pub inline fn writeDec(comptime T: type) fn ([*]u8, T) [*]u8 {
-    switch (T) {
-        usize => return writeUdsize,
-        isize => return writeIdsize,
-        u64 => return writeUd64,
-        i64 => return writeId64,
-        u8 => return writeUd8,
-        u16 => return writeUd16,
-        u32 => return writeUd32,
-        i8 => return writeId8,
-        i16 => return writeId16,
-        i32 => return writeId32,
-        else => return Type.Xd(T).writeInt,
-    }
-}
-pub inline fn writeHex(comptime T: type) fn ([*]u8, T) [*]u8 {
-    switch (T) {
-        usize => return writeUxsize,
-        isize => return writeIxsize,
-        u64 => return writeUx64,
-        i64 => return writeIx64,
-        u8 => return writeUx8,
-        u16 => return writeUx16,
-        u32 => return writeUx32,
-        i8 => return writeIx8,
-        i16 => return writeIx16,
-        i32 => return writeIx32,
-        else => return Type.Xx(T).writeInt,
-    }
-}
-pub const writeIb8: fn ([*]u8, i8) [*]u8 = Type.Ib8.writeInt;
-pub const writeIb16: fn ([*]u8, i16) [*]u8 = Type.Ib16.writeInt;
-pub const writeIb32: fn ([*]u8, i32) [*]u8 = Type.Ib32.writeInt;
-pub const writeIb64: fn ([*]u8, i64) [*]u8 = Type.Ib64.writeInt;
-pub const writeIb128: fn ([*]u8, i128) [*]u8 = Type.Ib128.writeInt;
-pub const writeIo8: fn ([*]u8, i8) [*]u8 = Type.Io8.writeInt;
-pub const writeIo16: fn ([*]u8, i16) [*]u8 = Type.Io16.writeInt;
-pub const writeIo32: fn ([*]u8, i32) [*]u8 = Type.Io32.writeInt;
-pub const writeIo64: fn ([*]u8, i64) [*]u8 = Type.Io64.writeInt;
-pub const writeIo128: fn ([*]u8, i128) [*]u8 = Type.Io128.writeInt;
-pub const writeId8: fn ([*]u8, i8) [*]u8 = Type.Id8.writeInt;
-pub const writeId16: fn ([*]u8, i16) [*]u8 = Type.Id16.writeInt;
-pub const writeId32: fn ([*]u8, i32) [*]u8 = Type.Id32.writeInt;
-pub const writeId64: fn ([*]u8, i64) [*]u8 = Type.Id64.writeInt;
-pub const writeId128: fn ([*]u8, i128) [*]u8 = Type.Id128.writeInt;
-pub const writeIx8: fn ([*]u8, i8) [*]u8 = Type.Ix8.writeInt;
-pub const writeIx16: fn ([*]u8, i16) [*]u8 = Type.Ix16.writeInt;
-pub const writeIx32: fn ([*]u8, i32) [*]u8 = Type.Ix32.writeInt;
-pub const writeIx64: fn ([*]u8, i64) [*]u8 = Type.Ix64.writeInt;
-pub const writeIx128: fn ([*]u8, i128) [*]u8 = Type.Ix128.writeInt;
-pub const writeIz8: fn ([*]u8, i8) [*]u8 = Type.Iz8.writeInt;
-pub const writeIz16: fn ([*]u8, i16) [*]u8 = Type.Iz16.writeInt;
-pub const writeIz32: fn ([*]u8, i32) [*]u8 = Type.Iz32.writeInt;
-pub const writeIz64: fn ([*]u8, i64) [*]u8 = Type.Iz64.writeInt;
-pub const writeIz128: fn ([*]u8, i128) [*]u8 = Type.Iz128.writeInt;
-pub const writeUb8: fn ([*]u8, u8) [*]u8 = Type.Ub8.writeInt;
-pub const writeUb16: fn ([*]u8, u16) [*]u8 = Type.Ub16.writeInt;
-pub const writeUb32: fn ([*]u8, u32) [*]u8 = Type.Ub32.writeInt;
-pub const writeUb64: fn ([*]u8, u64) [*]u8 = Type.Ub64.writeInt;
-pub const writeUo8: fn ([*]u8, u8) [*]u8 = Type.Uo8.writeInt;
-pub const writeUo16: fn ([*]u8, u16) [*]u8 = Type.Uo16.writeInt;
-pub const writeUo32: fn ([*]u8, u32) [*]u8 = Type.Uo32.writeInt;
-pub const writeUo64: fn ([*]u8, u64) [*]u8 = Type.Uo64.writeInt;
-pub const writeUo128: fn ([*]u8, u128) [*]u8 = Type.Uo128.writeInt;
-pub const writeUd8: fn ([*]u8, u8) [*]u8 = Type.Ud8.writeInt;
-pub const writeUd16: fn ([*]u8, u16) [*]u8 = Type.Ud16.writeInt;
-pub const writeUd32: fn ([*]u8, u32) [*]u8 = Type.Ud32.writeInt;
-pub const writeUd64: fn ([*]u8, u64) [*]u8 = Type.Ud64.writeInt;
-pub const writeUd128: fn ([*]u8, u128) [*]u8 = Type.Ud128.writeInt;
-pub const writeUx8: fn ([*]u8, u8) [*]u8 = Type.Ux8.writeInt;
-pub const writeEsc: fn ([*]u8, u8) [*]u8 = Type.Esc.writeInt;
-pub const writeUx16: fn ([*]u8, u16) [*]u8 = Type.Ux16.writeInt;
-pub const writeUx32: fn ([*]u8, u32) [*]u8 = Type.Ux32.writeInt;
-pub const writeUx64: fn ([*]u8, u64) [*]u8 = Type.Ux64.writeInt;
-pub const writeUx128: fn ([*]u8, u128) [*]u8 = Type.Ux128.writeInt;
-pub const writeUz8: fn ([*]u8, u8) [*]u8 = Type.Uz8.writeInt;
-pub const writeUz16: fn ([*]u8, u16) [*]u8 = Type.Uz16.writeInt;
-pub const writeUz32: fn ([*]u8, u32) [*]u8 = Type.Uz32.writeInt;
-pub const writeUz64: fn ([*]u8, u64) [*]u8 = Type.Uz64.writeInt;
-pub const writeUz128: fn ([*]u8, u128) [*]u8 = Type.Uz128.writeInt;
-pub const writeUbsize: fn ([*]u8, usize) [*]u8 = Type.Ubsize.writeInt;
-pub const writeUosize: fn ([*]u8, usize) [*]u8 = Type.Uosize.writeInt;
-pub const writeUdsize: fn ([*]u8, usize) [*]u8 = Type.Udsize.writeInt;
-pub const writeUxsize: fn ([*]u8, usize) [*]u8 = Type.Uxsize.writeInt;
-pub const writeIbsize: fn ([*]u8, isize) [*]u8 = Type.Ibsize.writeInt;
-pub const writeIosize: fn ([*]u8, isize) [*]u8 = Type.Iosize.writeInt;
-pub const writeIdsize: fn ([*]u8, isize) [*]u8 = Type.Idsize.writeInt;
-pub const writeIxsize: fn ([*]u8, isize) [*]u8 = Type.Ixsize.writeInt;
-pub const Type = struct {
-    pub const U8xLEB128 = GenericLEB128Format(u8);
-    pub const U16xLEB128 = GenericLEB128Format(u16);
-    pub const U32xLEB128 = GenericLEB128Format(u32);
-    pub const U64xLEB128 = GenericLEB128Format(u64);
-    pub const I8xLEB128 = GenericLEB128Format(i8);
-    pub const I16xLEB128 = GenericLEB128Format(i16);
-    pub const I32xLEB128 = GenericLEB128Format(i32);
-    pub const I64xLEB128 = GenericLEB128Format(i64);
-    pub const Ib8 = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 2,
-        .signedness = .signed,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Ib16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 2,
-        .signedness = .signed,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Ib32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 2,
-        .signedness = .signed,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Ib64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 2,
-        .signedness = .signed,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Ib128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 2,
-        .signedness = .signed,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Io8 = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 8,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Io16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 8,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Io32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 8,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Io64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 8,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Io128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 8,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Id8 = GenericPolynomialFormat(.{
-        .bits = 8,
+pub const U8xLEB128 = GenericLEB128Format(u8);
+pub const U16xLEB128 = GenericLEB128Format(u16);
+pub const U32xLEB128 = GenericLEB128Format(u32);
+pub const U64xLEB128 = GenericLEB128Format(u64);
+pub const I8xLEB128 = GenericLEB128Format(i8);
+pub const I16xLEB128 = GenericLEB128Format(i16);
+pub const I32xLEB128 = GenericLEB128Format(i32);
+pub const I64xLEB128 = GenericLEB128Format(i64);
+pub const Ib8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
+pub const Ib16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
+pub const Ib32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
+pub const Ib64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
+pub const Ib128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
+pub const Io8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 8, .signedness = .signed, .width = .min, .prefix = "0o" });
+pub const Io16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 8, .signedness = .signed, .width = .min, .prefix = "0o" });
+pub const Io32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 8, .signedness = .signed, .width = .min, .prefix = "0o" });
+pub const Io64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 8, .signedness = .signed, .width = .min, .prefix = "0o" });
+pub const Io128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 8, .signedness = .signed, .width = .min, .prefix = "0o" });
+pub const Id8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 10, .signedness = .signed, .width = .min });
+pub const Id16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 10, .signedness = .signed, .width = .min });
+pub const Id32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 10, .signedness = .signed, .width = .min });
+pub const Id64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 10, .signedness = .signed, .width = .min });
+pub const Id128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 10, .signedness = .signed, .width = .min });
+pub const Ix8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 16, .signedness = .signed, .width = .min, .prefix = "0x" });
+pub const Ix16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 16, .signedness = .signed, .width = .min, .prefix = "0x" });
+pub const Ix32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 16, .signedness = .signed, .width = .min, .prefix = "0x" });
+pub const Ix64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 16, .signedness = .signed, .width = .min, .prefix = "0x" });
+pub const Ix128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 16, .signedness = .signed, .width = .min, .prefix = "0x" });
+pub const Iz8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 36, .signedness = .signed, .width = .min, .prefix = "0z" });
+pub const Iz16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 36, .signedness = .signed, .width = .min, .prefix = "0z" });
+pub const Iz32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 36, .signedness = .signed, .width = .min, .prefix = "0z" });
+pub const Iz64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 36, .signedness = .signed, .width = .min, .prefix = "0z" });
+pub const Iz128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 36, .signedness = .signed, .width = .min, .prefix = "0z" });
+pub const Ub8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
+pub const Ub16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
+pub const Ub32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
+pub const Ub64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
+pub const Uo8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 8, .signedness = .unsigned, .width = .min, .prefix = "0o" });
+pub const Uo16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 8, .signedness = .unsigned, .width = .min, .prefix = "0o" });
+pub const Uo32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 8, .signedness = .unsigned, .width = .min, .prefix = "0o" });
+pub const Uo64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 8, .signedness = .unsigned, .width = .min, .prefix = "0o" });
+pub const Uo128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 8, .signedness = .unsigned, .width = .min, .prefix = "0o" });
+pub const Ud8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 10, .signedness = .unsigned, .width = .min });
+pub const Ud16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 10, .signedness = .unsigned, .width = .min });
+pub const Ud32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 10, .signedness = .unsigned, .width = .min });
+pub const Ud64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 10, .signedness = .unsigned, .width = .min });
+pub const Ud128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 10, .signedness = .unsigned, .width = .min });
+pub const Ux8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 16, .signedness = .unsigned, .width = .min, .prefix = "0x" });
+pub const Ux16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 16, .signedness = .unsigned, .width = .min, .prefix = "0x" });
+pub const Ux32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 16, .signedness = .unsigned, .width = .min, .prefix = "0x" });
+pub const Ux64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 16, .signedness = .unsigned, .width = .min, .prefix = "0x" });
+pub const Ux128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 16, .signedness = .unsigned, .width = .min, .prefix = "0x" });
+pub const Uz8 = GenericPolynomialFormat(.{ .bits = 8, .radix = 36, .signedness = .unsigned, .width = .min, .prefix = "0z" });
+pub const Uz16 = GenericPolynomialFormat(.{ .bits = 16, .radix = 36, .signedness = .unsigned, .width = .min, .prefix = "0z" });
+pub const Uz32 = GenericPolynomialFormat(.{ .bits = 32, .radix = 36, .signedness = .unsigned, .width = .min, .prefix = "0z" });
+pub const Uz64 = GenericPolynomialFormat(.{ .bits = 64, .radix = 36, .signedness = .unsigned, .width = .min, .prefix = "0z" });
+pub const Uz128 = GenericPolynomialFormat(.{ .bits = 128, .radix = 36, .signedness = .unsigned, .width = .min, .prefix = "0z" });
+pub const Ubsize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
+pub const Uosize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 8, .signedness = .unsigned, .width = .min, .prefix = "0o" });
+pub const Udsize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 10, .signedness = .unsigned, .width = .min });
+pub const Uxsize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 16, .signedness = .unsigned, .width = .min, .prefix = "0x" });
+pub const Ibsize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
+pub const Iosize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 8, .signedness = .signed, .width = .min });
+pub const Idsize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 10, .signedness = .signed, .width = .min });
+pub const Ixsize = GenericPolynomialFormat(.{ .bits = mem.word_bit_size, .radix = 16, .signedness = .signed, .width = .min });
+pub const Esc = GenericPolynomialFormat(.{ .bits = 8, .radix = 16, .signedness = .unsigned, .width = .max, .prefix = "\\x" });
+pub const NSec = GenericPolynomialFormat(.{
+    .bits = 64,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 9 },
+    .range = .{ .min = 0, .max = 999999999 },
+});
+pub const Year = GenericPolynomialFormat(.{
+    .bits = 64,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 4 },
+    .range = .{ .min = 0, .max = 9999 },
+});
+pub const Month = GenericPolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 1, .max = 12 },
+});
+pub const MonthDay = GenericPolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 1, .max = 31 },
+});
+pub const YearDay = GenericPolynomialFormat(.{
+    .bits = 16,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 4 },
+    .range = .{ .min = 1, .max = 366 },
+});
+pub const Hour = GenericPolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 0, .max = 23 },
+});
+pub const Minute = GenericPolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 0, .max = 59 },
+});
+pub const Second = GenericPolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 0, .max = 59 },
+});
+pub fn Ud(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
         .radix = 10,
-        .signedness = .signed,
+        .signedness = .unsigned,
         .width = .min,
     });
-    pub const Id16 = GenericPolynomialFormat(.{
-        .bits = 16,
+}
+pub fn Udh(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
         .radix = 10,
-        .signedness = .signed,
+        .signedness = .unsigned,
         .width = .min,
+        .separator = .{},
     });
-    pub const Id32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 10,
-        .signedness = .signed,
-        .width = .min,
-    });
-    pub const Id64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 10,
-        .signedness = .signed,
-        .width = .min,
-    });
-    pub const Id128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 10,
-        .signedness = .signed,
-        .width = .min,
-    });
-    pub const Ix8 = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 16,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Ix16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 16,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Ix32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 16,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Ix64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 16,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Ix128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 16,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Iz8 = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 36,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Iz16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 36,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Iz32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 36,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Iz64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 36,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Iz128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 36,
-        .signedness = .signed,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Ub8 = GenericPolynomialFormat(.{
-        .bits = 8,
+}
+pub fn Ub(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
         .radix = 2,
         .signedness = .unsigned,
         .width = .max,
         .prefix = "0b",
     });
-    pub const Ub16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 2,
-        .signedness = .unsigned,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Ub32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 2,
-        .signedness = .unsigned,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Ub64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 2,
-        .signedness = .unsigned,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Uo8 = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 8,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Uo16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 8,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Uo32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 8,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Uo64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 8,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Uo128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 8,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Ud8 = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 10,
-        .signedness = .unsigned,
-        .width = .min,
-    });
-    pub const Ud16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 10,
-        .signedness = .unsigned,
-        .width = .min,
-    });
-    pub const Ud32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 10,
-        .signedness = .unsigned,
-        .width = .min,
-    });
-    pub const Ud64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 10,
-        .signedness = .unsigned,
-        .width = .min,
-    });
-    pub const Ud128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 10,
-        .signedness = .unsigned,
-        .width = .min,
-    });
-    pub const Ux8 = GenericPolynomialFormat(.{
-        .bits = 8,
+}
+pub fn Ux(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
         .radix = 16,
         .signedness = .unsigned,
         .width = .min,
         .prefix = "0x",
     });
-    pub const Ux16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 16,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Ux32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 16,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Ux64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 16,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Ux128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 16,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0x",
-    });
-    pub const Uz8 = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 36,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Uz16 = GenericPolynomialFormat(.{
-        .bits = 16,
-        .radix = 36,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Uz32 = GenericPolynomialFormat(.{
-        .bits = 32,
-        .radix = 36,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Uz64 = GenericPolynomialFormat(.{
-        .bits = 64,
-        .radix = 36,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Uz128 = GenericPolynomialFormat(.{
-        .bits = 128,
-        .radix = 36,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0z",
-    });
-    pub const Ubsize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(usize),
-        .radix = 2,
-        .signedness = .unsigned,
-        .width = .max,
-        .prefix = "0b",
-    });
-    pub const Uosize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(usize),
-        .radix = 8,
-        .signedness = .unsigned,
-        .width = .min,
-        .prefix = "0o",
-    });
-    pub const Udsize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(usize),
+}
+pub fn Id(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
         .radix = 10,
-        .signedness = .unsigned,
+        .signedness = .signed,
         .width = .min,
     });
-    pub const Uxsize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(usize),
-        .radix = 16,
-        .signedness = .unsigned,
+}
+pub fn Idh(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
+        .radix = 10,
+        .signedness = .signed,
         .width = .min,
-        .prefix = "0x",
+        .separator = .{},
     });
-    pub const Ibsize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(isize),
+}
+pub fn Ib(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
         .radix = 2,
         .signedness = .signed,
         .width = .max,
         .prefix = "0b",
     });
-    pub const Iosize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(isize),
-        .radix = 8,
-        .signedness = .signed,
-        .width = .min,
-    });
-    pub const Idsize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(isize),
-        .radix = 10,
-        .signedness = .signed,
-        .width = .min,
-    });
-    pub const Ixsize = GenericPolynomialFormat(.{
-        .bits = @bitSizeOf(isize),
+}
+pub fn Ix(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = meta.alignBitSizeOfAbove(Int),
         .radix = 16,
         .signedness = .signed,
         .width = .min,
+        .prefix = "0x",
     });
-    pub const Esc = GenericPolynomialFormat(.{
-        .bits = 8,
-        .radix = 16,
-        .signedness = .unsigned,
+}
+pub fn Xb(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(Int),
+        .prefix = "0b",
+        .radix = 2,
+        .signedness = @typeInfo(Int).Int.signedness,
         .width = .max,
-        .prefix = "\\x",
     });
-    pub const NSec = GenericPolynomialFormat(.{
-        .bits = 64,
-        .signedness = .unsigned,
+}
+pub fn Xo(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(Int),
+        .prefix = "0o",
+        .radix = 8,
+        .signedness = @typeInfo(Int).Int.signedness,
+        .width = .min,
+    });
+}
+pub fn Xd(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(Int),
+        .prefix = null,
         .radix = 10,
-        .width = .{ .fixed = 9 },
-        .range = .{ .min = 0, .max = 999999999 },
+        .signedness = @typeInfo(Int).Int.signedness,
+        .width = .min,
     });
-    pub const Year = GenericPolynomialFormat(.{
-        .bits = 64,
-        .signedness = .unsigned,
-        .radix = 10,
-        .width = .{ .fixed = 4 },
-        .range = .{ .min = 0, .max = 9999 },
+}
+pub fn Xx(comptime Int: type) type {
+    return GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(Int),
+        .prefix = "0x",
+        .radix = 16,
+        .signedness = @typeInfo(Int).Int.signedness,
+        .width = .min,
     });
-    pub const Month = GenericPolynomialFormat(.{
-        .bits = 8,
-        .signedness = .unsigned,
-        .radix = 10,
-        .width = .{ .fixed = 2 },
-        .range = .{ .min = 1, .max = 12 },
-    });
-    pub const MonthDay = GenericPolynomialFormat(.{
-        .bits = 8,
-        .signedness = .unsigned,
-        .radix = 10,
-        .width = .{ .fixed = 2 },
-        .range = .{ .min = 1, .max = 31 },
-    });
-    pub const YearDay = GenericPolynomialFormat(.{
-        .bits = 16,
-        .signedness = .unsigned,
-        .radix = 10,
-        .width = .{ .fixed = 4 },
-        .range = .{ .min = 1, .max = 366 },
-    });
-    pub const Hour = GenericPolynomialFormat(.{
-        .bits = 8,
-        .signedness = .unsigned,
-        .radix = 10,
-        .width = .{ .fixed = 2 },
-        .range = .{ .min = 0, .max = 23 },
-    });
-    pub const Minute = GenericPolynomialFormat(.{
-        .bits = 8,
-        .signedness = .unsigned,
-        .radix = 10,
-        .width = .{ .fixed = 2 },
-        .range = .{ .min = 0, .max = 59 },
-    });
-    pub const Second = GenericPolynomialFormat(.{
-        .bits = 8,
-        .signedness = .unsigned,
-        .radix = 10,
-        .width = .{ .fixed = 2 },
-        .range = .{ .min = 0, .max = 59 },
-    });
-    pub fn Ud(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 10,
-            .signedness = .unsigned,
-            .width = .min,
-        });
-    }
-    pub fn Udh(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 10,
-            .signedness = .unsigned,
-            .width = .min,
-            .separator = .{},
-        });
-    }
-    pub fn Ub(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 2,
-            .signedness = .unsigned,
-            .width = .max,
-            .prefix = "0b",
-        });
-    }
-    pub fn Ux(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 16,
-            .signedness = .unsigned,
-            .width = .min,
-            .prefix = "0x",
-        });
-    }
-    pub fn Id(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 10,
-            .signedness = .signed,
-            .width = .min,
-        });
-    }
-    pub fn idh(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 10,
-            .signedness = .signed,
-            .width = .min,
-            .separator = .{},
-        });
-    }
-    pub fn Ib(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 2,
-            .signedness = .signed,
-            .width = .max,
-            .prefix = "0b",
-        });
-    }
-    pub fn Ix(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = meta.alignBitSizeOfAbove(Int),
-            .radix = 16,
-            .signedness = .signed,
-            .width = .min,
-            .prefix = "0x",
-        });
-    }
-    pub fn Xb(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = @bitSizeOf(Int),
-            .prefix = "0b",
-            .radix = 0b10,
-            .signedness = @typeInfo(Int).Int.signedness,
-            .width = .max,
-        });
-    }
-    pub fn Xd(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = @bitSizeOf(Int),
-            .prefix = null,
-            .radix = 10,
-            .signedness = @typeInfo(Int).Int.signedness,
-            .width = .min,
-        });
-    }
-    pub fn Xx(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = @bitSizeOf(Int),
-            .prefix = "0x",
-            .radix = 0x10,
-            .signedness = @typeInfo(Int).Int.signedness,
-            .width = .min,
-        });
-    }
-    pub fn Xo(comptime Int: type) type {
-        return GenericPolynomialFormat(.{
-            .bits = @bitSizeOf(Int),
-            .prefix = "0o",
-            .radix = 0o10,
-            .signedness = @typeInfo(Int).Int.signedness,
-            .width = .min,
-        });
-    }
-    pub const UDel = GenericChangedIntFormat(.{
-        .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
-        .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
-        .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
-    });
-    pub const BytesDiff = GenericChangedBytesFormat(.{});
-    pub const BloatDiff = GenericChangedBytesFormat(.{
-        .dec_style = "\x1b[92m-",
-        .inc_style = "\x1b[91m+",
-        .no_style = "\x1b[0m",
-        .to_from_zero = false,
-    });
-    pub const AddrDiff = GenericChangedIntFormat(.{
-        .del_fmt_spec = Ux64.specification,
-        .new_fmt_spec = Ux64.specification,
-        .old_fmt_spec = Ux64.specification,
-    });
-    pub const Char = struct {
-        value: u8,
-        const Format = @This();
-        pub fn formatWrite(format: Format, array: anytype) void {
-            array.writeOne(format.value);
-        }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            buf[0] = format.value;
-            return 1;
-        }
-        pub fn formatLength(_: Format) usize {
-            return 1;
-        }
-    };
-};
+}
+pub const UDel = GenericChangedIntFormat(.{
+    .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+    .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+    .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+});
+pub const BytesDiff = GenericChangedBytesFormat(.{});
+pub const BloatDiff = GenericChangedBytesFormat(.{
+    .dec_style = "\x1b[92m-",
+    .inc_style = "\x1b[91m+",
+    .no_style = "\x1b[0m",
+    .to_from_zero = false,
+});
+pub const AddrDiff = GenericChangedIntFormat(.{
+    .del_fmt_spec = Ux64.specification,
+    .new_fmt_spec = Ux64.specification,
+    .old_fmt_spec = Ux64.specification,
+});
