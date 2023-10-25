@@ -550,7 +550,7 @@ pub const reinterpret = struct {
         var buf: [32768]u8 = undefined;
         const ptr: [*]u8 = &buf;
         var len: usize = 0;
-        var ud64: fmt.Type.Ud64 = @bitCast(t_len);
+        var ud64: fmt.Ud64 = @bitCast(t_len);
         @memcpy(ptr, format_type_name);
         len +%= format_type_name.len;
         len +%= ud64.formatWriteBuf(ptr + len);

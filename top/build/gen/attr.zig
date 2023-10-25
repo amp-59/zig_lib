@@ -496,6 +496,12 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Use LLD as the linker"},
         },
         .{
+            .name = "llvm",
+            .string = "-fllvm",
+            .and_no = .{ .string = "-fno-llvm" },
+            .descr = &.{"Use LLVM as the codegen backend"},
+        },
+        .{
             .name = "compiler_rt",
             .string = "-fcompiler-rt",
             .and_no = .{ .string = "-fno-compiler-rt" },
@@ -751,7 +757,6 @@ const Operation = enum {
     s,
     x,
 };
-
 const archive_format_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?Format),
     .parse = &types.ProtoTypeDescr.init(Format),
