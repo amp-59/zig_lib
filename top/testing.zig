@@ -9,6 +9,7 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const algo = @import("./algo.zig");
 const debug = @import("./debug.zig");
+const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 pub inline fn announce(src: builtin.SourceLocation) void {
     var buf: [4096]u8 = undefined;
@@ -382,28 +383,45 @@ pub fn uniqueSet(comptime T: type, set: []const T) void {
         }
     }
 }
-pub fn printResources() void {
+pub fn printResources() !void {
+    var fd: usize = try file.open(.{}, .{ .directory = true }, "/proc/self/fd");
+    var len: usize = 0;
+    var dir: [4096]u8 = undefined;
     var buf: [4096]u8 = undefined;
-    const dir_fd: usize = file.open(.{ .errors = .{} }, .{ .directory = true }, "/proc/self/fd");
-    var len: u64 = file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
-    var off: u64 = 0;
-    while (off != len) {
-        const ent: *file.DirectoryEntry = @ptrCast(@alignCast(buf[off..]));
-        const name: [:0]const u8 = meta.manyToSlice(builtin.ptrCast([*:0]u8, &ent.array));
-        if (ent.kind == .symbolic_link) {
-            const pathname: [:0]const u8 = file.readLinkAt(.{ .errors = .{} }, dir_fd, name, buf[len..]);
-            debug.write(name);
-            debug.write(" -> ");
-            debug.write(pathname);
-            debug.write("\n");
+    var ptr: [*]u8 = &buf;
+    len = try file.getDirectoryEntries(.{}, fd, &dir);
+    var off: usize = 0;
+    var ent: *file.DirectoryEntry = undefined;
+    while (off != len) : (off +%= ent.reclen) {
+        ent = @ptrCast(@alignCast(dir[off..].ptr));
+        const name: [:0]const u8 = mem.terminate(@ptrCast(&ent.array), 0);
+        if (name[0] == '.') {
+            continue;
         }
-        off +%= ent.reclen;
+        if (try parse.unsigned(name) == fd) {
+            continue;
+        }
+        var link_buf: [4096]u8 = undefined;
+        ptr = fmt.strcpyEqu(ptr, name);
+        ptr[0..4].* = " -> ".*;
+        ptr += 4;
+        ptr = fmt.strcpyEqu(ptr, try file.readLinkAt(.{}, fd, name, &link_buf));
+        ptr[0] = '\n';
+        ptr += 1;
+        fmt.print(ptr, &buf);
+        ptr = &buf;
     }
-    file.close(.{ .errors = .{} }, dir_fd);
-    const maps_fd: usize = file.open(.{ .errors = .{} }, .{}, "/proc/self/maps");
-    len = file.read(.{ .errors = .{}, .return_type = usize }, maps_fd, &buf);
-    debug.write(buf[0..len]);
-    file.close(.{ .errors = .{} }, maps_fd);
-    const status_fd: usize = file.open(.{ .errors = .{} }, .{}, "/proc/self/status");
-    _ = file.send(.{ .errors = .{} }, 1, status_fd, null, ~@as(u64, 0));
+    try file.close(.{}, fd);
+    fd = try file.open(.{}, .{}, "/proc/self/maps");
+    len = try file.read(.{}, fd, &buf);
+    while (len != 0) : (len = try file.read(.{}, fd, &buf)) {
+        debug.write(buf[0..len]);
+    }
+    try file.close(.{}, fd);
+    fd = try file.open(.{}, .{}, "/proc/self/status");
+    len = try file.read(.{}, fd, &buf);
+    while (len != 0) : (len = try file.read(.{}, fd, &buf)) {
+        debug.write(buf[0..len]);
+    }
+    try file.close(.{}, fd);
 }
