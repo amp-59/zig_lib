@@ -30,7 +30,6 @@ pub fn view(s: []const u8) StructuredStreamView(u8, null, 1, struct {}, .{}) {
         .ss_word = @intFromPtr(s.ptr),
     } };
 }
-
 pub fn GenericSimpleArray(comptime T: type) type {
     return struct {
         values: []T,
@@ -672,7 +671,7 @@ pub const reinterpret = opaque {
     fn formatLengthFault(format_type_name: []const u8, operator_symbol: anytype, s_len: u64, t_len: u64) noreturn {
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
-        var ud64: fmt.Type.Ud64 = .{ .value = t_len };
+        var ud64: fmt.Ud64 = .{ .value = t_len };
         ptr = fmt.strcpyEqu(ptr, format_type_name);
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..operator_symbol.len].* = operator_symbol.*;
@@ -986,6 +985,9 @@ fn GenericParameters(comptime Parameters: type) type {
                 "specification, or specification options");
         }
         pub fn arenaIndex(comptime params: Parameters) ?u64 {
+            if (params.Allocator == void) {
+                return null;
+            }
             if (@hasDecl(params.Allocator, "arena_index")) {
                 return params.Allocator.arena_index;
             }
