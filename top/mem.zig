@@ -460,17 +460,17 @@ pub fn advise(comptime advise_spec: AdviseSpec, advice: Advice, addr: usize, len
         return madvise_error;
     }
 }
-pub fn fd(comptime fd_spec: FdSpec, flags: sys.flags.MemFd, pathname: [:0]const u8) sys.ErrorUnion(fd_spec.errors, fd_spec.return_type) {
-    const name_buf_addr: usize = @intFromPtr(pathname.ptr);
+pub fn fd(comptime fd_spec: FdSpec, flags: sys.flags.MemFd, name: [:0]const u8) sys.ErrorUnion(fd_spec.errors, fd_spec.return_type) {
+    const name_buf_addr: usize = @intFromPtr(name.ptr);
     const logging: debug.Logging.AcquireError = comptime fd_spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, fd_spec.errors, fd_spec.return_type, .{ name_buf_addr, @bitCast(flags) }))) |mem_fd| {
         if (logging.Acquire) {
-            about.aboutMemFdPathnameNotice(about.memfd_s, mem_fd, pathname);
+            about.aboutMemFdPathnameNotice(about.memfd_s, mem_fd, name);
         }
         return mem_fd;
     } else |memfd_create_error| {
         if (logging.Error) {
-            about.aboutPathnameError(about.memfd_s, @errorName(memfd_create_error), pathname);
+            about.aboutPathnameError(about.memfd_s, @errorName(memfd_create_error), name);
         }
         return memfd_create_error;
     }
