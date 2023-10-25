@@ -658,6 +658,11 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Enable or disable colored error messages"},
         },
         .{
+            .name = "incremental_compilation",
+            .string = "--debug-incremental",
+            .descr = &.{"Enable experimental feature: incremental compilation"},
+        },
+        .{
             .name = "time_report",
             .string = "-ftime-report",
             .descr = &.{"Print timing diagnostics"},
