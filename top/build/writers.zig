@@ -666,6 +666,10 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
         ptr[0] = 0;
         ptr += 1;
     }
+    if (cmd.incremental_compilation) {
+        ptr[0..20].* = "--debug-incremental\x00".*;
+        ptr += 20;
+    }
     if (cmd.time_report) {
         ptr[0..14].* = "-ftime-report\x00".*;
         ptr += 14;
@@ -1234,6 +1238,9 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
         len +%= 8;
         len +%= @tagName(color).len;
         len +%= 1;
+    }
+    if (cmd.incremental_compilation) {
+        len +%= 20;
     }
     if (cmd.time_report) {
         len +%= 14;
