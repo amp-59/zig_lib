@@ -86,7 +86,7 @@ pub const SourceLocation = struct {
         var ptr: [*]u8 = file.CompoundPath.writeDisplayPath(buf + 4, format.file);
         ptr[0] = ':';
         ptr += 1;
-        var ud64: fmt.Type.Ud64 = .{ .value = format.line };
+        var ud64: fmt.Ud64 = .{ .value = format.line };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = ':';
         ptr += 1;
@@ -157,7 +157,7 @@ fn writeTopSrcLoc(buf: [*]u8, err: *CompileErrorMessage, src: *CompileSourceLoca
 }
 fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: usize, column: usize) usize {
     @setRuntimeSafety(false);
-    var ud64: fmt.Type.Ud64 = .{ .value = line };
+    var ud64: fmt.Ud64 = .{ .value = line };
     var ptr: [*]u8 = buf;
     ptr[0..11].* = "\x1b[38;5;247m".*;
     ptr += 11;
@@ -174,7 +174,7 @@ fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: usize, column: 
 }
 fn writeTimes(buf: [*]u8, count: u64) [*]u8 {
     @setRuntimeSafety(false);
-    var ud64: fmt.Type.Ud64 = .{ .value = count };
+    var ud64: fmt.Ud64 = .{ .value = count };
     var ptr: [*]u8 = buf - 1;
     ptr[0..4].* = "\x1b[2m".*;
     ptr += 4;
@@ -763,6 +763,7 @@ fn printMessage(allocator: *mem.SimpleAllocator, addr_info: *dwarf.DwarfInfo.Add
     }
 }
 fn allocateFile(allocator: *Allocator, pathname: [:0]const u8) [:0]u8 {
+    @setRuntimeSafety(false);
     const fd: usize = file.open(.{ .errors = .{} }, .{}, pathname);
     if (fd >= 1024) {
         proc.exit(2);
