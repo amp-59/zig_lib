@@ -91,7 +91,7 @@ pub noinline fn __panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usiz
     var ptr: [*]u8 = switch (payload) {
         .returned_noreturn => fmt.strcpyEqu(&buf, "function declared 'noreturn' returned"),
         .reached_unreachable => fmt.strcpyEqu(&buf, "reached unreachable code"),
-        .branched_on_corrupt_value => fmt.strcpyEqu(&buf, "switch on corrupt value"),
+        .branched_on_corrupt_condition => fmt.strcpyEqu(&buf, "switch on corrupt value"),
         .unwrapped_null => fmt.strcpyEqu(&buf, "unwrapped null"),
         .unwrapped_error => fmt.strcpyEqu(&buf, "unwrapped error"),
         .access_out_of_bounds => |params| blk: {
