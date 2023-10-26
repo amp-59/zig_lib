@@ -112,6 +112,21 @@ pub fn panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usize) void {
     var buf: [256]u8 = undefined;
     var ptr: [*]u8 = buf[0..];
     switch (payload) {
+        .message => |message| return builtin.alarm(message, st, ret_addr),
+        .unwrapped_error => |error_name| {
+            ptr[0..17].* = "unwrapped error: ".*;
+            ptr = fmt.strcpyEqu(buf[17..], error_name);
+        },
+        .shift_amount_overflow => ptr =
+            fmt.strcpyEqu(ptr, "shift amount overflowed"),
+        .unwrapped_null => ptr =
+            fmt.strcpyEqu(ptr, "attempt to use null value"),
+        .returned_noreturn => ptr =
+            fmt.strcpyEqu(ptr, "function declared 'noreturn' returned"),
+        .reached_unreachable => ptr =
+            fmt.strcpyEqu(ptr, "reached unreachable code"),
+        .branched_on_corrupt_condition => ptr =
+            fmt.strcpyEqu(ptr, "switch on corrupt value"),
         .access_out_of_order => |params| {
             ptr[0..12].* = "start index ".*;
             ptr = fmt.writeUdsize(ptr + 12, params.start);
@@ -162,21 +177,6 @@ pub fn panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usize) void {
             ptr[0..5].* = " and ".*;
             ptr = fmt.writeUxsize(ptr + 5, range.up_addr);
         },
-        .message => |message| return builtin.alarm(message, st, ret_addr),
-        .unwrapped_error => |error_name| {
-            ptr[0..17].* = "unwrapped error: ".*;
-            ptr = fmt.strcpyEqu(buf[17..], error_name);
-        },
-        .shift_amount_overflow => ptr =
-            fmt.strcpyEqu(ptr, "shift amount overflowed"),
-        .unwrapped_null => ptr =
-            fmt.strcpyEqu(ptr, "attempt to use null value"),
-        .returned_noreturn => ptr =
-            fmt.strcpyEqu(ptr, "function declared 'noreturn' returned"),
-        .reached_unreachable => ptr =
-            fmt.strcpyEqu(ptr, "reached unreachable code"),
-        .branched_on_corrupt_condition => ptr =
-            fmt.strcpyEqu(ptr, "switch on corrupt value"),
     }
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
