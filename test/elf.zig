@@ -184,7 +184,7 @@ noinline fn doIt(loader: *Loader, pathname: [:0]const u8, ptrs: *Builder.Functio
 const Loader = elf.GenericDynamicLoader(.{
     .AddressSpace = LoaderAddressSpace,
     .logging = .{},
-    .errors = if (builtin.strip_debug_info) elf.spec.loader.errors.noexcept else .{},
+    .errors = .{},
 });
 fn testConcurrentLoading() !void {
     const build_core = "../top/build/build.auto.zig";
@@ -297,9 +297,4 @@ fn testBasics() !void {
             buf.ptr,
         )]);
     }
-}
-pub fn main() !void {
-    try quickCompile(.{
-        .logging = build.spec.logging.silent,
-    }, .{ .kind = .lib }, "build", "../top/build/build.auto.zig");
 }
