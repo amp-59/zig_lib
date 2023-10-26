@@ -249,8 +249,8 @@ fn zigLibContainerWriteArrays(futex1: *u32, futex2: *u32, count1: u32, count2: u
 ///         2:      page-faults		3
 fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
-    var ux64: zl.fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-    var ud64: zl.fmt.Type.Ud64 = .{ .value = futex1.* };
+    var ux64: zl.fmt.Ux64 = .{ .value = @intFromPtr(futex1) };
+    var ud64: zl.fmt.Ud64 = .{ .value = futex1.* };
     var bytes: [4096]u8 = undefined;
     var buf: [*]u8 = &bytes;
     @as(*[about.len]u8, @ptrCast(buf)).* = about.*;
@@ -286,8 +286,8 @@ fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, 
 }
 fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
-    var ux64: zl.fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-    var ud64: zl.fmt.Type.Ud64 = .{ .value = futex1.* };
+    var ux64: zl.fmt.Ux64 = .{ .value = @intFromPtr(futex1) };
+    var ud64: zl.fmt.Ud64 = .{ .value = futex1.* };
     var buf: [4096]u8 = undefined;
     buf[0..about.len].* = about.*;
     var ptr: [*]u8 = buf[about.len..];
