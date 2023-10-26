@@ -3,7 +3,6 @@ const spec = zl.spec;
 const build = zl.build;
 pub const Builder = build.GenericBuilder(.{});
 const Node = Builder.Node;
-
 const build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .omit_frame_pointer = false,
@@ -42,7 +41,6 @@ pub fn sysgenGroup(allocator: *build.Allocator, group: *Builder.Node) void {
 }
 pub fn traceGroup(allocator: *build.Allocator, group: *Node) void {
     var trace_build_cmd: build.BuildCommand = .{ .kind = .exe, .function_sections = true, .gc_sections = false };
-    const debug: *Node = group.addBuild(allocator, trace_build_cmd, "debug", "test/debug.zig");
     const access_inactive: *Node = group.addBuild(allocator, trace_build_cmd, "access_inactive", "test/trace/access_inactive.zig");
     const assertion_failed: *Node = group.addBuild(allocator, trace_build_cmd, "assertion_failed", "test/trace/assertion_failed.zig");
     const out_of_bounds: *Node = group.addBuild(allocator, trace_build_cmd, "out_of_bounds", "test/trace/out_of_bounds.zig");
@@ -63,7 +61,6 @@ pub fn traceGroup(allocator: *build.Allocator, group: *Node) void {
     stack_overflow.descr = "Test stack trace for stack overflow";
     start_gt_end.descr = "Test stack trace for out-of-bounds (panicStartGreaterThanEnd)";
     minimal_full.descr = "Test binary composition with all traces possible";
-    debug.descr = "Test debug";
     static_exe.dependOn(allocator, static_obj);
 }
 pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
@@ -98,18 +95,17 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const pcurves: *Node = group.addBuild(allocator, test_build_cmd, "pcurves", "test/crypto/pcurves.zig");
     const algo: *Node = group.addBuild(allocator, test_build_cmd, "algo", "test/algo.zig");
     const fmt_cmp: *Node = group.addBuild(allocator, test_build_cmd, "fmt_cmp", "test/fmt_cmp.zig");
+    const safety: *Node = group.addBuild(allocator, test_build_cmd, "safety", "test/safety.zig");
     const grep: *Node = group.addRun(allocator, "grep", &.{ "/usr/bin/grep", "Node", "./build.zig" });
-
     mem.flags.want_stack_traces = true;
+    safety.flags.want_stack_traces = false;
     traceGroup(allocator, group.addGroup(allocator, "trace", null));
-
     elfcmp.dependOn(allocator, meta);
     elfcmp.dependOn(allocator, builtin);
     meta.tasks.cmd.build.strip = false;
     builtin.tasks.cmd.build.strip = false;
     elfcmp.addRunArg(allocator).* = meta.getPath(.{ .tag = .output_generic }).?.concatenate(allocator);
     elfcmp.addRunArg(allocator).* = builtin.getPath(.{ .tag = .output_generic }).?.concatenate(allocator);
-
     test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     test_build_cmd.dependencies = &.{.{ .name = "@build" }};
     const build_stress: *Node = group.addBuild(allocator, test_build_cmd, "build_stress", "test/build.zig");
@@ -124,7 +120,6 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const test_writers: *Node = group.addBuild(allocator, test_build_cmd, "test_writers", "top/build/writers.zig");
     const test_parsers: *Node = group.addBuild(allocator, test_build_cmd, "test_parsers", "top/build/parsers.zig");
     test_build_cmd.strip = true;
-    x86.flags.want_stack_traces = true;
     const test_symbols: *Node = group.addBuild(allocator, test_build_cmd, "test_symbols", "test/symbols.zig");
     langGroup(allocator, group.addGroup(allocator, "lang", null));
     build_stress.addToplevelArgs(allocator);
@@ -132,7 +127,7 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     elf.dependOn(allocator, test_symbols);
     elf.dependOn(allocator, test_parsers);
     elf.dependOn(allocator, test_writers);
-
+    safety.descr = "Test safety prototype";
     x86.descr = "Test x86 assembler/disassembler";
     decls.descr = "Test compilation of all public declarations recursively";
     builtin.descr = "Test builtin functions";
@@ -329,7 +324,6 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
     sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
     buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
     targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
-
     const treez: *Node = toplevel.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
     const elfcmp: *Node = toplevel.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
