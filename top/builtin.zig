@@ -92,50 +92,6 @@ pub const panic_messages = define("panic_messages", type, struct {
 
 pub const AbsoluteState = define("AbsoluteState", type, void);
 
-pub fn writeInt(buf: [*]u8, type_name: []const u8, value: usize, radix: u8) [*]u8 {
-    @setRuntimeSafety(false);
-    var abs: usize = value;
-    if (type_name[0] == 'i') {
-        buf[0] = '-';
-        abs = @abs(@as(isize, @bitCast(value)));
-    }
-    var ptr: [*]u8 = buf + @intFromBool(value != abs);
-    if (radix == 16) {
-        ptr[0..2].* = "0x".*;
-        ptr += 2;
-    }
-    var tmp: usize = abs;
-    var count: u64 = 0;
-    while (tmp != 0) : (tmp /= radix) {
-        count +%= 1;
-    }
-    const ret: [*]u8 = ptr + count;
-    while (count != 0) : (abs /= radix) {
-        const result: u8 = @truncate(@rem(abs, radix));
-        count -%= 1;
-        if (radix > 10) {
-            ptr[count] = result +% @as(u8, if (result < 10) 48 else 87);
-        } else {
-            ptr[count] = result +% 48;
-        }
-    }
-    return ret;
-}
-pub fn writeMulCausedOverflow(type_name: []const u8, buf: [*]u8, lim: usize, arg1: usize, arg2: usize) [*]u8 {
-    @setRuntimeSafety(false);
-    @memcpy(buf, type_name);
-    var ptr: [*]u8 = buf + type_name.len;
-    ptr[0..19].* = " integer overflow: ".*;
-    ptr += 19;
-    ptr = writeInt(ptr, type_name, arg1, 10);
-    ptr[0..3].* = " * ".*;
-    ptr += 3;
-    ptr = writeInt(ptr, type_name, arg2, 10);
-    ptr[0..3].* = " > ".*;
-    ptr += 3;
-    ptr = writeInt(ptr, type_name, lim, 10);
-    return ptr;
-}
 pub const logging_default: debug.Logging.Default = define(
     "logging_default",
     debug.Logging.Default,
@@ -368,8 +324,7 @@ pub fn intCast(comptime Int: type, value: anytype) Int {
     const extrema: math.Extrema = math.extrema(Int);
     if (value > extrema.max) {
         return debug.intCastTruncatedBitsFault(Int, @TypeOf(value), extrema.max, value, @returnAddress());
-    }
-    if (value < extrema.min) {
+    } else if (value < extrema.min) {
         return debug.intCastTruncatedBitsFault(Int, @TypeOf(value), extrema.min, value, @returnAddress());
     }
     return @intCast(value);
@@ -2638,6 +2593,15 @@ fn __indicateComptime(comptime T: type) T {
 }
 pub inline fn requireComptime(comptime T: type) bool {
     return @inComptime() or @typeInfo(@TypeOf(.{__indicateComptime(T)})).Struct.fields[0].is_comptime;
+}
+pub inline fn isUndefined(comptime value: anytype) bool {
+    const type_name = @typeName([:&value]*const @TypeOf(value));
+    if (type_name.len < 11) {
+        return false;
+    }
+    const a: *align(1) const usize = @ptrCast(type_name[2..11]);
+    const b: *align(1) const usize = @ptrCast("undefine");
+    return a.* == b.*;
 }
 pub inline fn ptrCast(comptime T: type, any: anytype) T {
     @setRuntimeSafety(false);
