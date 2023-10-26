@@ -5,6 +5,8 @@ pub usingnamespace zl.start;
 const safety = @import("../top/safety.zig");
 const just_compile: bool = true;
 
+pub const want_stack_traces: bool = false;
+
 var rng: zl.file.DeviceRandomBytes(4096) = .{};
 
 inline fn readOne(comptime T: type) T {
