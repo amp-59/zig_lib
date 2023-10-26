@@ -3232,11 +3232,21 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         }
     }
     const type_name = @typeName(Struct);
+    const field_spec_if_not_type: RenderSpec = blk: {
+        var tmp: RenderSpec = spec;
+        tmp.infer_type_names = true;
+        break :blk tmp;
+    };
+    const field_spec_if_type: RenderSpec = blk: {
+        var tmp: RenderSpec = spec;
+        tmp.infer_type_names = false;
+        break :blk tmp;
+    };
+    const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
+    const omit_trailing_comma: bool = spec.omit_trailing_comma orelse (fields.len < 4);
     const T = struct {
         value: Struct,
         const Format = @This();
-        const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
-        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse (fields.len < 4);
         const max_len: usize = blk: {
             var len: usize = 0;
             len +%= @typeName(Struct).len +% 2;
@@ -3252,16 +3262,6 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 }
             }
             break :blk len;
-        };
-        const field_spec_if_not_type: RenderSpec = blk: {
-            var tmp: RenderSpec = spec;
-            tmp.infer_type_names = true;
-            break :blk tmp;
-        };
-        const field_spec_if_type: RenderSpec = blk: {
-            var tmp: RenderSpec = spec;
-            tmp.infer_type_names = false;
-            break :blk tmp;
         };
         fn writeFieldInitializer(array: anytype, field_name_format: IdentifierFormat, field_format: anytype) void {
             array.writeOne('.');
@@ -3352,7 +3352,6 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 writeTrailingComma(array, omit_trailing_comma, fields_len);
             }
         }
-
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
@@ -3914,22 +3913,12 @@ pub const ComptimeIntFormat = struct {
     }
 };
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
-    if (@typeInfo(Int).Int.signedness == .unsigned) {
-        switch (spec.radix) {
-            2 => return Ubsize,
-            8 => return Uosize,
-            10 => return Udsize,
-            16 => return Uxsize,
-            else => @compileError("invalid render radix"),
-        }
-    } else {
-        switch (spec.radix) {
-            2 => return Ibsize,
-            8 => return Iosize,
-            10 => return Idsize,
-            16 => return Ixsize,
-            else => @compileError("invalid render radix"),
-        }
+    switch (spec.radix) {
+        2 => return Xb(meta.BestInt(Int)),
+        8 => return Xo(meta.BestInt(Int)),
+        10 => return Xd(meta.BestInt(Int)),
+        16 => return Xx(meta.BestInt(Int)),
+        else => @compileError("invalid render radix"),
     }
 }
 const AddressFormat = struct {
