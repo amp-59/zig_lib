@@ -1,4 +1,5 @@
 const bits = @import("./bits.zig");
+const meta = @import("./meta.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 
@@ -258,27 +259,61 @@ pub const Order = enum {
 };
 pub const Extrema = struct { min: comptime_int, max: comptime_int };
 /// Find the maximum and minimum arithmetical values for an integer type.
-pub fn extrema(comptime Int: type) Extrema {
-    switch (Int) {
-        u0, i0 => return .{ .min = 0, .max = 0 },
-        u1 => return .{ .min = 0, .max = 1 },
-        i1 => return .{ .min = -1, .max = 0 },
-        else => {
-            const U = @Type(.{ .Int = .{
-                .signedness = .unsigned,
-                .bits = @bitSizeOf(Int),
-            } });
-            const umax: U = ~@as(U, 0);
-            if (@typeInfo(Int).Int.signedness == .unsigned) {
-                return .{ .min = 0, .max = umax };
-            } else {
-                const imax: U = umax >> 1;
-                return .{
-                    .min = @as(Int, @bitCast(~imax)),
-                    .max = @as(Int, @bitCast(imax)),
-                };
-            }
-        },
+pub inline fn extrema(comptime Int: type) Extrema {
+    comptime {
+        switch (Int) {
+            u0, i0 => return .{ .min = 0, .max = 0 },
+            u1 => return .{ .min = 0, .max = 1 },
+            i1 => return .{ .min = -1, .max = 0 },
+            else => {
+                const U = @Type(.{ .Int = .{
+                    .signedness = .unsigned,
+                    .bits = @bitSizeOf(Int),
+                } });
+                const umax: U = ~@as(U, 0);
+                if (@typeInfo(Int).Int.signedness == .unsigned) {
+                    return .{ .min = 0, .max = umax };
+                } else {
+                    const imax: U = umax >> 1;
+                    return .{
+                        .min = @as(Int, @bitCast(~imax)),
+                        .max = @as(Int, @bitCast(imax)),
+                    };
+                }
+            },
+        }
+    }
+}
+pub fn BestExtrema(comptime Int: type) type {
+    if (meta.BestInt(Int) != Int) {
+        return BestExtrema(meta.BestInt(Int));
+    }
+    return struct { min: Int, max: Int };
+}
+/// Find the maximum and minimum arithmetical values for an integer type.
+pub inline fn bestExtrema(comptime Int: type) BestExtrema(Int) {
+    comptime {
+        switch (Int) {
+            u0, i0 => return .{ .min = 0, .max = 0 },
+            u1 => return .{ .min = 0, .max = 1 },
+            i1 => return .{ .min = -1, .max = 0 },
+            else => {
+                const U = @Type(.{ .Int = .{
+                    .signedness = .unsigned,
+                    .bits = @bitSizeOf(Int),
+                } });
+                const umax: U = ~@as(U, 0);
+                if (@typeInfo(Int).Int.signedness == .unsigned) {
+                    return .{ .min = 0, .max = umax };
+                } else {
+                    const imax: U = umax >> 1;
+                    return .{
+                        .min = @as(Int, @bitCast(~imax)),
+                        .max = @as(Int, @bitCast(imax)),
+                    };
+                }
+            },
+        }
     }
 }
 // Sue me
