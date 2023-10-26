@@ -2204,6 +2204,7 @@ pub fn bounds(any: anytype) Bounds {
     };
 }
 pub fn intersection2(comptime A: type, s_arena: A, t_arena: A) ?Intersection(A) {
+    @setRuntimeSafety(false);
     if (intersection(A, s_arena, t_arena)) |x_arena| {
         return .{
             .l = if (@hasField(A, "options")) .{
@@ -2234,14 +2235,13 @@ pub fn intersection2(comptime A: type, s_arena: A, t_arena: A) ?Intersection(A) 
     return null;
 }
 pub fn intersection(comptime A: type, s_arena: Arena, t_arena: Arena) ?A {
-    if (builtin.int2v(
-        bool,
-        t_arena.up_addr -% 1 < s_arena.lb_addr,
-        s_arena.up_addr -% 1 < t_arena.lb_addr,
-    )) {
+    @setRuntimeSafety(false);
+    if (@intFromBool(t_arena.up_addr -% 1 < s_arena.lb_addr) |
+        @intFromBool(s_arena.up_addr -% 1 < t_arena.lb_addr) != 0)
+    {
         return null;
     }
-    return .{
+    return if (@hasField(A, "options")) .{
         .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
         .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
         .options = .{
@@ -2251,6 +2251,9 @@ pub fn intersection(comptime A: type, s_arena: Arena, t_arena: Arena) ?A {
                 t_arena.options.thread_safe,
             ),
         },
+    } else .{
+        .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
+        .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
     };
 }
 pub const Bounds = extern struct {
