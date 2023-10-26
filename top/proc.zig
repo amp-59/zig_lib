@@ -874,7 +874,7 @@ pub const about = opaque {
         const code: u64 = if (if_signaled) Status.termSignal(ret.status) else if (if_stopped) Status.stopSignal(ret.status) else Status.exitStatus(ret.status);
         const status_s: []const u8 =
             if (if_signaled) ", sig=" else if (if_stopped) ", stop=" else ", exit=";
-        var ud64: fmt.Type.Ud64 = .{ .value = ret.pid };
+        var ud64: fmt.Ud64 = .{ .value = ret.pid };
         var buf: [560]u8 = undefined;
         buf[0..wait_s.len].* = wait_s.*;
         var ptr: [*]u8 = buf[wait_s.len..];
@@ -925,8 +925,8 @@ pub const about = opaque {
     fn futexWaitNotice(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
+        var ux64: fmt.Ux64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Ud64 = .{ .value = futex.* };
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
         var ptr: [*]u8 = buf[futex_wait_s.len..];
         ptr[0..7].* = "futex1=".*;
@@ -953,8 +953,8 @@ pub const about = opaque {
     fn futexWakeAttempt(futex: *u32, count: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
+        var ux64: fmt.Ux64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Ud64 = .{ .value = futex.* };
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..6].* = "futex=".*;
@@ -973,8 +973,8 @@ pub const about = opaque {
     fn futexWakeNotice(futex: *u32, count: u64, ret: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
+        var ux64: fmt.Ux64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Ud64 = .{ .value = futex.* };
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..6].* = "futex=".*;
@@ -997,8 +997,8 @@ pub const about = opaque {
     fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+        var ux64: fmt.Ux64 = .{ .value = @intFromPtr(futex1) };
+        var ud64: fmt.Ud64 = .{ .value = futex1.* };
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..7].* = "futex1=".*;
@@ -1029,8 +1029,8 @@ pub const about = opaque {
     fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp, ret: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+        var ux64: fmt.Ux64 = .{ .value = @intFromPtr(futex1) };
+        var ud64: fmt.Ud64 = .{ .value = futex1.* };
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..7].* = "futex1=".*;
@@ -1065,7 +1065,7 @@ pub const about = opaque {
     fn signalActionError(rt_sigaction_error: anyerror, signo: sys.SignalCode, handler: SignalAction.Handler) void {
         @setRuntimeSafety(false);
         const handler_raw: usize = @bitCast(handler);
-        var ux64: fmt.Type.Ux64 = .{ .value = handler_raw };
+        var ux64: fmt.Ux64 = .{ .value = handler_raw };
         var buf: [256]u8 = undefined;
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, sig_s, @errorName(rt_sigaction_error));
         ptr[0..5].* = ", SIG".*;
@@ -1084,7 +1084,7 @@ pub const about = opaque {
     fn signalStackError(sigaltstack_error: anytype, new_st: SignalStack) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = new_st.addr };
+        var ux64: fmt.Ux64 = .{ .value = new_st.addr };
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, sig_s, @errorName(sigaltstack_error));
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
@@ -1097,8 +1097,8 @@ pub const about = opaque {
     fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
+        var ux64: fmt.Ud64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Ud64 = .{ .value = futex.* };
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wait_s, @errorName(futex_error));
         ptr[0..8].* = ", futex=".*;
         ptr += 8;
@@ -1122,8 +1122,8 @@ pub const about = opaque {
     fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
-        var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
+        var ux64: fmt.Ud64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Ud64 = .{ .value = futex.* };
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wake_s, @errorName(futex_error));
         ptr[0..7].* = "futex=@".*;
         ptr += 7;
@@ -1143,8 +1143,8 @@ pub const about = opaque {
         var buf: [256]u8 = undefined;
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wake_op_s, @errorName(futex_error));
-        var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex1) };
-        var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+        var ux64: fmt.Ud64 = .{ .value = @intFromPtr(futex1) };
+        var ud64: fmt.Ud64 = .{ .value = futex1.* };
         ptr[0..10].* = ", futex1=@".*;
         ptr += 10;
         ptr += ux64.formatWriteBuf(ptr);
