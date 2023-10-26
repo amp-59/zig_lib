@@ -27,139 +27,6 @@ pub const PanicSentinelMismatchFn = @TypeOf(panic_extra.panicSentinelMismatch);
 pub const PanicStartGreaterThanEndFn = @TypeOf(panic_extra.panicStartGreaterThanEnd);
 pub const PanicInactiveUnionFieldFn = @TypeOf(panic_extra.panicInactiveUnionField);
 pub const PanicUnwrapErrorFn = @TypeOf(panic_extra.panicUnwrapError);
-
-const Panic = union(enum(usize)) {
-    message: []const u8,
-    unwrapped_null: struct {
-        child_type_name: ?[]const u8 = null,
-    },
-    unwrapped_error: struct { // panicUnwrapError
-        error_set_type_name: ?[]const u8 = null,
-        error_name: []const u8,
-    },
-    access_out_of_bounds: struct { // panicOutOfBounds
-        child_type_name: ?[]const u8 = null,
-        index: usize,
-        length: usize,
-    },
-    access_out_of_order: struct { // panicStartGreaterThanEnd
-        child_type_name: ?[]const u8 = null,
-        start: usize,
-        finish: usize,
-    },
-    mismatched_memcpy_lengths: struct { // panicStartGreaterThanEnd
-        child_type_name: ?[]const u8 = null,
-        dest_length: usize,
-        src_length: usize,
-    },
-    mismatched_for_loop_lengths: struct {
-        child_type_name: ?[]const u8 = null,
-        prev_index: usize,
-        prev_capture_length: usize,
-        next_capture_length: usize,
-    },
-    access_inactive_field: struct {
-        union_type_name: ?[]const u8 = null,
-        expected: []const u8,
-        found: []const u8,
-    },
-    memcpy_arguments_alias: struct {
-        child_type_name: ?[]const u8 = null,
-        dest_start: usize,
-        dest_finish: usize,
-        src_start: usize,
-        src_finish: usize,
-    },
-    cast_to_pointer_from_null: []const u8,
-    cast_to_error_from_invalid: struct {
-        error_set_type_name: ?[]const u8 = null,
-        code: u16,
-    },
-    cast_to_misaligned_pointer: struct {
-        type_name: ?[]const u8 = null,
-        address: usize,
-        alignment: usize,
-        remainder: usize,
-    },
-    returned_noreturn,
-    reached_unreachable,
-    branched_on_corrupt_condition,
-};
-pub noinline fn __panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usize) void {
-    @setRuntimeSafety(false);
-    var buf: [128]u8 = undefined;
-    var ptr: [*]u8 = switch (payload) {
-        .returned_noreturn => fmt.strcpyEqu(&buf, "function declared 'noreturn' returned"),
-        .reached_unreachable => fmt.strcpyEqu(&buf, "reached unreachable code"),
-        .branched_on_corrupt_condition => fmt.strcpyEqu(&buf, "switch on corrupt value"),
-        .unwrapped_null => fmt.strcpyEqu(&buf, "unwrapped null"),
-        .unwrapped_error => fmt.strcpyEqu(&buf, "unwrapped error"),
-        .access_out_of_bounds => |params| blk: {
-            buf[0..6].* = "index ".*;
-            var ptr: [*]u8 = buf[5..];
-            if (params.length == 0) {
-                ptr[0..5].* = "ing (".*;
-                ptr += 5;
-                ptr = fmt.writeUd64(ptr, params.index);
-                ptr[0..18].* = ") into empty array".*;
-                break :blk ptr + 18;
-            } else {
-                ptr += 1;
-                ptr = fmt.writeUd64(ptr, params.index);
-                ptr[0..15].* = " above maximum ".*;
-                ptr += 15;
-                break :blk fmt.writeUd64(ptr, params.length -% 1);
-            }
-        },
-        .access_out_of_order => |params| blk: {
-            buf[0..12].* = "start index ".*;
-            var ptr: [*]u8 = buf[12..];
-            ptr = fmt.writeUd64(ptr, params.start);
-            ptr[0..26].* = " is larger than end index ".*;
-            ptr += 26;
-            break :blk fmt.writeUd64(ptr, params.finish);
-        },
-        .mismatched_memcpy_lengths => |params| blk: {
-            buf[0..8].* = "@memcpy ".*;
-            var ptr: [*]u8 = buf[8..];
-            if (params.dest_length > params.src_length) {
-                buf[0..44].* = "destination capacity exceeds source length: ".*;
-                ptr = fmt.writeUd64(ptr, params.dest_length);
-                ptr[0..3].* = " > ".*;
-                ptr += 3;
-                break :blk fmt.writeUd64(ptr, params.src_length);
-            } else {
-                buf[0..44].* = "source length exceeds destination capacity: ".*;
-                ptr = fmt.writeUd64(ptr, params.dest_length);
-                ptr[0..3].* = " > ".*;
-                ptr += 3;
-                break :blk fmt.writeUd64(ptr, params.src_length);
-            }
-        },
-        .mismatched_for_loop_lengths => |params| blk: {
-            buf[0..47].* = "multi-for loop capture with mismatched length: ".*;
-            var ptr: [*]u8 = fmt.writeUd64(buf[47..], params.prev_capture_length);
-            ptr[0..4].* = " != ".*;
-            ptr += 4;
-            break :blk fmt.writeUd64(ptr, params.next_capture_length);
-        },
-        .access_inactive_field => |params| blk: {
-            buf[0..23].* = "access of union field '".*;
-            var ptr: [*]u8 = fmt.strcpyEqu(buf[23..], params.found);
-            ptr[0..15].* = "' while field '".*;
-            ptr += 15;
-            ptr = fmt.strcpyEqu(ptr, params.expected);
-            ptr[0..11].* = "' is active".*;
-            break :blk ptr + 11;
-        },
-        .memcpy_arguments_alias => fmt.strcpyEqu(&buf, "@memcpy arguments alias"),
-        .cast_to_pointer_from_null => fmt.strcpyEqu(&buf, "cast from null"),
-        .cast_to_error_from_invalid => fmt.strcpyEqu(&buf, "cast to error from invalid"),
-        .cast_to_misaligned_pointer => fmt.strcpyEqu(&buf, "cast incorrect alignment"),
-        .message => |message| fmt.strcpyEqu(&buf, message),
-    };
-    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
-}
 pub const AlarmFn = @TypeOf(alarm);
 pub const SignalHandlers = packed struct {
     /// Report receipt of signal 11 SIGSEGV.
@@ -1168,13 +1035,13 @@ pub const about = struct {
             }
         }
     }
-    fn writeIntegerCastFromTo(buf: [*]u8, type_name1: []const u8, type_name2: []const u8) [*]u8 {
+    fn writeIntegerCastFromTo(buf: [*]u8, from_type_name: []const u8, to_type_name: []const u8) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
         buf[0..18].* = "integer cast from ".*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf + 18, type_name1);
+        var ptr: [*]u8 = fmt.strcpyEqu(buf + 18, from_type_name);
         ptr[0..4].* = " to ".*;
         ptr += 4;
-        ptr = fmt.strcpyEqu(ptr, type_name2);
+        ptr = fmt.strcpyEqu(ptr, to_type_name);
         ptr[0..17].* = " truncated bits: ".*;
         ptr += 17;
         return ptr;
@@ -1212,28 +1079,28 @@ pub const about = struct {
     }
     fn writeIntCastTruncatedBitsSignedFromUnsigned(comptime T: type, comptime U: type, buf: [*]u8, lim: T, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var id: fmt.Id(T) = .{ .value = lim };
-        var ud: fmt.Ud(U) = .{ .value = arg };
+        comptime var writeUd = fmt.Ud(U).writeInt;
+        comptime var writeId = fmt.Id(T).writeInt;
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
-        ptr += ud.formatWriteBuf(ptr);
+        ptr += writeUd(ptr, arg);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), false);
         ptr[0] = '(';
         ptr += 1;
-        ptr += id.formatWriteBuf(ptr);
+        ptr += writeId(ptr, lim);
         ptr[0] = ')';
         ptr += 1;
         return ptr;
     }
     fn writeIntCastTruncatedBitsUnsignedFromSigned(comptime T: type, comptime U: type, buf: [*]u8, lim: T, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var ud: fmt.Ud(T) = .{ .value = lim };
-        var id: fmt.Id(U) = .{ .value = arg };
+        comptime var writeUd = fmt.Ud(T).writeInt;
+        comptime var writeId = fmt.Id(U).writeInt;
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
-        ptr += id.formatWriteBuf(ptr);
+        ptr += writeId(ptr, arg);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), arg < 0);
         ptr[0] = '(';
         ptr += 1;
-        ptr += ud.formatWriteBuf(ptr);
+        writeUd(ptr, lim);
         ptr[0] = ')';
         ptr += 1;
         return ptr;
