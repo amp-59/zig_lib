@@ -107,7 +107,7 @@ fn buildMain(allocator: *build.Allocator, top: *Node) !void {
     const f = "test/build/stress/f_";
     var buf: [8192]u8 = undefined;
     for (0..10) |x| {
-        var ud64: fmt.Type.Ud64 = .{ .value = x };
+        var ud64: fmt.Ud64 = .{ .value = x };
         var ptr: [*]u8 = &buf;
         ptr = fmt.strcpyEqu(ptr, f);
         ptr += ud64.formatWriteBuf(ptr);
