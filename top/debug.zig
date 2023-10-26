@@ -1082,11 +1082,11 @@ pub const about = struct {
         comptime var writeUd = fmt.Ud(U).writeInt;
         comptime var writeId = fmt.Id(T).writeInt;
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
-        ptr += writeUd(ptr, arg);
+        ptr = writeUd(ptr, arg);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), false);
         ptr[0] = '(';
         ptr += 1;
-        ptr += writeId(ptr, lim);
+        ptr = writeId(ptr, lim);
         ptr[0] = ')';
         ptr += 1;
         return ptr;
@@ -1096,11 +1096,10 @@ pub const about = struct {
         comptime var writeUd = fmt.Ud(T).writeInt;
         comptime var writeId = fmt.Id(U).writeInt;
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
-        ptr += writeId(ptr, arg);
+        ptr = writeId(ptr, arg);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), arg < 0);
         ptr[0] = '(';
-        ptr += 1;
-        writeUd(ptr, lim);
+        ptr = writeUd(ptr + 1, lim);
         ptr[0] = ')';
         ptr += 1;
         return ptr;
