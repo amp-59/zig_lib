@@ -517,22 +517,13 @@ fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     }
     return len;
 }
-inline fn isUndefined(comptime value: anytype) bool {
-    const type_name = @typeName([:&value]*const @TypeOf(value));
-    if (type_name.len < 11) {
-        return false;
-    }
-    const a: *align(1) const usize = @ptrCast(type_name[2..11]);
-    const b: *align(1) const usize = @ptrCast("undefine");
-    return a.* == b.*;
-}
 pub fn length(
     comptime U: type,
     abs_value: if (@bitSizeOf(U) < 8) u8 else U,
     comptime radix: u7,
 ) usize {
     @setRuntimeSafety(false);
-    if (@inComptime() and isUndefined(abs_value)) {
+    if (@inComptime() and builtin.isUndefined(abs_value)) {
         return 9;
     }
     if (@bitSizeOf(U) == 1) {
@@ -565,23 +556,6 @@ pub const FormatBuf = struct {
     formatWriteBuf: *const fn (*const anyopaque, [*]u8) usize,
     format: *const anyopaque,
 };
-const Separator = struct {
-    character: u8 = ',',
-    digits: comptime_int = 3,
-};
-const Range = struct {
-    min: ?comptime_int = null,
-    max: ?comptime_int = null,
-};
-const Prefix = union(enum) {
-    default,
-    string: [:0]const u8,
-};
-const Width = union(enum) {
-    min,
-    max,
-    fixed: u16,
-};
 pub const PolynomialFormatSpec = struct {
     bits: u16,
     signedness: builtin.Signedness,
@@ -590,6 +564,23 @@ pub const PolynomialFormatSpec = struct {
     range: Range = .{},
     prefix: ?*const [2]u8 = null,
     separator: ?Separator = null,
+    const Separator = struct {
+        character: u8 = ',',
+        digits: comptime_int = 3,
+    };
+    const Range = struct {
+        min: ?comptime_int = null,
+        max: ?comptime_int = null,
+    };
+    const Prefix = union(enum) {
+        default,
+        string: [:0]const u8,
+    };
+    const Width = union(enum) {
+        min,
+        max,
+        fixed: u16,
+    };
 };
 pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     const T = packed struct {
@@ -628,7 +619,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         }
         pub fn writeInt(buf: [*]u8, value: Int) [*]u8 {
             @setRuntimeSafety(false);
-            if (@inComptime() and isUndefined(value)) {
+            if (@inComptime() and builtin.isUndefined(value)) {
                 return strcpyEqu(buf, "undefined");
             }
             if (Abs != Int) {
