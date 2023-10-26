@@ -2384,11 +2384,12 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
         data: mem.array.StaticString(bytes) = .{},
         const Random = @This();
-        const dev: u64 = if (builtin.is_fast)
-            sys.GRND.INSECURE
+        const dev: u64 = if (builtin.is_safe)
+            sys.GRND.RANDOM
         else
-            sys.GRND.RANDOM;
+            sys.GRND.INSECURE;
         pub fn readOne(random: *Random, comptime T: type) T {
+            @setRuntimeSafety(false);
             const child: type = T;
             const high_alignment: u64 = @sizeOf(child);
             const low_alignment: u64 = @alignOf(child);
@@ -2407,10 +2408,10 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
                 const t_ab_addr: u64 = bits.alignA64(t_lb_addr, low_alignment);
                 const t_up_addr: u64 = t_ab_addr +% high_alignment;
                 sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
-                random.data.define(t_up_addr - t_lb_addr);
+                random.data.define(@max(1, t_up_addr - t_lb_addr));
                 return @as(*const child, @ptrFromInt(t_ab_addr)).*;
             }
-            random.data.impl.define(s_up_addr - s_lb_addr);
+            random.data.impl.define(@max(1, s_up_addr - s_lb_addr));
             return @as(*const child, @ptrFromInt(s_ab_addr)).*;
         }
         pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
