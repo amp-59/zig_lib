@@ -204,4 +204,3 @@ pub fn main() void {
     causeCastToErrorFromInvalidInteger(error{ A, B, C, D, E });
     causeCastToEnumFromInvalidInteger(enum(u16) { A, B, C, D, E = 32768 });
 }
-//
