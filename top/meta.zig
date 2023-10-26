@@ -280,7 +280,16 @@ pub fn unsignedRealBitSize(value: usize) u16 {
         @as(u33, 1) << 32...~@as(u64, 0) => return 64,
     }
 }
+pub fn BestFloat(comptime Float: type) type {
+    if (@bitSizeOf(Float) <= @bitSizeOf(usize)) {
+        return @Type(.{ .Float = .{ .bits = @bitSizeOf(usize) } });
+    }
+    return Float;
+}
 pub fn BestInt(comptime T: type) type {
+    if (@typeInfo(T) != .Int) {
+        return BestInt(Child(T));
+    }
     if (@bitSizeOf(T) <= @bitSizeOf(usize)) {
         return @Type(.{ .Int = .{
             .bits = @bitSizeOf(usize),
@@ -291,12 +300,19 @@ pub fn BestInt(comptime T: type) type {
         } });
     } else {
         return @Type(.{ .Int = .{
-            .bits = realBitSize(@bitSizeOf(T)),
+            .bits = @bitSizeOf(T),
             .signedness = switch (@typeInfo(T)) {
                 .Int => |int_info| int_info.signedness,
                 else => .unsigned,
             },
         } });
+    }
+}
+pub fn BestNum(comptime Number: type) type {
+    switch (@typeInfo(Number)) {
+        .ComptimeInt, .Int => return BestInt(Number),
+        .ComptimeFloat, .Float => return BestFloat(Number),
+        else => unreachable,
     }
 }
 pub fn signedRealBitSize(value: isize) u16 {
@@ -558,7 +574,10 @@ pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@Ty
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
-            about.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Int, .Struct, .Union });
+            about.unexpectedTypeTypesError(T, type_info, .{
+                .Array,   .Pointer, .Int,   .Enum,     .ErrorSet,
+                .Pointer, .Struct,  .Union, .Optional,
+            });
         },
         .Array, .Pointer => {
             return Element(T);
@@ -568,6 +587,9 @@ pub fn Child(comptime T: type) type {
         },
         .Enum => |enum_info| {
             return enum_info.tag_type;
+        },
+        .ErrorSet => {
+            return u16;
         },
         .Struct => |struct_info| {
             if (struct_info.backing_integer) |backing_integer| {
