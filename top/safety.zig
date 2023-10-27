@@ -3,7 +3,6 @@ const mem = @import("./mem.zig");
 const math = @import("./math.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-
 const Panic = union(enum(usize)) {
     message: []const u8,
     unwrapped_error: []const u8,
@@ -184,16 +183,16 @@ pub inline fn panicExtra(comptime cause: PanicExtraCause, data: PanicExtraData(c
     @setCold(true);
     @setRuntimeSafety(false);
     switch (cause) {
-        .cast_to_pointer_from_invalid => |child_type| @call(.never_inline, panicCastToPointerFromInvalidInt, .{
+        .cast_to_pointer_from_invalid => |child_type| @call(.never_inline, panicCastToPointerFromInvalid, .{
             @typeName(child_type), data, @alignOf(child_type), st, ret_addr,
         }),
         .mismatched_sentinel => |child_type| @call(.never_inline, panicSentinelMismatch, .{
             meta.BestNum(child_type), @typeName(child_type), data.expected, data.found, st, ret_addr,
         }),
-        .cast_to_enum_from_invalid => |enum_type| @call(.never_inline, panicCastToTagFromInvalidInt, .{
+        .cast_to_enum_from_invalid => |enum_type| @call(.never_inline, panicCastToTagFromInvalid, .{
             meta.BestInt(enum_type), @typeName(enum_type), data, st, ret_addr,
         }),
-        .cast_to_error_from_invalid => |error_type| @call(.never_inline, panicCastToTagFromInvalidInt, .{
+        .cast_to_error_from_invalid => |error_type| @call(.never_inline, panicCastToTagFromInvalid, .{
             meta.BestInt(error_type), @typeName(error_type), data, st, ret_addr,
         }),
         .cast_to_float_from_invalid => |float_type| @call(.never_inline, panicCastToIntFromInvalidFloat, .{
@@ -249,7 +248,7 @@ fn writeAboveOrBelowTypeExtrema(buf: [*]u8, comptime To: type, to_type_name: []c
     ptr[0] = ')';
     return ptr + 1;
 }
-fn panicCastToPointerFromInvalidInt(
+fn panicCastToPointerFromInvalid(
     type_name: []const u8,
     address: usize,
     alignment: usize,
@@ -279,8 +278,7 @@ fn panicCastToPointerFromInvalidInt(
     }
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-
-fn panicCastToTagFromInvalidInt(
+fn panicCastToTagFromInvalid(
     comptime Integer: type,
     type_name: []const u8,
     value: Integer,
