@@ -1,14 +1,10 @@
 const zl = @import("../zig_lib.zig");
-
 pub usingnamespace zl.start;
-
-const safety = @import("../top/safety.zig");
+const version_2: bool = true;
+const safety = if (version_2) @import("../top/safety2.zig") else @import("../top/safety.zig");
 const just_compile: bool = true;
-
 pub const want_stack_traces: bool = false;
-
 var rng: zl.file.DeviceRandomBytes(4096) = .{};
-
 inline fn readOne(comptime T: type) T {
     if (just_compile) {
         return zl.mem.unstable(T, 0);
@@ -16,7 +12,6 @@ inline fn readOne(comptime T: type) T {
         return rng.readOne(T);
     }
 }
-
 fn intWillBeMisaligned(comptime T: type, alignment: T) T {
     if (just_compile) {
         return zl.mem.unstable(T, 0);
@@ -91,96 +86,186 @@ fn shlWillShiftOutBits(comptime T: type, val: *T) zl.builtin.ShiftAmount(T) {
     return @intCast(min_shift_amt +% (@bitSizeOf(T) -| min_shift_amt) / 2);
 }
 fn causeAccessInactiveField() void {
-    safety.panic(.{ .access_inactive_field = .{ .expected = "a", .found = "b" } }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.access_inactive_field, .{ .expected = "a", .found = "b" }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panic(.{ .access_inactive_field = .{ .expected = "a", .found = "b" } }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeOutOfBounds() void {
-    safety.panic(.{ .access_out_of_bounds = .{ .index = 256, .length = 128 } }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.access_out_of_bounds, .{ .index = 256, .length = 128 }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panic(.{ .access_out_of_bounds = .{ .index = 256, .length = 128 } }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeOutOfOrder() void {
     var start: usize = readOne(usize);
     const finish: usize = intWillBelow(usize, &start);
-    safety.panic(.{ .access_out_of_order = .{ .start = start, .finish = finish } }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.access_out_of_order, .{ .start = start, .finish = finish }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panic(.{ .access_out_of_order = .{ .start = start, .finish = finish } }, @errorReturnTrace(), @returnAddress());
+    }
 }
-
 fn causeMempcyLengthMismatch() void {
-    safety.panic(.{ .mismatched_memcpy_lengths = .{ .src_length = 16384, .dest_length = 32768 } }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.mismatched_memcpy_lengths, .{ .src_length = 16384, .dest_length = 32768 }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panic(.{ .mismatched_memcpy_lengths = .{ .src_length = 16384, .dest_length = 32768 } }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeForLoopLengthMismatch() void {
-    safety.panic(.{ .mismatched_for_loop_lengths = .{ .prev_index = 2, .prev_capture_length = 32768, .next_capture_length = 16384 } }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.mismatched_for_loop_lengths, .{ .prev_index = 2, .prev_capture_length = 32768, .next_capture_length = 16384 }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panic(.{ .mismatched_for_loop_lengths = .{ .prev_index = 2, .prev_capture_length = 32768, .next_capture_length = 16384 } }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeCastToMisalignedPointer(comptime T: type) void {
     const alignment: usize = @as(usize, 1) << @max(2, readOne(u4));
     const address: usize = intWillBeMisaligned(usize, alignment);
-    safety.panicExtra(.{ .cast_to_pointer_from_invalid = T }, address, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .cast_to_pointer_from_invalid = T }, address, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .cast_to_pointer_from_invalid = T }, address, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeCastTruncatedBits(comptime From: type, comptime To: type) void {
     const x = zl.math.extrema(From);
-    safety.panicExtra(.{ .cast_truncated_data = .{ .from = From, .to = To } }, x.max, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .cast_truncated_data = .{ .from = From, .to = To } }, x.max, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .cast_truncated_data = .{ .from = From, .to = To } }, x.max, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeCastToUnsignedFromNegative(comptime From: type, comptime To: type) void {
     const x = zl.math.extrema(From);
-    safety.panicExtra(.{ .cast_to_unsigned_from_negative = .{ .from = From, .to = To } }, x.min, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .cast_to_unsigned_from_negative = .{ .from = From, .to = To } }, x.min, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .cast_to_unsigned_from_negative = .{ .from = From, .to = To } }, x.min, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeAddWithOverflow(comptime T: type) void {
     var a: T = readOne(T);
     const b: T = intAddWillOverflow(T, &a);
-    safety.panicExtra(.{ .add_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .add_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .add_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeSubWithOverflow(comptime T: type) void {
     var a: T = readOne(T);
     const b: T = intSubWillOverflow(T, &a);
-    safety.panicExtra(.{ .sub_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .sub_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .sub_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeMulWithOverflow(comptime T: type) void {
     var a: T = readOne(T);
     const b: T = intMulWillOverflow(T, &a);
-    safety.panicExtra(.{ .mul_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .mul_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .mul_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeShlWithOverflow(comptime T: type) void {
     var x = readOne(T);
     const y = shlWillShiftOutBits(T, &x);
-    safety.panicExtra(.{ .shl_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .shl_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .shl_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeShrWithOverflow(comptime T: type) void {
     var x = readOne(T);
     const y = shrWillShiftOutBits(T, &x);
-    safety.panicExtra(.{ .shr_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .shr_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .shr_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeDivWithRemainder(comptime T: type) void {
     var x = zl.math.extrema(T);
     const y = divWillBeInexact(T, &x);
-    safety.panicExtra(.{ .div_with_remainder = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.{ .div_with_remainder = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .div_with_remainder = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    }
 }
 fn causeSentinelMismatch(comptime T: type) void {
     const expected: T = readOne(T);
-    safety.panicExtra(
-        .{ .mismatched_sentinel = T },
-        .{ .expected = expected, .found = readOne(T) },
-        @errorReturnTrace(),
-        @returnAddress(),
-    );
+    if (version_2) {
+        safety.panic(
+            .{ .mismatched_sentinel = T },
+            .{ .expected = expected, .found = readOne(T) },
+            @errorReturnTrace(),
+            @returnAddress(),
+        );
+    } else {
+        safety.panicExtra(
+            .{ .mismatched_sentinel = T },
+            .{ .expected = expected, .found = readOne(T) },
+            @errorReturnTrace(),
+            @returnAddress(),
+        );
+    }
 }
 fn causeNonScalarSentinelMismatch(comptime T: type, expected: T, found: T) void {
-    safety.panicExtra(
-        .{ .mismatched_non_scalar_sentinel = T },
-        .{ .expected = expected, .found = found },
-        @errorReturnTrace(),
-        @returnAddress(),
-    );
+    if (version_2) {
+        safety.panic(
+            .{ .mismatched_non_scalar_sentinel = T },
+            .{ .expected = expected, .found = found },
+            @errorReturnTrace(),
+            @returnAddress(),
+        );
+    } else {
+        safety.panicExtra(
+            .{ .mismatched_non_scalar_sentinel = T },
+            .{ .expected = expected, .found = found },
+            @errorReturnTrace(),
+            @returnAddress(),
+        );
+    }
 }
 fn causeMemcpyArgumentsAlias() void {
-    safety.panic(.{ .memcpy_arguments_alias = .{
-        .dest_start = 0x40000000,
-        .dest_finish = 0x41000000,
-        .src_start = 0x40500000,
-        .src_finish = 0x41000000,
-    } }, @errorReturnTrace(), @returnAddress());
+    if (version_2) {
+        safety.panic(.memcpy_arguments_alias, .{
+            .dest_start = 0x40000000,
+            .dest_finish = 0x41000000,
+            .src_start = 0x40500000,
+            .src_finish = 0x41000000,
+        }, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panic(.{ .memcpy_arguments_alias = .{
+            .dest_start = 0x40000000,
+            .dest_finish = 0x41000000,
+            .src_start = 0x40500000,
+            .src_finish = 0x41000000,
+        } }, @errorReturnTrace(), @returnAddress());
+    }
 }
-fn causeCastToEnumFromInvalidInteger(comptime Enum: type) void {
-    safety.panicExtra(.{ .cast_to_enum_from_invalid = Enum }, 16384, @errorReturnTrace(), @returnAddress());
+fn causeCastToEnumFromInvalid(comptime Enum: type) void {
+    if (version_2) {
+        safety.panic(.{ .cast_to_enum_from_invalid = Enum }, 16384, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .cast_to_enum_from_invalid = Enum }, 16384, @errorReturnTrace(), @returnAddress());
+    }
 }
-fn causeCastToErrorFromInvalidInteger(comptime Error: type) void {
-    safety.panicExtra(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress());
+fn causeCastToErrorFromInvalid(comptime Error: type) void {
+    if (version_2) {
+        safety.panic(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress());
+    }
 }
 pub fn main() void {
     causeAccessInactiveField();
@@ -201,6 +286,6 @@ pub fn main() void {
     causeCastTruncatedBits(u8, u3);
     causeCastToUnsignedFromNegative(i32, u32);
     causeNonScalarSentinelMismatch(struct { a: u64, b: u32 }, .{ .a = 1, .b = 2 }, .{ .a = 3, .b = 4 });
-    causeCastToErrorFromInvalidInteger(error{ A, B, C, D, E });
-    causeCastToEnumFromInvalidInteger(enum(u16) { A, B, C, D, E = 32768 });
+    causeCastToErrorFromInvalid(error{ A, B, C, D, E });
+    causeCastToEnumFromInvalid(enum(u16) { A, B, C, D, E = 32768 });
 }
