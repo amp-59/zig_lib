@@ -588,12 +588,12 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const Format: type = @This();
         pub const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         pub const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
+        pub const specification: PolynomialFormatSpec = fmt_spec;
+        pub const StaticString = mem.array.StaticString(max_len);
         const min_abs_value: comptime_int = fmt_spec.range.min orelse 0;
         const max_abs_value: comptime_int = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: comptime_int = length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: comptime_int = length(Abs, max_abs_value, fmt_spec.radix);
-        pub const specification: PolynomialFormatSpec = fmt_spec;
-        pub const StaticString = mem.array.StaticString(max_len);
         const max_len: comptime_int = blk: {
             var len: comptime_int = 0;
             if (fmt_spec.radix > max_abs_value) {
