@@ -401,55 +401,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     comptime var have_format: bool = false;
     comptime var have_archive: bool = false;
     comptime var have_objcopy: bool = false;
-    // Enables --list command line option.
-    comptime var have_list: bool = builder_spec.options.list_command != null;
-    // Enables --perf command line option.
-    comptime var have_perf: bool = builder_spec.options.perf_command != null;
-    // Enables --size command line option.
-    comptime var have_size: bool = builder_spec.options.size_command != null;
-    // Enables --trace command line option.
-    comptime var have_trace: bool = builder_spec.options.trace_command != null;
-    const lib_cache_root = builtin.lib_root ++ "/" ++ builder_spec.options.cache_dir;
-    const binary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.exe_out_dir ++ "/";
-    const library_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
-    const archive_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
-    const auxiliary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.aux_out_dir ++ "/";
-    const options_s = fmt.cx(builder_spec.options);
-    const logging_s = fmt.cx(builder_spec.logging);
-    comptime var extn_args0 = [_][:0]const u8{
-        "-dynamic", "--listen", "-",  "--deps", "zl",
-        "--entry",  "load",     "-z", "defs",
-    };
-    comptime var extn_args1 = [_][:0]const u8{
-        "-OReleaseSmall",
-        "-fstrip",
-        "-fno-compiler-rt",
-        "-fno-stack-check",
-        "-fno-unwind-tables",
-        "-fno-function-sections",
-    };
-    comptime var extn_args2 = [_][:0]const u8{
-        "-ODebug",
-        "-fstrip",
-        "-fno-compiler-rt",
-        "-fno-stack-check",
-        "-fsingle-threaded",
-    };
-    comptime var extn_args3 = [_][:0]const u8{
-        "-ODebug",
-        "-fstrip",
-        "-fno-compiler-rt",
-        "-fno-stack-check",
-        "-fsingle-threaded",
-    };
-    comptime var extn_names = [_]struct { [*:0]const u8, [:0]const u8, []const [:0]const u8 }{
-        .{ "proc", "top/build/proc.auto.zig", &extn_args1 },
-        .{ "about", "top/build/about.auto.zig", &extn_args2 },
-        .{ "build", "top/build/build.auto.zig", &extn_args3 },
-        .{ "format", "top/build/format.auto.zig", &extn_args3 },
-        .{ "archive", "top/build/archive.auto.zig", &extn_args3 },
-        .{ "objcopy", "top/build/objcopy.auto.zig", &extn_args3 },
-    };
     const T = struct {
         /// Program arguments.
         args: [][*:0]u8,
@@ -473,26 +424,35 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         errors: u8,
         // Enables lazy features.
         const have_lazy: bool = builder_spec.options.extensions_policy == .emergency;
+        // Enables --list command line option.
+        var have_list: bool = builder_spec.options.list_command != null;
+        // Enables --perf command line option.
+        var have_perf: bool = builder_spec.options.perf_command != null;
+        // Enables --size command line option.
+        var have_size: bool = builder_spec.options.size_command != null;
+        // Enables --trace command line option.
+        var have_trace: bool = builder_spec.options.trace_command != null;
+        const lib_cache_root = builtin.lib_root ++ "/" ++ builder_spec.options.cache_dir;
+        const binary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.exe_out_dir ++ "/";
+        const library_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
+        const archive_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
+        const auxiliary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.aux_out_dir ++ "/";
+        const options_s = fmt.cx(builder_spec.options);
+        const logging_s = fmt.cx(builder_spec.logging);
+        const max_thread_count: comptime_int = builder_spec.options.max_thread_count;
+        const max_arena_count: comptime_int = if (max_thread_count == 0) 4 else max_thread_count + 1;
+        const arena_aligned_bytes: comptime_int = builder_spec.options.max_arena_aligned_bytes;
+        const stack_aligned_bytes: comptime_int = builder_spec.options.max_stack_aligned_bytes;
+        const load_meta_lb_addr: comptime_int = builder_spec.options.lb_addr;
+        const load_meta_up_addr: comptime_int = load_meta_lb_addr + builder_spec.options.max_load_meta_aligned_bytes;
+        const load_prog_lb_addr: comptime_int = bits.alignA64(load_meta_up_addr, 0x100000000000);
+        const load_prog_up_addr: comptime_int = load_prog_lb_addr + builder_spec.options.max_load_prog_aligned_bytes;
+        const stack_lb_addr: comptime_int = bits.alignA64(load_prog_up_addr, 0x100000000000);
+        const stack_up_addr: comptime_int = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
+        const arena_lb_addr: comptime_int = bits.alignA64(stack_up_addr, 0x100000000000);
+        const arena_up_addr: comptime_int = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub const Shared = @This();
         pub const specification = &builder_spec;
-        pub const max_thread_count: comptime_int = builder_spec.options.max_thread_count;
-        pub const max_arena_count: comptime_int = if (max_thread_count == 0) 4 else max_thread_count + 1;
-        pub const load_meta_aligned_bytes: comptime_int = builder_spec.options.max_load_meta_aligned_bytes;
-        pub const load_prog_aligned_bytes: comptime_int = builder_spec.options.max_load_prog_aligned_bytes;
-        pub const arena_aligned_bytes: comptime_int = builder_spec.options.max_arena_aligned_bytes;
-        pub const stack_aligned_bytes: comptime_int = builder_spec.options.max_stack_aligned_bytes;
-        pub const load_meta_lb_addr: comptime_int = builder_spec.options.lb_addr;
-        pub const load_meta_up_addr: comptime_int = load_meta_lb_addr + builder_spec.options.max_load_meta_aligned_bytes;
-        pub const load_prog_lb_addr: comptime_int = bits.alignA64(load_meta_up_addr, 0x100000000000);
-        pub const load_prog_up_addr: comptime_int = load_prog_lb_addr + builder_spec.options.max_load_prog_aligned_bytes;
-        pub const stack_lb_addr: comptime_int = bits.alignA64(load_prog_up_addr, 0x100000000000);
-        pub const stack_up_addr: comptime_int = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
-        pub const arena_lb_addr: comptime_int = bits.alignA64(stack_up_addr, 0x100000000000);
-        pub const arena_up_addr: comptime_int = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
-        pub const aligned_bytes: comptime_int =
-            (max_thread_count * stack_aligned_bytes) +%
-            (max_arena_count * arena_aligned_bytes) +%
-            load_meta_aligned_bytes +% load_prog_aligned_bytes;
         pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
             .label = "thread",
             .index_type = u8,
@@ -880,31 +840,31 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             };
             pub fn getNodes(node: *const Node) []*Node {
                 @setRuntimeSafety(false);
-                return @as(*[]*Node, @ptrFromInt(node.lists.get(.nodes))).*;
+                return @as(*[]*Node, @ptrCast(node.lists.get(.nodes))).*;
             }
             pub fn getPaths(node: *const Node) []types.Path {
                 @setRuntimeSafety(false);
-                return @as(*[]types.Path, @ptrFromInt(node.lists.get(.paths))).*;
+                return @as(*[]types.Path, @ptrCast(node.lists.get(.paths))).*;
             }
             pub fn getFiles(node: *const Node) []types.File {
                 @setRuntimeSafety(false);
-                return @as(*[]types.File, @ptrFromInt(node.lists.get(.files))).*;
+                return @as(*[]types.File, @ptrCast(node.lists.get(.files))).*;
             }
             pub fn getConfigs(node: *const Node) []Conf {
                 @setRuntimeSafety(false);
-                return @as(*[]Conf, @ptrFromInt(node.lists.get(.confs))).*;
+                return @as(*[]Conf, @ptrCast(node.lists.get(.confs))).*;
             }
             pub fn getCmdArgs(node: *const Node) [][*:0]u8 {
                 @setRuntimeSafety(false);
-                return @as(*[][*:0]u8, @ptrFromInt(node.lists.get(.cmd_args))).*;
+                return @as(*[][*:0]u8, @ptrCast(node.lists.get(.cmd_args))).*;
             }
             pub fn getRunArgs(node: *const Node) [][*:0]u8 {
                 @setRuntimeSafety(false);
-                return @as(*[][*:0]u8, @ptrFromInt(node.lists.get(.run_args))).*;
+                return @as(*[][*:0]u8, @ptrCast(node.lists.get(.run_args))).*;
             }
             pub fn getDepns(node: *const Node) []Depn {
                 @setRuntimeSafety(false);
-                return @as(*[]Depn, @ptrFromInt(node.lists.get(.depns))).*;
+                return @as(*[]Depn, @ptrCast(node.lists.get(.depns))).*;
             }
             /// Examples:
             ///
@@ -1021,7 +981,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn addPath(node: *Node, allocator: *Allocator, tag: types.File.Tag) *types.Path {
                 @setRuntimeSafety(false);
-                const list: *types.Lists.List = @ptrFromInt(node.lists.get(.paths));
+                const list: *types.Lists.List = @ptrCast(node.lists.get(.paths));
                 const fs: *types.File = node.addFile(allocator);
                 fs.* = .{
                     .path_idx = @intCast(list.len),
@@ -1425,7 +1385,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 const paths: []types.Path = node.getPaths();
                 var ptr: [*]u8 = buf;
-                if (have_lazy and node.flags.want_builder_decl) {
+                if (node.flags.want_builder_decl) {
                     buf[0..124].* =
                         \\const zl = @import("zl");
                         \\pub const AbsoluteState=struct{
@@ -1592,7 +1552,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return node;
         }
         const zig_lib_module = "zl::" ++ builtin.lib_root ++ "/zig_lib.zig";
-
         fn initializeExtensions(allocator: *Allocator, top: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             const zero: *Node = top.addGroup(allocator, "zero", .{
@@ -1607,41 +1566,65 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @alignOf(DynamicLoader),
             ));
             top.sh.dl.* = .{};
-            top.sh.extns = @ptrFromInt(allocator.allocateRaw(
-                @sizeOf(Extensions),
-                @alignOf(Extensions),
-            ));
-            top.sh.extns.trace = zero.addBuild(allocator, trace_build_cmd, "trace", "top/trace.zig");
-            if (!have_lazy) {
-                return;
-            }
             top.sh.fp = @ptrFromInt(allocator.allocateRaw(
                 @sizeOf(FunctionPointers),
                 @alignOf(FunctionPointers),
             ));
             mem.zero(FunctionPointers, top.sh.fp);
-            const raw_extns: *[6]*Node = @ptrCast(top.sh.extns);
-            for (raw_extns, extn_names) |*extn, pair| {
-                const node: *Node = createNode(allocator, zero, mem.terminate(pair[0], 0), extn_flags, .build, obj_lock);
-                node.flags.is_special = true;
-                node.addBinaryOutputPath(allocator, .output_lib);
-                node.addSourceInputPath(allocator, pair[1]);
-                for ([_][:0]const u8{
-                    node.zigExe(),        "build-lib",
-                    "--cache-dir",        node.cacheRoot(),
-                    "--global-cache-dir", node.globalCacheRoot(),
-                    "--main-mod-path",    node.buildRoot(),
-                    "--mod",              zig_lib_module,
-                }) |arg|
-                    node.addCmdArg(allocator).* = @constCast(arg);
-                for (extn_args0) |arg|
-                    node.addCmdArg(allocator).* = @constCast(arg);
-                for (pair[2]) |arg|
-                    node.addCmdArg(allocator).* = @constCast(arg);
-                extn.* = node;
-                if (builder_spec.options.try_init_load) {
-                    mapImmediate(allocator, node);
+            top.sh.extns = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Extensions),
+                @alignOf(Extensions),
+            ));
+            mem.zero(Extensions, top.sh.extns);
+            top.sh.extns.trace = zero.addBuild(allocator, trace_build_cmd, "trace", "top/trace.zig");
+            if (have_lazy) {
+                top.sh.extns.proc = createNode(allocator, zero, "proc", extn_flags, .build, obj_lock);
+                top.sh.extns.about = createNode(allocator, zero, "about", extn_flags, .build, obj_lock);
+                top.sh.extns.build = createNode(allocator, zero, "build", extn_flags, .build, obj_lock);
+                top.sh.extns.format = createNode(allocator, zero, "format", extn_flags, .build, obj_lock);
+                top.sh.extns.objcopy = createNode(allocator, zero, "objcopy", extn_flags, .build, obj_lock);
+                top.sh.extns.archive = createNode(allocator, zero, "archive", extn_flags, .build, obj_lock);
+                var ptr: *[25][*:0]u8 = @ptrFromInt(allocator.allocateRaw(25 *% 8, 8));
+                var tmp = [25][*:0]const u8{
+                    top.zigExe(),             "build-lib",
+                    "--cache-dir",            zero.cacheRoot(),
+                    "--global-cache-dir",     zero.globalCacheRoot(),
+                    "--main-mod-path",        zero.buildRoot(),
+                    "--mod",                  zig_lib_module,
+                    "-dynamic",               "--listen=-",
+                    "--deps",                 "zl",
+                    "--entry",                "load",
+                    "-z",                     "defs",
+                    "-fsingle-threaded",      "-fno-compiler-rt",
+                    "-fno-stack-check",       "-fno-unwind-tables",
+                    "-fno-function-sections", "-fstrip",
+                    "-OReleaseSmall",
+                };
+                for (ptr, tmp) |*dest, src| dest.* = @constCast(src);
+                top.sh.extns.proc.lists.set([*:0]u8, .cmd_args, ptr);
+                ptr = @ptrFromInt(allocator.allocateRaw(25 *% 8, 8));
+                {
+                    tmp[24] = "-ODebug";
+                    tmp[23] = "-fno-strip";
                 }
+                for (ptr, tmp) |*dest, src| dest.* = @constCast(src);
+                top.sh.extns.about.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.build.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.format.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.objcopy.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.archive.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.proc.addBinaryOutputPath(allocator, .output_lib);
+                top.sh.extns.about.addBinaryOutputPath(allocator, .output_lib);
+                top.sh.extns.build.addBinaryOutputPath(allocator, .output_lib);
+                top.sh.extns.format.addBinaryOutputPath(allocator, .output_lib);
+                top.sh.extns.objcopy.addBinaryOutputPath(allocator, .output_lib);
+                top.sh.extns.archive.addBinaryOutputPath(allocator, .output_lib);
+                top.sh.extns.proc.addSourceInputPath(allocator, "top/build/proc.auto.zig");
+                top.sh.extns.about.addSourceInputPath(allocator, "top/build/about.auto.zig");
+                top.sh.extns.build.addSourceInputPath(allocator, "top/build/build.auto.zig");
+                top.sh.extns.format.addSourceInputPath(allocator, "top/build/format.auto.zig");
+                top.sh.extns.objcopy.addSourceInputPath(allocator, "top/build/objcopy.auto.zig");
+                top.sh.extns.archive.addSourceInputPath(allocator, "top/build/archive.auto.zig");
             }
         }
         fn classifySourceInputName(name: []const u8) types.File.Tag {
@@ -1824,8 +1807,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn taskArgs(allocator: *Allocator, node: *Node, tag: types.Lists.Tag) [][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            const args: *const []const usize = @ptrFromInt(node.lists.get(tag));
-            const grp_args: *const []const usize = @ptrFromInt(node.groupNode().lists.get(tag));
+            const args: *const []const usize = @ptrCast(node.lists.get(tag));
+            const grp_args: *const []const usize = @ptrCast(node.groupNode().lists.get(tag));
             const args_len: usize = args.len +% (if (node.flags.is_primary) grp_args.len else 0);
             const ret: [*]usize = @ptrFromInt(allocator.allocateRaw(8 *% (args_len +% 1), 8));
             @memcpy(ret, args.*);
