@@ -3956,7 +3956,6 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const Format = @This();
         const SubFormat = meta.Return(ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const max_len: usize = (4 +% typeName(Pointer, spec).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.forward)
                 return array.define(@call(.always_inline, formatWriteBuf, .{
@@ -4066,14 +4065,13 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
     return T;
 }
 pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
+    const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
+    const type_name: []const u8 = if (spec.infer_type_names) "." else @typeName(Pointer);
     const T = struct {
         value: Pointer,
         const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const max_len: usize = 65536;
-        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
-        const type_name: []const u8 = @typeName(Pointer);
         pub fn formatWriteAny(format: anytype, array: anytype) void {
             if (format.value.len == 0) {
                 if (spec.infer_type_names) {
