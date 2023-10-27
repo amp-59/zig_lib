@@ -190,7 +190,7 @@ pub const BuilderSpec = struct {
         /// constants and caching special modules.
         enable_build_config: bool = true,
         /// Compile builder features as required.
-        extensions_policy: enum { none, emergency } = .none,
+        extensions_policy: enum { none, emergency } = .emergency,
         /// Output naming strategy.
         naming_policy: enum { directories, first_name, full_name } = .full_name,
         /// Name separators for identifiers, commands, and output file names.
@@ -1385,16 +1385,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 const paths: []types.Path = node.getPaths();
                 var ptr: [*]u8 = buf;
-                if (node.flags.want_builder_decl) {
-                    buf[0..124].* =
-                        \\const zl = @import("zl");
+                if (have_lazy and node.flags.want_builder_decl) {
+                    buf[0..122].* =
+                        \\const zl=@import("zl");
                         \\pub const AbsoluteState=struct{
                         \\home:[:0]const u8,
                         \\cwd:[:0]const u8,
                         \\proj:[:0]const u8,
                         \\pid:u16,};
                     .*;
-                    ptr += 124;
+                    ptr += 122;
                     ptr = fmt.strcpyEqu(ptr, "pub const Builder=zl.build.GenericBuilder(.{.options=");
                     ptr = fmt.strcpyEqu(ptr, options_s);
                     ptr -= 1;
@@ -1578,12 +1578,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             mem.zero(Extensions, top.sh.extns);
             top.sh.extns.trace = zero.addBuild(allocator, trace_build_cmd, "trace", "top/trace.zig");
             if (have_lazy) {
-                top.sh.extns.proc = createNode(allocator, zero, "proc", extn_flags, .build, obj_lock);
-                top.sh.extns.about = createNode(allocator, zero, "about", extn_flags, .build, obj_lock);
-                top.sh.extns.build = createNode(allocator, zero, "build", extn_flags, .build, obj_lock);
-                top.sh.extns.format = createNode(allocator, zero, "format", extn_flags, .build, obj_lock);
-                top.sh.extns.objcopy = createNode(allocator, zero, "objcopy", extn_flags, .build, obj_lock);
-                top.sh.extns.archive = createNode(allocator, zero, "archive", extn_flags, .build, obj_lock);
                 var ptr: *[25][*:0]u8 = @ptrFromInt(allocator.allocateRaw(25 *% 8, 8));
                 var tmp = [25][*:0]const u8{
                     top.zigExe(),             "build-lib",
@@ -1598,32 +1592,32 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     "-fsingle-threaded",      "-fno-compiler-rt",
                     "-fno-stack-check",       "-fno-unwind-tables",
                     "-fno-function-sections", "-fstrip",
-                    "-OReleaseSmall",
+                    "-ODebug",
                 };
                 for (ptr, tmp) |*dest, src| dest.* = @constCast(src);
+                top.sh.extns.proc = createNode(allocator, zero, "proc", extn_flags, .build, obj_lock);
+                top.sh.extns.about = createNode(allocator, zero, "about", extn_flags, .build, obj_lock);
+                top.sh.extns.build = createNode(allocator, zero, "build", extn_flags, .build, obj_lock);
+                top.sh.extns.format = createNode(allocator, zero, "format", extn_flags, .build, obj_lock);
+                top.sh.extns.objcopy = createNode(allocator, zero, "objcopy", extn_flags, .build, obj_lock);
+                top.sh.extns.archive = createNode(allocator, zero, "archive", extn_flags, .build, obj_lock);
                 top.sh.extns.proc.lists.set([*:0]u8, .cmd_args, ptr);
-                ptr = @ptrFromInt(allocator.allocateRaw(25 *% 8, 8));
-                {
-                    tmp[24] = "-ODebug";
-                    tmp[23] = "-fno-strip";
-                }
-                for (ptr, tmp) |*dest, src| dest.* = @constCast(src);
-                top.sh.extns.about.lists.set([*:0]u8, .cmd_args, ptr);
-                top.sh.extns.build.lists.set([*:0]u8, .cmd_args, ptr);
-                top.sh.extns.format.lists.set([*:0]u8, .cmd_args, ptr);
-                top.sh.extns.objcopy.lists.set([*:0]u8, .cmd_args, ptr);
-                top.sh.extns.archive.lists.set([*:0]u8, .cmd_args, ptr);
                 top.sh.extns.proc.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.about.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.build.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.format.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.objcopy.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.archive.addBinaryOutputPath(allocator, .output_lib);
                 top.sh.extns.proc.addSourceInputPath(allocator, "top/build/proc.auto.zig");
+                top.sh.extns.about.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.about.addBinaryOutputPath(allocator, .output_lib);
                 top.sh.extns.about.addSourceInputPath(allocator, "top/build/about.auto.zig");
+                top.sh.extns.build.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.build.addBinaryOutputPath(allocator, .output_lib);
                 top.sh.extns.build.addSourceInputPath(allocator, "top/build/build.auto.zig");
+                top.sh.extns.format.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.format.addBinaryOutputPath(allocator, .output_lib);
                 top.sh.extns.format.addSourceInputPath(allocator, "top/build/format.auto.zig");
+                top.sh.extns.objcopy.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.objcopy.addBinaryOutputPath(allocator, .output_lib);
                 top.sh.extns.objcopy.addSourceInputPath(allocator, "top/build/objcopy.auto.zig");
+                top.sh.extns.archive.lists.set([*:0]u8, .cmd_args, ptr);
+                top.sh.extns.archive.addBinaryOutputPath(allocator, .output_lib);
                 top.sh.extns.archive.addSourceInputPath(allocator, "top/build/archive.auto.zig");
             }
         }
@@ -2390,7 +2384,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     cmd_args_idx +%= 1;
                     var run_args_idx: usize = cmd_args_idx;
                     while (run_args_idx != args.len) : (run_args_idx +%= 1) {
-                        if (mem.testEqualString(builder_spec.options.append_run_args_string, mem.terminate(args[run_args_idx], 0))) {
+                        if (mem.testEqualString(
+                            builder_spec.options.append_run_args_string,
+                            mem.terminate(args[run_args_idx], 0),
+                        )) {
                             args_node.lists.set([*:0]u8, .cmd_args, args[cmd_args_idx..run_args_idx]);
                             run_args_idx +%= 1;
                             args_node.lists.set([*:0]u8, .run_args, args[run_args_idx..]);
