@@ -917,13 +917,16 @@ pub const DwarfInfo = extern struct {
                 .qword => 12 +% unit.len,
                 .dword => 4 +% unit.len,
             };
-            var info_entry: Die = comptime builtin.zero(Die);
+            var info_entry: Die = undefined;
             var pos: u64 = unit.info_entry.off +% unit.info_entry.len;
             while (pos < next_off) {
+                mem.zero(Die, &info_entry);
                 info_entry.off = unit_off +% pos;
                 parseDie(allocator, dwarf_info, unit, &info_entry);
                 pos +%= info_entry.len;
-                if (info_entry.head.tag == .subprogram or info_entry.head.tag == .inlined_subroutine or info_entry.head.tag == .subroutine or
+                if (info_entry.head.tag == .subprogram or
+                    info_entry.head.tag == .inlined_subroutine or
+                    info_entry.head.tag == .subroutine or
                     info_entry.head.tag == .entry_point)
                 {
                     dwarf_info.addFunc(allocator).* = .{
