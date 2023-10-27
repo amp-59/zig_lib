@@ -285,7 +285,6 @@ pub const Module = struct {
         return ret;
     }
 };
-pub const Modules = Aggregate(Module);
 pub const ModuleDependency = struct {
     import: []const u8 = &.{},
     name: []const u8,
@@ -353,7 +352,7 @@ pub const Macro = struct {
         }
         array.writeOne(0);
     }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
         @setRuntimeSafety(builtin.is_safe);
         buf[0..2].* = "-D".*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf + 2, format.name);
@@ -365,8 +364,8 @@ pub const Macro = struct {
         ptr[0] = 0;
         return @intFromPtr(ptr + 1) -% @intFromPtr(buf);
     }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 2 +% format.name.len;
+    pub fn formatLength(format: Format) usize {
+        var len: usize = 2 +% format.name.len;
         if (format.value) |value| {
             len +%= 1 +% value.len;
         }
@@ -391,7 +390,6 @@ pub const Macro = struct {
         return .{ .name = arg[0..idx] };
     }
 };
-pub const Macros = Aggregate(Macro);
 pub const ExtraFlags = struct {
     value: []const []const u8,
     const Format = @This();
@@ -404,7 +402,7 @@ pub const ExtraFlags = struct {
         }
         array.writeMany("--\x00");
     }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
         @setRuntimeSafety(builtin.is_safe);
         buf[0..8].* = "-cflags\x00".*;
         var ptr: [*]u8 = buf + 8;
@@ -417,8 +415,8 @@ pub const ExtraFlags = struct {
         ptr += 3;
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
+    pub fn formatLength(format: Format) usize {
+        var len: usize = 0;
         len +%= 8;
         for (format.value) |flag| {
             len +%= flag.len;
@@ -459,45 +457,19 @@ pub const Files = struct {
             array.writeFormat(path);
         }
     }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
         @setRuntimeSafety(builtin.is_safe);
-        var len: u64 = 0;
+        var len: usize = 0;
         for (format.value) |path| {
             len = len +% path.formatWriteBuf(buf + len);
         }
         return len;
     }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
+    pub fn formatLength(format: Format) usize {
+        var len: usize = 0;
         for (format.value) |path| {
             len +%= path.formatLength();
         }
         return len;
     }
 };
-fn Aggregate(comptime T: type) type {
-    return struct {
-        value: []const T,
-        const Format = @This();
-        pub fn formatWrite(format: Format, array: anytype) void {
-            for (format.value) |value| {
-                value.formatWrite(array);
-            }
-        }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-            @setRuntimeSafety(builtin.is_safe);
-            var len: u64 = 0;
-            for (format.value) |value| {
-                len = len +% value.formatWriteBuf(buf + len);
-            }
-            return len;
-        }
-        pub fn formatLength(format: Format) u64 {
-            var len: u64 = 0;
-            for (format.value) |value| {
-                len = len +% value.formatLength();
-            }
-            return len;
-        }
-    };
-}
