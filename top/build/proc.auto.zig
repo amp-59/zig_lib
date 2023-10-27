@@ -13,7 +13,7 @@ const clone_spec = .{
         zl.builtin.root.Builder.AddressSpace.Index,
     ) void,
 };
-fn executeCommandClone(
+noinline fn executeCommandClone(
     address_space: *zl.builtin.root.Builder.AddressSpace,
     thread_space: *zl.builtin.root.Builder.ThreadSpace,
     node: *zl.builtin.root.Builder.Node,

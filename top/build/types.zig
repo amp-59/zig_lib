@@ -174,9 +174,9 @@ pub const Lists = extern struct {
         @setRuntimeSafety(false);
         return lists.buf[@intFromEnum(tag) & 0xf].add(allocator, @bitCast(@intFromEnum(tag)));
     }
-    pub fn get(lists: *const Lists, tag: Tag) usize {
+    pub fn get(lists: *const Lists, tag: Tag) *align(8) anyopaque {
         @setRuntimeSafety(false);
-        return @intFromPtr(&lists.buf[@intFromEnum(tag) & 0xf]);
+        return @constCast(@ptrCast(&lists.buf[@intFromEnum(tag) & 0xf]));
     }
     const len: usize = @typeInfo(Tag).Enum.fields.len;
 };

@@ -1,10 +1,12 @@
 const mem = @import("../../mem.zig");
 const gen = @import("../../gen.zig");
+const fmt = @import("../../fmt.zig");
 const debug = @import("../../debug.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const common = @import("./common_impls.zig");
+const testing = @import("../../testing.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
 pub const context = .Exe;
@@ -43,5 +45,8 @@ pub fn main() !void {
         try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
     } else {
         debug.write(array.readAll());
+    }
+    for (attr.llvm_llc_command_attributes.params) |param| {
+        testing.renderBufN(.{ .infer_type_names = true, .omit_trailing_comma = true, .decls = .{ .forward_formatter = true } }, 4096, param);
     }
 }

@@ -777,9 +777,11 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
                         writeIfClose(array);
                     },
                     .mapped => {
-                        writeIfOptionalField(array, param_spec.name, param_spec.name);
-                        writeMapped(array, &.{}, param_spec.name, variant, param_spec.type.write.?.*, param_spec.char orelse '\x00');
-                        writeIfClose(array);
+                        if (param_spec.type.write) |w| {
+                            writeIfOptionalField(array, param_spec.name, param_spec.name);
+                            writeMapped(array, &.{}, param_spec.name, variant, w.*, param_spec.char orelse '\x00');
+                            writeIfClose(array);
+                        }
                     },
                     .repeatable_formatter => {
                         writeIfOptionalField(array, param_spec.name, param_spec.name);
@@ -1424,21 +1426,23 @@ fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention,
                     .field => |no_field| switch (optional_field) {
                         .formatter => switch (no_field) {
                             .boolean => {
-                                writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
-                                writeAssignSpecifierFormatParser(
-                                    array,
-                                    calling_convention,
-                                    param_spec.name,
-                                    param_spec.string.len +% 1,
-                                    .{ .yes = param_spec.type.parse.?.* },
-                                );
-                                writeElse(array);
-                                writeAssignSpecifier(array, param_spec.name, .{ .yes = "null" });
-                                writeIfClose(array);
-                                writeIfElse(array);
-                                writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
-                                writeAssignSpecifier(array, param_spec.name, .{ .no = null });
-                                writeIfElse(array);
+                                if (param_spec.type.parse) |p| {
+                                    writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
+                                    writeAssignSpecifierFormatParser(
+                                        array,
+                                        calling_convention,
+                                        param_spec.name,
+                                        param_spec.string.len +% 1,
+                                        .{ .yes = p.* },
+                                    );
+                                    writeElse(array);
+                                    writeAssignSpecifier(array, param_spec.name, .{ .yes = "null" });
+                                    writeIfClose(array);
+                                    writeIfElse(array);
+                                    writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
+                                    writeAssignSpecifier(array, param_spec.name, .{ .no = null });
+                                    writeIfElse(array);
+                                }
                             },
                             else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
                         },
@@ -1487,30 +1491,36 @@ fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention,
                         writeIfElse(array);
                     },
                     .tag => {
-                        if (isSquishable(param_spec.string)) {
-                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
-                        } else {
-                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array, calling_convention);
-                        }
-                        for (param_spec.type.parse.?.type_decl.defn.?.fields) |field| {
-                            writeOpenIfEqualTo(array, param_spec.name, field.name);
-                            writeAssignTag(array, param_spec.name, field.name);
+                        if (param_spec.type.parse) |p| {
+                            if (isSquishable(param_spec.string)) {
+                                writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                                writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
+                            } else {
+                                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                                writeNext(array, calling_convention);
+                            }
+                            if (p.type_decl.defn) |d| {
+                                for (d.fields) |field| {
+                                    writeOpenIfEqualTo(array, param_spec.name, field.name);
+                                    writeAssignTag(array, param_spec.name, field.name);
+                                    writeIfElse(array);
+                                }
+                                array.undefine(5);
+                            }
                             writeIfElse(array);
                         }
-                        array.undefine(5);
-                        writeIfElse(array);
                     },
                     .mapped => {
-                        writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                        writeAddOptionalFormatter(
-                            array,
-                            calling_convention,
-                            param_spec.name,
-                            param_spec.type.parse.?.type_decl.name.?,
-                        );
-                        writeIfElse(array);
+                        if (param_spec.type.parse) |p| {
+                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                            writeAddOptionalFormatter(
+                                array,
+                                calling_convention,
+                                param_spec.name,
+                                p.type_decl.name.?,
+                            );
+                            writeIfElse(array);
+                        }
                     },
                     .repeatable_string => {
                         if (isSquishable(param_spec.string)) {
@@ -1525,56 +1535,62 @@ fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention,
                         writeIfElse(array);
                     },
                     .repeatable_tag => {
-                        if (isSquishable(param_spec.string)) {
-                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
-                        } else {
-                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array, calling_convention);
-                        }
-                        writeAddOptionalRepeatableTag(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
-                        for (param_spec.type.store.type_ref.type.type_ref.type.type_decl.defn.?.fields) |field| {
-                            writeOpenIfEqualTo(array, param_spec.name, field.name);
-                            writeAssignTagToPtr(array, param_spec.name, field.name);
+                        if (param_spec.type.parse) |p| {
+                            if (isSquishable(param_spec.string)) {
+                                writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                                writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
+                            } else {
+                                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                                writeNext(array, calling_convention);
+                            }
+                            writeAddOptionalRepeatableTag(array, param_spec.name, p.type_decl.name.?);
+                            for (param_spec.type.store.type_ref.type.type_ref.type.type_decl.defn.?.fields) |field| {
+                                writeOpenIfEqualTo(array, param_spec.name, field.name);
+                                writeAssignTagToPtr(array, param_spec.name, field.name);
+                                writeIfElse(array);
+                            }
+                            array.undefine(5);
+                            do_discard = false;
                             writeIfElse(array);
                         }
-                        array.undefine(5);
-                        do_discard = false;
-                        writeIfElse(array);
                     },
                     .repeatable_formatter => {
-                        if (isSquishable(param_spec.string)) {
-                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
-                        } else {
-                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array, calling_convention);
+                        if (param_spec.type.parse) |p| {
+                            if (isSquishable(param_spec.string)) {
+                                writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                                writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
+                            } else {
+                                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                                writeNext(array, calling_convention);
+                            }
+                            writeAddOptionalRepeatableFormatter(
+                                array,
+                                calling_convention,
+                                param_spec.name,
+                                p.type_decl.name.?,
+                            );
+                            do_discard = false;
+                            writeIfElse(array);
                         }
-                        writeAddOptionalRepeatableFormatter(
-                            array,
-                            calling_convention,
-                            param_spec.name,
-                            param_spec.type.parse.?.type_decl.name.?,
-                        );
-                        do_discard = false;
-                        writeIfElse(array);
                     },
                     .formatter => {
-                        if (isSquishable(param_spec.string)) {
-                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
-                        } else {
-                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array, calling_convention);
+                        if (param_spec.type.parse) |parse| {
+                            if (isSquishable(param_spec.string)) {
+                                writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                                writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
+                            } else {
+                                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                                writeNext(array, calling_convention);
+                            }
+                            writeAddOptionalFormatter(
+                                array,
+                                calling_convention,
+                                param_spec.name,
+                                parse.type_decl.name.?,
+                            );
+                            do_discard = false;
+                            writeIfElse(array);
                         }
-                        writeAddOptionalFormatter(
-                            array,
-                            calling_convention,
-                            param_spec.name,
-                            param_spec.type.parse.?.type_decl.name.?,
-                        );
-                        do_discard = false;
-                        writeIfElse(array);
                     },
                     else => unhandledCommandField(param_spec, @src()),
                 },
