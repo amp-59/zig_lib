@@ -1902,15 +1902,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn symbolName(info: *const Info, shdr: *const Elf64_Shdr, sym: *Elf64_Sym, mat: *Match) ?[:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (shdr.sh_link != 0) {
-                    return mat.matchName(@ptrFromInt(info.sectionHeaderByIndex(shdr.sh_link).sh_addr + sym.st_name));
+                    return mat.matchName(@ptrFromInt(info.ehdr.sectionHeader(shdr.sh_link).sh_addr + sym.st_name));
                 }
                 return null;
             }
             fn bestSymbolTable(info: *const Info) ?*Elf64_Shdr {
                 @setRuntimeSafety(builtin.is_safe);
-                const symtab_idx: comptime_int = @intFromEnum(Section.@".symtab");
-                const dynsym_idx: comptime_int = @intFromEnum(Section.@".dynsym");
-                return info.impl.buf[symtab_idx].shdr orelse info.impl.buf[dynsym_idx].shdr;
+                return info.impl.buf[@intFromEnum(Section.@".symtab")].shdr orelse
+                    info.impl.buf[@intFromEnum(Section.@".dynsym")].shdr;
             }
             fn matchSymbolNameInRange(
                 name2: [:0]u8,
@@ -1944,7 +1943,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 var shdr_idx1: usize = @min(shdr_idx1_from, shdr_idx1_to);
                 while (shdr_idx1 != shdr_idx1_to) : (shdr_idx1 +%= 1) {
-                    const shdr2: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
+                    const shdr2: *Elf64_Shdr = info1.ehdr.sectionHeader(shdr_idx1);
                     const name1: [:0]const u8 = info1.sectionName(shdr2);
                     if (mem.testEqualString(name2, name1)) {
                         return shdr_idx1;
@@ -2002,7 +2001,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     Sort.inPlace(st_shdr, 1, sh_max_idx1, &Sort.sortSymbolShIndex);
                 }
                 for (1..info.ehdr.e_shnum) |shndx1| {
-                    ptr = about.writeSection(ptr, info, info.sectionHeaderByIndex(shndx1), shndx1, width);
+                    ptr = about.writeSection(ptr, info, info.ehdr.sectionHeader(shndx1), shndx1, width);
                     if (bestSymbolTable(info)) |symtab| {
                         sh_sym_idx1, sh_sym_end1 = rangeOfNext(symtab, shndx1, sh_max_idx1);
                         ptr = writeSymtab(ptr, info, symtab, sh_sym_idx1, sh_sym_end1, shndx1, width);
@@ -2062,7 +2061,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 mats2: [*]Match,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                const sh_name2: [:0]const u8 = info2.sectionName(info2.sectionHeaderByIndex(shndx2));
+                const sh_name2: [:0]const u8 = info2.sectionName(info2.ehdr.sectionHeader(shndx2));
                 verifyInputRanges(sh_sym_idx1, sh_sym_end1, mats1, sh_sym_idx2, sh_sym_end2, mats2);
                 var sizes_r1: Sizes = .{};
                 var sizes_r2: Sizes = .{};
@@ -2328,7 +2327,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @memset(mats2[0..info2.ehdr.e_shnum], .{ .tag = .unknown });
                 var ptr: [*]u8 = buf;
                 for (mats2[1..info2.ehdr.e_shnum], 1..) |*mat2, shndx2| {
-                    const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shndx2);
+                    const shdr2: *Elf64_Shdr = info2.ehdr.sectionHeader(shndx2);
                     const name2: [:0]u8 = info2.sectionName(shdr2);
                     const shndx1: usize = matchSectionNameInRange(info1, name2, 1, info1.ehdr.e_shnum);
                     if (shndx1 == 0) {
@@ -2339,7 +2338,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         mat1.tag = .matched;
                         mat2.idx = @intCast(shndx1);
                         mat2.tag = .matched;
-                        const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shndx1);
+                        const shdr1: *Elf64_Shdr = info1.ehdr.sectionHeader(shndx1);
                         ptr = about.writeSectionDifference(ptr, info2, shdr1, shdr2, shndx2, width);
                         if (bestSymbolTable(info1)) |st_shdr1| {
                             if (bestSymbolTable(info2)) |st_shdr2| {
@@ -2360,7 +2359,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     }
                 }
                 for (mats1[1..info1.ehdr.e_shnum], 1..) |*mat1, shndx1| {
-                    const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shndx1);
+                    const shdr1: *Elf64_Shdr = info1.ehdr.sectionHeader(shndx1);
                     if (mat1.tag == .unknown) {
                         mat1.tag = .unmatched;
                         ptr = about.writeSectionRemoved(ptr, info1, shdr1, shndx1, width);
@@ -2379,7 +2378,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const max_idx: usize = symtab.sh_size / symtab.sh_entsize;
-                const shdr: *Elf64_Shdr = info.sectionHeaderByIndex(shndx);
+                const shdr: *Elf64_Shdr = info.ehdr.sectionHeader(shndx);
                 const sh_name: [:0]const u8 = info.sectionName(shdr);
                 const mats: [*]Match = symbolMatches(symtab);
                 @memset(mats[0..max_idx], .{ .tag = .identical });
