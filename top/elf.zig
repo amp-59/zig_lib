@@ -2234,7 +2234,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr;
             }
-            pub fn writeBinaryDifference(buf: [*]u8, info1: *const Info, info2: *const Info, width: usize) [*]u8 {
+            pub fn writeBinaryDifference(buf: [*]u8, info1: *Info, info2: *Info, width: usize) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var sh_sym_idx1: usize = 0;
                 var sh_sym_idx2: usize = 0;
