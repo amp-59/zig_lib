@@ -1033,6 +1033,54 @@ pub const Bytes = struct {
         return len;
     }
 };
+pub fn bytes(count: usize) Bytes {
+    const max_idx: comptime_int = Bytes.units.len -% 1;
+    @setRuntimeSafety(false);
+    var ret: Bytes.Value = .{
+        .integer = .{ .count = 0, .unit = .B },
+        .remainder = 0,
+    };
+    var idx: usize = 0;
+    while (idx != Bytes.units.len) : (idx +%= 1) {
+        ret.integer.unit = Bytes.units[idx];
+        var val: usize = count & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
+        ret.integer.count = val >> @truncate(@intFromEnum(Bytes.units[idx]));
+        if (ret.integer.count != 0) {
+            idx = @min(idx +% 1, max_idx);
+            val = (count -% val) & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
+            val >>= @truncate(@intFromEnum(Bytes.units[idx]));
+            ret.remainder = val;
+            break;
+        }
+    }
+    return .{ .value = ret };
+}
+pub fn writeBytes(buf: [*]u8, count: usize) [*]u8 {
+    const max_idx: comptime_int = Bytes.units.len -% 1;
+    @setRuntimeSafety(false);
+    var int: mem.Bytes = .{ .count = 0, .unit = .B };
+    var rem: u16 = 0;
+    var idx: usize = 0;
+    while (idx != Bytes.units.len) : (idx +%= 1) {
+        int.unit = Bytes.units[idx];
+        var val: usize = count & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
+        int.count = val >> @truncate(@intFromEnum(Bytes.units[idx]));
+        if (int.count != 0) {
+            idx = @min(idx +% 1, max_idx);
+            val = (count -% val) & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
+            val >>= @truncate(@intFromEnum(Bytes.units[idx]));
+            rem = @intCast(val);
+            break;
+        }
+    }
+    var ptr: [*]u8 = Bytes.MajorIntFormat.writeInt(buf, @truncate(int.count));
+    if (rem != 0) {
+        ptr[0] = '.';
+        ptr = Bytes.MinorIntFormat.writeInt(ptr + 1, @truncate((rem *% 1000) / 1024));
+    }
+    ptr = strcpyEqu(ptr, @tagName(int.unit));
+    return ptr;
+}
 pub const ChangedIntFormatSpec = struct {
     old_fmt_spec: PolynomialFormatSpec,
     new_fmt_spec: PolynomialFormatSpec,
@@ -2336,28 +2384,6 @@ pub inline fn ix(value: anytype) Ix(if (@TypeOf(value) ==
     comptime_int) meta.LeastRealBitSize(value) else @TypeOf(value)) {
     return .{ .value = value };
 }
-pub fn bytes(count: usize) Bytes {
-    const max_idx: comptime_int = Bytes.units.len -% 1;
-    @setRuntimeSafety(false);
-    var ret: Bytes.Value = .{
-        .integer = .{ .count = 0, .unit = .B },
-        .remainder = 0,
-    };
-    var idx: usize = 0;
-    while (idx != Bytes.units.len) : (idx +%= 1) {
-        ret.integer.unit = Bytes.units[idx];
-        var val: usize = count & (mem.Bytes.mask << @intFromEnum(Bytes.units[idx]));
-        ret.integer.count = val >> @intFromEnum(Bytes.units[idx]);
-        if (ret.integer.count != 0) {
-            idx = @min(idx +% 1, max_idx);
-            val = (count -% val) & (mem.Bytes.mask << @intFromEnum(Bytes.units[idx]));
-            val >>= @intFromEnum(Bytes.units[idx]);
-            ret.remainder = val;
-            break;
-        }
-    }
-    return .{ .value = ret };
-}
 pub fn bloatDiff(old_size: usize, new_size: usize) BloatDiff {
     return .{ .old_value = old_size, .new_value = new_size };
 }
@@ -2461,6 +2487,7 @@ pub fn uxd(old_int: anytype, new_int: anytype) blk: {
 }
 pub const RenderSpec = struct {
     radix: u7 = 10,
+    render_smallest_int: bool = false,
     string_literal: ?bool = true,
     multi_line_string_literal: ?bool = false,
     omit_default_fields: bool = true,
@@ -3928,12 +3955,22 @@ pub const ComptimeIntFormat = struct {
     }
 };
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
-    switch (spec.radix) {
-        2 => return Xb(meta.BestInt(Int)),
-        8 => return Xo(meta.BestInt(Int)),
-        10 => return Xd(meta.BestInt(Int)),
-        16 => return Xx(meta.BestInt(Int)),
-        else => @compileError("invalid render radix"),
+    if (spec.render_smallest_int) {
+        switch (spec.radix) {
+            2 => return Xb(Int),
+            8 => return Xo(Int),
+            10 => return Xd(Int),
+            16 => return Xx(Int),
+            else => @compileError("invalid render radix"),
+        }
+    } else {
+        switch (spec.radix) {
+            2 => return Xb(meta.BestInt(Int)),
+            8 => return Xo(meta.BestInt(Int)),
+            10 => return Xd(meta.BestInt(Int)),
+            16 => return Xx(meta.BestInt(Int)),
+            else => @compileError("invalid render radix"),
+        }
     }
 }
 const AddressFormat = struct {
