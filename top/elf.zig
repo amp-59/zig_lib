@@ -606,10 +606,6 @@ pub const Half = switch (@sizeOf(usize)) {
     8 => u16,
     else => @compileError("expected pointer size of 32 or 64"),
 };
-/// Machine architectures.
-///
-/// See current registered ELF machine architectures at:
-/// http://www.sco.com/developers/gabi/latest/ch4.eheader.html
 pub const EM = enum(u16) {
     /// No machine
     NONE = 0,
@@ -1532,6 +1528,78 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             try meta.wrap(info.readInfo());
             try meta.wrap(file.close(close(), info.fd));
             return info;
+        }
+        pub fn loadEntryAddress(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, *fn (*anyopaque) void) {
+            @setRuntimeSafety(builtin.is_safe);
+            const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
+            var st: file.Status = undefined;
+            try meta.wrap(file.status(stat(), fd, &st));
+            const size: usize = bits.alignA4096(st.size);
+            const addr: usize = bits.alignA4096(@atomicRmw(usize, &loader.ub_prog_addr, .Add, size, .SeqCst));
+            try meta.wrap(file.map(map(), .{}, .{}, fd, addr, size, 0));
+            const ehdr: *Elf64_Ehdr = @ptrFromInt(addr);
+            var prog_len: usize = 0;
+            var phndx: usize = 1;
+            while (phndx != ehdr.e_phnum) : (phndx +%= 1) {
+                const phdr: *Elf64_Phdr = ehdr.programHeader(phndx);
+                if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
+                    prog_len +%= bits.alignA4096(phdr.p_vaddr +% phdr.p_memsz);
+                }
+            }
+            phndx = 1;
+            const prog_addr: usize = bits.alignA4096(@atomicRmw(usize, &loader.ub_prog_addr, .Add, prog_len, .SeqCst));
+            while (phndx != ehdr.e_phnum) : (phndx +%= 1) {
+                const phdr: *Elf64_Phdr = ehdr.programHeader(phndx);
+                if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
+                    const prot: sys.flags.FileProt = .{
+                        .read = phdr.p_flags.R,
+                        .write = phdr.p_flags.W,
+                        .exec = phdr.p_flags.X,
+                    };
+                    const vaddr: usize = bits.alignB4096(phdr.p_vaddr);
+                    const len: usize = bits.alignA4096(phdr.p_vaddr +% phdr.p_memsz) -% vaddr;
+                    const off: usize = bits.alignB4096(phdr.p_offset);
+                    try meta.wrap(file.map(map(), prot, .{ .fixed = true }, fd, prog_addr +% vaddr, len, off));
+                }
+            }
+            try meta.wrap(file.close(close(), fd));
+            var shndx: usize = 1;
+            var rela_addr: usize = 0;
+            var rela_size: usize = 0;
+            var rela_entsize: usize = 0;
+            var rela_count: usize = 0;
+            while (shndx != ehdr.e_shnum) : (shndx +%= 1) {
+                const shdr: *Elf64_Shdr = ehdr.sectionHeader(shndx);
+                if (shdr.sh_type == .DYNAMIC) {
+                    const len: usize = @divExact(shdr.sh_size, shdr.sh_entsize);
+                    const dyn: [*]Elf64_Dyn = @ptrFromInt(addr +% shdr.sh_offset);
+                    var dyn_idx: usize = 1;
+                    while (dyn_idx != len) : (dyn_idx +%= 1) {
+                        switch (dyn[dyn_idx].d_tag) {
+                            else => continue,
+                            .RELA => rela_addr = dyn[dyn_idx].d_val,
+                            .RELASZ => rela_size = dyn[dyn_idx].d_val,
+                            .RELAENT => rela_entsize = dyn[dyn_idx].d_val,
+                            .RELACOUNT => rela_count = dyn[dyn_idx].d_val,
+                        }
+                    }
+                }
+            }
+            if (@bitCast(@intFromBool(rela_addr != 0) &
+                @intFromBool(rela_size != 0) &
+                @intFromBool(rela_entsize != 0) &
+                @intFromBool(rela_count != 0)))
+            {
+                var rela_idx: usize = 0;
+                while (rela_idx != rela_count) : (rela_idx +%= 1) {
+                    const rela: *Elf64_Rela = @ptrFromInt((prog_addr +% rela_addr) +% (rela_entsize *% rela_idx));
+                    if (rela.r_info.r_type == .RELATIVE) {
+                        const vaddr: *usize = @ptrFromInt(prog_addr +% rela.r_offset);
+                        vaddr.* +%= @intCast(@as(isize, @intCast(prog_addr)) +% rela.r_addend);
+                    }
+                }
+            }
+            return @ptrFromInt(prog_addr +% ehdr.e_entry);
         }
         // Consider making function in `file`.
         fn readAt(fd: usize, offset: usize, addr: usize, len: usize) sys.ErrorUnion(ep1, void) {
