@@ -1,7 +1,10 @@
 const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
 const version_2: bool = true;
-const safety = if (version_2) @import("../top/safety2.zig") else @import("../top/safety.zig");
+const safety = if (version_2)
+    @import("../top/safety2.zig")
+else
+    @import("../top/safety1.zig");
 const just_compile: bool = true;
 pub const want_stack_traces: bool = false;
 var rng: zl.file.DeviceRandomBytes(4096) = .{};
@@ -204,53 +207,24 @@ fn causeDivWithRemainder(comptime T: type) void {
 fn causeSentinelMismatch(comptime T: type) void {
     const expected: T = readOne(T);
     if (version_2) {
-        safety.panic(
-            .{ .mismatched_sentinel = T },
-            .{ .expected = expected, .found = readOne(T) },
-            @errorReturnTrace(),
-            @returnAddress(),
-        );
+        safety.panic(.{ .mismatched_sentinel = T }, .{ .expected = expected, .found = readOne(T) }, @errorReturnTrace(), @returnAddress());
     } else {
-        safety.panicExtra(
-            .{ .mismatched_sentinel = T },
-            .{ .expected = expected, .found = readOne(T) },
-            @errorReturnTrace(),
-            @returnAddress(),
-        );
+        safety.panicExtra(.{ .mismatched_sentinel = T }, .{ .expected = expected, .found = readOne(T) }, @errorReturnTrace(), @returnAddress());
     }
 }
 fn causeNonScalarSentinelMismatch(comptime T: type, expected: T, found: T) void {
     if (version_2) {
-        safety.panic(
-            .{ .mismatched_non_scalar_sentinel = T },
-            .{ .expected = expected, .found = found },
-            @errorReturnTrace(),
-            @returnAddress(),
-        );
+        safety.panic(.{ .mismatched_non_scalar_sentinel = T }, .{ .expected = expected, .found = found }, @errorReturnTrace(), @returnAddress());
     } else {
-        safety.panicExtra(
-            .{ .mismatched_non_scalar_sentinel = T },
-            .{ .expected = expected, .found = found },
-            @errorReturnTrace(),
-            @returnAddress(),
-        );
+        safety.panicExtra(.{ .mismatched_non_scalar_sentinel = T }, .{ .expected = expected, .found = found }, @errorReturnTrace(), @returnAddress());
     }
 }
 fn causeMemcpyArgumentsAlias() void {
+    const data = .{ .dest_start = 0x40000000, .dest_finish = 0x41000000, .src_start = 0x40500000, .src_finish = 0x41000000 };
     if (version_2) {
-        safety.panic(.memcpy_arguments_alias, .{
-            .dest_start = 0x40000000,
-            .dest_finish = 0x41000000,
-            .src_start = 0x40500000,
-            .src_finish = 0x41000000,
-        }, @errorReturnTrace(), @returnAddress());
+        safety.panic(.memcpy_arguments_alias, data, @errorReturnTrace(), @returnAddress());
     } else {
-        safety.panic(.{ .memcpy_arguments_alias = .{
-            .dest_start = 0x40000000,
-            .dest_finish = 0x41000000,
-            .src_start = 0x40500000,
-            .src_finish = 0x41000000,
-        } }, @errorReturnTrace(), @returnAddress());
+        safety.panic(.{ .memcpy_arguments_alias = data }, @errorReturnTrace(), @returnAddress());
     }
 }
 fn causeCastToEnumFromInvalid(comptime Enum: type) void {
@@ -274,6 +248,11 @@ pub fn main() void {
     causeMemcpyArgumentsAlias();
     causeMempcyLengthMismatch();
     causeForLoopLengthMismatch();
+    causeCastTruncatedBits(u8, u3);
+    causeCastToUnsignedFromNegative(i32, u32);
+    causeNonScalarSentinelMismatch(struct { a: u64, b: u32 }, .{ .a = 1, .b = 2 }, .{ .a = 3, .b = 4 });
+    causeCastToErrorFromInvalid(error{ A, B, C, D, E });
+    causeCastToEnumFromInvalid(enum(u16) { A, B, C, D, E = 32768 });
     inline for (.{ usize, isize }) |T| {
         causeCastToMisalignedPointer(T);
         causeAddWithOverflow(T);
@@ -283,9 +262,4 @@ pub fn main() void {
         causeShrWithOverflow(T);
         causeSentinelMismatch(T);
     }
-    causeCastTruncatedBits(u8, u3);
-    causeCastToUnsignedFromNegative(i32, u32);
-    causeNonScalarSentinelMismatch(struct { a: u64, b: u32 }, .{ .a = 1, .b = 2 }, .{ .a = 3, .b = 4 });
-    causeCastToErrorFromInvalid(error{ A, B, C, D, E });
-    causeCastToEnumFromInvalid(enum(u16) { A, B, C, D, E = 32768 });
 }
