@@ -1756,7 +1756,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             node.dependOn(allocator, node);
                             node.addRunArg(allocator).* = node.getPaths()[0].concatenate(allocator);
                             if (builder_spec.logging.show_task_update) {
-                                about.aboutNode(node, .init_executables, null, .add_run_arg);
+                                about.aboutNode(node, .add_run_task_to_executables, null, .add_run_arg);
                             }
                         }
                         if (builder_spec.options.add_comparison_report_to_elf) {
@@ -1764,7 +1764,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                     if (builder_spec.options.init_config_zig_sources and
-                        node.getPaths()[1].hasExtension(builder_spec.options.zig_ext))
+                        node.getFile(.{ .tag = .input_zig }) != null)
                     {
                         node.flags.want_build_config = true;
                         if (builder_spec.logging.show_task_update) {
@@ -1960,6 +1960,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (have_lazy and keepGoing(node) and
                 node.flags.is_dynamic_extension)
             {
+                //node.sh.dl.loadEntryAddress(dest_pathname)(node.sh.fp);
                 node.sh.dl.load(dest_pathname).autoLoad(node.sh.fp);
             }
             return status(results);
@@ -2884,7 +2885,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn defined(fp: *const anyopaque) bool {
-            return @intFromPtr(fp) >= load_prog_lb_addr and @intFromPtr(fp) < load_prog_up_addr;
+            return @intFromPtr(fp) != 0;
         }
         fn status(stats: *Node.Results) bool {
             if (stats.server == builder_spec.options.compiler_error_status or
@@ -3318,42 +3319,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     key_tag: u16 = 0,
                 },
             };
-            fn lengthAndWalkInternal(len1: usize, node: *Node, width: *ColumnWidth) usize {
-                @setRuntimeSafety(false);
-                var len: usize = 0;
-                for (node.getFiles()) |*fs| {
-                    len +%= len1;
-                    len +%= 2;
-                    if (!fs.key.flags.is_cached) {
-                        len +%= (width.cols.file +% width.cols.path) -% (len1 +% 2);
-                    }
-                    len +%= 1;
-                }
-                var itr: Node.Iterator = Node.Iterator.init(node);
-                while (itr.next()) |next_node| {
-                    len +%= width.cols.name +% next_node.descr.len;
-                    len +%= lengthAndWalkInternal(len1 +% 2, next_node, width);
-                    len +%= 1;
-                }
-                return len;
-            }
-            fn writeAndWalkColumnWidths(len1: usize, node: *const Node, width: *ColumnWidth) void {
-                @setRuntimeSafety(false);
-                var itr: Node.Iterator = Node.Iterator.init(node);
-                var buf: [4096]u8 = undefined;
-                const files: []types.File = node.getFiles();
-                for (files) |*fs| {
-                    width.cols.file = @intCast(@max(width.cols.file, (len1 +% 4 +% @tagName(fs.key.tag).len)));
-                    if (node.getFilePath(fs)) |path| {
-                        width.cols.path = @intCast(@max(width.cols.path, path.formatWriteBufDisplay(&buf)));
-                    }
-                }
-                while (itr.next()) |next_node| {
-                    writeAndWalkColumnWidths(len1 +% 2, next_node, width);
-                    width.cols.name = @intCast(@max(width.cols.name, len1 +% 4 +% next_node.name.len));
-                    width.cols.descr = @intCast(@max(width.cols.descr, next_node.descr.len));
-                }
-            }
             pub fn writeAndWalk(allocator: *Allocator, node: *Node) void {
                 @setRuntimeSafety(false);
                 const save: usize = allocator.save();
@@ -3374,47 +3339,60 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 allocator.restore(save);
             }
             const bar = struct {
-                const what_s: [:0]const u8 = "???";
-                const endl_s: [:0]const u8 = "\x1b[0m\n";
-                const del_s: [:0]const u8 = "\x08\x08\x08\x08";
-                const spc_bs: [:0]const u8 = "    ";
-                const spc_ws: [:0]const u8 = "    ";
-                const bar_bs: [:0]const u8 = "|   ";
-                const bar_ws: [:0]const u8 = "│   ";
-                const links_to_bs: [:0]const u8 = " --> ";
-                const links_to_ws: [:0]const u8 = " ⟶  ";
-                const file_arrow_bs: [:0]const u8 = del_s ++ "|-> ";
-                const file_arrow_ws: [:0]const u8 = del_s ++ "├── ";
-                const last_file_arrow_bs: [:0]const u8 = del_s ++ "`-> ";
-                const last_file_arrow_ws: [:0]const u8 = del_s ++ "└── ";
-                const link_arrow_bs: [:0]const u8 = file_arrow_bs;
-                const link_arrow_ws: [:0]const u8 = file_arrow_ws;
-                const last_link_arrow_bs: [:0]const u8 = last_file_arrow_bs;
-                const last_link_arrow_ws: [:0]const u8 = last_file_arrow_ws;
-                const dir_arrow_bs: [:0]const u8 = del_s ++ "|---+ ";
-                const dir_arrow_ws: [:0]const u8 = del_s ++ "├───┬ ";
-                const last_dir_arrow_bs: [:0]const u8 = del_s ++ "`---+ ";
-                const last_dir_arrow_ws: [:0]const u8 = del_s ++ "└───┬ ";
-                const empty_dir_arrow_bs: [:0]const u8 = del_s ++ "|-- ";
-                const empty_dir_arrow_ws: [:0]const u8 = del_s ++ "├── ";
-                const last_empty_dir_arrow_bs: [:0]const u8 = del_s ++ "`-- ";
-                const last_empty_dir_arrow_ws: [:0]const u8 = del_s ++ "└── ";
-                const about_dirs_s: [:0]const u8 = "dirs:           ";
-                const about_files_s: [:0]const u8 = "files:          ";
-                const about_links_s: [:0]const u8 = "links:          ";
-                const about_depth_s: [:0]const u8 = "depth:          ";
-                const about_errors_s: [:0]const u8 = "errors:         ";
+                const spc_bs: [:0]const u8 = "  ";
+                const bar_ws: [:0]const u8 = "│ ";
+                const next_arrow_ws: [:0]const u8 = "├";
+                const last_arrow_ws: [:0]const u8 = "└";
+                const next_br_arrow_ws: [:0]const u8 = "├┬ ";
+                const last_br_arrow_ws: [:0]const u8 = "└┬ ";
             };
-            fn writeAndWalkInternalDetail(buf0: [*]u8, buf1: [*]u8, len1: usize, node: *Node, keep_going: bool, width: *ColumnWidth) [*]u8 {
+            fn writeAndWalkColumnWidths(len1: usize, node: *const Node, width: *ColumnWidth) void {
                 @setRuntimeSafety(false);
+                var itr: Node.Iterator = Node.Iterator.init(node);
+                var buf: [4096]u8 = undefined;
                 const files: []types.File = node.getFiles();
-                var ptr0: [*]u8 = buf0;
                 for (files) |*fs| {
+                    width.cols.file = @intCast(@max(width.cols.file, len1 +% 4 +% @tagName(fs.key.tag).len));
+                    if (node.getFilePath(fs)) |path| {
+                        width.cols.path = @intCast(@max(width.cols.path, path.formatWriteBufDisplay(&buf)));
+                    }
+                }
+                while (itr.next()) |next_node| {
+                    writeAndWalkColumnWidths(len1 +% 2, next_node, width);
+                    width.cols.name = @intCast(@max(width.cols.name, len1 +% 4 +% next_node.name.len));
+                    width.cols.descr = @intCast(@max(width.cols.descr, next_node.descr.len));
+                }
+            }
+            fn lengthAndWalkInternal(len1: usize, node: *Node, width: *ColumnWidth) usize {
+                @setRuntimeSafety(false);
+                var len: usize = 0;
+                for (node.getFiles()) |*fs| {
+                    len +%= len1;
+                    len +%= 2;
+                    if (!fs.key.flags.is_cached) {
+                        len +%= (width.cols.file +% width.cols.path) -% (len1 +% 4);
+                    }
+                    len +%= 1;
+                }
+                var itr: Node.Iterator = Node.Iterator.init(node);
+                while (itr.next()) |next_node| {
+                    len +%= width.cols.name +% next_node.descr.len;
+                    len +%= lengthAndWalkInternal(len1 +% 2, next_node, width);
+                    len +%= 1;
+                }
+                return len;
+            }
+            fn writeAndWalkInternal(buf0: [*]u8, buf1: [*]u8, len1: usize, node: *Node, width: *ColumnWidth) [*]u8 {
+                @setRuntimeSafety(false);
+                var itr: Node.Iterator = Node.Iterator.init(node);
+                var ptr1: [*]u8 = buf1 + len1;
+                var ptr0: [*]u8 = buf0;
+                for (node.getFiles()) |*fs| {
                     ptr0 = fmt.strcpyEqu(ptr0, buf1[0..len1]);
-                    ptr0[0..2].* = if (keep_going) "| ".* else "  ".*;
+                    ptr0[0..2].* = if (itr.idx == itr.max_idx) "  ".* else "| ".*;
                     ptr0 += 2;
                     if (node.getFilePath(fs)) |path| {
-                        ptr0 = fmt.strsetEqu(ptr0, ' ', width.cols.file -% (len1 +% 2 +% @tagName(fs.key.tag).len) -% 2);
+                        ptr0 = fmt.strsetEqu(ptr0, ' ', width.cols.file -% (len1 +% 4 +% @tagName(fs.key.tag).len));
                         ptr0 = fmt.strcpyEqu(ptr0, @tagName(fs.key.tag));
                         ptr0[0..2].* = ": ".*;
                         ptr0 += 2;
@@ -3423,29 +3401,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     ptr0[0] = '\n';
                     ptr0 += 1;
                 }
-                return ptr0;
-            }
-            fn writeAndWalkInternal(buf0: [*]u8, buf1: [*]u8, len1: usize, node: *Node, width: *ColumnWidth) [*]u8 {
-                @setRuntimeSafety(false);
-                var itr: Node.Iterator = Node.Iterator.init(node);
-                var ptr1: [*]u8 = buf1 + len1;
-                var ptr0: [*]u8 = writeAndWalkInternalDetail(buf0, buf1, len1, node, itr.idx != itr.max_idx, width);
                 while (itr.next()) |next_node| {
                     ptr1[0..2].* = if (itr.idx == itr.max_idx) "  ".* else "| ".*;
                     ptr0 = fmt.strcpyEqu(ptr0, buf1[0..len1]);
-                    ptr0[0..2].* = if (itr.idx == itr.max_idx) "`-".* else "|-".*;
-                    ptr0 += 2;
-                    ptr0[0..2].* = if (1 == itr.max_idx) "> ".* else "+ ".*;
-                    ptr0 += 2;
+                    ptr0 = fmt.strcpyEqu(ptr0, if (itr.idx == itr.max_idx) "`-" else "|-");
+                    ptr0 = fmt.strcpyEqu(ptr0, if (1 == itr.max_idx) "> " else "+ ");
                     ptr0 = fmt.strcpyEqu(ptr0, next_node.name);
-                    ptr0 = fmt.strsetEqu(ptr0, ' ', width.cols.name -% (len1 +% 4 +% next_node.name.len));
-                    ptr0 -= 2;
-                    ptr0[0] = ':';
-                    ptr0 += 2;
-                    ptr0 = fmt.strcpyEqu(ptr0, next_node.descr);
+                    ptr0 = fmt.strsetEqu(ptr0, ' ', width.cols.name -% (len1 +% 6 +% next_node.name.len));
+                    ptr0[0..2].* = ": ".*;
+                    ptr0 = fmt.strcpyEqu(ptr0 + 2, next_node.descr);
                     ptr0[0] = '\n';
-                    ptr0 += 1;
-                    ptr0 = writeAndWalkInternal(ptr0, buf1, len1 +% 2, next_node, width);
+                    ptr0 = writeAndWalkInternal(ptr0 + 1, buf1, len1 +% 2, next_node, width);
                 }
                 return ptr0;
             }
