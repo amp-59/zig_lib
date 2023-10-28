@@ -217,7 +217,8 @@ pub fn panicCastTruncatedData(
     ptr[0..4].* = " to ".*;
     ptr = fmt.strcpyEqu(ptr + 4, to_type_name);
     ptr[0..17].* = " truncated bits: ".*;
-    ptr = writeAboveOrBelowLimit(fmt.Xd(From).writeInt(ptr + 17, value), To, to_type_name, yn, if (yn) extrema.min else extrema.max);
+    ptr = fmt.Xd(From).writeInt(ptr + 17, value);
+    ptr = writeAboveOrBelowLimit(ptr, To, to_type_name, yn, if (yn) extrema.min else extrema.max);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicCastToUnsignedFromNegative(
