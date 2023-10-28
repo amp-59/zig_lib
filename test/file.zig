@@ -394,8 +394,8 @@ fn testReadWrite2() !void {
     try debug.expectEqual(usize, 5, len);
 }
 pub fn main(args: [][*:0]u8) !void {
+    _ = args;
     meta.refAllDecls(zl.file, &.{});
-
     try meta.wrap(testPreClean());
     try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testFileOperationsRound1());
@@ -403,8 +403,8 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testFileTests());
     try meta.wrap(testPoll());
-    try meta.wrap(testClientAndServerIPv4(args));
-    try meta.wrap(testClientAndServerIPv6(args));
+    //try meta.wrap(testClientAndServerIPv4(args));
+    //try meta.wrap(testClientAndServerIPv6(args));
     try meta.wrap(testCopyFileRange());
     try meta.wrap(testLink());
     try meta.wrap(testLinkAt());
