@@ -269,6 +269,14 @@ pub const Elf64_Ehdr = extern struct {
     e_shentsize: u16,
     e_shnum: u16,
     e_shstrndx: u16,
+    pub fn sectionHeader(ehdr: *Elf64_Ehdr, idx: usize) *Elf64_Shdr {
+        @setRuntimeSafety(false);
+        return @ptrFromInt((@intFromPtr(ehdr) +% ehdr.e_shoff) +% (ehdr.e_shentsize *% idx));
+    }
+    pub fn programHeader(ehdr: *Elf64_Ehdr, idx: usize) *Elf64_Phdr {
+        @setRuntimeSafety(false);
+        return @ptrFromInt((@intFromPtr(ehdr) +% ehdr.e_phoff) +% (ehdr.e_phentsize *% idx));
+    }
 };
 pub const Elf32_Phdr = extern struct {
     p_type: PT,
