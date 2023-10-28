@@ -1457,14 +1457,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 return mem.terminate(@ptrFromInt(info.shstr +% shdr.sh_name), 0);
             }
-            pub fn sectionHeaderByIndex(info: *const Info, idx: usize) *Elf64_Shdr {
-                @setRuntimeSafety(builtin.is_safe);
-                return @ptrFromInt(info.shdr +% (info.ehdr.e_shentsize *% idx));
-            }
-            pub fn programHeaderByIndex(info: *const Info, idx: usize) *Elf64_Phdr {
-                @setRuntimeSafety(builtin.is_safe);
-                return @ptrFromInt(info.phdr +% (info.ehdr.e_phentsize *% idx));
-            }
         };
         pub const lb_meta_addr: comptime_int = loader_spec.AddressSpace.arena(0).lb_addr;
         pub const lb_prog_addr: comptime_int = loader_spec.AddressSpace.arena(1).lb_addr;
