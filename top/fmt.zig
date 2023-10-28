@@ -562,7 +562,8 @@ pub const PolynomialFormatSpec = struct {
     radix: comptime_int,
     width: Width,
     range: Range = .{},
-    prefix: ?*const [2]u8 = null,
+    prefix: ?[]const u8 = null,
+    suffix: ?[]const u8 = null,
     separator: ?Separator = null,
     const Separator = struct {
         character: u8 = ',',
@@ -609,6 +610,9 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             if (fmt_spec.separator) |s| {
                 len +%= (len -% 1) / s.digits;
             }
+            if (fmt_spec.suffix) |suffix| {
+                len +%= suffix.len;
+            }
             break :blk len;
         };
         pub inline fn formatWrite(format: Format, array: anytype) void {
@@ -627,7 +631,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
             var ptr: [*]u8 = buf + @intFromBool(value < 0);
             if (fmt_spec.prefix) |prefix| {
-                ptr[0..prefix.len].* = prefix.*;
+                ptr[0..prefix.len].* = prefix[0..prefix.len].*;
                 ptr += prefix.len;
             }
             if (fmt_spec.radix > max_abs_value) {
@@ -641,7 +645,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                     .fixed => |fixed| fixed,
                 };
                 count +%= (count -% 1) / separator.digits;
-                const ret: [*]u8 = ptr + count;
+                var ret: [*]u8 = ptr + count;
                 var pos: usize = 0;
                 while (count != pos) : (abs /= fmt_spec.radix) {
                     pos +%= 1;
@@ -651,6 +655,10 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                         @intFromBool(pos % separator.digits == 1);
                     ptr[count -% pos] = toSymbol(Abs, abs, fmt_spec.radix);
                 }
+                if (fmt_spec.suffix) |suffix| {
+                    ptr[0..suffix.len].* = suffix[0..suffix.len].*;
+                    ptr += suffix.len;
+                }
                 return ret;
             } else {
                 var abs: Abs = @abs(value);
@@ -659,10 +667,14 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                     .max => max_digits_count,
                     .fixed => |fixed| fixed,
                 };
-                const ret: [*]u8 = ptr + count;
+                var ret: [*]u8 = ptr + count;
                 while (count != 0) : (abs /= fmt_spec.radix) {
                     count -%= 1;
                     ptr[count] = toSymbol(Abs, abs, fmt_spec.radix);
+                }
+                if (fmt_spec.suffix) |suffix| {
+                    ret[0..suffix.len].* = suffix[0..suffix.len].*;
+                    ret += suffix.len;
                 }
                 return ret;
             }
@@ -686,6 +698,9 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             };
             if (fmt_spec.separator) |s| {
                 count +%= (count -% 1) / s.digits;
+            }
+            if (fmt_spec.suffix) |suffix| {
+                len +%= suffix.len;
             }
             return len +% count;
         }
@@ -3247,7 +3262,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     const T = struct {
         value: Struct,
         const Format = @This();
-        const max_len: usize = blk: {
+        pub const max_len: usize = blk: {
             var len: usize = 0;
             len +%= @typeName(Struct).len +% 2;
             if (fields.len == 0) {
@@ -3255,9 +3270,9 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             } else {
                 inline for (fields) |field| {
                     const field_name_format: IdentifierFormat = .{ .value = field.name };
-                    const field_spec: RenderSpec = if (meta.DistalChild(field.type)) field_spec_if_type else field_spec_if_not_type;
+                    const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                     len +%= 1 +% field_name_format.formatLength() +% 3;
-                    len +%= AnyFormat(field.type, field_spec).max_len;
+                    len +%= AnyFormat(field_spec, field.type).max_len;
                     len +%= 2;
                 }
             }
