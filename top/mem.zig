@@ -104,7 +104,7 @@ pub const Bytes = struct {
     count: usize,
     unit: Unit,
     pub const mask: usize = 0b1111111111;
-    pub const Unit = enum(u6) {
+    pub const Unit = enum(u8) {
         EiB = 60,
         PiB = 50,
         TiB = 40,
@@ -113,11 +113,11 @@ pub const Bytes = struct {
         KiB = 10,
         B = 0,
         pub fn to(count: usize, unit: Unit) Bytes {
-            return .{ .count = (count & (mask << @intFromEnum(unit))) >> @intFromEnum(unit), .unit = unit };
+            return .{ .count = (count & (mask << @truncate(@intFromEnum(unit)))) >> @truncate(@intFromEnum(unit)), .unit = unit };
         }
     };
     pub fn bytes(amt: Bytes) usize {
-        return amt.count *% (@as(usize, 1) << @intFromEnum(amt.unit));
+        return amt.count *% (@as(usize, 1) << @truncate(@intFromEnum(amt.unit)));
     }
 };
 fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
@@ -3005,7 +3005,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, len);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
@@ -3020,13 +3020,10 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, len);
         ptr[0..2].* = ", ".*;
-        const fmt_len: usize = flags.formatWriteBuf(ptr + 2);
-        if (fmt_len != 0) {
-            ptr += 2;
-            ptr += 2 +% fmt_len;
-        }
+        ptr += 2;
+        ptr += flags.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
@@ -3041,7 +3038,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.strcpyEqu(ptr, description_s);
@@ -3059,7 +3056,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += prot.formatWriteBuf(ptr);
@@ -3087,7 +3084,7 @@ pub const about = struct {
         ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = notation_s.*;
         ptr += 3;
-        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, abs_diff);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3096,9 +3093,7 @@ pub const about = struct {
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
-        const label_s: []const u8 = label orelse "arena";
-        @memcpy(ptr, label_s);
-        ptr += label_s.len;
+        ptr = fmt.strcpyEqu(ptr, label orelse "arena");
         ptr[0] = '-';
         ptr += 1;
         ptr = fmt.writeUd64(ptr, index orelse 0);
@@ -3110,7 +3105,7 @@ pub const about = struct {
         ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, up_addr -% lb_addr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3138,7 +3133,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, len);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
@@ -3154,7 +3149,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, len);
         const fmt_len: usize = flags.formatWriteBuf(ptr + 2);
         if (fmt_len != 0) {
             ptr += 2;
@@ -3223,7 +3218,7 @@ pub const about = struct {
         ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = if (new_len < old_len) ", -".* else ", +".*;
         ptr += 3;
-        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, abs_diff);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3246,7 +3241,7 @@ pub const about = struct {
         ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr = fmt.writeBytes(ptr, up_addr -% lb_addr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
