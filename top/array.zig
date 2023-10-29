@@ -473,7 +473,7 @@ pub const reinterpret = opaque {
                 return memory.writeMany(@errorName(any));
             }
         }
-        comptime debug.assert(src_type == dst_type);
+        return any.formatWrite(memory);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
         const dst_type: type = child;
@@ -608,7 +608,7 @@ pub const reinterpret = opaque {
                 return memory.writeMany(child, @errorName(any));
             }
         }
-        comptime debug.assert(src_type == dst_type);
+        return any.formatWrite(memory);
     }
     pub inline fn writeArgsStructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, args: anytype) void {
         inline for (args) |arg| {
@@ -833,7 +833,7 @@ pub const reinterpret = opaque {
                 return len;
             }
         }
-        debug.assert(src_type == dst_type);
+        return any.formatLength();
     }
     pub fn lengthFormat(comptime child: type, format: anytype) usize {
         const Format: type = @TypeOf(format);
