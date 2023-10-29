@@ -1960,7 +1960,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (have_lazy and keepGoing(node) and
                 node.flags.is_dynamic_extension)
             {
-                //node.sh.dl.loadEntryAddress(dest_pathname)(node.sh.fp);
                 node.sh.dl.load(dest_pathname).autoLoad(node.sh.fp);
             }
             return status(results);
@@ -2885,7 +2884,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn defined(fp: *const anyopaque) bool {
-            return @intFromPtr(fp) != 0;
+            return @intFromPtr(fp) >= load_prog_lb_addr and @intFromPtr(fp) < load_prog_up_addr;
         }
         fn status(stats: *Node.Results) bool {
             if (stats.server == builder_spec.options.compiler_error_status or
