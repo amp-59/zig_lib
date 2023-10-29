@@ -954,22 +954,25 @@ pub const Bytes = packed struct {
     value: usize,
     const Format: type = @This();
     const MajorIntFormat = GenericPolynomialFormat(.{
-        .bits = 16,
+        .bits = 64,
         .signedness = .unsigned,
         .radix = 10,
         .width = .min,
     });
     const MinorIntFormat = GenericPolynomialFormat(.{
-        .bits = 16,
+        .bits = 64,
         .signedness = .unsigned,
         .radix = 10,
         .width = .{ .fixed = 3 },
     });
+    const Pair = struct {
+        int: mem.Bytes,
+        rem: usize,
+    };
     const units = meta.tagList(mem.Bytes.Unit);
     pub const max_len: usize =
         MajorIntFormat.max_len +%
         MinorIntFormat.max_len +% 3; // Unit
-
     pub inline fn formatWrite(format: Format, array: anytype) void {
         return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
     }
@@ -977,42 +980,43 @@ pub const Bytes = packed struct {
         return strlen(writeBytes(buf, format.value), buf);
     }
     pub fn formatLength(format: Format) usize {
-        const int: mem.Bytes, const rem: u16 = bytes(format.value);
-        var len: usize = Bytes.MajorIntFormat.formatLength(.{ .value = @truncate(int.count) });
-        if (rem != 0) {
-            len +%= 1 +% Bytes.MinorIntFormat.formatLength(.{ .value = @truncate((rem *% 1000) / 1024) });
+        @setRuntimeSafety(false);
+        const res: Bytes.Pair = bytes(format.value);
+        var len: usize = Bytes.MajorIntFormat.formatLength(.{ .value = res.int.count });
+        if (res.rem != 0) {
+            len +%= 1;
+            len +%= Bytes.MinorIntFormat.formatLength(.{ .value = (res.rem *% 1000) / 1024 });
         }
-        return len +% @tagName(int.unit).len;
+        return len +% @tagName(res.int.unit).len;
     }
 };
-pub fn bytes(count: usize) struct { mem.Bytes, u16 } {
+pub fn bytes(count: usize) Bytes.Pair {
+    @setRuntimeSafety(false);
     const max_idx: comptime_int = Bytes.units.len -% 1;
     var int: mem.Bytes = .{ .count = 0, .unit = .B };
-    var rem: u16 = 0;
-    var idx: usize = 0;
-    while (idx != Bytes.units.len) : (idx +%= 1) {
+    var rem: usize = 0;
+    for (0..Bytes.units.len) |idx| {
         int.unit = Bytes.units[idx];
-        var val: usize = count & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
-        int.count = val >> @truncate(@intFromEnum(Bytes.units[idx]));
+        var val: usize = count & (mem.Bytes.mask << @intFromEnum(int.unit));
+        int.count = val >> @intFromEnum(int.unit);
         if (int.count != 0) {
-            idx = @min(idx +% 1, max_idx);
-            val = (count -% val) & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
-            val >>= @truncate(@intFromEnum(Bytes.units[idx]));
+            val = (count -% val) & (mem.Bytes.mask << @intFromEnum(Bytes.units[@min(idx +% 1, max_idx)]));
+            val >>= @intFromEnum(Bytes.units[@min(idx +% 1, max_idx)]);
             rem = @intCast(val);
             break;
         }
     }
-    return .{ int, rem };
+    return .{ .int = int, .rem = rem };
 }
 pub fn writeBytes(buf: [*]u8, count: usize) [*]u8 {
     @setRuntimeSafety(false);
-    const int: mem.Bytes, const rem: u16 = bytes(count);
-    var ptr: [*]u8 = Bytes.MajorIntFormat.writeInt(buf, @truncate(int.count));
-    if (rem != 0) {
+    const res: Bytes.Pair = bytes(count);
+    var ptr: [*]u8 = Bytes.MajorIntFormat.writeInt(buf, res.int.count);
+    if (res.rem != 0) {
         ptr[0] = '.';
-        ptr = Bytes.MinorIntFormat.writeInt(ptr + 1, @truncate((rem *% 1000) / 1024));
+        ptr = Bytes.MinorIntFormat.writeInt(ptr + 1, (res.rem *% 1000) / 1024);
     }
-    ptr = strcpyEqu(ptr, @tagName(int.unit));
+    ptr = strcpyEqu(ptr, @tagName(res.int.unit));
     return ptr;
 }
 pub const ChangedIntFormatSpec = struct {
