@@ -8,6 +8,7 @@ export fn load(fp: *zl.builtin.root.Builder.FunctionPointers) void {
             .writeResults = zl.builtin.root.Builder.PerfEvents.writeResults,
         },
         .elf = .{
+            .load = zl.builtin.root.Builder.DynamicLoader.load,
             .writeBinary = zl.builtin.root.Builder.DynamicLoader.compare.writeBinary,
             .writeBinaryDifference = zl.builtin.root.Builder.DynamicLoader.compare.writeBinaryDifference,
         },
