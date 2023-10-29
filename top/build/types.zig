@@ -56,7 +56,7 @@ pub const File = struct {
 
         zig_compiler_exe = 9,
         llc_compiler_exe = 10,
-        cc_compiler_exe = 11,
+        c_compiler_exe = 11,
         cxx_compiler_exe = 12,
 
         cached_generic      = @bitCast(Flags{ .idx = 0, .is_cached = true }),
