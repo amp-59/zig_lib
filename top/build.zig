@@ -3292,7 +3292,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (cmd_args.len != 0) {
                     ptr[0..tab.cmd_args_s.len].* = tab.cmd_args_s.*;
                     ptr += tab.cmd_args_s.len;
-                    ptr += file.about.writeArgs(ptr, &.{}, cmd_args);
+                    ptr = file.about.writeArgs(ptr, &.{}, cmd_args);
                     ptr[0] = '\n';
                     ptr += 1;
                 }
@@ -3300,7 +3300,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (run_args.len != 0) {
                     ptr[0..tab.run_args_s.len].* = tab.run_args_s.*;
                     ptr += tab.run_args_s.len;
-                    ptr += file.about.writeArgs(ptr, &.{}, run_args);
+                    ptr = file.about.writeArgs(ptr, &.{}, run_args);
                     ptr[0] = '\n';
                     ptr += 1;
                 }
