@@ -2511,21 +2511,15 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 9;
                 ptr = fmt.writeUd64(ptr, info.ehdr.e_phnum);
                 if (info.ehdr.e_type == .DYN) {
-                    ptr[0..2].* = ", ".*;
-                    ptr += 2;
-                    ptr[0..5].* = "addr=".*;
-                    ptr += 5;
-                    ptr = fmt.writeUx64(ptr, info.prog.addr);
+                    ptr[0..7].* = ", addr=".*;
+                    ptr = fmt.writeUx64(ptr + 7, info.prog.addr);
                 }
                 var pos: usize = 0;
                 for (pathname, 0..) |byte, idx| {
                     if (byte == '/') pos = idx;
                 }
-                ptr[0..2].* = ", ".*;
-                ptr += 2;
-                ptr[0..5].* = "name=".*;
-                ptr += 5;
-                ptr = fmt.strcpyEqu(ptr, pathname[pos +% 1 ..]);
+                ptr[0..7].* = ", name=".*;
+                ptr = fmt.strcpyEqu(ptr + 7, pathname[pos +% 1 ..]);
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
@@ -2543,11 +2537,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 if (shdr2.sh_addr != 0) {
                     ptr[0..5].* = "addr=".*;
-                    ptr += 5;
-                    ptr += fmt.ux64(shdr2.sh_addr).formatWriteBuf(ptr);
+                    ptr = fmt.writeUx64(ptr + 5, shdr2.sh_addr);
                     ptr[0..2].* = ", ".*;
+                    ptr += 2;
                 }
-                ptr += 2;
                 ptr[0..5].* = "size=".*;
                 ptr = fmt.writeBytes(ptr + 5, shdr2.sh_size);
                 ptr[0] = '\n';
@@ -2567,11 +2560,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 if (shdr2.sh_addr != 0) {
                     ptr[0..5].* = "addr=".*;
-                    ptr += 5;
-                    ptr = fmt.writeUx64(ptr, shdr2.sh_addr);
+                    ptr = fmt.writeUx64(ptr + 5, shdr2.sh_addr);
                     ptr[0..2].* = ", ".*;
+                    ptr += 2;
                 }
-                ptr += 2;
                 ptr[0..5].* = "size=".*;
                 ptr += 5;
                 ptr += fmt.bloatDiff(0, shdr2.sh_size).formatWriteBuf(ptr);
@@ -2592,11 +2584,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 if (shdr1.sh_addr != 0) {
                     ptr[0..5].* = "addr=".*;
-                    ptr += 5;
-                    ptr = fmt.writeUx64(ptr, shdr1.sh_addr);
+                    ptr = fmt.writeUx64(ptr + 5, shdr1.sh_addr);
                     ptr[0..2].* = ", ".*;
+                    ptr += 2;
                 }
-                ptr += 2;
                 ptr[0..5].* = "size=".*;
                 ptr += 5;
                 ptr += fmt.bloatDiff(shdr1.sh_size, 0).formatWriteBuf(ptr);
@@ -2621,8 +2612,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     shdr1.sh_addr != shdr2.sh_addr)
                 {
                     ptr[0..5].* = "addr=".*;
-                    ptr += 5;
-                    ptr = fmt.writeUx64(ptr, shdr2.sh_addr);
+                    ptr = fmt.writeUx64(ptr + 5, shdr2.sh_addr);
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
                 }
@@ -2643,10 +2633,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', width1);
                 ptr = fmt.strcpyEqu(ptr, style_s);
                 ptr[0] = style_b;
-                ptr += 1;
-                ptr[0..4].* = tab.fx.none;
-                ptr += 4;
-                ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent +% (width2 -% width1)));
+                ptr[1..5].* = tab.fx.none;
+                ptr = fmt.strsetEqu(ptr + 5, ' ', (builtin.message_indent +% (width2 -% width1)));
                 ptr[0] = ' ';
                 return ptr + 1;
             }
@@ -2718,11 +2706,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     else => ptr = fmt.writeBytes(ptr, sym.st_size),
                 }
                 ptr[0..2].* = ", ".*;
-                ptr += 2;
-                ptr = writePercentage(ptr, sym, mat, sizes_r1);
+                ptr = writePercentage(ptr + 2, sym, mat, sizes_r1);
                 ptr[0..5].* = "name=".*;
-                ptr += 5;
-                ptr = writeCompoundNameHalf(ptr, mat, name);
+                ptr = writeCompoundNameHalf(ptr + 5, mat, name);
                 ptr[0] = '\n';
                 return ptr + 1;
             }
@@ -2739,14 +2725,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 buf[0..5].* = "addr=".*;
                 var ptr: [*]u8 = fmt.writeUx64(buf + 5, sym2.st_value);
-                ptr[0..2].* = ", ".*;
-                ptr += 2;
-                ptr[0..5].* = "size=".*;
-                ptr += 5;
+                ptr[0..7].* = ", size=".*;
+                ptr += 7;
                 ptr += fmt.bloatDiff(sym1.st_size, sym2.st_size).formatWriteBuf(ptr);
                 ptr[0..2].* = ", ".*;
-                ptr += 2;
-                ptr = writePercentage(ptr, sym2, mat2, sizes);
+                ptr = writePercentage(ptr + 2, sym2, mat2, sizes);
                 ptr = writeCompoundName(ptr, mat1, name1, mat2, name2);
                 ptr[0] = '\n';
                 return ptr + 1;
@@ -2808,12 +2791,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     ptr = writeName(ptr, style, name2);
                 } else {
                     ptr[0] = '[';
-                    ptr += 1;
-                    ptr = writeName(ptr, style1, name1);
-                    ptr += 5;
+                    ptr = writeName(ptr + 1, style1, name1);
                     ptr[0..2].* = "=>".*;
-                    ptr += 2;
-                    ptr = writeName(ptr, style2, name2);
+                    ptr = writeName(ptr + 2, style2, name2);
                     ptr[0] = ']';
                     ptr += 1;
                 }
