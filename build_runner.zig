@@ -29,23 +29,23 @@ pub const logging_override: zl.debug.Logging.Override = .{
     .Success = enable_debugging,
     .Acquire = enable_debugging,
     .Release = enable_debugging,
-    .Error = true,
-    .Fault = true,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
 };
 pub const logging_default: zl.debug.Logging.Default = .{
     .Attempt = enable_debugging,
     .Success = enable_debugging,
     .Acquire = enable_debugging,
     .Release = enable_debugging,
-    .Error = true,
-    .Fault = true,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
 };
 pub const signal_handlers = .{
     .IllegalInstruction = enable_debugging,
     .BusError = enable_debugging,
     .FloatingPointError = enable_debugging,
     .Trap = enable_debugging,
-    .SegmentationFault = true,
+    .SegmentationFault = enable_debugging,
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
