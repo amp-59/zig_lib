@@ -104,7 +104,7 @@ pub const Bytes = struct {
     count: usize,
     unit: Unit,
     pub const mask: usize = 0b1111111111;
-    pub const Unit = enum(u8) {
+    pub const Unit = enum(u6) {
         EiB = 60,
         PiB = 50,
         TiB = 40,
@@ -113,11 +113,11 @@ pub const Bytes = struct {
         KiB = 10,
         B = 0,
         pub fn to(count: usize, unit: Unit) Bytes {
-            return .{ .count = (count & (mask << @truncate(@intFromEnum(unit)))) >> @truncate(@intFromEnum(unit)), .unit = unit };
+            return .{ .count = (count & (mask << @intFromEnum(unit))) >> @intFromEnum(unit), .unit = unit };
         }
     };
     pub fn bytes(amt: Bytes) usize {
-        return amt.count *% (@as(usize, 1) << @truncate(@intFromEnum(amt.unit)));
+        return amt.count *% (@as(usize, 1) << @intFromEnum(amt.unit));
     }
 };
 fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
