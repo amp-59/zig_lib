@@ -12,6 +12,23 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace @import("./start.zig");
 
+pub const logging_default: debug.Logging.Default = .{
+    .Acquire = false,
+    .Attempt = false,
+    .Error = false,
+    .Fault = false,
+    .Success = false,
+    .Release = false,
+};
+pub const logging_override: debug.Logging.Override = .{
+    .Acquire = false,
+    .Attempt = false,
+    .Error = false,
+    .Fault = false,
+    .Success = false,
+    .Release = false,
+};
+
 const test_pc_range: bool = false;
 
 const Level = struct {
@@ -23,6 +40,12 @@ const Number = union(enum) {
     line_no: u64,
     none,
 };
+pub const WorkingFile = struct {
+    itr: builtin.parse.TokenIterator,
+    loc: LineLocation,
+};
+pub const FileMap = mem.array.GenericSimpleMap([:0]const u8, WorkingFile);
+
 pub const StackIterator = struct {
     first_addr: ?usize,
     frame_addr: usize,
@@ -59,21 +82,6 @@ pub const StackIterator = struct {
         itr.frame_addr = next_addr;
         return @as(*usize, @ptrFromInt(pc[0])).*;
     }
-};
-
-pub const WorkingFile = struct {
-    itr: builtin.parse.TokenIterator,
-    loc: LineLocation,
-};
-pub const FileMap = mem.array.GenericSimpleMap([:0]const u8, WorkingFile);
-
-pub const logging_default: debug.Logging.Default = .{
-    .Acquire = false,
-    .Attempt = false,
-    .Error = false,
-    .Fault = false,
-    .Success = false,
-    .Release = false,
 };
 pub const CompileErrorMessageList = extern struct {
     len: u32,
