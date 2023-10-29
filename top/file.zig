@@ -405,6 +405,18 @@ pub const Status = extern struct {
         }
         return st.mode.other.read;
     }
+    pub inline fn formatWrite(format: *const Status, array: anytype) void {
+        return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
+    }
+    pub inline fn formatWriteBuf(format: *const Status, buf: [*]u8) usize {
+        return fmt.strlen(about.writeStatus(buf, format), buf);
+    }
+    pub fn formatLength(format: *const Status) usize {
+        return 6 +% fmt.length(u64, format.ino, 10) +%
+            6 +% fmt.length(u64, format.dev >> 8, 10) +%
+            19 +% fmt.length(u64, format.dev & 0xff, 10) +%
+            fmt.Bytes.formatLength(.{ .value = format.size });
+    }
     pub fn count(st: *const Status, comptime T: type) u64 {
         return st.size / @sizeOf(T);
     }
@@ -1597,12 +1609,12 @@ pub fn getStatus(comptime stat_spec: StatusSpec, fd: usize) sys.ErrorUnion(stat_
     try meta.wrap(status(stat_spec, fd, &st));
     return st;
 }
-pub fn getStatusAt(comptime stat_spec: StatusSpec, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(
+pub fn getStatusAt(comptime stat_spec: StatusSpec, flags: sys.flags.At, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(
     stat_spec.errors,
     Status,
 ) {
-    var st: StatusExtended = undefined;
-    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
+    var st: Status = undefined;
+    try meta.wrap(statusAt(stat_spec, flags, dir_fd, name, &st));
     return st;
 }
 pub fn getStatusExtended(comptime stat_spec: StatusExtendedSpec, at: sys.flags.At, fd: usize, pathname: [:0]const u8) sys.ErrorUnion(
