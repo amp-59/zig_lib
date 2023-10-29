@@ -12,10 +12,54 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace @import("./start.zig");
 
-var working: []const u8 = &.{};
 const test_pc_range: bool = false;
 
-pub const Allocator = mem.SimpleAllocator;
+const Level = struct {
+    var start: usize = lb_addr;
+    const lb_addr: usize = 0x600000000000;
+};
+const Number = union(enum) {
+    pc_addr: u64,
+    line_no: u64,
+    none,
+};
+pub const StackIterator = struct {
+    first_addr: ?usize,
+    frame_addr: usize,
+    pub fn init(first_address: ?usize, frame_addr: ?usize) StackIterator {
+        return .{
+            .first_addr = first_address,
+            .frame_addr = frame_addr orelse @frameAddress(),
+        };
+    }
+    pub fn next(itr: *StackIterator) ?usize {
+        var addr: usize = itr.next_internal() orelse return null;
+        if (itr.first_addr) |first_addr| {
+            while (addr != first_addr) {
+                addr = itr.next_internal() orelse return null;
+            }
+            itr.first_addr = null;
+        }
+        return addr;
+    }
+    fn next_internal(itr: *StackIterator) ?usize {
+        if (itr.frame_addr == 0) {
+            return null;
+        }
+        const next_addr: usize = @as(*const usize, @ptrFromInt(itr.frame_addr)).*;
+        if (next_addr != 0 and
+            next_addr < itr.frame_addr)
+        {
+            return null;
+        }
+        const pc = @addWithOverflow(itr.frame_addr, @sizeOf(usize));
+        if (pc[1] != 0) {
+            return null;
+        }
+        itr.frame_addr = next_addr;
+        return @as(*usize, @ptrFromInt(pc[0])).*;
+    }
+};
 
 pub const WorkingFile = struct {
     itr: builtin.parse.TokenIterator,
@@ -204,6 +248,7 @@ fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: usize, indent: usize) [*]u8 {
     return ptr + 5;
 }
 fn backTrackToLine(itr: *builtin.parse.TokenIterator) void {
+    @setRuntimeSafety(false);
     while (itr.buf_pos != 0) {
         itr.buf_pos -%= 1;
         if (itr.buf[itr.buf_pos] == '\n') {
@@ -213,7 +258,7 @@ fn backTrackToLine(itr: *builtin.parse.TokenIterator) void {
 }
 fn writeCompileSourceContext(
     buf: [*]u8,
-    allocator: *Allocator,
+    allocator: *mem.SimpleAllocator,
     trace: *const debug.Trace,
     file_map: *FileMap,
     width: usize,
@@ -335,7 +380,7 @@ fn writeReferenceTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, 
 }
 fn writeReferenceTraceExtended(
     buf: [*]u8,
-    allocator: *Allocator,
+    allocator: *mem.SimpleAllocator,
     trace: *const debug.Trace,
     file_map: *FileMap,
     extra: [*]u32,
@@ -397,7 +442,7 @@ fn writeCompileErrorStandard(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_
 }
 fn writeCompileErrorTrace(
     buf: [*]u8,
-    allocator: *Allocator,
+    allocator: *mem.SimpleAllocator,
     trace: *const debug.Trace,
     extra: [*]u32,
     bytes: [*:0]u8,
@@ -437,7 +482,7 @@ fn writeCompileErrorTrace(
     }
     return ptr;
 }
-pub fn printCompileErrorsStandard(allocator: *Allocator, msg: [*:0]u8) void {
+pub fn printCompileErrorsStandard(allocator: *mem.SimpleAllocator, msg: [*:0]u8) void {
     @setRuntimeSafety(false);
     const save: usize = allocator.save();
     const extra: [*]u32 = @ptrCast(@alignCast(msg + 8));
@@ -451,7 +496,7 @@ pub fn printCompileErrorsStandard(allocator: *Allocator, msg: [*:0]u8) void {
     debug.write(mem.terminate(bytes + extra[2], 0));
     allocator.restore(save);
 }
-pub fn printCompileErrorsTrace(allocator: *Allocator, trace: *const debug.Trace, msg: [*:0]u8) void {
+pub fn printCompileErrorsTrace(allocator: *mem.SimpleAllocator, trace: *const debug.Trace, msg: [*:0]u8) void {
     @setRuntimeSafety(false);
     const save: usize = allocator.save();
     const extra: [*]u32 = @ptrCast(@alignCast(msg + 8));
@@ -466,52 +511,6 @@ pub fn printCompileErrorsTrace(allocator: *Allocator, trace: *const debug.Trace,
     debug.write(mem.terminate(bytes + extra[2], 0));
     allocator.restore(save);
 }
-const Level = struct {
-    var start: usize = lb_addr;
-    const lb_addr: usize = 0x600000000000;
-};
-const Number = union(enum) {
-    pc_addr: u64,
-    line_no: u64,
-    none,
-};
-pub const StackIterator = struct {
-    first_addr: ?usize,
-    frame_addr: usize,
-    pub fn init(first_address: ?usize, frame_addr: ?usize) StackIterator {
-        return .{
-            .first_addr = first_address,
-            .frame_addr = frame_addr orelse @frameAddress(),
-        };
-    }
-    pub fn next(itr: *StackIterator) ?usize {
-        var addr: usize = itr.next_internal() orelse return null;
-        if (itr.first_addr) |first_addr| {
-            while (addr != first_addr) {
-                addr = itr.next_internal() orelse return null;
-            }
-            itr.first_addr = null;
-        }
-        return addr;
-    }
-    fn next_internal(itr: *StackIterator) ?usize {
-        if (itr.frame_addr == 0) {
-            return null;
-        }
-        const next_addr: usize = @as(*const usize, @ptrFromInt(itr.frame_addr)).*;
-        if (next_addr != 0 and
-            next_addr < itr.frame_addr)
-        {
-            return null;
-        }
-        const pc = @addWithOverflow(itr.frame_addr, @sizeOf(usize));
-        if (pc[1] != 0) {
-            return null;
-        }
-        itr.frame_addr = next_addr;
-        return @as(*usize, @ptrFromInt(pc[0])).*;
-    }
-};
 fn writeLastLine(buf: [*]u8, trace: *const debug.Trace, width: u64) [*]u8 {
     @setRuntimeSafety(false);
     var idx: u64 = 0;
@@ -636,7 +635,7 @@ fn writeExtendedSourceLocation(
 }
 fn writeSourceContext(
     trace: *const debug.Trace,
-    allocator: *Allocator,
+    allocator: *mem.SimpleAllocator,
     file_map: *FileMap,
     buf: [*]u8,
     width: u64,
@@ -696,7 +695,7 @@ fn writeSourceContext(
 }
 fn writeSourceCodeAtAddress(
     trace: *const debug.Trace,
-    allocator: *Allocator,
+    allocator: *mem.SimpleAllocator,
     file_map: *FileMap,
     dwarf_info: *dwarf.DwarfInfo,
     buf: [*]u8,
@@ -762,7 +761,7 @@ fn printMessage(allocator: *mem.SimpleAllocator, addr_info: *dwarf.DwarfInfo.Add
         debug.write(msg);
     }
 }
-fn allocateFile(allocator: *Allocator, pathname: [:0]const u8) [:0]u8 {
+fn allocateFile(allocator: *mem.SimpleAllocator, pathname: [:0]const u8) [:0]u8 {
     @setRuntimeSafety(false);
     const fd: usize = file.open(.{ .errors = .{} }, .{}, pathname);
     if (fd >= 1024) {
@@ -784,7 +783,7 @@ fn allocateFile(allocator: *Allocator, pathname: [:0]const u8) [:0]u8 {
     file.close(.{ .errors = .{} }, fd);
     return buf[0..st.size :0];
 }
-fn getWorkingFile(allocator: *Allocator, file_map: *FileMap, pathname: [:0]const u8) *WorkingFile {
+fn getWorkingFile(allocator: *mem.SimpleAllocator, file_map: *FileMap, pathname: [:0]const u8) *WorkingFile {
     @setRuntimeSafety(false);
     for (file_map.pairs[0..file_map.pairs_len]) |pair| {
         if (mem.testEqualString(pair.key, pathname)) {
@@ -809,7 +808,7 @@ fn maximumSideBarWidth(itr: StackIterator) usize {
 }
 fn debugFindMoreAddresses(
     trace: *const debug.Trace,
-    allocator: *Allocator,
+    allocator: *mem.SimpleAllocator,
     file_map: *FileMap,
     dwarf_info: *dwarf.DwarfInfo,
     buf: [*]u8,
@@ -849,6 +848,9 @@ pub fn printSourceCodeAtAddress(trace: *const debug.Trace, addr: usize) callconv
 pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, addrs: [*]const usize, addrs_len: usize) callconv(.C) void {
     @setRuntimeSafety(false);
     const start: usize = @atomicRmw(usize, &Level.start, .Add, 0x40000000, .SeqCst);
+    if (Level.start > Level.lb_addr +% 1024 *% 1024 *% 1024) {
+        return;
+    }
     var allocator: mem.SimpleAllocator = .{ .start = start, .next = start, .finish = start };
     var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(4096, 1));
     defer allocator.unmapAll();
@@ -881,14 +883,12 @@ pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, ad
 pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) callconv(.C) void {
     @setRuntimeSafety(false);
     const start: usize = @atomicRmw(usize, &Level.start, .Add, 0x40000000, .SeqCst);
-    defer Level.start = start;
-    if (start != Level.lb_addr) {
-        return debug.write(working);
+    if (Level.start > Level.lb_addr +% 1024 *% 1024 *% 1024) {
+        return;
     }
-    var allocator: Allocator = .{ .start = start, .next = start, .finish = start };
+    var allocator: mem.SimpleAllocator = .{ .start = start, .next = start, .finish = start };
     var file_map: FileMap = FileMap.init(&allocator, 8);
     var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(allocateFile(&allocator, "/proc/self/exe").ptr));
-
     dwarf_info.scanAllCompileUnits(&allocator);
     const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 4096, 1));
     var ptr: [*]u8 = buf;
