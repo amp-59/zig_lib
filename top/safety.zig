@@ -1,5 +1,5 @@
 const mem = @import("./mem.zig");
-const fmt = @import("../top/fmt.zig");
+const fmt = @import("./fmt.zig");
 const math = @import("./math.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
@@ -182,9 +182,10 @@ pub fn panicCastToTagFromInvalid(
     ptr = fmt.writeUdsize(ptr + 20, value);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicCastToIntFromInvalidFloat(
+pub fn panicCastToIntFromInvalid(
+    comptime Float: type,
     type_name: []const u8,
-    value: anytype,
+    _: Float,
     st: ?*builtin.StackTrace,
     ret_addr: usize,
 ) void {
@@ -194,7 +195,6 @@ pub fn panicCastToIntFromInvalidFloat(
     buf[0..8].* = "cast to ".*;
     var ptr: [*]u8 = fmt.strcpyEqu(buf[8..], type_name);
     ptr[0..20].* = " from invalid value ".*;
-    ptr = fmt.writeUdsize(ptr + 20, value);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicCastTruncatedData(
@@ -271,7 +271,7 @@ pub fn panicNonScalarSentinelMismatch(
     @setCold(true);
     @setRuntimeSafety(false);
     if (!mem.testEqual(Child, expected, found)) {
-        const Format = fmt.AnyFormat(.{ .infer_type_names = true }, Child);
+        const Format = fmt.AnyFormat(.{}, Child);
         const type_name = @typeName(Child);
         var buf: [type_name.len +% 256 +% (2 *% Format.max_len)]u8 = undefined;
         buf[0..type_name.len].* = type_name.*;
