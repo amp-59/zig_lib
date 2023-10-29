@@ -16,13 +16,13 @@ const Panic = union(enum(usize)) {
         finish: usize,
     },
     mismatched_memcpy_lengths: struct {
-        dest_length: usize,
-        src_length: usize,
+        dest_len: usize,
+        src_len: usize,
     },
     mismatched_for_loop_lengths: struct {
         prev_index: usize,
-        prev_capture_length: usize,
-        next_capture_length: usize,
+        prev_len: usize,
+        next_len: usize,
     },
     access_inactive_field: struct {
         expected: []const u8,
@@ -30,9 +30,9 @@ const Panic = union(enum(usize)) {
     },
     memcpy_arguments_alias: struct {
         dest_start: usize,
-        dest_finish: usize,
+        dest_len: usize,
         src_start: usize,
-        src_finish: usize,
+        src_len: usize,
     },
     unwrapped_null,
     returned_noreturn,
@@ -162,22 +162,22 @@ pub fn panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usize) void {
         },
         .mismatched_for_loop_lengths => |params| {
             ptr[0..49].* = "multi-for loop captures with mismatched lengths: ".*;
-            ptr = fmt.writeUdsize(ptr + 49, params.prev_capture_length);
+            ptr = fmt.writeUdsize(ptr + 49, params.prev_len);
             ptr[0..4].* = " != ".*;
-            ptr = fmt.writeUdsize(ptr + 4, params.next_capture_length);
+            ptr = fmt.writeUdsize(ptr + 4, params.next_len);
         },
         .mismatched_memcpy_lengths => |params| {
             ptr[0..65].* = "@memcpy destination and source with mismatched lengths: expected ".*;
-            ptr = fmt.writeUdsize(ptr + 65, params.dest_length);
+            ptr = fmt.writeUdsize(ptr + 65, params.dest_len);
             ptr[0..8].* = ", found ".*;
-            ptr = fmt.writeUdsize(ptr + 8, params.src_length);
+            ptr = fmt.writeUdsize(ptr + 8, params.src_len);
         },
         .memcpy_arguments_alias => |params| {
             ptr[0..32].* = "@memcpy arguments alias between ".*;
             ptr[0..32].* = "@memcpy arguments alias between ".*;
             ptr = fmt.writeUxsize(buf[32..], @max(params.dest_start, params.src_start));
             ptr[0..5].* = " and ".*;
-            ptr = fmt.writeUxsize(ptr + 5, @min(params.dest_finish, params.src_finish));
+            ptr = fmt.writeUxsize(ptr + 5, @min(params.dest_start +% params.dest_len, params.src_start +% params.src_len));
         },
     }
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);

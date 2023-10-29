@@ -25,8 +25,8 @@ pub fn writeAboveOrBelowLimit(
     return ptr + 1;
 }
 pub fn panicMismatchedMemcpyArgumentsLength(
-    dest_length: usize,
-    src_length: usize,
+    dest_len: usize,
+    src_len: usize,
     st: ?*builtin.StackTrace,
     ret_addr: usize,
 ) void {
@@ -34,9 +34,9 @@ pub fn panicMismatchedMemcpyArgumentsLength(
     @setRuntimeSafety(false);
     var buf: [256]u8 = undefined;
     buf[0..65].* = "@memcpy destination and source with mismatched lengths: expected ".*;
-    var ptr: [*]u8 = fmt.writeUdsize(buf[65..], dest_length);
+    var ptr: [*]u8 = fmt.writeUdsize(buf[65..], dest_len);
     ptr[0..8].* = ", found ".*;
-    ptr = fmt.writeUdsize(ptr + 8, src_length);
+    ptr = fmt.writeUdsize(ptr + 8, src_len);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicUnwrappedError(
@@ -90,9 +90,9 @@ pub fn panicAccessOutOfOrder(
 }
 pub fn panicMemcpyArgumentsAlias(
     dest_start: usize,
-    dest_finish: usize,
+    dest_len: usize,
     src_start: usize,
-    src_finish: usize,
+    src_len: usize,
     st: ?*builtin.StackTrace,
     ret_addr: usize,
 ) void {
@@ -102,12 +102,12 @@ pub fn panicMemcpyArgumentsAlias(
     buf[0..32].* = "@memcpy arguments alias between ".*;
     var ptr: [*]u8 = fmt.writeUxsize(buf[32..], @max(dest_start, src_start));
     ptr[0..5].* = " and ".*;
-    ptr = fmt.writeUxsize(ptr + 5, @min(dest_finish, src_finish));
+    ptr = fmt.writeUxsize(ptr + 5, @min(dest_start +% dest_len, src_start +% src_len));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicMismatchedForLoopLengths(
-    prev_capture_length: usize,
-    next_capture_length: usize,
+    prev_len: usize,
+    next_len: usize,
     st: ?*builtin.StackTrace,
     ret_addr: usize,
 ) void {
@@ -115,9 +115,9 @@ pub fn panicMismatchedForLoopLengths(
     @setRuntimeSafety(false);
     var buf: [256]u8 = undefined;
     buf[0..58].* = "multi-for loop captures with mismatched lengths: expected ".*;
-    var ptr: [*]u8 = fmt.writeUdsize(buf[58..], prev_capture_length);
+    var ptr: [*]u8 = fmt.writeUdsize(buf[58..], prev_len);
     ptr[0..8].* = ", found ".*;
-    ptr = fmt.writeUdsize(ptr + 8, next_capture_length);
+    ptr = fmt.writeUdsize(ptr + 8, next_len);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicAccessInactiveField(

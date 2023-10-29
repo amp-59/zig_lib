@@ -5,116 +5,78 @@ const builtin = @import("./builtin.zig");
 const PanicCause = union(enum) {
     message,
     unwrapped_error,
-    /// These are efficient for formatted panics.
     access_out_of_bounds,
     access_out_of_order,
     access_inactive_field,
     memcpy_arguments_alias,
     mismatched_memcpy_lengths,
     mismatched_for_loop_lengths,
-    /// These might be extended to be more useful.
     corrupt_switch,
     shift_amt_overflowed,
-    /// These only require the equivalent of `panic_messages`.
     unwrapped_null,
     returned_noreturn,
     reached_unreachable,
-    /// These are more expensive.
     mul_overflowed: type,
     add_overflowed: type,
     sub_overflowed: type,
     shl_overflowed: type,
     shr_overflowed: type,
     div_with_remainder: type,
-    /// May be signed or unsigned and any size.
     mismatched_sentinel: type,
-    /// *Test code compiled from source. Any composite.
     mismatched_non_scalar_sentinel: type,
-    /// Always from `@typeInfo(type).Enum.tag_type`
     cast_to_enum_from_invalid: type,
-    /// Always from `u16`
     cast_to_error_from_invalid: type,
-    /// Always from `usize`
     cast_to_pointer_from_invalid: type,
     cast_to_int_from_invalid: struct {
-        /// Int
         to: type,
-        /// Float
         from: type,
     },
     cast_truncated_data: struct {
-        /// Int
         to: type,
-        /// Int
         from: type,
     },
     cast_to_unsigned_from_negative: struct {
-        /// Int{ .signedness = .unsigned }
         to: type,
-        /// Int{ .signedness = .signed }
         from: type,
     },
 };
 fn PanicData(comptime panic_extra_cause: PanicCause) type {
     switch (panic_extra_cause) {
         else => void,
-        .access_out_of_bounds => return struct {
-            index: usize,
-            length: usize,
+        .access_out_of_bounds => {
+            return struct { index: usize, length: usize };
         },
-        .access_out_of_order => return struct {
-            start: usize,
-            finish: usize,
+        .access_out_of_order => {
+            return struct { start: usize, finish: usize };
         },
-        .access_inactive_field => return struct {
-            expected: []const u8,
-            found: []const u8,
+        .access_inactive_field => {
+            return struct { expected: []const u8, found: []const u8 };
         },
-        .memcpy_arguments_alias => return struct {
-            dest_start: usize,
-            dest_finish: usize,
-            src_start: usize,
-            src_finish: usize,
+        .memcpy_arguments_alias => {
+            return struct { dest_start: usize, dest_len: usize, src_start: usize, src_len: usize };
         },
-        .mismatched_memcpy_lengths => return struct {
-            dest_length: usize,
-            src_length: usize,
+        .mismatched_memcpy_lengths => {
+            return struct { dest_len: usize, src_len: usize };
         },
-        .mismatched_for_loop_lengths => return struct {
-            prev_index: usize,
-            prev_capture_length: usize,
-            next_capture_length: usize,
+        .mismatched_for_loop_lengths => {
+            return struct { prev_index: usize, prev_len: usize, next_len: usize };
         },
-        .mismatched_non_scalar_sentinel,
         .mismatched_sentinel,
-        => |child| return struct {
-            expected: child,
-            found: child,
+        .mismatched_non_scalar_sentinel,
+        => |child| {
+            return struct { expected: child, found: child };
         },
-        .div_with_remainder => |num_type| return struct {
-            numerator: num_type,
-            denominator: num_type,
+        .shl_overflowed, .shr_overflowed => |int_type| {
+            return struct { value: int_type, shift_amt: builtin.ShiftAmount(int_type) };
         },
-        .shl_overflowed,
-        .shr_overflowed,
-        => |int_type| return struct {
-            value: int_type,
-            shift_amt: builtin.ShiftAmount(int_type),
+        .mul_overflowed, .add_overflowed, .sub_overflowed => |val_type| {
+            return struct { lhs: val_type, rhs: val_type };
         },
-        .mul_overflowed,
-        .add_overflowed,
-        .sub_overflowed,
-        => |val_type| return struct {
-            lhs: val_type,
-            rhs: val_type,
+        .div_with_remainder => |num_type| {
+            return struct { numerator: num_type, denominator: num_type };
         },
         .message, .unwrapped_error => {
             return []const u8;
-        },
-        .cast_to_enum_from_invalid,
-        .cast_to_error_from_invalid,
-        => |tag_type| {
-            return meta.Child(tag_type);
         },
         .cast_to_int_from_invalid => |num_type| {
             return num_type.from;
@@ -125,9 +87,10 @@ fn PanicData(comptime panic_extra_cause: PanicCause) type {
         .cast_to_unsigned_from_negative => |num_type| {
             return num_type.from;
         },
-        .cast_to_pointer_from_invalid => {
-            return usize;
-        },
+        .cast_to_pointer_from_invalid => return usize,
+        .cast_to_enum_from_invalid,
+        .cast_to_error_from_invalid,
+        => |tag_type| return meta.Child(tag_type),
     }
 }
 pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*builtin.StackTrace, ret_addr: usize) void {
@@ -163,13 +126,13 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
             data.expected, data.found, st, ret_addr,
         }),
         .memcpy_arguments_alias => @call(.never_inline, safety.panicMemcpyArgumentsAlias, .{
-            data.dest_start, data.dest_finish, data.src_start, data.src_finish, st, ret_addr,
+            data.dest_start, data.dest_len, data.src_start, data.src_len, st, ret_addr,
         }),
         .mismatched_for_loop_lengths => @call(.never_inline, safety.panicMismatchedForLoopLengths, .{
-            data.prev_capture_length, data.next_capture_length, st, ret_addr,
+            data.prev_len, data.next_len, st, ret_addr,
         }),
         .mismatched_memcpy_lengths => @call(.never_inline, safety.panicMismatchedMemcpyArgumentsLength, .{
-            data.dest_length, data.src_length, st, ret_addr,
+            data.dest_len, data.src_len, st, ret_addr,
         }),
         .cast_to_pointer_from_invalid => |child_type| @call(.never_inline, safety.panicCastToPointerFromInvalid, .{
             @typeName(child_type), data, @alignOf(child_type), st, ret_addr,
