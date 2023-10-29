@@ -156,10 +156,19 @@ pub inline fn sigFigList(comptime T: type, comptime radix: u7) []const T {
     return ret;
 }
 pub fn any(comptime Int: type, str: []const u8) !Int {
+    const x = math.extrema(Int);
     if (@typeInfo(Int).Int.signedness == .unsigned) {
-        return debug.expectCast(Int, try unsigned(str));
+        const res: usize = try unsigned(str);
+        if (res > x.max) {
+            return error.IntCastTruncatedBits;
+        }
+        return @intCast(res);
     } else {
-        return debug.expectCast(Int, try signed(str));
+        const res: isize = try signed(str);
+        if (res < x.min or res > x.max) {
+            return error.IntCastTruncatedBits;
+        }
+        return @intCast(res);
     }
 }
 fn parseValidate(comptime T: type, str: []const u8, comptime radix: u7) !T {
