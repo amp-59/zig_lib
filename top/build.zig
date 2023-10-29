@@ -3147,45 +3147,40 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     ptr += 7;
                     if (task == .build) {
                         ptr[0] = '[';
-                        ptr += 1;
                         switch (results.server) {
                             builder_spec.options.compiler_expected_status => {
-                                ptr[0..7].* = "updated".*;
-                                ptr += 7;
+                                ptr[1..8].* = "updated".*;
+                                ptr += 8;
                             },
                             builder_spec.options.compiler_cache_hit_status => {
-                                ptr[0..6].* = "cached".*;
-                                ptr += 6;
+                                ptr[1..7].* = "cached".*;
+                                ptr += 7;
                             },
                             builder_spec.options.compiler_error_status => {
-                                ptr[0..6].* = "failed".*;
-                                ptr += 6;
+                                ptr[1..7].* = "failed".*;
+                                ptr += 7;
                             },
                             else => {
-                                ptr[0..7].* = "unknown".*;
-                                ptr += 7;
+                                ptr[1..8].* = "unknown".*;
+                                ptr += 8;
                             },
                         }
                         if (results.status != 0) {
                             ptr[0] = ',';
-                            ptr += 1;
-                            ptr = fmt.writeUd64(ptr, results.status);
+                            ptr = fmt.writeUd64(ptr + 1, results.status);
                         }
                         if (results.signal != builder_spec.options.system_expected_status) {
                             ptr[0..4].* = ",SIG".*;
-                            ptr += 4;
-                            ptr = fmt.strcpyEqu(ptr, @tagName(signal));
+                            ptr = fmt.strcpyEqu(ptr + 4, @tagName(signal));
                         }
                         ptr[0] = ']';
                         ptr += 1;
                     } else {
                         if (results.signal != 0) {
                             ptr[0] = '[';
-                            ptr += 1;
-                            ptr = fmt.writeUd64(ptr, results.status);
+                            ptr = fmt.writeUd64(ptr + 1, results.status);
                             ptr[0..4].* = ",SIG".*;
-                            ptr += 4;
-                            ptr = fmt.strcpyEqu(ptr, @tagName(signal));
+                            ptr = fmt.strcpyEqu(ptr + 4, @tagName(signal));
                             ptr[0] = ']';
                             ptr += 1;
                         } else {
@@ -3208,8 +3203,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     if (!node.flags.want_perf_events) {
                         ptr[0..2].* = ", ".*;
-                        ptr += 2;
-                        ptr = writeWallTime(ptr, results.time.sec, results.time.nsec);
+                        ptr = writeWallTime(ptr + 2, results.time.sec, results.time.nsec);
                     }
                     if (builder_spec.logging.show_arena_index) {
                         ptr = writeArenaIndex(ptr, arena_index);
@@ -3267,7 +3261,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 } else if (node.getFile(.{ .tag = .output_generic })) |output| {
                     ptr = fmt.writeBytes(ptr, output.st.size);
                     ptr[0] = '\n';
-                    ptr += 1;
                     return ptr + 1;
                 }
                 if (node.extra.info_after) |after| {
@@ -3287,8 +3280,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr += tab.mem_s.len;
                 ptr += fmt.ud64(allocator.next -% allocator.start).formatWriteBuf(ptr);
                 ptr[0..7].* = " bytes\n".*;
-                ptr += 7;
-                debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
+                debug.write(buf[0 .. @intFromPtr(ptr + 7) -% @intFromPtr(&buf)]);
             }
             pub fn commandLineNotice(node: *Node) void {
                 @setRuntimeSafety(builtin.is_safe);
@@ -3341,8 +3333,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const buf0: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
                 var ptr0: [*]u8 = fmt.strcpyEqu(buf0, node.name);
                 ptr0[0] = '\n';
-                ptr0 += 1;
-                ptr0 = writeAndWalkInternal(ptr0, &buf1, 0, node, &width);
+                ptr0 = writeAndWalkInternal(ptr0 + 1, &buf1, 0, node, &width);
                 fmt.print(ptr0, buf0);
                 allocator.restore(save);
             }
@@ -3485,15 +3476,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr += 2;
                 if (by_spec) |which| {
                     ptr[0..5].* = "spec.".*;
-                    ptr += 5;
-                    ptr = fmt.strcpyEqu(ptr, @tagName(which));
+                    ptr = fmt.strcpyEqu(ptr + 5, @tagName(which));
                     ptr[0..4].* = " => ".*;
                     ptr += 4;
                 }
                 if (by_flag) |which| {
                     ptr[0..5].* = "flag.".*;
-                    ptr += 5;
-                    ptr = fmt.strcpyEqu(ptr, @tagName(which));
+                    ptr = fmt.strcpyEqu(ptr + 5, @tagName(which));
                     ptr[0..4].* = " => ".*;
                     ptr += 4;
                 }
@@ -3502,29 +3491,24 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         const cmd_args: [][*:0]u8 = node.getCmdArgs();
                         const idx: usize = cmd_args.len -% 1;
                         ptr[0..9].* = "run_args[".*;
-                        ptr += 9;
-                        ptr = fmt.writeUd64(ptr, idx);
+                        ptr = fmt.writeUd64(ptr + 9, idx);
                         ptr[0..2].* = "]=".*;
-                        ptr += 2;
-                        ptr = fmt.strcpyEqu(ptr, mem.terminate(cmd_args[idx], 0));
+                        ptr = fmt.strcpyEqu(ptr + 2, mem.terminate(cmd_args[idx], 0));
                     },
                     .add_run_arg => {
                         const run_args: [][*:0]u8 = node.getRunArgs();
                         const idx: usize = run_args.len -% 1;
                         ptr[0..9].* = "run_args[".*;
-                        ptr += 9;
-                        ptr = fmt.writeUd64(ptr, idx);
+                        ptr = fmt.writeUd64(ptr + 9, idx);
                         ptr[0..2].* = "]=".*;
-                        ptr += 2;
-                        ptr = fmt.strcpyEqu(ptr, mem.terminate(run_args[idx], 0));
+                        ptr = fmt.strcpyEqu(ptr + 2, mem.terminate(run_args[idx], 0));
                     },
                     .add_file => {
                         const files = node.getFiles();
                         const idx: usize = files.len -% 1;
                         ptr = fmt.strcpyEqu(ptr, @tagName(files[idx].key.tag));
                         ptr[0..3].* = ", [".*;
-                        ptr += 3;
-                        ptr = fmt.writeUd64(ptr, idx);
+                        ptr = fmt.writeUd64(ptr + 3, idx);
                         ptr[0..2].* = "] ".*;
                         ptr += 2;
                         if (node.getFilePath(&files[idx])) |path| {
@@ -3558,8 +3542,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             .perf_events => @intFromPtr(node.extra.perf_events.?),
                         };
                         ptr[0..6].* = "extra.".*;
-                        ptr += 6;
-                        ptr = fmt.strcpyEqu(ptr, @tagName(field));
+                        ptr = fmt.strcpyEqu(ptr + 6, @tagName(field));
                         ptr[0] = '=';
                         ptr += 1;
                         ptr += fmt.ux64(addr).formatWriteBuf(ptr);
@@ -3594,14 +3577,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (node.tasks.cmd.build.dependencies) |dependencies| {
                         for (dependencies) |dependency| {
                             ptr[0..12].* = "pub const @\"".*;
-                            ptr += 12;
-                            ptr = fmt.strcpyEqu(ptr, dependency.name);
+                            ptr = fmt.strcpyEqu(ptr + 12, dependency.name);
                             ptr[0..16].* = "\":?[:0]const u8=".*;
                             ptr += 16;
                             if (dependency.import.len != 0) {
                                 ptr[0] = '"';
-                                ptr += 1;
-                                ptr = fmt.strcpyEqu(ptr, dependency.import);
+                                ptr = fmt.strcpyEqu(ptr + 1, dependency.import);
                                 ptr[0..3].* = "\";\n".*;
                                 ptr += 3;
                             } else {
@@ -3615,13 +3596,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (node.tasks.cmd.build.modules) |modules| {
                         for (modules) |module| {
                             ptr[0..12].* = "pub const @\"".*;
-                            ptr += 12;
-                            ptr = fmt.strcpyEqu(ptr, module.name);
+                            ptr = fmt.strcpyEqu(ptr + 12, module.name);
                             ptr[0..15].* = "\":[:0]const u8=".*;
-                            ptr += 15;
-                            ptr[0] = '"';
-                            ptr += 1;
-                            ptr = fmt.strcpyEqu(ptr, module.path);
+                            ptr[15] = '"';
+                            ptr = fmt.strcpyEqu(ptr + 16, module.path);
                             ptr[0..3].* = "\";\n".*;
                             ptr += 3;
                         }
@@ -3629,8 +3607,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 for (&[3]types.BinaryOutput{ .obj, .lib, .exe }) |out| {
                     ptr[0..13].* = "};\npub const ".*;
-                    ptr += 13;
-                    ptr = fmt.strcpyEqu(ptr, switch (out) {
+                    ptr = fmt.strcpyEqu(ptr + 13, switch (out) {
                         .obj => "compile",
                         .lib => "dynamic",
                         .exe => "executable",
@@ -3663,11 +3640,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[0..2].* = "={".*;
                 var ptr: [*]u8 = fmt.strcpyEqu(buf + 2, @tagName(old));
                 ptr[0..2].* = "=>".*;
-                ptr += 2;
-                ptr = fmt.strcpyEqu(ptr, @tagName(new));
+                ptr = fmt.strcpyEqu(ptr + 2, @tagName(new));
                 ptr[0] = '}';
-                ptr += 1;
-                return ptr;
+                return ptr + 12;
             }
             fn writeExchangeTask(buf: [*]u8, node: *Node, task: Task) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -3681,8 +3656,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[0..about_s.len].* = about_s.*;
                 var ptr: [*]u8 = fmt.strcpyEqu(buf + about_s.len, node.name);
                 ptr[0] = '.';
-                ptr += 1;
-                ptr = fmt.strcpyEqu(ptr, @tagName(task));
+                ptr = fmt.strcpyEqu(ptr + 1, @tagName(task));
                 return ptr;
             }
         };
