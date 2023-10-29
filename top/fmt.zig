@@ -588,12 +588,12 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         pub const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         pub const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
         pub const specification: PolynomialFormatSpec = fmt_spec;
-        pub const StaticString = mem.array.StaticString(max_len);
+        pub const StaticString = mem.array.StaticString(max_len.?);
         const min_abs_value: comptime_int = fmt_spec.range.min orelse 0;
         const max_abs_value: comptime_int = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: comptime_int = length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: comptime_int = length(Abs, max_abs_value, fmt_spec.radix);
-        const max_len: comptime_int = blk: {
+        const max_len: ?comptime_int = blk: {
             var len: comptime_int = 0;
             if (fmt_spec.radix > max_abs_value) {
                 break :blk len +% 1;
@@ -970,9 +970,9 @@ pub const Bytes = packed struct {
         rem: usize,
     };
     const units = meta.tagList(mem.Bytes.Unit);
-    pub const max_len: usize =
-        MajorIntFormat.max_len +%
-        MinorIntFormat.max_len +% 3; // Unit
+    pub const max_len: ?comptime_int =
+        MajorIntFormat.max_len.? +%
+        MinorIntFormat.max_len.? +% 3; // Unit
     pub inline fn formatWrite(format: Format, array: anytype) void {
         return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
     }
@@ -1041,10 +1041,10 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
         const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
         const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
-        pub const max_len: comptime_int = OldIntFormat.max_len +% 1 +%
-            DeltaIntFormat.max_len +% 5 +%
+        pub const max_len: ?comptime_int = OldIntFormat.max_len.? +% 1 +%
+            DeltaIntFormat.max_len.? +% 5 +%
             fmt_spec.no_style.len +%
-            NewIntFormat.max_len +%
+            NewIntFormat.max_len.? +%
             @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len);
         pub fn formatWriteDelta(format: Format, array: anytype) void {
             return array.define(format.formatWriteDeltaBuf(@ptrCast(array.referOneUndefined())));
@@ -1230,7 +1230,7 @@ pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             tmp.prefix = null;
             break :blk tmp;
         });
-        pub const max_len: usize = (SubFormat.max_len *% 2) +% 4;
+        pub const max_len: ?comptime_int = (SubFormat.max_len.? *% 2) +% 4;
         pub fn formatLength(format: Format) usize {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
             const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
@@ -1497,7 +1497,7 @@ pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
     const T = struct {
         value: time.DateTime,
         const Format: type = @This();
-        pub const max_len: usize = 19;
+        pub const max_len: ?comptime_int = 19;
         pub fn formatConvert(format: Format) mem.StaticString(max_len) {
             var array: mem.StaticString(max_len) = undefined;
             array.undefineAll();
@@ -2574,7 +2574,13 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         const array_info: builtin.Type = @typeInfo(Array);
         const child: type = array_info.Array.child;
         const type_name: []const u8 = @typeName(Array);
-        const max_len: comptime_int = (type_name.len +% 2) +% array_info.Array.len *% (ChildFormat.max_len +% 2);
+        const max_len: ?comptime_int = blk: {
+            if (ChildFormat.max_len) |child_max_len| {
+                break :blk (type_name.len +% 2) +% array_info.Array.len *% (child_max_len +% 2);
+            } else {
+                break :blk null;
+            }
+        };
         const omit_trailing_comma: comptime_int = @intFromBool(spec.omit_trailing_comma orelse true);
         const child_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
@@ -2694,6 +2700,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
         const Format = @This();
         value: type,
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
+        const max_len: ?comptime_int = null;
         const default_value_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
             tmp.infer_type_names = true;
@@ -3222,7 +3229,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     const T = struct {
         value: Struct,
         const Format = @This();
-        pub const max_len: usize = blk: {
+        pub const max_len: ?comptime_int = blk: {
             var len: usize = 0;
             len +%= @typeName(Struct).len +% 2;
             if (fields.len == 0) {
@@ -3231,9 +3238,13 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 inline for (fields) |field| {
                     const field_name_format: IdentifierFormat = .{ .value = field.name };
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
+                    const FieldFormat = AnyFormat(field_spec, field.type);
                     len +%= 1 +% field_name_format.formatLength() +% 3;
-                    len +%= AnyFormat(field_spec, field.type).max_len;
-                    len +%= 2;
+                    if (FieldFormat.max_len) |field_max_len| {
+                        len +%= field_max_len;
+                    } else {
+                        break :blk null;
+                    }
                 }
             }
             break :blk len;
@@ -3518,7 +3529,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         const show_enum_field: bool = fields.len == 2 and (@typeInfo(fields[0].type) == .Enum and
             fields[1].type == @typeInfo(fields[0].type).Enum.tag_type);
         const Int: type = meta.LeastRealBitSize(Union);
-        const max_len: usize = blk: {
+        const max_len: ?comptime_int = blk: {
             if (show_enum_field) {
                 var len: usize = 0;
                 const enum_info: builtin.Type = @typeInfo(fields[0].type);
@@ -3836,7 +3847,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         value: Enum,
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(Enum);
-        const max_len: usize = 1 +% meta.maxNameLength(Enum);
+        const max_len: ?comptime_int = 1 +% meta.maxNameLength(Enum);
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatWrite(.{ .value = @intFromEnum(format.value) }, array);
@@ -3867,7 +3878,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
 pub const EnumLiteralFormat = struct {
     value: @Type(.EnumLiteral),
     const Format = @This();
-    const max_len: usize = undefined;
+    const max_len: ?comptime_int = undefined;
     pub fn formatWrite(comptime format: Format, array: anytype) void {
         const tag_name_format: IdentifierFormat = .{ .value = @tagName(format.value) };
         array.writeOne('.');
@@ -3951,7 +3962,15 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const Format = @This();
         const SubFormat = meta.Return(ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const max_len: usize = (4 +% @typeName(Pointer).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
+        const ChildFormat = AnyFormat(spec, child);
+
+        const max_len: ?comptime_int = blk: {
+            if (ChildFormat.max_len) |child_max_len| {
+                break :blk (4 +% @typeName(Pointer).len +% 3) +% child_max_len +% 1;
+            } else {
+                break :blk null;
+            }
+        };
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.forward)
                 return array.define(@call(.always_inline, formatWriteBuf, .{
@@ -4068,7 +4087,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const max_len: comptime_int = 65536;
+        const max_len: ?comptime_int = null;
         pub fn formatWriteAny(format: anytype, array: anytype) void {
             if (format.value.len == 0) {
                 if (spec.infer_type_names) {
@@ -4335,6 +4354,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         const ChildFormat: type = AnyFormat(spec, child);
         const type_info: builtin.Type = @typeInfo(Pointer);
         const child: type = type_info.Pointer.child;
+        const max_len: ?comptime_int = null;
         pub fn formatWrite(format: Format, array: anytype) void {
             if (spec.forward) {
                 return array.define(@call(.always_inline, formatWriteBuf, .{
@@ -4393,7 +4413,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const ChildFormat: type = AnyFormat(spec, child);
         const child: type = @typeInfo(Optional).Optional.child;
         const type_name: []const u8 = typeName(Optional);
-        const max_len: usize = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
+        const max_len: ?comptime_int = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.forward) {
@@ -4464,7 +4484,7 @@ pub const NullFormat = struct {
     comptime formatWrite: fn (anytype) void = formatWrite,
     comptime formatLength: fn () usize = formatLength,
     const Format = @This();
-    const max_len: usize = 4;
+    const max_len: ?comptime_int = 4;
     pub fn formatWrite(array: anytype) void {
         array.writeMany("null");
     }
@@ -4477,7 +4497,7 @@ pub const VoidFormat = struct {
     comptime formatWrite: fn (anytype) void = formatWrite,
     comptime formatLength: fn () usize = formatLength,
     const Format = @This();
-    const max_len: usize = 2;
+    const max_len: ?comptime_int = 2;
     pub fn formatWrite(array: anytype) void {
         array.writeCount(2, "{}".*);
     }
@@ -4490,7 +4510,7 @@ pub const NoReturnFormat = struct {
     comptime formatWrite: fn (anytype) void = formatWrite,
     comptime formatLength: fn () usize = formatLength,
     const Format = @This();
-    const max_len: usize = 8;
+    const max_len: ?comptime_int = 8;
     pub fn formatWrite(array: anytype) void {
         array.writeCount(2, "noreturn".*);
     }
@@ -4506,8 +4526,7 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
         const vector_info: builtin.Type = @typeInfo(Vector);
         const child: type = vector_info.Vector.child;
         const type_name: TypeName(Vector, spec) = typeName(Vector, spec);
-        const max_len: usize = (type_name.len +% 2) +
-            vector_info.Vector.len *% (ChildFormat.max_len +% 2);
+        const max_len: ?comptime_int = if (ChildFormat.max_len) |len| (type_name.len +% 2) + vector_info.Vector.len *% (len +% 2) else null;
         pub fn formatWrite(format: Format, array: anytype) void {
             if (spec.forward)
                 return array.define(@call(.always_inline, formatWriteBuf, .{
