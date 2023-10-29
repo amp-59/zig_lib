@@ -298,3 +298,39 @@ fn testBasics() !void {
         )]);
     }
 }
+pub fn main() !void {
+    var fps: Builder.FunctionPointers = undefined;
+    mem.zero(Builder.FunctionPointers, &fps);
+    var allocator: mem.SimpleAllocator = .{};
+    var build_cmd: build.BuildCommand = .{ .kind = .exe };
+    var format_cmd: build.FormatCommand = .{};
+    var loader: Loader = .{};
+    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-proc.so", 0))) |ptr| {
+        const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
+        fp(&fps);
+    } else |err| {
+        return err;
+    }
+    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-build.so", 0))) |ptr| {
+        const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
+        fp(&fps);
+    } else |err| {
+        return err;
+    }
+    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-format.so", 0))) |ptr| {
+        const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
+        fp(&fps);
+    } else |err| {
+        return err;
+    }
+    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-about.so", 0))) |ptr| {
+        const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
+        fp(&fps);
+    } else |err| {
+        return err;
+    }
+    fps.build.formatParseArgs(&build_cmd, &allocator, makeArgs(&.{"-OReleaseSmall"}));
+    fps.format.formatParseArgs(&format_cmd, &allocator, makeArgs(&.{"--ast-check"}));
+    testing.printBufN(4096, build_cmd);
+    testing.printBufN(4096, format_cmd);
+}
