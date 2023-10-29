@@ -12,6 +12,8 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace @import("./start.zig");
 
+const is_safe: bool = false;
+
 pub const logging_default: debug.Logging.Default = .{
     .Acquire = false,
     .Attempt = false,
@@ -624,17 +626,14 @@ fn writeExtendedSourceLocation(
     @setRuntimeSafety(false);
     var ptr: [*]u8 = src.formatWriteBuf(buf);
     ptr[0..2].* = ": ".*;
-    ptr += 2;
-    ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+    ptr = fmt.writeUx64(ptr + 2, addr);
     if (dwarf_info.getSymbolName(addr)) |fn_name| {
         ptr[0..4].* = " in ".*;
-        ptr += 4;
-        ptr = fmt.strcpyEqu(ptr, fn_name);
+        ptr = fmt.strcpyEqu(ptr + 4, fn_name);
     }
     if (unit.info_entry.get(.name)) |form_val| {
         ptr[0..2].* = " (".*;
-        ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, form_val.getString(dwarf_info));
+        ptr = fmt.strcpyEqu(ptr + 2, form_val.getString(dwarf_info));
         ptr[0] = ')';
         ptr += 1;
     }
