@@ -3305,9 +3305,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 inline while (field_idx != fields.len) : (field_idx +%= 1) {
                     const field: builtin.Type.StructField = fields[field_idx];
                     if (spec.ignore_padding_fields) {
-                        if (field.name[0] == 'z' and
-                            field.name[1] == 'b')
-                        {
+                        if (comptime field.name.len > 1 and field.name[0] == 'z' and field.name[1] == 'b') {
                             continue;
                         }
                     }
@@ -3400,9 +3398,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 inline while (field_idx != fields.len) : (field_idx +%= 1) {
                     const field: builtin.Type.StructField = fields[field_idx];
                     if (spec.ignore_padding_fields) {
-                        if (field.name[0] == 'z' and
-                            field.name[1] == 'b')
-                        {
+                        if (comptime field.name.len > 1 and field.name[0] == 'z' and field.name[1] == 'b') {
                             continue;
                         }
                     }
@@ -3588,7 +3584,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 inline for (fields) |field| {
                     max_field_len = @max(max_field_len, AnyFormat(spec, field.type).max_len);
                 }
-                break :blk (@typeName(Union).len +% 2) +% 1 +% meta.maxDeclLength(Union) +% 3 +% max_field_len +% 2;
+                break :blk (@typeName(Union).len +% 2) +% 1 +% meta.maxNameLength(Union) +% 3 +% max_field_len +% 2;
             }
         };
         fn formatWriteEnumField(format: Format, array: anytype) void {
@@ -3885,7 +3881,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         value: Enum,
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(Enum);
-        const max_len: usize = 1 +% meta.maxDeclLength(Enum);
+        const max_len: usize = 1 +% meta.maxNameLength(Enum);
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatWrite(.{ .value = @intFromEnum(format.value) }, array);
@@ -4000,6 +3996,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const Format = @This();
         const SubFormat = meta.Return(ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
+        const max_len: usize = (4 +% @typeName(Pointer).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.forward)
                 return array.define(@call(.always_inline, formatWriteBuf, .{
