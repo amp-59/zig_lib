@@ -3943,7 +3943,7 @@ const about = opaque {
     }
     fn writeBytes(print_array: *PrintArray, begin: u64, end: u64) void {
         if (pretty_bytes) {
-            print_array.writeFormat(fmt.bytes(end -% begin));
+            print_array.writeFormat(fmt.Bytes{ .value = end -% begin });
         } else {
             print_array.writeFormat(fmt.ud64(end -% begin));
             print_array.writeMany(" bytes");
@@ -3983,7 +3983,7 @@ const about = opaque {
         print_array.writeMany(", ");
     }
     fn writeAlignedBytesA(print_array: *PrintArray, s_aligned_bytes: u64) void {
-        print_array.writeFormat(fmt.bytes(s_aligned_bytes));
+        print_array.writeFormat(fmt.Bytes{ .value = s_aligned_bytes });
         print_array.writeMany(", ");
     }
     fn writeAlignedBytesB(print_array: *PrintArray, s_aligned_bytes: u64, t_aligned_bytes: u64) void {
@@ -4558,7 +4558,7 @@ const about = opaque {
             print_array.undefineAll();
             print_array.writeFormat(src_fmt);
             print_array.writeMany(filo_error_s ++ "attempted deallocation ");
-            print_array.writeFormat(fmt.bytes(d_aligned_bytes));
+            print_array.writeFormat(fmt.Bytes{ .value = d_aligned_bytes });
             print_array.writeMany(" below segment maximum\n\n");
             debug.write(print_array.readAll());
         }
@@ -4573,7 +4573,7 @@ const about = opaque {
             print_array.undefineAll();
             print_array.writeFormat(src_fmt);
             print_array.writeMany(filo_error_s ++ "attempted resize ");
-            print_array.writeFormat(fmt.bytes(d_aligned_bytes));
+            print_array.writeFormat(fmt.Bytes{ .value = d_aligned_bytes });
             print_array.writeMany(" below segment maximum\n\n");
             debug.write(print_array.readAll());
         }
@@ -4828,6 +4828,7 @@ fn GenericLinkedAllocatorGraphics(comptime Allocator: type) type {
         };
         pub fn graphPartitions(allocator: Allocator) void {
             var print_array: PrintArray = undefined;
+            var bytes: fmt.Bytes = undefined;
             print_array.undefineAll();
             if (allocator.lb_addr == 0) {
                 const len: u64 = tab.unaddressable_s.len +% 3 +% tab.div_s.len +% tab.end_s.len;
@@ -4836,7 +4837,7 @@ fn GenericLinkedAllocatorGraphics(comptime Allocator: type) type {
                     print_array.undefineAll();
                 }
                 print_array.writeMany(tab.unaddressable_s);
-                print_array.writeFormat(fmt.bytes(~@as(u48, 0)));
+                print_array.writeFormat(fmt.Bytes{ .value = ~@as(u48, 0) });
                 print_array.writeMany(tab.div_s);
                 print_array.writeMany(tab.end_s);
             } else {
@@ -4857,22 +4858,24 @@ fn GenericLinkedAllocatorGraphics(comptime Allocator: type) type {
                             const l_cell_addr: u64 = l_node_addr +% Node4.size;
                             const l_capacity: u64 = r_node_addr -% l_cell_addr;
                             if (allocator.ub_addr == l_node_addr) {
-                                const len: u64 = tab.hint_s.len +% fmt.bytes(l_capacity).formatLength() +% tab.div_s.len;
+                                bytes.value = l_capacity;
+                                const len: u64 = tab.hint_s.len +% bytes.formatLength() +% tab.div_s.len;
                                 if (print_array.avail() < len) {
                                     debug.write(print_array.readAll());
                                     print_array.undefineAll();
                                 }
                                 print_array.writeMany(tab.hint_s);
-                                print_array.writeFormat(fmt.bytes(l_capacity));
+                                print_array.writeFormat(bytes);
                                 print_array.writeMany(tab.div_s);
                             } else {
-                                const len: u64 = tab.free_s.len +% fmt.bytes(l_capacity).formatLength() +% tab.div_s.len;
+                                bytes.value = l_capacity;
+                                const len: u64 = tab.free_s.len +% bytes.formatLength() +% tab.div_s.len;
                                 if (print_array.avail() < len) {
                                     debug.write(print_array.readAll());
                                     print_array.undefineAll();
                                 }
                                 print_array.writeMany(tab.free_s);
-                                print_array.writeFormat(fmt.bytes(l_capacity));
+                                print_array.writeFormat(bytes);
                                 print_array.writeMany(tab.div_s);
                             }
                             l_node_addr = r_node_addr;
@@ -4881,13 +4884,14 @@ fn GenericLinkedAllocatorGraphics(comptime Allocator: type) type {
                             const r_node_addr: u64 = Node4.link(l_node_addr);
                             const l_cell_addr: u64 = l_node_addr +% Node4.size;
                             const l_capacity: u64 = r_node_addr -% l_cell_addr;
-                            const len: u64 = tab.allocation_s.len +% fmt.bytes(l_capacity).formatLength() +% tab.div_s.len;
+                            bytes.value = l_capacity;
+                            const len: u64 = tab.allocation_s.len +% bytes.formatLength() +% tab.div_s.len;
                             if (print_array.avail() < len) {
                                 debug.write(print_array.readAll());
                                 print_array.undefineAll();
                             }
                             print_array.writeMany(tab.allocation_s);
-                            print_array.writeFormat(fmt.bytes(l_capacity));
+                            print_array.writeFormat(bytes);
                             print_array.writeMany(tab.div_s);
                             l_node_addr = r_node_addr;
                         },
@@ -4903,13 +4907,15 @@ fn GenericLinkedAllocatorGraphics(comptime Allocator: type) type {
                                 break;
                             }
                             const l_capacity: u64 = r_node_addr -% l_cell_addr;
-                            const len: u64 = tab.unaddressable_s.len +% fmt.bytes(l_capacity).formatLength() +% tab.div_s.len;
+                            bytes.value = l_capacity;
+                            const len: u64 = tab.unaddressable_s.len +% bytes.formatLength() +% tab.div_s.len;
                             if (print_array.avail() < len) {
                                 debug.write(print_array.readAll());
                                 print_array.undefineAll();
                             }
                             print_array.writeMany(tab.unaddressable_s);
-                            print_array.writeFormat(fmt.bytes(l_capacity));
+                            bytes.value = l_capacity;
+                            print_array.writeFormat(bytes);
                             print_array.writeMany(tab.div_s);
                             l_node_addr = r_node_addr;
                         },
