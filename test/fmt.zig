@@ -189,7 +189,8 @@ fn testBytesFormat() !void {
         .{ "15.999EiB", ~@as(u64, 0) },
     }) |pair| {
         var buf: [4096]u8 = undefined;
-        try testing.expectEqualMany(u8, pair[0], buf[0..fmt.bytes(pair[1]).formatWriteBuf(&buf)]);
+        var ptr: [*]u8 = fmt.writeBytes(&buf, pair[1]);
+        try testing.expectEqualMany(u8, pair[0], fmt.slice(ptr, &buf));
     }
 }
 // There is currently only one implementation of intToString, the `fmt` one.
