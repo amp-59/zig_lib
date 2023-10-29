@@ -3148,11 +3148,10 @@ pub const about = struct {
         ptr += 2;
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = fmt.writeBytes(ptr, len);
+        ptr = fmt.writeBytes(ptr + 2, len);
         const fmt_len: usize = flags.formatWriteBuf(ptr + 2);
         if (fmt_len != 0) {
-            ptr += 2;
+            ptr[0..2].* = ", ".*;
             ptr += 2 +% fmt_len;
         }
         ptr[0] = '\n';
