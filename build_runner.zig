@@ -51,7 +51,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
     var thread_space: Builder.ThreadSpace = .{};
     var allocator: zl.build.Allocator = zl.build.Allocator.fromArena(
-        Builder.AddressSpace.arena(Builder.max_thread_count),
+        Builder.AddressSpace.arena(Builder.specification.options.max_thread_count),
     );
     if (args.len < 5) {
         zl.proc.exitError(error.MissingEnvironmentPaths, 2);
