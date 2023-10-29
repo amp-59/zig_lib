@@ -81,9 +81,9 @@ fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, re
 /// perf:           task-clock		75,690
 /// perf:           page-faults		3
 fn zigLibContainerFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    var array: zl.mem.StaticArray(u8, 4096) = undefined;
+    var array: zl.mem.array.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
-    array.writeAny(zl.mem.spec.reinterpret.fmt, .{
+    array.writeAny(zl.mem.array.spec.reinterpret.fmt, .{
         about,                            "futex1=@",
         zl.fmt.ux64(@intFromPtr(futex1)), ", word1=",
         zl.fmt.ud64(futex1.*),            ", max1=",
@@ -320,7 +320,13 @@ fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
     ptr[0] = '\n';
     zl.debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
 }
-fn zigLibOptimisedMessage3(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibOptimisedMessage3(
+    futex1: *u32,
+    futex2: *u32,
+    count1: u32,
+    count2: u32,
+    ret: u64,
+) void {
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
     buf[0..about.len].* = about.*;
