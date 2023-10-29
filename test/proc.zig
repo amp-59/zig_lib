@@ -18,7 +18,6 @@ pub const runtime_assertions: bool = true;
 pub const is_safe: bool = true;
 pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 
-pub const want_stack_traces: bool = true;
 pub const signal_handlers: debug.SignalHandlers = .{
     .SegmentationFault = true,
     .BusError = true,
@@ -122,7 +121,8 @@ pub fn testUpdateSignal() !void {
     };
     try proc.updateSignalAction(.{}, .SEGV, new_action, null);
 }
-pub fn main(_: [][*:0]u8, vars: [][*:0]u8, _: anytype) !void {
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    _ = args;
     if (builtin.strip_debug_info) {
         try testCloneAndFutex();
         try testFutexOnThreadSafeSet();
