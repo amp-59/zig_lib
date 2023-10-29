@@ -2,7 +2,6 @@ const bits = @import("./bits.zig");
 const meta = @import("./meta.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-
 pub inline fn sub64(arg1: u64, arg2: u64) u64 {
     return arg1 -% arg2;
 }
@@ -155,7 +154,6 @@ pub inline fn mulAddEqu16(arg1: *u16, arg2: u16, arg3: u16) void {
 pub inline fn mulAddEqu8(arg1: *u8, arg2: u8, arg3: u8) void {
     arg1.* = add8(mul8(arg1.*, arg2), arg3);
 }
-
 pub inline fn sigFigList(comptime T: type, comptime radix: u7) ?[]const T {
     switch (T) {
         u8 => switch (radix) {
@@ -609,5 +607,11 @@ pub const float = struct {
     }
     pub inline fn isNegativeInf(x: anytype) bool {
         return x == -inf(@TypeOf(x));
+    }
+    pub fn isNegative(comptime T: type, value: T) bool {
+        return @as(@Type(.{ .Int = .{
+            .signedness = .unsigned,
+            .bits = @typeInfo(T).Float.bits,
+        } }), @bitCast(value)) >> (@bitSizeOf(T) -% 1) != 0;
     }
 };
