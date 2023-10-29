@@ -365,7 +365,7 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
     const ret: isize = asm volatile ("syscall # mmap"
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys.Fn.mmap.sysno()),
+        : [_] "{rax}" (@intFromEnum(sys.Fn.mmap)),
           [_] "{rdi}" (addr),
           [_] "{rsi}" (len),
           [_] "{rdx}" (prot),
@@ -377,7 +377,7 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
     if (map_spec.errors.throw.len != 0) {
         builtin.throw(sys.ErrorCode, map_spec.errors.throw, ret) catch |map_error| {
             if (logging.Error) {
-                about.aboutAddrLenFlagsError(about.map_s, map_error, addr, len, flags);
+                about.aboutAddrLenFlagsError(about.map_s, @errorName(map_error), addr, len, flags);
             }
             return map_error;
         };
@@ -385,13 +385,16 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
     if (map_spec.errors.abort.len != 0) {
         builtin.throw(sys.ErrorCode, map_spec.errors.abort, ret) catch |map_error| {
             if (logging.Error) {
-                about.aboutAddrLenFlagsError(about.map_s, map_error, addr, len, flags);
+                about.aboutAddrLenFlagsError(about.map_s, @errorName(map_error), addr, len, flags);
             }
             proc.exitError(map_error, 2);
         };
     }
     if (logging.Acquire) {
         about.aboutAddrLenFlagsNotice(about.map_s, addr, len, flags);
+    }
+    if (map_spec.return_type != void) {
+        return @intCast(ret);
     }
 }
 pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.MemSync, addr: usize, len: usize) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
@@ -3152,10 +3155,10 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
-    pub fn aboutAddrLenFlagsError(about_s: fmt.AboutSrc, err: anyerror, addr: usize, len: usize, flags: sys.flags.MemMap) void {
+    pub fn aboutAddrLenFlagsError(about_s: fmt.AboutSrc, error_name: []const u8, addr: usize, len: usize, flags: sys.flags.MemMap) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
-        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, @errorName(err));
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += fmt.ux64(addr).formatWriteBuf(ptr);
