@@ -2297,7 +2297,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const args: [][*:0]u8 = group.sh.args;
             var maybe_task: ?Task = null;
             var cmd_args_idx: usize = 5;
-            var want_seed: bool = true;
+            var want_seed: bool = false;
             var want_list: bool = false;
             var want_perf: bool = false;
             var want_size: bool = false;
@@ -2310,10 +2310,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         continue :lo;
                     }
                 }
-                if (want_seed and mem.testEqualString("--seed", name)) {
+                if (!want_seed and mem.testEqualString("--seed", name)) {
                     cmd_args_idx +%= 1;
                     group.sh.seed = mem.terminate(args[cmd_args_idx], 0);
-                    want_seed = false;
+                    want_seed = true;
                     continue;
                 }
                 if (have_list and
