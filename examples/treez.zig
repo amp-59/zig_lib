@@ -86,6 +86,7 @@ const Status = packed struct {
     dir_count: zl.meta.maybe(count_dirs, u64) = 0,
     link_count: zl.meta.maybe(count_links, u64) = 0,
     max_depth: zl.meta.maybe(track_max_depth, u64) = 0,
+    size: zl.meta.maybe(sum_file_size, u64) = 0,
     errors: zl.meta.maybe(count_errors, u64) = 0,
 };
 fn done(status: *const volatile Status) bool {
@@ -100,6 +101,7 @@ const count_links: bool = true;
 const count_errors: bool = true;
 const compact_arrows: bool = true;
 const track_max_depth: bool = false;
+const sum_file_size: bool = false;
 const quit_on_error: bool = false;
 const print_in_second_thread: bool = true;
 
@@ -126,6 +128,7 @@ const about = .{
     .links_s = zl.fmt.about("links"),
     .depth_s = zl.fmt.about("depth"),
     .errors_s = zl.fmt.about("errors"),
+    .size_s = zl.fmt.about("size"),
 };
 
 // user config end
@@ -164,6 +167,11 @@ fn show(status: Status) void {
         array.writeFormat(zl.fmt.udh(status.errors));
         array.writeOne('\n');
     }
+    if (sum_file_size) {
+        array.writeMany(about.size_s);
+        array.writeFormat(zl.fmt.Bytes{ .value = status.size });
+        array.writeOne('\n');
+    }
     zl.file.write(.{ .errors = .{} }, 1, array.readAll());
 }
 noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *Array) void {
@@ -181,6 +189,7 @@ noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: 
         array.stream(many.len);
     }
     show(status.*);
+    @fence(.SeqCst);
     status.flag = 0;
     zl.proc.futexWake(.{ .errors = .{} }, @volatileCast(&status.flag), 1);
 }
@@ -246,6 +255,7 @@ fn writeAndWalk(
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
+    var st: zl.file.Status = zl.builtin.zero(zl.file.Status);
     while (list.at(index)) |entry| : (index +%= 1) {
         const basename: [:0]const u8 = entry.name();
         const last: bool = index == list.count -% 1;
@@ -265,6 +275,10 @@ fn writeAndWalk(
             .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
                 if (count_files) {
                     status.file_count +%= 1;
+                }
+                if (sum_file_size) {
+                    try zl.file.statusAt(.{}, .{}, dir.fd, basename, &st);
+                    status.size +%= st.size;
                 }
                 const arrow_s: [:0]const u8 = if (last) last_file_arrow_s else file_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(kind);
@@ -326,7 +340,7 @@ pub fn main(args: [][*:0]u8) !void {
                 status.errors +%= 1;
             };
             status.flag = 255;
-            zl.proc.futexWait(.{ .errors = .{} }, &status.flag, 255, &.{ .sec = 1 });
+            zl.proc.futexWait(.{ .errors = .{} }, &status.flag, 255, &.{ .sec = 86400 });
         } else {
             writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
                 status.errors +%= 1;
