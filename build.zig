@@ -266,7 +266,7 @@ pub fn buildMain(allocator: *zl.build.Allocator, toplevel: *Node) void {
     safety.flags.want_perf_events = true;
     safety.tasks.cmd.build.strip = false;
 
-    testGroupNew(allocator, toplevel.addGroup(allocator, "test", null));
+    testGroupNew(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
 
     const treez: *Node = toplevel.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
     const elfcmp: *Node = toplevel.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
