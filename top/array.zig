@@ -840,8 +840,10 @@ pub const reinterpret = opaque {
         if (child != u8) {
             @compileError("invalid destination type for format write: " ++ @typeName(child));
         }
-        if (@hasDecl(Format, "max_len")) {
-            if (builtin.is_fast or builtin.is_small) return Format.max_len;
+        if (@hasDecl(Format, "max_len") and (builtin.is_fast or builtin.is_small)) {
+            if (Format.max_len) |max_len| {
+                return max_len;
+            }
         }
         if (@hasDecl(Format, "readAll") and
             @hasDecl(Format, "len"))
