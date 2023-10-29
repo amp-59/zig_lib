@@ -273,7 +273,7 @@ pub fn panicNonScalarSentinelMismatch(
     if (!mem.testEqual(Child, expected, found)) {
         const Format = fmt.AnyFormat(.{}, Child);
         const type_name = @typeName(Child);
-        var buf: [type_name.len +% 256 +% (2 *% Format.max_len)]u8 = undefined;
+        var buf: [type_name.len +% 256 +% (2 *% Format.max_len.?)]u8 = undefined;
         buf[0..type_name.len].* = type_name.*;
         var ptr: [*]u8 = buf[type_name.len..];
         ptr[0..29].* = " sentinel mismatch: expected ".*;
