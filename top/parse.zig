@@ -290,24 +290,24 @@ pub fn readLEB128(comptime T: type, bytes: []const u8) !struct { T, u8 } {
     }
 }
 pub const noexcept = struct {
-    pub inline fn readLEB128(comptime T: type, bytes: []const u8) struct { T, u8 } {
+    pub fn readLEB128(comptime T: type, bytes: []const u8) struct { T, u8 } {
         @setRuntimeSafety(false);
         if (@typeInfo(T) == .Int) {
             if (@typeInfo(T).Int.signedness == .signed) {
                 if (T == isize) {
-                    return noexcept.signedLEB128(bytes.ptr);
+                    return @call(.always_inline, noexcept.signedLEB128, .{bytes.ptr});
                 }
-                const res = noexcept.signedLEB128(bytes.ptr);
-                return .{ if (@typeInfo(T) == .Int) @intCast(res[0]), res[1] };
+                const res = @call(.always_inline, noexcept.signedLEB128, .{bytes.ptr});
+                return .{ @intCast(res[0]), res[1] };
             } else {
                 if (T == usize) {
-                    return noexcept.unsignedLEB128(bytes.ptr);
+                    return @call(.always_inline, noexcept.unsignedLEB128, .{bytes.ptr});
                 }
-                const res = noexcept.unsignedLEB128(bytes.ptr);
+                const res = @call(.always_inline, noexcept.unsignedLEB128, .{bytes.ptr});
                 return .{ @intCast(res[0]), res[1] };
             }
         } else {
-            const res = noexcept.readLEB128(@typeInfo(T).Enum.tag_type, bytes);
+            const res = @call(.always_inline, noexcept.readLEB128, .{ @typeInfo(T).Enum.tag_type, bytes });
             return .{ @enumFromInt(res[0]), res[1] };
         }
     }
