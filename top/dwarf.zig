@@ -676,6 +676,7 @@ pub const Die = extern struct {
         return null;
     }
     fn offset(info_entry: *const Die, attr_id: Attr) ?u64 {
+        @setRuntimeSafety(is_safe);
         if (info_entry.get(attr_id)) |form_val| {
             return form_val.getUInt(u64);
         }
@@ -700,6 +701,7 @@ pub const FormValue = union(enum) {
     RangeListOffset: u64,
     data16: [16]u8,
     pub fn getString(val: FormValue, dwarf_info: *DwarfInfo) []const u8 {
+        @setRuntimeSafety(is_safe);
         switch (val) {
             .String => |s| return s,
             .StrPtr => |off| return dwarf_info.getString(off),
@@ -708,6 +710,7 @@ pub const FormValue = union(enum) {
         }
     }
     fn getUInt(val: FormValue, comptime U: type) U {
+        @setRuntimeSafety(is_safe);
         switch (val) {
             .Const => {
                 return @as(U, @intCast(val.Const.asUnsignedLe()));
@@ -719,6 +722,7 @@ pub const FormValue = union(enum) {
         }
     }
     fn getData16(val: FormValue) ![16]u8 {
+        @setRuntimeSafety(is_safe);
         switch (val) {
             .data16 => |d| return d,
             else => proc.exitError(error.InvalidEncoding, 2),
@@ -729,12 +733,14 @@ const Constant = struct {
     payload: u64,
     signed: bool,
     fn asUnsignedLe(val: Constant) u64 {
+        @setRuntimeSafety(is_safe);
         if (val.signed) {
             proc.exitError(error.InvalidEncoding, 2);
         }
         return val.payload;
     }
     fn asSignedLe(val: Constant) i64 {
+        @setRuntimeSafety(is_safe);
         if (val.signed) {
             return @as(i64, @bitCast(val.payload));
         }
@@ -1163,7 +1169,7 @@ pub const DwarfInfo = extern struct {
             else => proc.exitError(error.InvalidEncoding, 2),
         }
     }
-    pub fn getAttrString(dwarf_info: *DwarfInfo, unit: *const Unit, form_val: *const FormValue, opt_str: ?[]const u8) []const u8 {
+    pub fn getAttrString(dwarf_info: *DwarfInfo, unit: *const Unit, form_val: *const FormValue, str: []const u8) []const u8 {
         @setRuntimeSafety(is_safe);
         switch (form_val.*) {
             .String => |value| {
@@ -1176,22 +1182,21 @@ pub const DwarfInfo = extern struct {
                 if (dwarf_info.impl.str_offsets_len == 0) {
                     proc.exitError(error.InvalidEncoding, 2);
                 }
-                const str_offsets: []u8 = dwarf_info.impl.str_offsets[0..dwarf_info.impl.str_offsets_len];
                 if (unit.str_offsets_base == 0) {
                     proc.exitError(error.InvalidEncoding, 2);
                 }
                 if (unit.word_size == .qword) {
                     const off: usize = unit.str_offsets_base +% (8 *% index);
-                    if (off +% 8 > str_offsets.len) {
+                    if (off +% 8 > dwarf_info.impl.str_offsets_len) {
                         proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @as(*align(1) u64, @ptrCast(dwarf_info.impl.str_offsets + off)).*);
+                    return getStringGeneric(str, @as(*align(1) u64, @ptrCast(dwarf_info.impl.str_offsets + off)).*);
                 } else {
                     const off: usize = unit.str_offsets_base +% (4 *% index);
-                    if (off +% 4 > str_offsets.len) {
+                    if (off +% 4 > dwarf_info.impl.str_offsets_len) {
                         proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @as(*align(1) u32, @ptrCast(dwarf_info.impl.str_offsets + off)).*);
+                    return getStringGeneric(str, @as(*align(1) u32, @ptrCast(dwarf_info.impl.str_offsets + off)).*);
                 }
             },
             .LineStrPtr => |offset| {
@@ -1496,18 +1501,12 @@ pub const DwarfInfo = extern struct {
         proc.exitError(error.InvalidEncoding, 2);
     }
 };
-fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
+fn getStringGeneric(str: []const u8, offset: u64) [:0]const u8 {
     @setRuntimeSafety(is_safe);
-    const str: []const u8 = opt_str orelse {
-        proc.exitError(error.InvalidEncoding, 2);
-    };
     if (offset > str.len) {
         proc.exitError(error.InvalidEncoding, 2);
     }
-    const last = mem.indexOfFirstEqualOne(u8, 0, str[offset..]) orelse {
-        proc.exitError(error.InvalidEncoding, 2);
-    };
-    return str[offset .. offset +% last :0];
+    return mem.terminate(str[offset..].ptr, 0);
 }
 fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) struct { FormValue, u64 } {
     @setRuntimeSafety(is_safe);
@@ -1663,10 +1662,12 @@ const LineNumberProgram = struct {
         is_end_sequence: bool = false,
     };
     fn reset(lnp: *LineNumberProgram) void {
+        @setRuntimeSafety(is_safe);
         lnp.prev = null;
         lnp.state = .{ .is_stmt = lnp.is_stmt };
     }
     fn init(is_stmt: bool) LineNumberProgram {
+        @setRuntimeSafety(is_safe);
         return .{
             .is_stmt = is_stmt,
             .prev = null,
@@ -1674,6 +1675,7 @@ const LineNumberProgram = struct {
         };
     }
     fn checkLineMatch(lnp: *LineNumberProgram, allocator: *Allocator, unit: *const Unit, addr: usize) ?trace.SourceLocation {
+        @setRuntimeSafety(is_safe);
         if (lnp.prev) |prev| {
             if (addr >= prev.addr and
                 addr <= lnp.state.addr)
