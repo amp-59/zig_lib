@@ -1965,7 +1965,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (have_lazy and keepGoing(node) and
                 node.flags.is_dynamic_extension)
             {
-                node.sh.dl.load(dest_pathname).autoLoad(node.sh.fp);
+                node.sh.dl.loadEntryAddress(dest_pathname)(node.sh.fp);
             }
             return status(results);
         }
@@ -2061,13 +2061,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             arena_index: AddressSpace.Index,
         ) void {
             @setRuntimeSafety(builtin.is_safe);
-            if (have_lazy and max_thread_count != 0 and
-                defined(node.sh.fp.proc.executeCommandClone))
-            {
-                var thread_index: ThreadSpace.Index = 0;
-                while (thread_index != max_thread_count) : (thread_index +%= 1) {
-                    if (mem.testAcquire(ThreadSpace, thread_space, thread_index)) {
-                        return @call(.auto, node.sh.fp.proc.executeCommandClone, .{
+            if (have_lazy and max_thread_count != 0) {
+                if (node.sh.fp.proc.executeCommandClone) |executeCommandClone| {
+                    var thread_index: ThreadSpace.Index = 0;
+                    while (thread_index != max_thread_count) : (thread_index +%= 1) {
+                        if (!mem.testAcquire(ThreadSpace, thread_space, thread_index)) {
+                            continue;
+                        }
+                        return @call(.auto, executeCommandClone, .{
                             address_space, thread_space, node, task, thread_index, executeCommandThreaded, ThreadSpace.low(thread_index), stack_aligned_bytes,
                         });
                     }
@@ -2498,11 +2499,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (have_size and
                     node.flags.want_binary_analysis)
                 {
-                    if (cached.mode.kind == .regular and cached.size != 0) {
-                        node.extra.info_after = node.sh.dl.load(cached_pathname);
-                    }
-                    if (output.mode.kind == .regular and output.size != 0) {
-                        node.extra.info_before = node.sh.dl.load(output_pathname);
+                    if (defined(node.sh.fp.about.elf.load)) {
+                        if (cached.mode.kind == .regular and cached.size != 0) {
+                            node.extra.info_after = node.sh.fp.about.elf.load(node.sh.dl, cached_pathname);
+                        }
+                        if (output.mode.kind == .regular and output.size != 0) {
+                            node.extra.info_before = node.sh.fp.about.elf.load(node.sh.dl, output_pathname);
+                        }
                     }
                 }
                 file.unlink(unlink(), output_pathname);
@@ -2511,7 +2514,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.flags.want_binary_analysis)
             {
                 if (cached.mode.kind == .regular and cached.size != 0) {
-                    node.extra.info_after = node.sh.dl.load(cached_pathname);
+                    if (defined(node.sh.fp.about.elf.load)) {
+                        node.extra.info_after = node.sh.fp.about.elf.load(node.sh.dl, output_pathname);
+                    }
                 }
             }
         }
@@ -2900,23 +2905,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return stats.status == builder_spec.options.system_expected_status;
         }
         pub const FunctionPointers = struct {
-            proc: struct {
-                executeCommandClone: *const fn (
-                    // Call parameters:
-                    address_space: *AddressSpace,
-                    thread_space: *ThreadSpace,
-                    node: *Node,
-                    task: Task,
-                    arena_index: AddressSpace.Index,
-
-                    // Callback
-                    executeCommandThreaded: *const @TypeOf(executeCommandThreaded),
-
-                    // On Stack:
-                    addr: usize,
-                    len: usize,
-                ) void,
-            },
             build: struct {
                 formatWriteBuf: *const fn (
                     p_0: *tasks.BuildCommand,
@@ -2989,6 +2977,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_2: [][*:0]u8,
                 ) void,
             },
+            proc: struct {
+                executeCommandClone: ?*const fn (
+                    // Call parameters:
+                    address_space: *AddressSpace,
+                    thread_space: *ThreadSpace,
+                    node: *Node,
+                    task: Task,
+                    arena_index: AddressSpace.Index,
+                    // Callback
+                    executeCommandThreaded: *const @TypeOf(executeCommandThreaded),
+                    // On Stack:
+                    addr: usize,
+                    len: usize,
+                ) void = null,
+            },
             about: struct {
                 perf: struct {
                     openFds: *const @TypeOf(PerfEvents.openFds),
@@ -2996,6 +2999,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     writeResults: *const @TypeOf(PerfEvents.writeResults),
                 },
                 elf: struct {
+                    load: *const @TypeOf(DynamicLoader.load),
                     writeBinary: *const @TypeOf(DynamicLoader.compare.writeBinary),
                     writeBinaryDifference: *const @TypeOf(DynamicLoader.compare.writeBinaryDifference),
                 },
