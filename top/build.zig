@@ -574,6 +574,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .image_base = 65536,
         };
         const extn_flags = .{
+            .is_special = true,
             .is_dynamic_extension = true,
             .want_builder_decl = true,
             .want_build_config = true,
