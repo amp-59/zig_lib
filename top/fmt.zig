@@ -7,7 +7,6 @@ const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
-
 pub const AboutSrc = blk: {
     var len: usize = 0;
     if (builtin.message_style) |style| {
@@ -415,7 +414,6 @@ pub const writeIbsize: fn ([*]u8, isize) [*]u8 = Ibsize.writeInt;
 pub const writeIosize: fn ([*]u8, isize) [*]u8 = Iosize.writeInt;
 pub const writeIdsize: fn ([*]u8, isize) [*]u8 = Idsize.writeInt;
 pub const writeIxsize: fn ([*]u8, isize) [*]u8 = Ixsize.writeInt;
-
 const lit_char: [256][*:0]const u8 = .{
     "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07",
     "\\x08", "\\t",   "\\n",   "\\x0b", "\\x0c", "\\r",   "\\x0e", "\\x0f",
@@ -557,7 +555,7 @@ pub const FormatBuf = struct {
     format: *const anyopaque,
 };
 pub const PolynomialFormatSpec = struct {
-    bits: u16,
+    bits: comptime_int,
     signedness: builtin.Signedness,
     radix: comptime_int,
     width: Width,
@@ -715,22 +713,6 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         }
     };
     return T;
-}
-pub fn uo(value: anytype) GenericPolynomialFormat(.{
-    .bits = blk: {
-        const T: type = @TypeOf(value);
-        if (T == comptime_int) {
-            debug.assert(value > 0);
-            break :blk meta.alignCX(value);
-        } else {
-            break :blk meta.alignSizeAW(T);
-        }
-    },
-    .radix = 8,
-    .signedness = .unsigned,
-    .width = .min,
-}) {
-    return .{ .value = value };
 }
 pub fn PathFormat(comptime Format: type) type {
     const T = struct {
@@ -991,7 +973,6 @@ pub const Bytes = struct {
     pub const max_len: usize =
         MajorIntFormat.max_len +%
         MinorIntFormat.max_len +% 3; // Unit
-
     pub fn formatWrite(format: Format, array: anytype) void {
         @setRuntimeSafety(builtin.is_safe);
         const major: MajorIntFormat = .{ .value = @truncate(format.value.integer.count) };
@@ -1108,7 +1089,6 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             fmt_spec.no_style.len +%
             NewIntFormat.max_len +%
             @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len);
-
         pub fn formatWriteDelta(format: Format, array: anytype) void {
             return array.define(format.formatWriteDeltaBuf(@ptrCast(array.referOneUndefined())));
         }
@@ -1691,7 +1671,6 @@ pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: t
 }
 pub fn isValidId(values: []const u8) bool {
     @setRuntimeSafety(builtin.is_safe);
-
     if (values.len == 0) {
         return false;
     }
@@ -1987,7 +1966,6 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                     .bits = bit_size_of,
                 } });
                 var value: Int = format.value;
-
                 while (true) {
                     const uvalue: Abs = @bitCast(value);
                     const byte: u8 = @truncate(uvalue);
@@ -2398,7 +2376,6 @@ pub fn identifier(name: []const u8) IdentifierFormat {
 }
 pub const lazyIdentifier = @as(*const fn ([]const u8) LazyIdentifierFormat, @ptrCast(&identifier));
 pub const stringLiteral = @as(*const fn ([]const u8) StringLiteralFormat, @ptrCast(&identifier));
-
 pub fn sourceLocation(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
 }
@@ -2495,7 +2472,8 @@ pub const RenderSpec = struct {
     omit_trailing_comma: ?bool = null,
     omit_type_names: bool = false,
     enum_to_int: bool = false,
-    infer_type_names: bool = false,
+    ignore_padding_fields: bool = true,
+    infer_type_names: bool = true,
     infer_type_names_recursively: bool = false,
     char_literal_formatter: type = Esc,
     inline_field_types: bool = true,
@@ -3326,6 +3304,13 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 array.writeMany("{ ");
                 inline while (field_idx != fields.len) : (field_idx +%= 1) {
                     const field: builtin.Type.StructField = fields[field_idx];
+                    if (spec.ignore_padding_fields) {
+                        if (field.name[0] == 'z' and
+                            field.name[1] == 'b')
+                        {
+                            continue;
+                        }
+                    }
                     const field_name_format: IdentifierFormat = .{ .value = field.name };
                     const field_value: field.type = @field(format.value, field.name);
                     const field_type_info: builtin.Type = @typeInfo(field.type);
@@ -3414,6 +3399,13 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 len +%= 2;
                 inline while (field_idx != fields.len) : (field_idx +%= 1) {
                     const field: builtin.Type.StructField = fields[field_idx];
+                    if (spec.ignore_padding_fields) {
+                        if (field.name[0] == 'z' and
+                            field.name[1] == 'b')
+                        {
+                            continue;
+                        }
+                    }
                     const field_name_format: IdentifierFormat = .{ .value = field.name };
                     const field_value: field.type = @field(format.value, field.name);
                     const field_type_info: builtin.Type = @typeInfo(field.type);
@@ -4307,7 +4299,6 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 return array.define(@call(.always_inline, formatWriteBuf, .{
                     format, array.referAllUndefined().ptr,
                 }));
-
             if (spec.address_view) {
                 const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
                 writeFormat(array, addr_view_format);
@@ -4392,11 +4383,11 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         const type_info: builtin.Type = @typeInfo(Pointer);
         const child: type = type_info.Pointer.child;
         pub fn formatWrite(format: Format, array: anytype) void {
-            if (spec.forward)
+            if (spec.forward) {
                 return array.define(@call(.always_inline, formatWriteBuf, .{
                     format, array.referAllUndefined().ptr,
                 }));
-
+            }
             if (type_info.Pointer.sentinel) |sentinel_ptr| {
                 const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
                 var len: usize = 0;
@@ -4443,7 +4434,6 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
     return T;
 }
 pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
-    comptime var odr: ?meta.Generic = null;
     const T = struct {
         value: Optional,
         const Format = @This();
@@ -4453,13 +4443,10 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const max_len: usize = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
         pub fn formatWrite(format: anytype, array: anytype) void {
-            if (spec.forward)
+            if (spec.forward) {
                 return array.define(@call(.always_inline, formatWriteBuf, .{
                     format, array.referAllUndefined().ptr,
                 }));
-
-            if (odr) |prev| {
-                return prev.cast()(format, array);
             }
             if (!render_readable) {
                 array.writeCount(4, "@as(".*);
@@ -4624,7 +4611,6 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(ErrorUnion);
         const PayloadFormat: type = AnyFormat(spec, type_info.ErrorUnion.payload);
-
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             var len: usize = 0;
             if (format.value) |value| {
@@ -4643,7 +4629,6 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
                 return array.define(@call(.always_inline, formatWriteBuf, .{
                     format, array.referAllUndefined().ptr,
                 }));
-
             if (format.value) |value| {
                 const payload_format: PayloadFormat = .{ .value = value };
                 writeFormat(array, payload_format);
