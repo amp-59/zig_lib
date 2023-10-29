@@ -1,6 +1,6 @@
 const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
-const version_2: bool = true;
+const version_2: bool = false;
 const safety = if (version_2)
     @import("../top/safety2.zig")
 else
@@ -241,6 +241,13 @@ fn causeCastToErrorFromInvalid(comptime Error: type) void {
         safety.panicExtra(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress());
     }
 }
+fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
+    if (version_2) {
+        safety.panic(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 10.0, @errorReturnTrace(), @returnAddress());
+    } else {
+        safety.panicExtra(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 16384.28, @errorReturnTrace(), @returnAddress());
+    }
+}
 pub fn main() void {
     causeAccessInactiveField();
     causeOutOfBounds();
@@ -253,7 +260,8 @@ pub fn main() void {
     causeNonScalarSentinelMismatch(struct { a: u64, b: u32 }, .{ .a = 1, .b = 2 }, .{ .a = 3, .b = 4 });
     causeCastToErrorFromInvalid(error{ A, B, C, D, E });
     causeCastToEnumFromInvalid(enum(u16) { A, B, C, D, E = 32768 });
-    inline for (.{ usize, isize }) |T| {
+    causeCastToIntFromInvalid(f16, u16);
+    inline for (.{ u32, i32 }) |T| {
         causeCastToMisalignedPointer(T);
         causeAddWithOverflow(T);
         causeSubWithOverflow(T);
