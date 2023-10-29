@@ -950,13 +950,9 @@ pub const SourceLocationFormat = struct {
         return .{ .value = value, .return_address = ret_addr orelse @returnAddress() };
     }
 };
-pub const Bytes = struct {
-    value: Value,
+pub const Bytes = packed struct {
+    value: usize,
     const Format: type = @This();
-    const Value = struct {
-        integer: mem.Bytes,
-        remainder: usize,
-    };
     const MajorIntFormat = GenericPolynomialFormat(.{
         .bits = 16,
         .signedness = .unsigned,
@@ -973,72 +969,24 @@ pub const Bytes = struct {
     pub const max_len: usize =
         MajorIntFormat.max_len +%
         MinorIntFormat.max_len +% 3; // Unit
-    pub fn formatWrite(format: Format, array: anytype) void {
-        @setRuntimeSafety(builtin.is_safe);
-        const major: MajorIntFormat = .{ .value = @truncate(format.value.integer.count) };
-        const minor: MinorIntFormat = .{ .value = @truncate((format.value.remainder *% 1000) / 1024) };
-        if (format.value.remainder != 0) {
-            array.writeFormat(major);
-            array.writeOne('.');
-            array.writeFormat(minor);
-        } else {
-            array.writeFormat(major);
-        }
-        array.writeMany(@tagName(format.value.integer.unit));
+
+    pub inline fn formatWrite(format: Format, array: anytype) void {
+        return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
     }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        @setRuntimeSafety(builtin.is_safe);
-        const major: MajorIntFormat = .{ .value = @truncate(format.value.integer.count) };
-        const minor: MinorIntFormat = .{ .value = @truncate((format.value.remainder *% 1000) / 1024) };
-        var len: usize = major.formatWriteBuf(buf);
-        if (format.value.remainder != 0) {
-            buf[len] = '.';
-            len +%= 1;
-            len +%= minor.formatWriteBuf(buf + len);
-        }
-        return len +% strcpy(buf + len, @tagName(format.value.integer.unit));
+    pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        return strlen(writeBytes(buf, format.value), buf);
     }
     pub fn formatLength(format: Format) usize {
-        @setRuntimeSafety(builtin.is_safe);
-        const major: MajorIntFormat = .{ .value = @truncate(format.value.integer.count) };
-        const minor: MinorIntFormat = .{ .value = @truncate((format.value.remainder *% 1000) / 1024) };
-        var len: usize = 0;
-        if (format.value.remainder != 0) {
-            len +%= major.formatLength();
-            len +%= 1;
-            len +%= minor.formatLength();
-        } else {
-            len +%= major.formatLength();
+        const int: mem.Bytes, const rem: u16 = bytes(format.value);
+        var len: usize = Bytes.MajorIntFormat.formatLength(.{ .value = @truncate(int.count) });
+        if (rem != 0) {
+            len +%= 1 +% Bytes.MinorIntFormat.formatLength(.{ .value = @truncate((rem *% 1000) / 1024) });
         }
-        len +%= @tagName(format.value.integer.unit).len;
-        return len;
+        return len +% @tagName(int.unit).len;
     }
 };
-pub fn bytes(count: usize) Bytes {
+pub fn bytes(count: usize) struct { mem.Bytes, u16 } {
     const max_idx: comptime_int = Bytes.units.len -% 1;
-    @setRuntimeSafety(false);
-    var ret: Bytes.Value = .{
-        .integer = .{ .count = 0, .unit = .B },
-        .remainder = 0,
-    };
-    var idx: usize = 0;
-    while (idx != Bytes.units.len) : (idx +%= 1) {
-        ret.integer.unit = Bytes.units[idx];
-        var val: usize = count & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
-        ret.integer.count = val >> @truncate(@intFromEnum(Bytes.units[idx]));
-        if (ret.integer.count != 0) {
-            idx = @min(idx +% 1, max_idx);
-            val = (count -% val) & (mem.Bytes.mask << @truncate(@intFromEnum(Bytes.units[idx])));
-            val >>= @truncate(@intFromEnum(Bytes.units[idx]));
-            ret.remainder = val;
-            break;
-        }
-    }
-    return .{ .value = ret };
-}
-pub fn writeBytes(buf: [*]u8, count: usize) [*]u8 {
-    const max_idx: comptime_int = Bytes.units.len -% 1;
-    @setRuntimeSafety(false);
     var int: mem.Bytes = .{ .count = 0, .unit = .B };
     var rem: u16 = 0;
     var idx: usize = 0;
@@ -1054,6 +1002,11 @@ pub fn writeBytes(buf: [*]u8, count: usize) [*]u8 {
             break;
         }
     }
+    return .{ int, rem };
+}
+pub fn writeBytes(buf: [*]u8, count: usize) [*]u8 {
+    @setRuntimeSafety(false);
+    const int: mem.Bytes, const rem: u16 = bytes(count);
     var ptr: [*]u8 = Bytes.MajorIntFormat.writeInt(buf, @truncate(int.count));
     if (rem != 0) {
         ptr[0] = '.';
@@ -1188,47 +1141,45 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         }
         pub fn formatWriteBufFull(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
-            const old_fmt: Bytes = bytes(format.old_value);
-            const new_fmt: Bytes = bytes(format.new_value);
-            var ptr: [*]u8 = buf + old_fmt.formatWriteBuf(buf);
+            var ptr: [*]u8 = writeBytes(buf, format.old_value);
             if (format.old_value != format.new_value) {
                 if (format.new_value > format.old_value) {
-                    ptr = writeStyledChange(ptr, bytes(format.new_value -% format.old_value), inc_s);
+                    ptr = writeStyledChange(ptr, format.new_value -% format.old_value, inc_s);
                 } else {
-                    ptr = writeStyledChange(ptr, bytes(format.old_value -% format.new_value), dec_s);
+                    ptr = writeStyledChange(ptr, format.old_value -% format.new_value, dec_s);
                 }
                 ptr[0..4].* = " => ".*;
                 ptr += 4;
-                ptr += new_fmt.formatWriteBuf(ptr);
+                ptr = writeBytes(ptr, format.new_value);
             }
             return strlen(ptr, buf);
         }
         pub fn formatLengthFull(format: Format) usize {
-            const old_fmt: Bytes = bytes(format.old_value);
-            const new_fmt: Bytes = bytes(format.new_value);
+            const old_fmt: Bytes = @bitCast(format.old_value);
+            const new_fmt: Bytes = @bitCast(format.new_value);
             var len: usize = old_fmt.formatLength();
             if (format.old_value != format.new_value) {
                 if (format.new_value > format.old_value) {
-                    len +%= lengthStyledChange(bytes(format.new_value -% format.old_value), inc_s);
+                    len +%= lengthStyledChange(@bitCast(format.new_value -% format.old_value), inc_s);
                 } else {
-                    len +%= lengthStyledChange(bytes(format.old_value -% format.new_value), dec_s);
+                    len +%= lengthStyledChange(@bitCast(format.old_value -% format.new_value), dec_s);
                 }
                 len +%= 4 +% new_fmt.formatLength();
             }
             return len;
         }
-        fn writeStyledChange(buf: [*]u8, del_fmt: Bytes, style_s: []const u8) [*]u8 {
+        fn writeStyledChange(buf: [*]u8, count: usize, style_s: []const u8) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             buf[0] = '(';
             var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
-            ptr += del_fmt.formatWriteBuf(ptr);
+            ptr = writeBytes(ptr, count);
             ptr = strcpyEqu(ptr, no_s);
             ptr[0] = ')';
             ptr += 1;
             return ptr;
         }
-        fn lengthStyledChange(del_fmt: Bytes, style_s: []const u8) usize {
-            return 2 +% style_s.len +% del_fmt.formatLength() +% no_s.len;
+        fn lengthStyledChange(count: Bytes, style_s: []const u8) usize {
+            return 2 +% style_s.len +% count.formatLength() +% no_s.len;
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
@@ -1236,9 +1187,9 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                 return format.formatWriteBufFull(buf);
             } else {
                 if (format.old_value == 0) {
-                    return strlen(writeStyledChange(buf, bytes(format.new_value), fmt_spec.inc_style), buf);
+                    return strlen(writeStyledChange(buf, format.new_value, fmt_spec.inc_style), buf);
                 } else if (format.new_value == 0) {
-                    return strlen(writeStyledChange(buf, bytes(format.old_value), fmt_spec.dec_style), buf);
+                    return strlen(writeStyledChange(buf, format.old_value, fmt_spec.dec_style), buf);
                 } else {
                     return format.formatWriteBufFull(buf);
                 }
@@ -1250,9 +1201,9 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                 return format.formatWriteLengthFull();
             } else {
                 if (format.old_value == 0) {
-                    return lengthStyledChange(bytes(format.new_value), fmt_spec.inc_style);
+                    return lengthStyledChange(@bitCast(format.new_value), fmt_spec.inc_style);
                 } else if (format.new_value == 0) {
-                    return lengthStyledChange(bytes(format.old_value), fmt_spec.dec_style);
+                    return lengthStyledChange(@bitCast(format.old_value), fmt_spec.dec_style);
                 } else {
                     return format.formatLengthFull();
                 }
