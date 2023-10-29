@@ -396,7 +396,7 @@ pub const BuilderSpec = struct {
     };
 };
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
-    comptime var have_run: bool = false;
+    comptime var have_run: bool = builder_spec.options.add_run_task_to_executables;
     comptime var have_fetch: bool = false;
     comptime var have_format: bool = false;
     comptime var have_archive: bool = false;
@@ -569,7 +569,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .reference_trace = true,
             .single_threaded = true,
             .function_sections = false,
-            .strip = false,
+            .strip = true,
             .compiler_rt = false,
             .image_base = 65536,
         };
@@ -693,6 +693,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// Compile command information for this node. Can be a pointer to any
                 /// command struct.
                 cmd: tasks.Command,
+            };
+            const DirFds = struct {
+                build_root: usize,
+                output_root: usize,
+                cache_root: usize,
+                config_root: usize,
             };
             pub const Depn = packed struct(usize) {
                 /// The node holding this dependency will block on this task ...
@@ -825,12 +831,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub const Wait = struct {
                 total: usize = 0,
                 tick: usize = 0,
-            };
-            pub const DirFds = struct {
-                build_root: usize,
-                cache_root: usize,
-                config_root: usize,
-                output_root: usize,
             };
             pub const Results = struct {
                 server: u8,
@@ -986,8 +986,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 fs.* = .{
                     .path_idx = @intCast(list.len),
                     .key = .{ .tag = tag },
-                    .st = @ptrFromInt(allocator.allocateRaw(144, 8)),
+                    .st = @ptrFromInt(8),
                 };
+                if (!fs.key.flags.is_cached) {
+                    fs.st = @ptrFromInt(allocator.allocateRaw(144, 8));
+                }
                 return @ptrFromInt(list.add(allocator, .{ .tag = .paths }));
             }
             pub fn addPathname(node: *Node, allocator: *Allocator, tag: types.File.Tag, pathname: []const u8) *types.Path {
@@ -1468,11 +1471,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn createConfigRoot(allocator: *Allocator, node: *Node, pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
-            const fd: usize = try meta.wrap(file.createAt(create(), create_truncate_options, node.configRootFd(), pathname, file.mode.regular));
+            const fd: usize = file.createAt(create(), create_truncate_options, node.configRootFd(), pathname, file.mode.regular);
             const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(65536, 1));
             const len: usize = node.formatWriteConfigRoot(buf);
-            try meta.wrap(file.write(write(), fd, buf[0..len]));
-            try meta.wrap(file.close(close(), fd));
+            file.write(write(), fd, buf[0..len]);
+            file.close(close(), fd);
             @memset(buf[0..len], 0);
             allocator.restore(@intFromPtr(buf));
             node.flags.have_config_root = true;
@@ -1496,8 +1499,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         inline fn shallowCacheCheck(file_stats: *Node.FileStats, dest_pathname: [:0]const u8, root_pathname: [:0]const u8) u8 {
             @setRuntimeSafety(builtin.is_safe);
-            try meta.wrap(file.statusAt(stat(), .{}, file.cwd, dest_pathname, &file_stats.input));
-            try meta.wrap(file.statusAt(stat(), .{}, file.cwd, root_pathname, &file_stats.output));
+            file.statusAt(stat(), .{}, file.cwd, dest_pathname, &file_stats.input);
+            file.statusAt(stat(), .{}, file.cwd, root_pathname, &file_stats.output);
             return if (file_stats.input.mtime.sec > file_stats.output.mtime.sec)
                 builder_spec.options.compiler_expected_status
             else
@@ -1509,9 +1512,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return true;
             }
             mem.zero(file.Status, st1);
-            try meta.wrap(file.statusAt(stat(), .{}, file.cwd, pathname1, st1));
+            file.statusAt(stat(), .{}, file.cwd, pathname1, st1);
             mem.zero(file.Status, st2);
-            try meta.wrap(file.statusAt(stat(), .{}, file.cwd, pathname2, st2));
+            file.statusAt(stat(), .{}, file.cwd, pathname2, st2);
             return (st1.mode.kind != .unknown and st2.mode.kind != .unknown) and
                 ((st1.dev == st2.dev) and (st1.ino == st2.ino));
         }
@@ -1646,7 +1649,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 !sameFile(&st[0], node.groupNode().buildRoot(), &st[1], node.buildRoot()))
             {
                 const dir_fds: *Node.DirFds = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node.DirFds), @alignOf(Node.DirFds)));
-                dir_fds.build_root = try meta.wrap(file.openAt(open(), dir_options, file.cwd, node.buildRoot()));
+                dir_fds.build_root = file.openAt(open(), dir_options, file.cwd, node.buildRoot());
                 for ([4][:0]const u8{
                     builder_spec.options.cache_dir,
                     builder_spec.options.output_dir,
@@ -1654,9 +1657,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     builder_spec.options.stat_dir,
                 }) |name| {
                     mem.zero(file.Status, &st[0]);
-                    try meta.wrap(file.statusAt(stat(), .{}, dir_fds.build_root, name, &st[0]));
+                    file.statusAt(stat(), .{}, dir_fds.build_root, name, &st[0]);
                     if (st[0].mode.kind == .unknown) {
-                        try meta.wrap(file.makeDirAt(mkdir(), dir_fds.build_root, name, file.mode.directory));
+                        file.makeDirAt(mkdir(), dir_fds.build_root, name, file.mode.directory);
                     }
                 }
                 dir_fds.output_root = try meta.wrap(file.openAt(
@@ -1671,11 +1674,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     builder_spec.options.aux_out_dir,
                 }) |name| {
                     mem.zero(file.Status, &st[0]);
-                    try meta.wrap(file.statusAt(stat(), .{}, dir_fds.output_root, name, &st[0]));
+                    file.statusAt(stat(), .{}, dir_fds.output_root, name, &st[0]);
                     if (st[0].mode.kind == .unknown) {
-                        try meta.wrap(file.makeDirAt(mkdir(), dir_fds.output_root, name, file.mode.directory));
+                        file.makeDirAt(mkdir(), dir_fds.output_root, name, file.mode.directory);
                     }
                 }
+
                 dir_fds.cache_root = try meta.wrap(file.openAt(
                     open(),
                     dir_options,
@@ -1940,7 +1944,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builtin.is_safe);
             const results: *Node.Results = node.extra.results.?;
             const args: [][*:0]u8 = taskArgs(allocator, node, .run_args);
-            try meta.wrap(system(node, results, mem.terminate(args[0], 0), args, node.sh.vars));
+            system(node, results, mem.terminate(args[0], 0), args, node.sh.vars);
             return status(results);
         }
         inline fn executeBuildCommand(allocator: *Allocator, node: *Node) bool {
@@ -1950,9 +1954,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             results.server = builder_spec.options.compiler_expected_status;
             if (results.server == builder_spec.options.compiler_expected_status) {
                 if (buildTaskArgs(allocator, node)) |args| {
-                    const in: file.Pipe = try meta.wrap(file.makePipe(pipe(), pipe_options));
-                    const out: file.Pipe = try meta.wrap(file.makePipe(pipe(), pipe_options));
-                    const pid: usize = try meta.wrap(serverOpen(node, args, in, out));
+                    const in: file.Pipe = file.makePipe(pipe(), pipe_options);
+                    const out: file.Pipe = file.makePipe(pipe(), pipe_options);
+                    const pid: usize = serverOpen(node, args, in, out);
                     serverLoop(allocator, node, dest_pathname, in, out);
                     serverClose(node, in, out, pid);
                 }
@@ -1969,7 +1973,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const results: *Node.Results = node.extra.results.?;
             const paths: []types.Path = node.getPaths();
             if (formatTaskArgs(allocator, node, paths)) |args| {
-                try meta.wrap(system(node, results, mem.terminate(args[0], 0), args, node.sh.vars));
+                system(node, results, mem.terminate(args[0], 0), args, node.sh.vars);
             }
             return status(results);
         }
@@ -1978,7 +1982,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const results: *Node.Results = node.extra.results.?;
             const paths: []types.Path = node.getPaths();
             if (fetchTaskArgs(allocator, node, paths)) |args| {
-                try meta.wrap(system(node, results, mem.terminate(args[0], 0), args, node.sh.vars));
+                system(node, results, mem.terminate(args[0], 0), args, node.sh.vars);
             }
             return status(results);
         }
@@ -1987,7 +1991,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const results: *Node.Results = node.extra.results.?;
             const paths: []types.Path = node.getPaths();
             if (archiveTaskArgs(allocator, node, paths)) |args| {
-                try meta.wrap(system(node, results, mem.terminate(args[0], 0), args, node.sh.vars));
+                system(node, results, mem.terminate(args[0], 0), args, node.sh.vars);
             }
             return status(results);
         }
@@ -1996,7 +2000,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const results: *Node.Results = node.extra.results.?;
             const paths: []types.Path = node.getPaths();
             if (objcopyTaskArgs(allocator, node, paths)) |args| {
-                try meta.wrap(system(node, results, mem.terminate(args[0], 0), args, node.sh.vars));
+                system(node, results, mem.terminate(args[0], 0), args, node.sh.vars);
             }
             return status(results);
         }
@@ -2030,7 +2034,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     if (!keepGoing(node)) return;
                     if (exchange(sub_node, task, .ready, .blocking, arena_index)) {
-                        try meta.wrap(tryAcquireThread(address_space, thread_space, allocator, sub_node, task, arena_index));
+                        tryAcquireThread(address_space, thread_space, allocator, sub_node, task, arena_index);
                     }
                 }
             } else {
@@ -2042,7 +2046,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     if (!keepGoing(node)) return;
                     if (exchange(nodes[dep.node_idx], dep.on_task, .ready, .blocking, arena_index)) {
-                        try meta.wrap(tryAcquireThread(address_space, thread_space, allocator, nodes[dep.node_idx], dep.on_task, arena_index));
+                        tryAcquireThread(address_space, thread_space, allocator, nodes[dep.node_idx], dep.on_task, arena_index);
                     }
                 }
             }
@@ -2214,7 +2218,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var allocator: Allocator = Allocator.fromArena(AddressSpace.arena(arena_index));
             executeCommandDependencies(address_space, thread_space, &allocator, node, task, arena_index);
             while (keepGoing(node) and waitForNode(node, task, arena_index)) {
-                try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds });
             }
             if (node.lock.get(task) == .working) {
                 if (executeCommand(&allocator, node, task, arena_index)) {
@@ -2241,7 +2245,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             executeCommandDependencies(address_space, thread_space, allocator, node, task, arena_index);
             const save: usize = allocator.save();
             while (keepGoing(node) and waitForNode(node, task, arena_index)) {
-                try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds });
             }
             if (node.lock.get(task) == .working) {
                 if (executeCommand(allocator, node, task, arena_index)) {
@@ -2264,11 +2268,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         ) bool {
             @setRuntimeSafety(builtin.is_safe);
             if (exchange(node, task, .ready, .blocking, max_thread_count)) {
-                try meta.wrap(tryAcquireThread(address_space, thread_space, allocator, node, task, max_thread_count));
+                tryAcquireThread(address_space, thread_space, allocator, node, task, max_thread_count);
             }
             if (max_thread_count != 0) {
                 while (thread_space.count() != 0) {
-                    try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                    time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds });
                     if (builder_spec.logging.show_waiting_tasks) {
                         if (node.extra.wait) |wait| {
                             if (wait.total >> 28 > wait.tick) {
@@ -2429,7 +2433,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn writeCacheBytes(node: *Node, name: [:0]const u8, buf: [*]u8, len: usize) void {
             @setRuntimeSafety(false);
-            const fd: usize = try meta.wrap(file.createAt(create(), create_truncate_options, node.cacheRootFd(), name, file.mode.regular));
+            const fd: usize = file.createAt(create(), create_truncate_options, node.cacheRootFd(), name, file.mode.regular);
             file.write(write(), fd, buf[0..len]);
             file.close(close(), fd);
         }
@@ -2458,9 +2462,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 mem.zero(file.Status, &file_stats.cached);
                 file.statusAt(stat(), .{}, node.cacheRootFd(), name, &file_stats.cached);
                 if (file_stats.cached.mode.kind == .regular) {
-                    const fd: usize = try meta.wrap(file.openAt(open(), open_options, node.cacheRootFd(), name));
+                    const fd: usize = file.openAt(open(), open_options, node.cacheRootFd(), name);
                     const len: usize = bits.alignA4096(file_stats.cached.size);
-                    try meta.wrap(file.map(map(), prot, .{ .fixed = true }, fd, addr, len, 0));
+                    file.map(map(), prot, .{ .fixed = true }, fd, addr, len, 0);
                     file.close(close(), fd);
                     return addr +% len;
                 }
@@ -2472,15 +2476,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (have_perf and node.flags.want_perf_events) {
                 startPerf(node);
             }
-            results.time = try meta.wrap(time.get(clock(), .realtime));
-            const pid: u64 = try meta.wrap(proc.fork(fork()));
+            results.time = time.get(clock(), .realtime);
+            const pid: u64 = proc.fork(fork());
             if (pid == 0) {
-                try meta.wrap(file.execPath(execve(), exe, args, vars));
+                file.execPath(execve(), exe, args, vars);
             }
-            const ret: proc.Return = try meta.wrap(proc.waitPid(waitpid(), .{ .pid = pid }));
+            const ret: proc.Return = proc.waitPid(waitpid(), .{ .pid = pid });
             results.status = proc.Status.exitStatus(ret.status);
             results.signal = proc.Status.termSignal(ret.status);
-            results.time = time.diff(try meta.wrap(time.get(clock(), .realtime)), results.time);
+            results.time = time.diff(time.get(clock(), .realtime), results.time);
             if (have_perf and node.flags.want_perf_events) {
                 stopPerf(node);
             }
@@ -2500,8 +2504,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         node.extra.info_before = node.sh.dl.load(output_pathname);
                     }
                 }
-                try meta.wrap(file.unlink(unlink(), output_pathname));
-                try meta.wrap(file.link(link(), cached_pathname, output_pathname));
+                file.unlink(unlink(), output_pathname);
+                file.link(link(), cached_pathname, output_pathname);
             } else if (have_size and
                 node.flags.want_binary_analysis)
             {
@@ -2515,10 +2519,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (node.extra.perf_events) |perf_events| {
                 if (have_lazy) {
                     if (defined(node.sh.fp.about.perf.openFds)) {
-                        try meta.wrap(node.sh.fp.about.perf.openFds(perf_events));
+                        node.sh.fp.about.perf.openFds(perf_events);
                     }
                 } else {
-                    try meta.wrap(perf_events.openFds());
+                    perf_events.openFds();
                 }
             }
         }
@@ -2527,10 +2531,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (node.extra.perf_events) |perf_events| {
                 if (have_lazy) {
                     if (defined(node.sh.fp.about.perf.readResults)) {
-                        try meta.wrap(node.sh.fp.about.perf.readResults(perf_events));
+                        node.sh.fp.about.perf.readResults(perf_events);
                     }
                 } else {
-                    try meta.wrap(perf_events.readResults());
+                    perf_events.readResults();
                 }
             }
         }
@@ -2541,58 +2545,58 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
             if (node.extra.results) |results| {
-                results.time = try meta.wrap(time.get(clock(), .realtime));
+                results.time = time.get(clock(), .realtime);
             }
-            const pid: usize = try meta.wrap(proc.fork(fork()));
+            const pid: usize = proc.fork(fork());
             if (pid == 0) {
-                try meta.wrap(file.close(close(), in.write));
-                try meta.wrap(file.close(close(), out.read));
-                try meta.wrap(file.duplicateTo(dup3(), .{}, in.read, 0));
-                try meta.wrap(file.duplicateTo(dup3(), .{}, out.write, 1));
-                try meta.wrap(file.execPath(execve(), node.zigExe(), args, node.sh.vars));
+                file.close(close(), in.write);
+                file.close(close(), out.read);
+                file.duplicateTo(dup3(), .{}, in.read, 0);
+                file.duplicateTo(dup3(), .{}, out.write, 1);
+                file.execPath(execve(), node.zigExe(), args, node.sh.vars);
             }
-            try meta.wrap(file.close(close(), in.read));
-            try meta.wrap(file.close(close(), out.write));
-            try meta.wrap(file.write(write2(), in.write, update_exit_message[0..1]));
+            file.close(close(), in.read);
+            file.close(close(), out.write);
+            file.write(write2(), in.write, update_exit_message[0..1]);
             return pid;
         }
         fn serverClose(node: *Node, in: file.Pipe, out: file.Pipe, pid: usize) void {
-            const rc: proc.Return = try meta.wrap(proc.waitPid(waitpid(), .{ .pid = pid }));
+            const rc: proc.Return = proc.waitPid(waitpid(), .{ .pid = pid });
             if (node.extra.results) |results| {
                 results.status = proc.Status.exitStatus(rc.status);
                 results.signal = proc.Status.termSignal(rc.status);
-                results.time = time.diff(try meta.wrap(time.get(clock(), .realtime)), results.time);
+                results.time = time.diff(time.get(clock(), .realtime), results.time);
             }
             if (have_perf and node.flags.want_perf_events and
                 node.flags.is_primary)
             {
                 stopPerf(node);
             }
-            try meta.wrap(file.close(close(), in.write));
-            try meta.wrap(file.close(close(), out.read));
+            file.close(close(), in.write);
+            file.close(close(), out.read);
         }
         fn serverLoop(allocator: *Allocator, node: *Node, dest_pathname: [:0]const u8, in: file.Pipe, out: file.Pipe) void {
             var hdr: Message.ServerHeader = undefined;
             var fd: [1]file.PollFd = .{.{ .fd = out.read, .expect = .{ .input = true } }};
             while (try meta.wrap(file.poll(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
-                try meta.wrap(file.readOne(read3(), out.read, &hdr));
+                file.readOne(read3(), out.read, &hdr);
                 const buf: [*:0]u8 = @ptrFromInt(allocator.allocateRaw(hdr.bytes_len +% 1, 1));
                 var len: usize = 0;
                 while (len != hdr.bytes_len) {
-                    len +%= try meta.wrap(file.read(read(), out.read, buf[len..hdr.bytes_len]));
+                    len +%= file.read(read(), out.read, buf[len..hdr.bytes_len]);
                 }
                 buf[len] = 0;
                 if (hdr.tag == .emit_bin_path) {
                     if (node.extra.results) |results| {
                         results.server = buf[0];
                     }
-                    break try meta.wrap(installFromCache(node, dest_pathname, mem.terminate(buf + 1, 0)));
+                    break installFromCache(node, dest_pathname, mem.terminate(buf + 1, 0));
                 }
                 if (hdr.tag == .error_bundle) {
                     if (node.extra.results) |results| {
                         results.server = builder_spec.options.compiler_error_status;
                     }
-                    break try meta.wrap(about.printErrors(allocator, node, buf));
+                    break about.printErrors(allocator, node, buf);
                 }
             } else if (fd[0].actual.hangup) {
                 if (node.extra.results) |results| {
@@ -2601,7 +2605,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             if (node.extra.results) |results| {
                 if (results.server != builder_spec.options.compiler_unexpected_status) {
-                    try meta.wrap(file.write(write2(), in.write, update_exit_message[1..2]));
+                    file.write(write2(), in.write, update_exit_message[1..2]);
                 }
             }
         }
@@ -3256,7 +3260,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         ptr += 1;
                     }
                 } else if (node.getFile(.{ .tag = .output_generic })) |output| {
-                    ptr += fmt.bytes(output.st.size).formatWriteBuf(ptr);
+                    ptr = fmt.writeBytes(ptr, output.st.size);
                     ptr[0] = '\n';
                     ptr += 1;
                     return ptr + 1;
