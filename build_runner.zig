@@ -29,7 +29,7 @@ pub const logging_override: zl.debug.Logging.Override = .{
     .Success = enable_debugging,
     .Acquire = enable_debugging,
     .Release = enable_debugging,
-    .Error = enable_debugging,
+    .Error = true,
     .Fault = enable_debugging,
 };
 pub const logging_default: zl.debug.Logging.Default = .{
@@ -37,7 +37,7 @@ pub const logging_default: zl.debug.Logging.Default = .{
     .Success = enable_debugging,
     .Acquire = enable_debugging,
     .Release = enable_debugging,
-    .Error = enable_debugging,
+    .Error = true,
     .Fault = enable_debugging,
 };
 pub const signal_handlers = .{
