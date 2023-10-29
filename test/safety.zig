@@ -1,6 +1,6 @@
 const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
-const version_2: bool = true;
+const version_2: bool = false;
 const safety = if (version_2)
     @import("../top/safety2.zig")
 else
@@ -113,16 +113,16 @@ fn causeOutOfOrder() void {
 }
 fn causeMempcyLengthMismatch() void {
     if (version_2) {
-        safety.panic(.mismatched_memcpy_lengths, .{ .src_length = 16384, .dest_length = 32768 }, @errorReturnTrace(), @returnAddress());
+        safety.panic(.mismatched_memcpy_lengths, .{ .src_len = 16384, .dest_len = 32768 }, @errorReturnTrace(), @returnAddress());
     } else {
-        safety.panic(.{ .mismatched_memcpy_lengths = .{ .src_length = 16384, .dest_length = 32768 } }, @errorReturnTrace(), @returnAddress());
+        safety.panic(.{ .mismatched_memcpy_lengths = .{ .src_len = 16384, .dest_len = 32768 } }, @errorReturnTrace(), @returnAddress());
     }
 }
 fn causeForLoopLengthMismatch() void {
     if (version_2) {
-        safety.panic(.mismatched_for_loop_lengths, .{ .prev_index = 2, .prev_capture_length = 32768, .next_capture_length = 16384 }, @errorReturnTrace(), @returnAddress());
+        safety.panic(.mismatched_for_loop_lengths, .{ .prev_index = 2, .prev_len = 32768, .next_len = 16384 }, @errorReturnTrace(), @returnAddress());
     } else {
-        safety.panic(.{ .mismatched_for_loop_lengths = .{ .prev_index = 2, .prev_capture_length = 32768, .next_capture_length = 16384 } }, @errorReturnTrace(), @returnAddress());
+        safety.panic(.{ .mismatched_for_loop_lengths = .{ .prev_index = 2, .prev_len = 32768, .next_len = 16384 } }, @errorReturnTrace(), @returnAddress());
     }
 }
 fn causeCastToMisalignedPointer(comptime T: type) void {
@@ -220,7 +220,7 @@ fn causeNonScalarSentinelMismatch(comptime T: type, expected: T, found: T) void 
     }
 }
 fn causeMemcpyArgumentsAlias() void {
-    const data = .{ .dest_start = 0x40000000, .dest_finish = 0x41000000, .src_start = 0x40500000, .src_finish = 0x41000000 };
+    const data = .{ .dest_start = 0x40000000, .dest_len = 0x1000000, .src_start = 0x40500000, .src_len = 0x500000 };
     if (version_2) {
         safety.panic(.memcpy_arguments_alias, data, @errorReturnTrace(), @returnAddress());
     } else {
