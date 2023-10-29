@@ -2549,8 +2549,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 ptr += 2;
                 ptr[0..5].* = "size=".*;
-                ptr += 5;
-                ptr += fmt.bytes(shdr2.sh_size).formatWriteBuf(ptr);
+                ptr = fmt.writeBytes(ptr + 5, shdr2.sh_size);
                 ptr[0] = '\n';
                 return ptr + 1;
             }
@@ -2689,13 +2688,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 sizes_r2: *compare.Sizes,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-
                 var ptr: [*]u8 = writeSymbolGeneric(buf, &tab.fx.color.fg.magenta, '?', width1, width2);
                 ptr[0..4].* = tab.fx.style.faint;
                 ptr += 4;
                 ptr[0..7].* = "hidden=".*;
-                ptr += 7;
-                ptr += fmt.bytes(sizes_r2.common).formatWriteBuf(ptr);
+                ptr = fmt.writeBytes(ptr + 7, sizes_r2.common);
                 ptr[0..4].* = tab.fx.none;
                 ptr += 4;
                 ptr[0] = '\n';
@@ -2718,7 +2715,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 switch (mat.tag) {
                     .addition => ptr += fmt.bloatDiff(0, sym.st_size).formatWriteBuf(ptr),
                     .deletion => ptr += fmt.bloatDiff(sym.st_size, 0).formatWriteBuf(ptr),
-                    else => ptr += fmt.bytes(sym.st_size).formatWriteBuf(ptr),
+                    else => ptr = fmt.writeBytes(ptr, sym.st_size),
                 }
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
