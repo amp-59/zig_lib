@@ -1601,7 +1601,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             {
                 var rela_idx: usize = 0;
                 while (rela_idx != rela_count) : (rela_idx +%= 1) {
-                    const rela: *Elf64_Rela = @ptrFromInt((prog_addr +% rela_addr) +% (rela_entsize *% rela_idx));
+                    const rela: *Elf64_Rela = @ptrFromInt((prog_addr +% rela_addr) +%
+                        (rela_entsize *% rela_idx));
                     if (rela.r_info.r_type == .RELATIVE) {
                         const vaddr: *usize = @ptrFromInt(prog_addr +% rela.r_offset);
                         vaddr.* +%= @intCast(@as(isize, @intCast(prog_addr)) +% rela.r_addend);
@@ -1952,7 +1953,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 var shdr_idx1: usize = @min(shdr_idx1_from, shdr_idx1_to);
                 while (shdr_idx1 != shdr_idx1_to) : (shdr_idx1 +%= 1) {
-                    const shdr2: *Elf64_Shdr = info1.ehdr.sectionHeader(shdr_idx1);
+                    const shdr2: *Elf64_Shdr = info1.sectionHeader(shdr_idx1);
                     const name1: [:0]const u8 = info1.sectionName(shdr2);
                     if (mem.testEqualString(name2, name1)) {
                         return shdr_idx1;
@@ -2070,7 +2071,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 mats2: [*]Match,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                const sh_name2: [:0]const u8 = info2.sectionName(info2.ehdr.sectionHeader(shndx2));
+                const sh_name2: [:0]const u8 = info2.sectionName(info2.sectionHeader(shndx2));
                 verifyInputRanges(sh_sym_idx1, sh_sym_end1, mats1, sh_sym_idx2, sh_sym_end2, mats2);
                 var sizes_r1: Sizes = .{};
                 var sizes_r2: Sizes = .{};
@@ -2336,7 +2337,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @memset(mats2[0..info2.ehdr.e_shnum], .{ .tag = .unknown });
                 var ptr: [*]u8 = buf;
                 for (mats2[1..info2.ehdr.e_shnum], 1..) |*mat2, shndx2| {
-                    const shdr2: *Elf64_Shdr = info2.ehdr.sectionHeader(shndx2);
+                    const shdr2: *Elf64_Shdr = info2.sectionHeader(shndx2);
                     const name2: [:0]u8 = info2.sectionName(shdr2);
                     const shndx1: usize = matchSectionNameInRange(info1, name2, 1, info1.ehdr.e_shnum);
                     if (shndx1 == 0) {
@@ -2347,7 +2348,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         mat1.tag = .matched;
                         mat2.idx = @intCast(shndx1);
                         mat2.tag = .matched;
-                        const shdr1: *Elf64_Shdr = info1.ehdr.sectionHeader(shndx1);
+                        const shdr1: *Elf64_Shdr = info1.sectionHeader(shndx1);
                         ptr = about.writeSectionDifference(ptr, info2, shdr1, shdr2, shndx2, width);
                         if (bestSymbolTable(info1)) |st_shdr1| {
                             if (bestSymbolTable(info2)) |st_shdr2| {
@@ -2368,7 +2369,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     }
                 }
                 for (mats1[1..info1.ehdr.e_shnum], 1..) |*mat1, shndx1| {
-                    const shdr1: *Elf64_Shdr = info1.ehdr.sectionHeader(shndx1);
+                    const shdr1: *Elf64_Shdr = info1.sectionHeader(shndx1);
                     if (mat1.tag == .unknown) {
                         mat1.tag = .unmatched;
                         ptr = about.writeSectionRemoved(ptr, info1, shdr1, shndx1, width);

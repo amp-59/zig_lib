@@ -1096,7 +1096,7 @@ pub const DwarfInfo = extern struct {
     }
     fn parseFileEntry(bytes: []u8) ?struct { FileEntry, u64 } {
         @setRuntimeSafety(is_safe);
-        var pos: u64 = 0;
+        var pos: usize = 0;
         const name: [:0]const u8 = mem.terminate(bytes.ptr, 0);
         if (name.len == 0) {
             return null;
