@@ -668,6 +668,7 @@ const special = struct {
 pub const printStackTrace = blk: {
     if (builtin.want_stack_traces and
         !builtin.have_stack_traces and
+        !builtin.strip_debug_info and
         builtin.output_mode == .Exe)
     {
         break :blk special.trace.printStackTrace;
@@ -743,7 +744,9 @@ pub const panic_extra = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         const regs: bits.RegisterState = @as(*bits.RegisterState, @ptrFromInt(@intFromPtr(ctx_ptr) +% bits.RegisterState.offset)).*;
-        if (builtin.want_stack_traces and builtin.trace.Signal) {
+        if (!builtin.strip_debug_info and
+            builtin.want_stack_traces and builtin.trace.Signal)
+        {
             printStackTrace(&builtin.trace, regs.rip, regs.rbp);
         }
         @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
