@@ -4,36 +4,54 @@ const safety = @import("./safety.zig");
 const builtin = @import("./builtin.zig");
 const PanicCause = union(enum) {
     message,
+    unwrapped_error,
+    /// These are efficient for formatted panics.
     access_out_of_bounds,
     access_out_of_order,
     access_inactive_field,
     memcpy_arguments_alias,
     mismatched_memcpy_lengths,
     mismatched_for_loop_lengths,
+    /// These might be extended to be more useful.
     corrupt_switch,
+    shift_amt_overflowed,
+    /// These only require the equivalent of `panic_messages`.
     unwrapped_null,
-    unwrapped_error,
     returned_noreturn,
     reached_unreachable,
-    shift_amt_overflowed,
+    /// These are more expensive.
     mul_overflowed: type,
     add_overflowed: type,
     sub_overflowed: type,
     shl_overflowed: type,
     shr_overflowed: type,
     div_with_remainder: type,
+    /// May be signed or unsigned and any size.
     mismatched_sentinel: type,
+    /// *Test code compiled from source. Any composite.
     mismatched_non_scalar_sentinel: type,
+    /// Always from `@typeInfo(type).Enum.tag_type`
     cast_to_enum_from_invalid: type,
+    /// Always from `u16`
     cast_to_error_from_invalid: type,
-    cast_to_float_from_invalid: type,
+    /// Always from `usize`
     cast_to_pointer_from_invalid: type,
-    cast_truncated_data: struct {
+    cast_to_int_from_invalid: struct {
+        /// Int
         to: type,
+        /// Float
+        from: type,
+    },
+    cast_truncated_data: struct {
+        /// Int
+        to: type,
+        /// Int
         from: type,
     },
     cast_to_unsigned_from_negative: struct {
+        /// Int{ .signedness = .unsigned }
         to: type,
+        /// Int{ .signedness = .signed }
         from: type,
     },
 };
@@ -98,14 +116,14 @@ fn PanicData(comptime panic_extra_cause: PanicCause) type {
         => |tag_type| {
             return meta.Child(tag_type);
         },
+        .cast_to_int_from_invalid => |num_type| {
+            return num_type.from;
+        },
         .cast_truncated_data => |num_type| {
             return num_type.from;
         },
         .cast_to_unsigned_from_negative => |num_type| {
             return num_type.from;
-        },
-        .cast_to_float_from_invalid => |dest_type| {
-            return dest_type;
         },
         .cast_to_pointer_from_invalid => {
             return usize;
@@ -116,7 +134,6 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
     @setCold(true);
     @setRuntimeSafety(false);
     switch (cause) {
-        .message => |message| builtin.alarm(message, st, ret_addr),
         .returned_noreturn => {
             builtin.alarm("function declared 'noreturn' returned", st, ret_addr);
         },
@@ -132,6 +149,7 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
         .unwrapped_null => {
             builtin.alarm("attempt to use null value", st, ret_addr);
         },
+        .message => |message| builtin.alarm(message, st, ret_addr),
         .unwrapped_error => @call(.never_inline, safety.panicUnwrappedError, .{
             data, st, ret_addr,
         }),
@@ -159,14 +177,14 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
         .mismatched_sentinel => |child_type| @call(.never_inline, safety.panicSentinelMismatch, .{
             meta.BestNum(child_type), @typeName(child_type), data.expected, data.found, st, ret_addr,
         }),
+        .cast_to_int_from_invalid => |num_types| @call(.never_inline, safety.panicCastToIntFromInvalid, .{
+            meta.BestFloat(num_types.from), @typeName(num_types.from), data, st, ret_addr,
+        }),
         .cast_to_enum_from_invalid => |enum_type| @call(.never_inline, safety.panicCastToTagFromInvalid, .{
             meta.BestInt(enum_type), @typeName(enum_type), data, st, ret_addr,
         }),
         .cast_to_error_from_invalid => |error_type| @call(.never_inline, safety.panicCastToTagFromInvalid, .{
             meta.BestInt(error_type), @typeName(error_type), data, st, ret_addr,
-        }),
-        .cast_to_float_from_invalid => |float_type| @call(.never_inline, safety.panicCastToIntFromInvalidFloat, .{
-            meta.BestFloat(float_type), @typeName(float_type), data, data.rhs, st, ret_addr,
         }),
         .mismatched_non_scalar_sentinel => |child_type| @call(.never_inline, safety.panicNonScalarSentinelMismatch, .{
             child_type, data.expected, data.found, st, ret_addr,

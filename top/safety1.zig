@@ -51,8 +51,11 @@ const PanicExtraCause = union(enum) {
     mismatched_non_scalar_sentinel: type,
     cast_to_enum_from_invalid: type,
     cast_to_error_from_invalid: type,
-    cast_to_float_from_invalid: type,
     cast_to_pointer_from_invalid: type,
+    cast_to_int_from_invalid: struct {
+        from: type,
+        to: type,
+    },
     cast_truncated_data: struct {
         from: type,
         to: type,
@@ -98,8 +101,8 @@ fn PanicExtraData(comptime panic_extra_cause: PanicExtraCause) type {
         .cast_to_unsigned_from_negative => |num_type| {
             return num_type.from;
         },
-        .cast_to_float_from_invalid => |dest_type| {
-            return dest_type;
+        .cast_to_int_from_invalid => |num_type| {
+            return num_type.from;
         },
         .cast_to_pointer_from_invalid => {
             return usize;
@@ -195,8 +198,8 @@ pub inline fn panicExtra(comptime cause: PanicExtraCause, data: PanicExtraData(c
         .cast_to_error_from_invalid => |error_type| @call(.never_inline, safety.panicCastToTagFromInvalid, .{
             meta.BestInt(error_type), @typeName(error_type), data, st, ret_addr,
         }),
-        .cast_to_float_from_invalid => |float_type| @call(.never_inline, safety.panicCastToIntFromInvalidFloat, .{
-            meta.BestFloat(float_type), @typeName(float_type), data, data.rhs, st, ret_addr,
+        .cast_to_int_from_invalid => |num_types| @call(.never_inline, safety.panicCastToIntFromInvalid, .{
+            meta.BestFloat(num_types.from), @typeName(num_types.from), data, st, ret_addr,
         }),
         .mismatched_non_scalar_sentinel => |child_type| @call(.never_inline, safety.panicNonScalarSentinelMismatch, .{
             child_type, data.expected, data.found, st, ret_addr,
