@@ -1257,9 +1257,8 @@ pub fn create(comptime creat_spec: CreateSpec, flags: Flags.Create, pathname: [:
     creat_spec.errors,
     creat_spec.return_type,
 ) {
-    const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const logging: debug.Logging.AcquireError = comptime creat_spec.logging.override();
-    if (meta.wrap(sys.call(.open, creat_spec.errors, creat_spec.return_type, .{ pathname_buf_addr, @bitCast(flags), @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
+    if (meta.wrap(sys.call(.open, creat_spec.errors, creat_spec.return_type, .{ @intFromPtr(pathname.ptr), @bitCast(flags), @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
         if (logging.Acquire) {
             about.aboutPathnameFdModeNotice(about.create_s, pathname, fd, file_mode);
         }
@@ -1275,9 +1274,8 @@ pub fn createAt(comptime creat_spec: CreateSpec, flags: Flags.Create, dir_fd: us
     creat_spec.errors,
     creat_spec.return_type,
 ) {
-    const name_buf_addr: u64 = @intFromPtr(name.ptr);
     const logging: debug.Logging.AcquireError = comptime creat_spec.logging.override();
-    if (meta.wrap(sys.call(.openat, creat_spec.errors, creat_spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(flags), @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
+    if (meta.wrap(sys.call(.openat, creat_spec.errors, creat_spec.return_type, .{ dir_fd, @intFromPtr(name.ptr), @bitCast(flags), @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
         if (logging.Acquire) {
             about.aboutDirFdNameFdModeNotice(about.create_s, dir_fd, name, fd, file_mode);
         }
@@ -1309,9 +1307,8 @@ pub fn makeDir(comptime mkdir_spec: MakeDirSpec, pathname: [:0]const u8, comptim
     mkdir_spec.errors,
     mkdir_spec.return_type,
 ) {
-    const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const logging: debug.Logging.SuccessError = comptime mkdir_spec.logging.override();
-    if (meta.wrap(sys.call(.mkdir, mkdir_spec.errors, mkdir_spec.return_type, .{ pathname_buf_addr, @as(u16, @bitCast(file_mode)) }))) {
+    if (meta.wrap(sys.call(.mkdir, mkdir_spec.errors, mkdir_spec.return_type, .{ @intFromPtr(pathname.ptr), @as(u16, @bitCast(file_mode)) }))) {
         if (logging.Success) {
             about.aboutPathnameModeNotice(about.mkdir_s, pathname, file_mode);
         }
@@ -1326,9 +1323,8 @@ pub fn makeDirAt(comptime mkdir_spec: MakeDirSpec, dir_fd: usize, name: [:0]cons
     mkdir_spec.errors,
     mkdir_spec.return_type,
 ) {
-    const name_buf_addr: u64 = @intFromPtr(name.ptr);
     const logging: debug.Logging.SuccessError = comptime mkdir_spec.logging.override();
-    if (meta.wrap(sys.call(.mkdirat, mkdir_spec.errors, mkdir_spec.return_type, .{ dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)) }))) {
+    if (meta.wrap(sys.call(.mkdirat, mkdir_spec.errors, mkdir_spec.return_type, .{ dir_fd, @intFromPtr(name.ptr), @as(u16, @bitCast(file_mode)) }))) {
         if (logging.Success) {
             about.aboutDirFdNameModeNotice(about.mkdir_s, dir_fd, name, file_mode);
         }
@@ -1343,9 +1339,8 @@ pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_
     getdents_spec.errors,
     getdents_spec.return_type,
 ) {
-    const stream_buf_addr: u64 = @intFromPtr(stream_buf.ptr);
     const logging: debug.Logging.SuccessError = comptime getdents_spec.logging.override();
-    if (meta.wrap(sys.call(.getdents64, getdents_spec.errors, getdents_spec.return_type, .{ dir_fd, stream_buf_addr, stream_buf.len }))) |ret| {
+    if (meta.wrap(sys.call(.getdents64, getdents_spec.errors, getdents_spec.return_type, .{ dir_fd, @intFromPtr(stream_buf.ptr), stream_buf.len }))) |ret| {
         if (logging.Success) {
             about.aboutFdMaxLenLenNotice(about.getdents_s, dir_fd, stream_buf.len, ret);
         }
@@ -1380,10 +1375,9 @@ pub fn makeNodeAt(comptime mknod_spec: MakeNodeSpec, dir_fd: usize, name: [:0]co
     mknod_spec.errors,
     mknod_spec.return_type,
 ) {
-    const name_buf_addr: u64 = @intFromPtr(name.ptr);
     const logging: debug.Logging.SuccessError = comptime mknod_spec.logging.override();
     if (meta.wrap(sys.call(.mknodat, mknod_spec.errors, mknod_spec.return_type, .{
-        dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)), @bitCast(dev),
+        dir_fd, @intFromPtr(name.ptr), @as(u16, @bitCast(file_mode)), @bitCast(dev),
     }))) {
         if (logging.Success) {
             about.aboutDirFdNameModeDeviceNotice(about.mknod_s, dir_fd, name, file_mode, dev);
