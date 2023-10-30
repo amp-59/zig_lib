@@ -1180,6 +1180,20 @@ pub fn dirname(pathname: [:0]const u8) []const u8 {
 pub fn basename(pathname: [:0]const u8) [:0]const u8 {
     return pathname[indexOfBasenameStart(pathname)..];
 }
+pub fn canonicalisePathVolatile(pathname: [:0]const u8, buf: []u8) [:0]const u8 {
+    var tmp1: [4096]u8 = undefined;
+    var tmp2: [4096]u8 = undefined;
+    const save: [:0]const u8 = getCwd(.{ .errors = .{} }, &tmp1);
+    defer changeCwd(.{ .errors = .{} }, save);
+    fmt.strcpyEqu(&tmp2, dirname(pathname))[0] = 0;
+    changeCwd(.{ .errors = .{} }, mem.terminate(&tmp2, 0));
+    var ret: [:0]u8 = getCwd(.{ .errors = .{} }, buf);
+    var ptr: [*]u8 = ret.ptr + ret.len;
+    ptr[0] = '/';
+    ptr = fmt.strcpyEqu(ptr + 1, basename(pathname));
+    ptr[0] = 0;
+    return buf[0 .. @intFromPtr(ptr) -% @intFromPtr(buf.ptr) :0];
+}
 pub fn path(comptime path_spec: PathSpec, flags: Flags.Open, pathname: [:0]const u8) sys.ErrorUnion(
     path_spec.errors,
     path_spec.return_type,
