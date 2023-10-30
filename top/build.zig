@@ -687,7 +687,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// sources may be used to determine a cache hit. Useful for
                 /// generated files. This check is performed by the builder.
                 want_shallow_cache_check: bool = false,
-
                 // Padding
                 zb: u11 = 0,
             };
@@ -713,7 +712,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 on_state: State,
                 ///  For node given by this index.
                 node_idx: u32,
-
                 // Padding
                 zb: u8 = 0,
             };
@@ -729,15 +727,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (disp == 1) {
                         const val: *bool = @ptrFromInt(addr);
                         ptr[0..7].* = "\":bool=".*;
-                        ptr += 7;
-                        ptr[0..5].* = if (val.*) "true\x00".* else "false".*;
-                        ptr += @as(usize, 5) -% @intFromBool(val.*);
+                        ptr[7..12].* = if (val.*) "true\x00".* else "false".*;
+                        ptr += @as(usize, 12) -% @intFromBool(val.*);
                     } else if (disp == 8) {
                         const val: *isize = @ptrFromInt(addr);
                         ptr[0..15].* = "\":comptime_int=".*;
-                        ptr += 15;
-                        var id64: fmt.Id64 = .{ .value = val.* };
-                        ptr += id64.formatWriteBuf(ptr);
+                        ptr = fmt.writeId64(ptr + 15, val.*);
                     } else if (disp == 16) {
                         const fp: **fn (*anyopaque, [*]u8) usize = @ptrFromInt(addr);
                         const val: *anyopaque = @ptrFromInt(addr +% 8);
@@ -1069,11 +1064,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.addRunArg(allocator).* = node.buildRoot();
                 node.addRunArg(allocator).* = node.cacheRoot();
                 node.addRunArg(allocator).* = node.globalCacheRoot();
-                node.addRunArg(allocator).* = @constCast("--seed");
                 if (node.sh.seed) |seed| {
+                    node.addRunArg(allocator).* = @constCast("--seed");
                     node.addRunArg(allocator).* = seed.ptr;
-                } else {
-                    node.addRunArg(allocator).* = @constCast("0x000000");
                 }
             }
             inline fn addDefineConfigs(node: *Node, allocator: *Allocator) void {
@@ -1461,7 +1454,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 }
                 if (have_list) {
-                    about.writeAndWalk(allocator, group);
+                    about.writeAndWalk(allocator, group, .depns);
                 }
                 return null;
             }
@@ -1683,7 +1676,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         file.makeDirAt(mkdir(), dir_fds.output_root, name, file.mode.directory);
                     }
                 }
-
                 dir_fds.cache_root = try meta.wrap(file.openAt(
                     open(),
                     dir_options,
@@ -2369,7 +2361,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                     if (have_list and want_list) {
-                        return about.writeAndWalk(allocator, node);
+                        return about.writeAndWalk(allocator, node, .full);
                     }
                     if (have_perf and want_perf) {
                         node.flags.want_perf_events = true;
@@ -2452,7 +2444,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(4097, 1));
                         var len: usize = node.getPaths()[fs.path_idx].formatWriteBuf(buf);
                         len -%= 1;
-                        node.sh.dl.load(buf[0..len :0]).autoLoad(node.sh.fp);
+                        node.sh.dl.loadEntryAddress(buf[0..len :0])(node.sh.fp);
                         allocator.next = save;
                         if (builder_spec.options.init_load_ok) {
                             assertExchange(node, .build, .ready, .finished, max_thread_count);
@@ -2622,6 +2614,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         /// periodic scans with sleeping, because the task lock is not a perfect
         /// fit with futexes (u32). Extensions to `ThreadSafeSet` would permit.
         fn waitForNode(node: *Node, task: Task, arena_index: AddressSpace.Index) bool {
+            if (max_thread_count == 0) {
+                return false;
+            }
             @setRuntimeSafety(builtin.is_safe);
             if (builder_spec.logging.show_waiting_tasks) {
                 if (node.extra.wait) |wait| {
@@ -2925,6 +2920,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
+                indexOfCommonLeastDifference: ?*const fn (
+                    allocator: *Allocator,
+                    buf: []*tasks.BuildCommand,
+                ) usize = null,
+                fieldEditDistance: ?*const fn (
+                    s_val: *tasks.BuildCommand,
+                    t_val: *tasks.BuildCommand,
+                ) usize = null,
+                writeFieldEditDistance: ?*const fn (
+                    buf: [*]u8,
+                    name: []const u8,
+                    s_val: *tasks.BuildCommand,
+                    t_val: *tasks.BuildCommand,
+                    commit: bool,
+                ) usize = null,
             },
             format: struct {
                 formatWriteBuf: *const fn (
@@ -2943,6 +2953,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
+                indexOfCommonLeastDifference: ?*const fn (
+                    allocator: *Allocator,
+                    buf: []*tasks.FormatCommand,
+                ) usize = null,
+                fieldEditDistance: ?*const fn (
+                    s_val: *tasks.FormatCommand,
+                    t_val: *tasks.FormatCommand,
+                ) usize = null,
+                writeFieldEditDistance: ?*const fn (
+                    buf: [*]u8,
+                    name: []const u8,
+                    s_val: *tasks.FormatCommand,
+                    t_val: *tasks.FormatCommand,
+                    commit: bool,
+                ) usize = null,
             },
             archive: struct {
                 formatWriteBuf: *const fn (
@@ -2961,6 +2986,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
+                indexOfCommonLeastDifference: ?*const fn (
+                    allocator: *Allocator,
+                    buf: []*tasks.ArchiveCommand,
+                ) usize = null,
+                fieldEditDistance: ?*const fn (
+                    s_val: *tasks.ArchiveCommand,
+                    t_val: *tasks.ArchiveCommand,
+                ) usize = null,
+                writeFieldEditDistance: ?*const fn (
+                    buf: [*]u8,
+                    name: []const u8,
+                    s_val: *tasks.ArchiveCommand,
+                    t_val: *tasks.ArchiveCommand,
+                    commit: bool,
+                ) usize = null,
             },
             objcopy: struct {
                 formatWriteBuf: *const fn (
@@ -2979,6 +3019,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
+                indexOfCommonLeastDifference: ?*const fn (
+                    allocator: *Allocator,
+                    buf: []*tasks.ObjcopyCommand,
+                ) usize = null,
+                fieldEditDistance: ?*const fn (
+                    s_val: *tasks.ObjcopyCommand,
+                    t_val: *tasks.ObjcopyCommand,
+                ) usize = null,
+                writeFieldEditDistance: ?*const fn (
+                    buf: [*]u8,
+                    name: []const u8,
+                    s_val: *tasks.ObjcopyCommand,
+                    t_val: *tasks.ObjcopyCommand,
+                    commit: bool,
+                ) usize = null,
             },
             proc: struct {
                 executeCommandClone: ?*const fn (
@@ -3321,7 +3376,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     key_tag: u16 = 0,
                 },
             };
-            pub fn writeAndWalk(allocator: *Allocator, node: *Node) void {
+            const ListMode = enum {
+                basic,
+                files,
+                depns,
+                full,
+            };
+            pub fn writeAndWalk(allocator: *Allocator, node: *Node, mode: ListMode) void {
                 @setRuntimeSafety(false);
                 const save: usize = allocator.save();
                 var buf1: [4096]u8 = undefined;
@@ -3331,11 +3392,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 width.vec &= @splat(~@as(u16, 3));
                 width.cols.name = @max(width.cols.name, width.cols.file);
                 width.cols.file = width.cols.name;
-                const max_len: usize = node.name.len +% 1 +% lengthAndWalkInternal(0, node, &width);
+                const max_len: usize = node.name.len +% 1 +% lengthAndWalkInternal(0, node, &width, mode);
                 const buf0: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
                 var ptr0: [*]u8 = fmt.strcpyEqu(buf0, node.name);
                 ptr0[0] = '\n';
-                ptr0 = writeAndWalkInternal(ptr0 + 1, &buf1, 0, node, &width);
+                ptr0 = writeAndWalkInternal(ptr0 + 1, &buf1, 0, node, &width, mode);
                 fmt.print(ptr0, buf0);
                 allocator.restore(save);
             }
@@ -3364,43 +3425,49 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     width.cols.descr = @intCast(@max(width.cols.descr, next_node.descr.len));
                 }
             }
-            fn lengthAndWalkInternal(len1: usize, node: *Node, width: *ColumnWidth) usize {
+            fn lengthAndWalkInternal(len1: usize, node: *Node, width: *ColumnWidth, mode: ListMode) usize {
                 @setRuntimeSafety(false);
                 var len: usize = 0;
-                for (node.getFiles()) |*fs| {
-                    len +%= len1;
-                    len +%= 2;
-                    if (!fs.key.flags.is_cached) {
-                        len +%= (width.cols.file +% width.cols.path) -% (len1 +% 4);
+                if (mode == .full or mode == .files) {
+                    for (node.getFiles()) |*fs| {
+                        len +%= len1;
+                        len +%= 2;
+                        if (!fs.key.flags.is_cached) {
+                            len +%= (width.cols.file +% width.cols.path) -% (len1 +% 4);
+                        }
+                        len +%= 1;
                     }
-                    len +%= 1;
                 }
                 var itr: Node.Iterator = Node.Iterator.init(node);
                 while (itr.next()) |next_node| {
                     len +%= width.cols.name +% next_node.descr.len;
-                    len +%= lengthAndWalkInternal(len1 +% 2, next_node, width);
+                    if (mode == .full or mode == .depns or next_node.flags.is_group) {
+                        len +%= lengthAndWalkInternal(len1 +% 2, next_node, width, mode);
+                    }
                     len +%= 1;
                 }
                 return len;
             }
-            fn writeAndWalkInternal(buf0: [*]u8, buf1: [*]u8, len1: usize, node: *Node, width: *ColumnWidth) [*]u8 {
+            fn writeAndWalkInternal(buf0: [*]u8, buf1: [*]u8, len1: usize, node: *Node, width: *ColumnWidth, mode: ListMode) [*]u8 {
                 @setRuntimeSafety(false);
                 var itr: Node.Iterator = Node.Iterator.init(node);
                 var ptr1: [*]u8 = buf1 + len1;
                 var ptr0: [*]u8 = buf0;
-                for (node.getFiles()) |*fs| {
-                    ptr0 = fmt.strcpyEqu(ptr0, buf1[0..len1]);
-                    ptr0[0..2].* = if (itr.idx == itr.max_idx) "  ".* else "| ".*;
-                    ptr0 += 2;
-                    if (node.getFilePath(fs)) |path| {
-                        ptr0 = fmt.strsetEqu(ptr0, ' ', width.cols.file -% (len1 +% 4 +% @tagName(fs.key.tag).len));
-                        ptr0 = fmt.strcpyEqu(ptr0, @tagName(fs.key.tag));
-                        ptr0[0..2].* = ": ".*;
+                if (mode == .full or mode == .files) {
+                    for (node.getFiles()) |*fs| {
+                        ptr0 = fmt.strcpyEqu(ptr0, buf1[0..len1]);
+                        ptr0[0..2].* = if (itr.idx == itr.max_idx) "  ".* else "| ".*;
                         ptr0 += 2;
-                        ptr0 += path.formatWriteBufDisplay(ptr0);
+                        if (node.getFilePath(fs)) |path| {
+                            ptr0 = fmt.strsetEqu(ptr0, ' ', width.cols.file -% (len1 +% 4 +% @tagName(fs.key.tag).len));
+                            ptr0 = fmt.strcpyEqu(ptr0, @tagName(fs.key.tag));
+                            ptr0[0..2].* = ": ".*;
+                            ptr0 += 2;
+                            ptr0 += path.formatWriteBufDisplay(ptr0);
+                        }
+                        ptr0[0] = '\n';
+                        ptr0 += 1;
                     }
-                    ptr0[0] = '\n';
-                    ptr0 += 1;
                 }
                 while (itr.next()) |next_node| {
                     ptr1[0..2].* = if (itr.idx == itr.max_idx) "  ".* else "| ".*;
@@ -3412,7 +3479,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     ptr0[0..2].* = ": ".*;
                     ptr0 = fmt.strcpyEqu(ptr0 + 2, next_node.descr);
                     ptr0[0] = '\n';
-                    ptr0 = writeAndWalkInternal(ptr0 + 1, buf1, len1 +% 2, next_node, width);
+                    ptr0 += 1;
+                    if (mode == .full or mode == .depns or next_node.flags.is_group) {
+                        ptr0 = writeAndWalkInternal(ptr0, buf1, len1 +% 2, next_node, width, mode);
+                    }
                 }
                 return ptr0;
             }
@@ -3937,11 +4007,11 @@ pub fn GenericCommand(comptime Command: type) type {
         //pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) callconv(.C) usize {
         //    return fmt.render(render_spec, cmd.*).formatWriteBuf(buf);
         //}
-        //const gen = @import("./gen.zig");
-        //const Editor = gen.StructEditor(render_spec, Command);
-        //pub const fieldEditDistance = Editor.fieldEditDistance;
-        //pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
-        //pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
+        const gen = @import("./gen.zig");
+        const Editor = gen.StructEditor(render_spec, Command);
+        pub const fieldEditDistance = Editor.fieldEditDistance;
+        pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
+        pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
         pub const formatWriteBuf = Command.formatWriteBuf;
         pub const formatLength = Command.formatLength;
         pub const formatParseArgs = Command.formatParseArgs;
