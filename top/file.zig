@@ -713,7 +713,7 @@ pub const GetWorkingDirectorySpec = struct {
 pub const ChangeWorkingirectorySpec = struct {
     options: struct { update_state: bool = builtin.is_debug } = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.chdir.errors.all },
-    return_type: type = u64,
+    return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const ReadLinkSpec = struct {
