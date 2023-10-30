@@ -666,34 +666,45 @@ const special = struct {
     pub const trace = @import("./trace.zig");
 };
 pub const printStackTrace = blk: {
-    if (builtin.want_stack_traces and
-        !builtin.have_stack_traces and
-        !builtin.strip_debug_info and
-        builtin.output_mode == .Exe)
-    {
-        break :blk special.trace.printStackTrace;
-    } else {
-        break :blk special.printStackTrace;
+    if (builtin.strip_debug_info)
+        @compileError("missing debug information")
+    else {
+        if (builtin.want_stack_traces and
+            !builtin.have_stack_traces and
+            builtin.output_mode == .Exe)
+        {
+            break :blk special.trace.printStackTrace;
+        } else {
+            break :blk special.printStackTrace;
+        }
     }
 };
 pub const printSourceCodeAtAddress = blk: {
-    if (builtin.want_stack_traces and
-        !builtin.have_stack_traces and
-        builtin.output_mode == .Exe)
-    {
-        break :blk special.trace.printSourceCodeAtAddress;
-    } else {
-        break :blk special.printSourceCodeAtAddress;
+    if (builtin.strip_debug_info)
+        @compileError("missing debug information")
+    else {
+        if (builtin.want_stack_traces and
+            !builtin.have_stack_traces and
+            builtin.output_mode == .Exe)
+        {
+            break :blk special.trace.printSourceCodeAtAddress;
+        } else {
+            break :blk special.printSourceCodeAtAddress;
+        }
     }
 };
 pub const printSourceCodeAtAddresses = blk: {
-    if (builtin.want_stack_traces and
-        !builtin.have_stack_traces and
-        builtin.output_mode == .Exe)
-    {
-        break :blk special.trace.printSourceCodeAtAddresses;
-    } else {
-        break :blk special.printSourceCodeAtAddresses;
+    if (builtin.strip_debug_info)
+        @compileError("missing debug information")
+    else {
+        if (builtin.want_stack_traces and
+            !builtin.have_stack_traces and
+            builtin.output_mode == .Exe)
+        {
+            break :blk special.trace.printSourceCodeAtAddresses;
+        } else {
+            break :blk special.printSourceCodeAtAddresses;
+        }
     }
 };
 pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
