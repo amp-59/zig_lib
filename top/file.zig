@@ -358,7 +358,6 @@ pub const Socket = struct {
         mh = 135,
     };
 };
-
 pub const Status = extern struct {
     dev: u64,
     ino: u64,
@@ -772,7 +771,6 @@ pub const Duplicate3Spec = struct {
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
-
 pub fn execPath(comptime exec_spec: ExecuteSpec, pathname: [:0]const u8, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
     exec_spec.errors,
     exec_spec.return_type,
@@ -1841,7 +1839,6 @@ const IOControlSpec = struct {
     const TC = sys.TC;
     const TIOC = sys.TIOC;
 };
-
 pub fn duplicate(comptime dup_spec: DuplicateSpec, old_fd: usize) sys.ErrorUnion(
     dup_spec.errors,
     dup_spec.return_type,
@@ -1933,7 +1930,6 @@ pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) s
 //  recvfrom
 //  sendto
 //  setsockopt
-
 pub fn accessAt(comptime access_spec: AccessSpec, at: sys.flags.AtAccess, dir_fd: usize, name: [:0]const u8, ok: Access) sys.ErrorUnion(
     access_spec.errors,
     access_spec.return_type,
@@ -2106,13 +2102,11 @@ fn setTerminalAttributes() void {}
 pub fn readRandom(buf: []u8) !void {
     return sys.call(.getrandom, .{ .throw = spec.getrandom.errors.all }, void, .{ @intFromPtr(buf.ptr), buf.len, sys.GRND.RANDOM });
 }
-
 pub const DirStreamSpec = struct {
     Allocator: type,
     errors: Errors = .{},
     options: Options = .{},
     logging: Logging = .{},
-
     pub const Options = struct {
         initial_size: u64 = 1024,
         init_read_all: bool = true,
