@@ -1966,10 +1966,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     serverClose(node, in, out, pid);
                 }
             }
-            if (have_lazy and keepGoing(node) and
-                node.flags.is_dynamic_extension)
-            {
-                node.sh.dl.loadEntryAddress(dest_pathname)(node.sh.fp);
+            if (have_lazy) {
+                if (node.flags.is_dynamic_extension) {
+                    node.sh.dl.loadEntryAddress(dest_pathname)(node.sh.fp);
+                }
             }
             return status(results);
         }
@@ -2206,7 +2206,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             }
                         }
                     } else {
-                        node.addCmdArg(allocator).* = comptime builtin.zero([*:0]u8);
+                        mem.zero([*:0]u8, node.addCmdArg(allocator));
                         node.lists.list(.cmd_args).len -%= 1;
                     }
                 }
@@ -2279,16 +2279,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (max_thread_count != 0) {
                 while (thread_space.count() != 0) {
                     time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds });
-                    if (builder_spec.logging.show_waiting_tasks) {
-                        if (node.extra.wait) |wait| {
-                            if (wait.total >> 28 > wait.tick) {
-                                about.writeWaitingOn(node, max_thread_count);
-                                wait.tick +%= 1;
-                            } else {
-                                wait.total +%= builder_spec.options.sleep_nanoseconds;
-                            }
-                        }
-                    }
                 }
             }
             return node.lock.get(task) == .finished;
@@ -2411,9 +2401,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     node.sh.mode = .Exec;
                     recursiveAction(address_space, thread_space, allocator, node, task, max_thread_count, &prepareCommand);
-                    const depns: []Node.Depn = node.sh.top.getDepns();
                     const nodes: []*Node = node.sh.top.getNodes();
-                    for (depns) |depn| {
+                    for (node.sh.top.getDepns()) |depn| {
                         if (!executeSubNode(address_space, thread_space, allocator, nodes[depn.node_idx], depn.on_task)) {
                             proc.exitError(error.UnfinishedRequest, 2);
                         }
