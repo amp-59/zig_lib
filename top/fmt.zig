@@ -825,6 +825,13 @@ pub fn PathFormat(comptime Format: type) type {
             }
             return @intFromPtr(ptr) -% @intFromPtr(buf);
         }
+        pub fn formatWriteBufDisplayLiteral(format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            var tmp: [4096]u8 = undefined;
+            var len: usize = format.formatWriteBufDisplay(&tmp);
+            len -%= 1;
+            return stringLiteral(tmp[0..len]).formatWriteBuf(buf);
+        }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             var ptr: [*]u8 = buf;
