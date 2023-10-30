@@ -102,7 +102,7 @@ pub fn strcpyMulti(dest: [*]u8, src: []const []const u8) usize {
 pub fn strcpyMultiEqu(dest: [*]u8, src: []const []const u8) [*]u8 {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = dest;
-    for (src) |str| ptr = strcpyEqu(dest, str);
+    for (src) |str| ptr = strcpyEqu(ptr, str);
     return ptr;
 }
 pub fn strlen(end: [*]u8, buf: [*]u8) usize {
