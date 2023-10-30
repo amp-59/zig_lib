@@ -221,7 +221,7 @@ fn regenGroup(allocator: *zl.build.Allocator, group: *Node) void {
     regen.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
 }
 fn topGroup(allocator: *zl.build.Allocator, group: *Node) void {
-    group.addBuild(allocator, build_cmd, "decls", "test/decl.zig").descr = "Test safety prototype";
+    group.addBuild(allocator, build_cmd, "decls", "test/decl.zig").descr = "Test miscellaneous declarations";
     group.addBuild(allocator, build_cmd, "builtin", "test/builtin.zig").descr = "Test builtin functions";
     group.addBuild(allocator, build_cmd, "meta", "test/meta.zig").descr = "Test meta functions";
     group.addBuild(allocator, build_cmd, "gen", "test/gen.zig").descr = "Test generic code generation functions";
