@@ -3143,11 +3143,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn writeTask(buf: [*]u8, node: *Node, task: Task, arena_index: AddressSpace.Index) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (!builder_spec.logging.show_special and
-                    node.flags.is_special)
-                {
-                    return buf;
-                }
                 var ptr: [*]u8 = buf;
                 const about_s: fmt.AboutSrc = switch (task) {
                     else => if (node.tasks.tag == .build) tab.build_run_s else tab.exec_s,
@@ -3206,10 +3201,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         ptr[0] = '[';
                         switch (results.server) {
                             builder_spec.options.compiler_expected_status => {
-                                ptr[1..8].* = "updated".*;
-                                ptr += 8;
+                                if (node.flags.is_special) {
+                                    ptr[1..17].* = "\x1b[96mupdated\x1b[0m".*;
+                                    ptr += 17;
+                                } else {
+                                    ptr[1..8].* = "updated".*;
+                                    ptr += 8;
+                                }
                             },
                             builder_spec.options.compiler_cache_hit_status => {
+                                if (node.flags.is_special) {
+                                    return buf;
+                                }
                                 ptr[1..7].* = "cached".*;
                                 ptr += 7;
                             },
