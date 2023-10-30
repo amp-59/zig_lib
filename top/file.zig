@@ -2570,9 +2570,8 @@ pub const about = struct {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..].ptr;
+        var ptr: [*]u8 = buf[about_s.len..];
         ptr[0..3].* = "fd=".*;
-        ptr += 3;
         ptr = fmt.writeUd64(ptr + 3, fd);
         ptr[0..2].* = ", ".*;
         ptr = writeStatus(ptr + 2, st);

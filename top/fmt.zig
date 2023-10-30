@@ -2865,26 +2865,25 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
         fn writeDeclBuf(comptime format: Format, buf: [*]u8, comptime decl: builtin.Type.Declaration) usize {
             @setRuntimeSafety(builtin.is_safe);
             const decl_type: type = @TypeOf(@field(format.value, decl.name));
-            if (@typeInfo(decl_type) == .Fn) {
-                return 0;
-            }
-            const decl_value: decl_type = @field(format.value, decl.name);
-            const decl_name_format: IdentifierFormat = .{ .value = decl.name };
-            const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
-            const type_name_s: []const u8 = @typeName(decl_type);
             var len: usize = 0;
-            @as(*[16]u8, @ptrCast(buf + len)).* = "pub const ";
-            len +%= 16;
-            len +%= decl_name_format.formatWriteBuf(buf + len);
-            @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
-            len +%= 2;
-            @memcpy(buf + len, type_name_s);
-            len +%= type_name_s.len;
-            @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
-            len +%= 3;
-            decl_format.formatWriteBuf(buf + len);
-            @as(*[2]u8, @ptrCast(buf + len)).* = "; ".*;
-            len +%= 2;
+            if (@typeInfo(decl_type) != .Fn) {
+                const decl_value: decl_type = @field(format.value, decl.name);
+                const decl_name_format: IdentifierFormat = .{ .value = decl.name };
+                const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
+                const type_name_s: []const u8 = @typeName(decl_type);
+                @as(*[10]u8, @ptrCast(buf + len)).* = "pub const ".*;
+                len +%= 10;
+                len +%= decl_name_format.formatWriteBuf(buf + len);
+                @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
+                len +%= 2;
+                @memcpy(buf + len, type_name_s);
+                len +%= type_name_s.len;
+                @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
+                len +%= 3;
+                len +%= decl_format.formatWriteBuf(buf + len);
+                @as(*[2]u8, @ptrCast(buf + len)).* = "; ".*;
+                len +%= 2;
+            }
             return len;
         }
         fn writeStructFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) usize {
@@ -2972,7 +2971,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             inline for (struct_info.decls) |decl| {
-                                len +%= writeDeclBuf(format, buf + len, decl);
+                                if (@hasDecl(format.value, decl.name)) {
+                                    len +%= writeDeclBuf(format, buf + len, decl);
+                                }
                             }
                             len +%= writeTrailingCommaBuf(
                                 buf + (len -% 2),
@@ -3001,7 +3002,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             inline for (union_info.decls) |decl| {
-                                len +%= writeDeclBuf(format, buf + len, decl);
+                                if (@hasDecl(format.value, decl.name)) {
+                                    len +%= writeDeclBuf(format, buf + len, decl);
+                                }
                             }
                             len +%= writeTrailingCommaBuf(
                                 buf + (len -% 2),
@@ -3030,7 +3033,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             inline for (enum_info.decls) |decl| {
-                                len +%= writeDeclBuf(format, buf + len, decl);
+                                if (@hasDecl(format.value, decl.name)) {
+                                    len +%= writeDeclBuf(format, buf + len, decl);
+                                }
                             }
                             len +%= writeTrailingCommaBuf(
                                 buf + (len -% 2),
