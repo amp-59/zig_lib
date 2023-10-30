@@ -1636,18 +1636,38 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.
     map_spec.return_type,
 ) {
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
-    if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, .{
-        addr, len, @bitCast(prot), @bitCast(flags), fd, off,
-    }))) |ret| {
-        if (logging.Acquire) {
-            about.aboutFdAddrLenOffsetNotice(about.map_s, fd, if (map_spec.return_type != void) ret else addr, len, off);
-        }
-        return ret;
-    } else |map_error| {
-        if (logging.Error) {
-            about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
-        }
-        return map_error;
+    const ret: isize = asm volatile ("syscall # mmap"
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (@intFromEnum(sys.Fn.mmap)),
+          [_] "{rdi}" (addr),
+          [_] "{rsi}" (len),
+          [_] "{rdx}" (prot),
+          [_] "{r10}" (flags),
+          [_] "{r8}" (fd),
+          [_] "{r9}" (off),
+        : "rcx", "r11", "memory"
+    );
+    if (map_spec.errors.throw.len != 0) {
+        builtin.throw(sys.ErrorCode, map_spec.errors.throw, ret) catch |map_error| {
+            if (logging.Error) {
+                about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), addr, len, flags);
+            }
+            return map_error;
+        };
+    }
+    if (map_spec.errors.abort.len != 0) {
+        builtin.throw(sys.ErrorCode, map_spec.errors.abort, ret) catch |map_error| {
+            if (logging.Error) {
+                about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
+            }
+            proc.exitError(map_error, 2);
+        };
+    }
+    if (logging.Acquire) {
+        about.aboutFdAddrLenOffsetNotice(about.map_s, fd, addr, len, flags);
+    }
+    if (map_spec.return_type != void) {
+        return @intCast(ret);
     }
 }
 pub fn send(comptime send_spec: SendSpec, dest_fd: usize, src_fd: usize, offset: ?*u64, count: u64) sys.ErrorUnion(
