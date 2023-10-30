@@ -599,7 +599,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             /// Required for objcopy commands using task struct.
             objcopy: *Node,
             /// Full build command producing static linkable object.
-            trace: *Node,
+            stack_traces: *Node,
         };
         pub const Node = struct {
             /// The node's 'first' name. Must be unique within the parent group.
@@ -1576,7 +1576,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @alignOf(Extensions),
             ));
             mem.zero(Extensions, top.sh.extns);
-            top.sh.extns.trace = zero.addBuild(allocator, trace_build_cmd, "trace", "top/trace.zig");
+            top.sh.extns.stack_traces = zero.addBuild(allocator, trace_build_cmd, "stack_traces", "top/trace.zig");
             if (have_lazy) {
                 var ptr: *[25][*:0]u8 = @ptrFromInt(allocator.allocateRaw(25 *% 8, 8));
                 var tmp = [25][*:0]const u8{
@@ -2126,7 +2126,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (!node.hasDebugInfo()) {
                         node.tasks.cmd.build.strip = false;
                     }
-                    node.dependOn(allocator, node.sh.extns.trace);
+                    node.dependOn(allocator, node.sh.extns.stack_traces);
                     if (node.flags.want_build_config) {
                         node.addConfigBool(allocator, "have_stack_traces", true);
                     }
