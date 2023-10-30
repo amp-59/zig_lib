@@ -1403,16 +1403,16 @@ pub fn makeNodeAt(comptime mknod_spec: MakeNodeSpec, dir_fd: usize, name: [:0]co
         return mknod_error;
     }
 }
-pub fn changeCwd(comptime chdir_spec: ChangeWorkingirectorySpec, pathname: [:0]const u8) sys.ErrorUnion(chdir_spec.errors, [:0]const u8) {
+pub fn changeCwd(comptime chdir_spec: ChangeWorkingirectorySpec, pathname: [:0]const u8) sys.ErrorUnion(chdir_spec.errors, void) {
     const buf_addr: u64 = @intFromPtr(pathname.ptr);
     const logging: debug.Logging.SuccessError = comptime chdir_spec.logging.override();
-    if (meta.wrap(sys.call(.getcwd, chdir_spec.errors, chdir_spec.return_type, .{buf_addr}))) {
+    if (meta.wrap(sys.call(.chdir, chdir_spec.errors, chdir_spec.return_type, .{buf_addr}))) {
         if (logging.Success) {
-            about.aboutPathnameNotice(about.chdir_s);
+            about.aboutPathnameNotice(about.chdir_s, pathname);
         }
     } else |chdir_error| {
         if (logging.Error) {
-            debug.about.aboutError(about.getcwd_s, @errorName(chdir_error));
+            about.aboutPathnameError(about.chdir_s, @errorName(chdir_error), pathname);
         }
         return chdir_error;
     }
