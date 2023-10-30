@@ -580,6 +580,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .is_special = true,
             .is_dynamic_extension = true,
             .want_builder_decl = true,
+            .want_absolute_state_decl = true,
             .want_build_config = true,
             .want_define_decls = true,
             .have_task_data = false,
@@ -673,6 +674,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// Whether to write `Builder` declaration to build
                 /// configuration.
                 want_builder_decl: bool = false,
+                /// Whether to write `AbsoluteState` to build configuration.
+                want_absolute_state_decl: bool = false,
                 /// Whether to write builtin configuration constants to build
                 /// configuration.
                 want_define_decls: bool = false,
@@ -688,7 +691,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// generated files. This check is performed by the builder.
                 want_shallow_cache_check: bool = false,
                 // Padding
-                zb: u11 = 0,
+                zb: u10 = 0,
             };
             const Tasks = struct {
                 /// Primary (default) task for this node.
@@ -742,13 +745,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     } else {
                         str = mem.terminate(str.ptr + str.len + 1, 0);
                         ptr[0..2].* = "\"=".*;
-                        ptr += 2;
                         if (cfg.data & (1 << ((@bitSizeOf(usize) -% 8) +% 4)) == 0) {
-                            ptr[0] = '"';
-                            ptr += 1;
+                            ptr[2] = '"';
+                            ptr += 3;
                         } else {
-                            ptr[0..2].* = "\\\\".*;
-                            ptr += 2;
+                            ptr[2..4].* = "\\\\".*;
+                            ptr += 4;
                         }
                         ptr = fmt.strcpyEqu(ptr, str);
                         if (cfg.data & (1 << ((@bitSizeOf(usize) -% 8) +% 4)) == 0) {
@@ -1385,16 +1387,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 const paths: []types.Path = node.getPaths();
                 var ptr: [*]u8 = buf;
-                if (have_lazy and node.flags.want_builder_decl) {
-                    buf[0..122].* =
-                        \\const zl=@import("zl");
+                if (node.flags.want_absolute_state_decl) {
+                    ptr[0..99].* =
                         \\pub const AbsoluteState=struct{
                         \\home:[:0]const u8,
                         \\cwd:[:0]const u8,
                         \\proj:[:0]const u8,
                         \\pid:u16,};
+                        \\
                     .*;
-                    ptr += 122;
+                    ptr += 99;
+                }
+                if (have_lazy and node.flags.want_builder_decl) {
+                    ptr[0..24].* =
+                        \\const zl=@import("zl");
+                        \\
+                    .*;
+                    ptr += 24;
                     ptr = fmt.strcpyEqu(ptr, "pub const Builder=zl.build.GenericBuilder(.{.options=");
                     ptr = fmt.strcpyEqu(ptr, options_s);
                     ptr -= 1;
