@@ -48,6 +48,7 @@ fn testRegularAddressSpace() !void {
     const LAddressSpace = mem.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
     var address_space: LAddressSpace = .{};
     const Allocator = mem.dynamic.GenericRtArenaAllocator(.{ .AddressSpace = LAddressSpace });
+    Allocator.__refAllDecls();
     var allocator: Allocator = try Allocator.init(&address_space, 0);
     defer allocator.deinit(&address_space, 0);
     var i: u8 = 1;
@@ -58,8 +59,10 @@ fn testRegularAddressSpace() !void {
 }
 fn testDiscreteAddressSpace(comptime list: anytype) !void {
     const LAddressSpace = mem.GenericDiscreteAddressSpace(.{ .list = list });
+    meta.refAllDecls(LAddressSpace, &.{});
     var address_space: LAddressSpace = .{};
     const Allocator = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = LAddressSpace });
+    Allocator.__refAllDecls();
     var allocator: Allocator = try Allocator.init(&address_space);
     comptime var idx: u8 = 1;
     inline while (idx != LAddressSpace.specification.list.len) : (idx +%= 1) {
@@ -80,6 +83,7 @@ fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: mem.DiscreteAddressSpaceS
         break :blk mem.GenericDiscreteAddressSpace(tmp);
     };
     const SubLAddressSpace = LAddressSpace.SubSpace(0);
+    meta.refAllDecls(SubLAddressSpace, &.{});
     var sub_space: SubLAddressSpace = .{};
     const Allocator0 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubLAddressSpace });
     const Allocator1 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubLAddressSpace });
@@ -361,6 +365,7 @@ fn testLallocator() !void {
         .errors = mem.dynamic.spec.errors.noexcept,
         .logging = mem.dynamic.spec.logging.silent,
     });
+    AllocatorL.__refAllDecls();
     var rng: file.DeviceRandomBytes(65536) = .{};
     var address_space: AddressSpace = .{};
     var allocator: AllocatorL = try AllocatorL.init(&address_space, 0);
