@@ -626,6 +626,9 @@ pub fn GenericArenaAllocator(comptime allocator_spec: ArenaAllocatorSpec) type {
         pub usingnamespace GenericIrreversibleInterface(Allocator);
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
+        pub fn __refAllDecls() void {
+            meta.refAllDecls(@This(), &.{});
+        }
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
             debug.assertEqual(u64, 1, unit_alignment);
@@ -690,6 +693,9 @@ pub fn GenericRtArenaAllocator(comptime allocator_spec: RtArenaAllocatorSpec) ty
         pub usingnamespace GenericIrreversibleInterface(Allocator);
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
+        pub fn __refAllDecls() void {
+            meta.refAllDecls(@This(), &.{});
+        }
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
             debug.assertEqual(u64, 1, unit_alignment);
@@ -705,7 +711,6 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
         const Allocator = @This();
         pub const AddressSpace = allocator_spec.AddressSpace;
         pub const specification: LinkedAllocatorSpec = allocator_spec;
-        pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
         pub inline fn mapped_byte_address(allocator: *const Allocator) u64 {
             return allocator.lb_addr;
         }
@@ -1111,6 +1116,9 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
         }
         pub usingnamespace Types(Allocator);
         pub usingnamespace Specs(Allocator);
+        pub fn __refAllDecls() void {
+            meta.refAllDecls(@This(), &.{});
+        }
         pub const Graphics = GenericLinkedAllocatorGraphics(Allocator);
     };
     return T;
