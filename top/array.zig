@@ -87,7 +87,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
             array.appendOne(allocator, .{ .key = key, .val = val });
         }
         pub fn get(array: *const Array, key: Key) ?Value {
-            for (array.pairs) |pair| {
+            for (array.pairs[0..array.pairs_len]) |pair| {
                 if (mem.testEqualMemory(Key, pair.key, key)) {
                     return pair.val;
                 }
@@ -95,7 +95,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
             return null;
         }
         pub fn refer(array: *const Array, key: Key) ?*Value {
-            for (array.pairs) |pair| {
+            for (array.pairs[0..array.pairs_len]) |pair| {
                 if (mem.testEqualMemory(Key, pair.key, key)) {
                     return &pair.val;
                 }
@@ -104,7 +104,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         }
         pub fn remove(array: *Array, key: Key) void {
             const end: *Pair = array.pairs[array.pairs_len -% 1];
-            for (array.pairs) |*pair| {
+            for (array.pairs[0..array.pairs_len]) |*pair| {
                 if (mem.testEqualMemory(Key, pair.*.key, key)) {
                     pair.* = end;
                     array.pairs_len -%= 1;
