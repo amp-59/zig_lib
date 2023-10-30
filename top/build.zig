@@ -3390,7 +3390,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const save: usize = allocator.save();
                 var buf1: [4096]u8 = undefined;
                 var width: ColumnWidth align(64) = .{ .cols = .{} };
-                writeAndWalkColumnWidths(0, node, &width);
+                writeAndWalkColumnWidths(0, node, &width, mode);
                 width.vec +%= @splat(5);
                 width.vec &= @splat(~@as(u16, 3));
                 width.cols.name = @max(width.cols.name, width.cols.file);
@@ -3411,19 +3411,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const next_br_arrow_ws: [:0]const u8 = "├┬ ";
                 const last_br_arrow_ws: [:0]const u8 = "└┬ ";
             };
-            fn writeAndWalkColumnWidths(len1: usize, node: *const Node, width: *ColumnWidth) void {
+            fn writeAndWalkColumnWidths(len1: usize, node: *const Node, width: *ColumnWidth, mode: ListMode) void {
                 @setRuntimeSafety(false);
                 var itr: Node.Iterator = Node.Iterator.init(node);
-                var buf: [4096]u8 = undefined;
-                const files: []types.File = node.getFiles();
-                for (files) |*fs| {
-                    width.cols.file = @intCast(@max(width.cols.file, len1 +% 4 +% @tagName(fs.key.tag).len));
-                    if (node.getFilePath(fs)) |path| {
-                        width.cols.path = @intCast(@max(width.cols.path, path.formatWriteBufDisplay(&buf)));
+                var buf: [4096:0]u8 = undefined;
+                if (mode == .full or mode == .files) {
+                    for (node.getFiles()) |*fs| {
+                        width.cols.file = @intCast(@max(width.cols.file, len1 +% 4 +% @tagName(fs.key.tag).len));
+                        if (node.getFilePath(fs)) |path| {
+                            width.cols.path = @intCast(@max(width.cols.path, path.formatWriteBufDisplay(&buf)));
+                        }
                     }
                 }
                 while (itr.next()) |next_node| {
-                    writeAndWalkColumnWidths(len1 +% 2, next_node, width);
+                    if (mode == .full or mode == .depns or next_node.flags.is_group) {
+                        writeAndWalkColumnWidths(len1 +% 2, next_node, width, mode);
+                    }
                     width.cols.name = @intCast(@max(width.cols.name, len1 +% 4 +% next_node.name.len));
                     width.cols.descr = @intCast(@max(width.cols.descr, next_node.descr.len));
                 }
