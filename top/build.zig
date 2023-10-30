@@ -26,8 +26,8 @@ pub const ExecPhase = enum(u8) {
     /// implied by the primary command.
     /// Transcript items from this phase are titled with `cmdline-2`.
     ///
-    /// zig build [task] [flags] <primary_command> [cmd_args] ++ [run_args]
-    ///          (a)    (b)     (c)               (d)           (e)
+    /// zig build [task] [flags] <primary_command> [cmd_args] (split) [run_args]
+    ///          (a)    (b)     (c)               (d)        (e)     (f)
     ///
     /// a) Which task to execute for the primary command. Overriding task default.
     ///    Examples:
@@ -61,7 +61,10 @@ pub const ExecPhase = enum(u8) {
     ///     ;; Override format task command parameter `ast_check` with `true`.
     ///     `zig build src
     ///
-    /// e) For tasks with binary executable output, set run command line for use
+    /// e) Default is `++`. Command line argument used to split command and run
+    ///    arguments. `--` is used by `-cflags` to stop parsing commands.
+    ///
+    /// f) For tasks with binary executable output, set run command line for use
     ///    by run task.
     ///     Examples:
     ///     ;; Run the output of `elfcmp` build task with two file arguments on
@@ -3069,20 +3072,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     var buf: [32768]u8 = undefined;
                     var ptr: [*]u8 = writeNoExchangeTask(&buf, node, task, old, new, arena_index);
                     ptr[0] = '\n';
-                    ptr += 1;
-                    debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
+                    debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
                 }
             }
             fn writeArenaIndex(buf: [*]u8, arena_index: AddressSpace.Index) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = buf;
                 if (arena_index != max_thread_count) {
-                    var ud64: fmt.Ud64 = .{ .value = arena_index };
-                    buf[0..2].* = " [".*;
-                    const len: usize = ud64.formatWriteBuf(buf + 2);
-                    buf[2 +% len] = ']';
-                    return buf + 3 + len;
+                    ptr[0..2].* = " [".*;
+                    ptr = fmt.writeUd64(ptr + 2, arena_index);
+                    ptr[0] = ']';
+                    ptr += 1;
                 }
-                return buf;
+                return ptr;
             }
             fn writeTask(buf: [*]u8, node: *Node, task: Task, arena_index: AddressSpace.Index) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
