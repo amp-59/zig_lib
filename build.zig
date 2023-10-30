@@ -251,10 +251,6 @@ fn topGroup(allocator: *zl.build.Allocator, group: *Node) void {
     group.addBuild(allocator, build_cmd, "fmt_cmp", "test/fmt_cmp.zig").descr = "Compare formatting methods";
     group.addBuild(allocator, build_cmd, "safety", "test/safety.zig").descr = "Test safety overhaul prototype";
 }
-fn testGroupNew(allocator: *zl.build.Allocator, group: *Node) void {
-    traceGroup(allocator, group.addGroupWithTask(allocator, "trace", .build));
-    topGroup(allocator, group.addGroupWithTask(allocator, "top", .build));
-}
 pub fn buildMain(allocator: *zl.build.Allocator, toplevel: *Node) void {
     const build_runner: *Node = toplevel.addBuild(allocator, .{ .kind = .exe }, "build_runner", "build_runner.zig");
     build_runner.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
@@ -266,10 +262,12 @@ pub fn buildMain(allocator: *zl.build.Allocator, toplevel: *Node) void {
     safety.flags.want_perf_events = true;
     safety.tasks.cmd.build.strip = false;
 
-    testGroupNew(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
+    traceGroup(allocator, toplevel.addGroupWithTask(allocator, "trace", .build));
+    topGroup(allocator, toplevel.addGroupWithTask(allocator, "top", .build));
 
     const treez: *Node = toplevel.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
     const elfcmp: *Node = toplevel.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
+
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
 }
