@@ -1016,32 +1016,31 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 return @ptrFromInt(node.lists.add(allocator, .run_args));
             }
-            fn addConfig(node: *Node, allocator: *Allocator) *Conf {
-                @setRuntimeSafety(false);
-                return @ptrFromInt(node.lists.add(allocator, .confs));
-            }
             pub fn addConfigString(node: *Node, allocator: *Allocator, name: []const u8, value: []const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(value.len +% name.len +% 2, 1);
+                const res: *Conf = @ptrFromInt(node.lists.add(allocator, .confs));
                 fmt.strcpyEqu(@ptrFromInt(addr), name)[0] = 0;
                 fmt.strcpyEqu(@ptrFromInt(addr +% name.len +% 1), value)[0] = 0;
-                node.addConfig(allocator).data = addr;
+                res.data = addr;
             }
             pub fn addConfigBool(node: *Node, allocator: *Allocator, name: []const u8, value: bool) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(name.len +% 2, 1);
+                const res: *Conf = @ptrFromInt(node.lists.add(allocator, .confs));
                 const ptr: *bool = @ptrFromInt(addr);
                 ptr.* = value;
                 fmt.strcpyEqu(@ptrFromInt(addr +% 1), name)[0] = 0;
-                node.addConfig(allocator).data = (1 << (@bitSizeOf(usize) -% 8)) | addr;
+                res.data = (1 << (@bitSizeOf(usize) -% 8)) | addr;
             }
             pub fn addConfigInt(node: *Node, allocator: *Allocator, name: []const u8, value: isize) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(name.len +% 1 +% 8, 8);
+                const res: *Conf = @ptrFromInt(node.lists.add(allocator, .confs));
                 const ptr: *isize = @ptrFromInt(addr);
                 ptr.* = value;
                 fmt.strcpyEqu(@ptrFromInt(addr +% @sizeOf(isize)), name)[0] = 0;
-                node.addConfig(allocator).data = (8 << (@bitSizeOf(usize) -% 8)) | addr;
+                res.data = (8 << (@bitSizeOf(usize) -% 8)) | addr;
             }
             pub fn addConfigFormatter(
                 node: *Node,
@@ -1052,11 +1051,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(16 +% name.len +% 1, 8);
+                const res: *Conf = @ptrFromInt(node.lists.add(allocator, .confs));
                 const ptrs: *[2]usize = @ptrFromInt(addr);
                 ptrs[0] = @intFromPtr(formatWriteBuf);
                 ptrs[1] = @intFromPtr(format);
                 fmt.strcpyEqu(@ptrFromInt(addr +% 16), name)[0] = 0;
-                node.addConfig(allocator).data = (16 << (@bitSizeOf(usize) -% 8)) | addr;
+                res.data = (16 << (@bitSizeOf(usize) -% 8)) | addr;
             }
             pub fn addToplevelArgs(node: *Node, allocator: *Allocator) void {
                 @setRuntimeSafety(builtin.is_safe);
