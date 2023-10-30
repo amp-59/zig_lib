@@ -4002,25 +4002,3 @@ pub const spec = struct {
         pub const silent: BuilderSpec.Logging = builtin.zero(BuilderSpec.Logging);
     };
 };
-// Error checks:
-//  Group node has command arguments entering `processCommands`.
-pub fn GenericCommand(comptime Command: type) type {
-    const T = struct {
-        const render_spec: fmt.RenderSpec = .{
-            .infer_type_names = true,
-            .forward = true,
-        };
-        //pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) callconv(.C) usize {
-        //    return fmt.render(render_spec, cmd.*).formatWriteBuf(buf);
-        //}
-        const gen = @import("./gen.zig");
-        const Editor = gen.StructEditor(render_spec, Command);
-        pub const fieldEditDistance = Editor.fieldEditDistance;
-        pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
-        pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
-        pub const formatWriteBuf = Command.formatWriteBuf;
-        pub const formatLength = Command.formatLength;
-        pub const formatParseArgs = Command.formatParseArgs;
-    };
-    return T;
-}
