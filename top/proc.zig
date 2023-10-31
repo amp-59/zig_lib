@@ -1115,6 +1115,7 @@ pub const about = opaque {
         futexWaitError(error.FutexError, &futex0, 25, &timeout);
         futexWakeError(error.FutexError, &futex0, 1);
         futexWakeOpError(error.FutexError, &futex0, &futex1, 1, 0, .{ .from = 10, .to = 20, .cmp = .Equal, .op = .Add });
+        meta.refAllDecls(@This(), &.{});
     }
 };
 pub fn GenericOptions(comptime Options: type) type {
