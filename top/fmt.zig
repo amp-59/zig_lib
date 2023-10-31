@@ -7,6 +7,17 @@ const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
+
+pub fn Interface(comptime Format: type) type {
+    return struct {
+        formatWrite: fn (Format, anytype) callconv(.Inline) void = Format.formatWrite,
+        formatWriteBuf: fn (Format, [*]u8) callconv(.Inline) usize = Format.formatWriteBuf,
+        formatLength: fn (Format) callconv(.Inline) usize = Format.formatLength,
+        write: fn ([*]u8, @TypeOf(undef.value)) [*]u8 = Format.write,
+        length: fn (@TypeOf(undef.value)) usize = Format.length,
+        const undef: Format = undefined;
+    };
+}
 pub const AboutSrc = blk: {
     var len: usize = 0;
     if (builtin.message_style) |style| {
