@@ -1664,7 +1664,7 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.
         };
     }
     if (logging.Acquire) {
-        about.aboutFdAddrLenOffsetNotice(about.map_s, fd, addr, len, flags);
+        about.aboutFdAddrLenOffsetNotice(about.map_s, fd, addr, len, off);
     }
     if (map_spec.return_type != void) {
         return @intCast(ret);
