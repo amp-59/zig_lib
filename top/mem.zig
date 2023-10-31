@@ -1642,7 +1642,7 @@ pub fn GenericOptionalArrays(comptime Allocator: type, comptime Int: type, compt
                 return res.tag_len & bit_mask;
             }
             pub fn add(res: *Elem, allocator: *Allocator, size_of: usize) usize {
-                return allocator.addGenericSize(Size, size_of, 2, &res.addr, &res.max_len, res.tag_len & bit_mask);
+                return allocator.addGenericSize(Size, size_of, 8, 2, &res.addr, &res.max_len, res.tag_len & bit_mask);
             }
             pub fn at(res: *Elem, comptime tag: ImTag, index: usize) *Child(tag) {
                 return @ptrFromInt(res.addr +% (index *% @sizeOf(Child(tag))));
@@ -1673,7 +1673,7 @@ pub fn GenericOptionalArrays(comptime Allocator: type, comptime Int: type, compt
         }
         pub fn create(im: *Im, allocator: *Allocator, tag: ImTag) *Elem {
             @setRuntimeSafety(builtin.is_safe);
-            const ret: *Elem = @ptrFromInt(allocator.addGenericSize(Size, @sizeOf(Elem), 1, @ptrCast(&im.buf), &im.buf_max_len, im.buf_len));
+            const ret: *Elem = @ptrFromInt(allocator.addGenericSize(Size, @sizeOf(Elem), 8, 1, @ptrCast(&im.buf), &im.buf_max_len, im.buf_len));
             im.buf_len +%= 1;
             ret.tag_len = @intFromEnum(tag);
             ret.tag_len = @shlExact(ret.tag_len, shift_amt);
