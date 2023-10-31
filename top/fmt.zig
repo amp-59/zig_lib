@@ -2704,8 +2704,8 @@ pub const BoolFormat = struct {
 };
 pub fn TypeFormat(comptime spec: RenderSpec) type {
     const T = struct {
-        const Format = @This();
         value: type,
+        const Format = @This();
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const max_len: ?comptime_int = null;
         const default_value_spec: RenderSpec = blk: {
@@ -2718,157 +2718,119 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             tmp.infer_type_names = false;
             break :blk tmp;
         };
-        fn writeDecl(comptime format: anytype, array: anytype, comptime decl: builtin.Type.Declaration) void {
-            const decl_type: type = @TypeOf(@field(format.value, decl.name));
-            if (@typeInfo(decl_type) == .Fn) {
-                return;
+        inline fn evalDefaultValue(comptime field_type: type, comptime default_value: ?*const anyopaque) ?[]const u8 {
+            if (default_value == null) {
+                return null;
             }
-            const decl_value: decl_type = @field(format.value, decl.name);
-            const decl_name_format: IdentifierFormat = .{ .value = decl.name };
-            const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
-            array.writeMany("pub const ");
-            writeFormat(array, decl_name_format);
-            array.writeMany(": " ++ @typeName(decl_type) ++ " = ");
-            writeFormat(array, decl_format);
-            array.writeCount(2, "; ".*);
-        }
-        fn lengthDecl(comptime format: anytype, comptime decl: builtin.Type.Declaration) usize {
-            const decl_type: type = @TypeOf(@field(format.value, decl.name));
-            if (@typeInfo(decl_type) == .Fn) {
-                return 0;
+            if (builtin.isUndefined(default_value)) {
+                return "undefined";
             }
-            var len: usize = 0;
-            const decl_value: decl_type = @field(format.value, decl.name);
-            const DeclFormat = AnyFormat(default_value_spec, decl_type);
-            len +%= 10;
-            len +%= IdentifierFormat.formatLength(.{ .value = decl.name });
-            len +%= 2 +% @typeName(decl_type).len +% 3;
-            len +%= DeclFormat.formatLength(.{ .value = decl_value });
-            len +%= 2;
-            return len;
+            return comptime eval(default_value_spec, @as(*const field_type, @ptrCast(@alignCast(default_value))).*);
         }
-        fn writeStructField(array: anytype, field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) void {
-            const field_name_format: IdentifierFormat = .{ .value = field_name };
-            if (spec.inline_field_types) {
-                const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
-                writeFormat(array, field_name_format);
-                array.writeMany(": ");
-                writeFormat(array, type_format);
-            } else {
-                writeFormat(array, field_name_format);
-                array.writeMany(": " ++ @typeName(field_type));
-            }
-            if (field_default_value) |default_value| {
-                const field_format: AnyFormat(default_value_spec, field_type) = .{ .value = default_value };
-                array.writeMany(" = ");
-                writeFormat(array, field_format);
-            }
-            array.writeCount(2, ", ".*);
+
+        pub inline fn formatWrite(comptime format: Format, array: anytype) void {
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
-        fn writeUnionField(array: anytype, field_name: []const u8, comptime field_type: type) void {
-            const field_name_format: IdentifierFormat = .{ .value = field_name };
-            if (field_type == void) {
-                array.appendFormat(field_name_format);
-                array.writeMany(", ");
-            } else {
-                if (spec.inline_field_types) {
-                    writeFormat(array, field_name_format);
-                    array.writeMany(": ");
-                    const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
-                    writeFormat(array, type_format);
-                } else {
-                    writeFormat(array, field_name_format);
-                    array.writeMany(": " ++ @typeName(field_type));
-                }
-                array.writeCount(2, ", ".*);
-            }
-        }
-        fn writeEnumField(array: anytype, field_name: []const u8) void {
-            const field_name_format: IdentifierFormat = .{ .value = field_name };
-            writeFormat(array, field_name_format);
-            array.writeCount(2, ", ".*);
-        }
-        pub fn formatWrite(comptime format: Format, array: anytype) void {
+        pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             const type_info: builtin.Type = @typeInfo(format.value);
+            var len: usize = 0;
             switch (type_info) {
                 .Struct => |struct_info| {
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        array.writeMany(typeDeclSpecifier(type_info) ++ " {}");
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
+                        len +%= 3;
                     } else {
-                        array.writeMany(typeDeclSpecifier(type_info) ++ " { ");
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
+                        len +%= 3;
                         inline for (struct_info.fields) |field| {
-                            writeStructField(array, field.name, field.type, meta.defaultValue(field));
+                            len +%= writeStructFieldBuf(buf + len, field.name, field.type, evalDefaultValue(field.type, field.default_value));
                         }
                         if (!spec.omit_container_decls) {
                             inline for (struct_info.decls) |decl| {
-                                writeDecl(format, array, decl);
+                                if (@hasDecl(format.value, decl.name)) {
+                                    len +%= writeDeclBuf(buf + len, decl.name, @field(format.value, decl.name));
+                                }
                             }
-                            writeTrailingComma(
-                                array,
-                                omit_trailing_comma,
-                                struct_info.fields.len +% struct_info.decls.len,
-                            );
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, struct_info.fields.len +% struct_info.decls.len);
                         } else {
-                            writeTrailingComma(array, omit_trailing_comma, struct_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, struct_info.fields.len);
                         }
                     }
                 },
                 .Union => |union_info| {
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        array.writeMany(typeDeclSpecifier(type_info) ++ " {}");
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
+                        len +%= 3;
                     } else {
-                        array.writeMany(typeDeclSpecifier(type_info) ++ " { ");
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
+                        len +%= 3;
                         inline for (union_info.fields) |field| {
-                            writeUnionField(array, field.name, field.type);
+                            len +%= writeUnionFieldBuf(buf + len, field.name, field.type);
                         }
                         if (!spec.omit_container_decls) {
                             inline for (union_info.decls) |decl| {
-                                writeDecl(format, array, decl);
+                                if (@hasDecl(format.value, decl.name)) {
+                                    len +%= writeDeclBuf(buf + len, decl.name, @field(format.value, decl.name));
+                                }
                             }
-                            writeTrailingComma(
-                                array,
-                                omit_trailing_comma,
-                                union_info.fields.len +% union_info.decls.len,
-                            );
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, union_info.fields.len +% union_info.decls.len);
                         } else {
-                            writeTrailingComma(array, omit_trailing_comma, union_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, union_info.fields.len);
                         }
                     }
                 },
                 .Enum => |enum_info| {
+                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        array.writeMany(typeDeclSpecifier(type_info) ++ " {}");
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
+                        len +%= 3;
                     } else {
-                        array.writeMany(typeDeclSpecifier(type_info) ++ " { ");
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
+                        len +%= 3;
                         inline for (enum_info.fields) |field| {
-                            writeEnumField(array, field.name);
+                            len +%= writeEnumFieldBuf(buf + len, field.name);
                         }
                         if (!spec.omit_container_decls) {
                             inline for (enum_info.decls) |decl| {
-                                writeDecl(format, array, decl);
+                                if (@hasDecl(format.value, decl.name)) {
+                                    len +%= writeDeclBuf(buf + len, decl.name, @field(format.value, decl.name));
+                                }
                             }
-                            writeTrailingComma(
-                                array,
-                                omit_trailing_comma,
-                                enum_info.fields.len +% enum_info.decls.len,
-                            );
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, enum_info.fields.len +% enum_info.decls.len);
                         } else {
-                            writeTrailingComma(array, omit_trailing_comma, enum_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, enum_info.fields.len);
                         }
                     }
                 },
                 else => {
-                    array.writeMany(@typeName(format.value));
+                    const type_name_s: []const u8 = @typeName(format.value);
+                    @memcpy(buf + len, type_name_s);
+                    len +%= type_name_s.len;
                 },
             }
+            return len;
         }
-        fn writeDeclBuf(comptime format: Format, buf: [*]u8, comptime decl: builtin.Type.Declaration) usize {
+        fn writeDeclBuf(buf: [*]u8, decl_name: []const u8, decl_value: anytype) usize {
             @setRuntimeSafety(builtin.is_safe);
-            const decl_type: type = @TypeOf(@field(format.value, decl.name));
+            const decl_type: type = @TypeOf(decl_value);
             var len: usize = 0;
             if (@typeInfo(decl_type) != .Fn) {
-                const decl_value: decl_type = @field(format.value, decl.name);
-                const decl_name_format: IdentifierFormat = .{ .value = decl.name };
+                const decl_name_format: IdentifierFormat = .{ .value = decl_name };
                 const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
                 const type_name_s: []const u8 = @typeName(decl_type);
                 @as(*[10]u8, @ptrCast(buf + len)).* = "pub const ".*;
@@ -2886,7 +2848,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             }
             return len;
         }
-        fn writeStructFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) usize {
+        fn writeStructFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type, default_field: ?[]const u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             const field_name_format: IdentifierFormat = .{ .value = field_name };
             var len: usize = 0;
@@ -2903,11 +2865,10 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 @as(meta.TypeName(field_type), @ptrCast(buf + len)).* = @typeName(field_type).*;
                 len +%= @typeName(field_type).len;
             }
-            if (field_default_value) |default_value| {
-                const field_format: AnyFormat(default_value_spec, field_type) = .{ .value = default_value };
+            if (default_field) |value| {
                 @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
                 len +%= 3;
-                len +%= field_format.formatWriteBuf(buf + len);
+                len +%= strcpy(buf + len, value);
             }
             @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
             len +%= 2;
@@ -2949,225 +2910,91 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             len +%= 2;
             return len;
         }
-        pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
-            @setRuntimeSafety(builtin.is_safe);
+        fn lengthDecl(buf: [*]u8, decl_name: []const u8, decl_value: anytype) comptime_int {
+            const decl_type: type = @TypeOf(decl_value);
+            var len: usize = 0;
+            if (@typeInfo(decl_type) != .Fn) {
+                len +%= 17 +% identifier(decl_name).formatWriteBuf(buf + len) +%
+                    @typeName(decl_type).len +% any(decl_value).formatLength();
+            }
+            return len;
+        }
+        pub fn formatLength(comptime format: anytype) comptime_int {
             const type_info: builtin.Type = @typeInfo(format.value);
             var len: usize = 0;
             switch (type_info) {
                 .Struct => |struct_info| {
-                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    len +%= typeDeclSpecifier(type_info).len +% 3;
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
-                        len +%= decl_spec_s.len;
-                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
-                        len +%= 3;
+                        return len;
                     } else {
-                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
-                        len +%= decl_spec_s.len;
-                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
-                        len +%= 3;
                         inline for (struct_info.fields) |field| {
-                            len +%= writeStructFieldBuf(buf + len, field.name, field.type, meta.defaultValue(field));
+                            if (spec.inline_field_types) {
+                                const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
+                                len +%= identifier(field.name).formatLength() +% 2 +% type_format.formatLength();
+                            } else {
+                                len +%= identifier(field.name).formatLength() +% 2 +% @typeName(field.type).len;
+                            }
+                            if (evalDefaultValue(field.type, field.default_value)) |value| {
+                                len +%= value.len +% 3;
+                            }
+                            len +%= 2;
                         }
                         if (!spec.omit_container_decls) {
                             inline for (struct_info.decls) |decl| {
                                 if (@hasDecl(format.value, decl.name)) {
-                                    len +%= writeDeclBuf(format, buf + len, decl);
+                                    len +%= lengthDecl(decl.name, @field(format.value, decl.name));
                                 }
-                            }
-                            len +%= writeTrailingCommaBuf(
-                                buf + (len -% 2),
-                                omit_trailing_comma,
-                                struct_info.fields.len +% struct_info.decls.len,
-                            );
-                        } else {
-                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, struct_info.fields.len);
-                        }
-                    }
-                },
-                .Union => |union_info| {
-                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
-                    if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
-                        len +%= decl_spec_s.len;
-                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
-                        len +%= 3;
-                    } else {
-                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
-                        len +%= decl_spec_s.len;
-                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
-                        len +%= 3;
-                        inline for (union_info.fields) |field| {
-                            len +%= writeUnionFieldBuf(buf + len, field.name, field.type);
-                        }
-                        if (!spec.omit_container_decls) {
-                            inline for (union_info.decls) |decl| {
-                                if (@hasDecl(format.value, decl.name)) {
-                                    len +%= writeDeclBuf(format, buf + len, decl);
-                                }
-                            }
-                            len +%= writeTrailingCommaBuf(
-                                buf + (len -% 2),
-                                omit_trailing_comma,
-                                union_info.fields.len +% union_info.decls.len,
-                            );
-                        } else {
-                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, union_info.fields.len);
-                        }
-                    }
-                },
-                .Enum => |enum_info| {
-                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
-                    if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
-                        len +%= decl_spec_s.len;
-                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
-                        len +%= 3;
-                    } else {
-                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
-                        len +%= decl_spec_s.len;
-                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
-                        len +%= 3;
-                        inline for (enum_info.fields) |field| {
-                            len +%= writeEnumFieldBuf(buf + len, field.name);
-                        }
-                        if (!spec.omit_container_decls) {
-                            inline for (enum_info.decls) |decl| {
-                                if (@hasDecl(format.value, decl.name)) {
-                                    len +%= writeDeclBuf(format, buf + len, decl);
-                                }
-                            }
-                            len +%= writeTrailingCommaBuf(
-                                buf + (len -% 2),
-                                omit_trailing_comma,
-                                enum_info.fields.len +% enum_info.decls.len,
-                            );
-                        } else {
-                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, enum_info.fields.len);
-                        }
-                    }
-                },
-                else => {
-                    const type_name_s: []const u8 = @typeName(format.value);
-                    @memcpy(buf + len, type_name_s);
-                    len +%= type_name_s.len;
-                },
-            }
-            return len;
-        }
-        fn lengthStructField(field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) usize {
-            const field_name_format: IdentifierFormat = .{ .value = field_name };
-            var len: usize = 0;
-            if (spec.inline_field_types) {
-                const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
-                len +%= field_name_format.formatLength();
-                len +%= 2;
-                len +%= type_format.formatLength();
-            } else {
-                len +%= field_name_format.formatLength();
-                len +%= 2;
-                len +%= @typeName(field_type).len;
-            }
-            if (field_default_value) |default_value| {
-                const field_format: AnyFormat(default_value_spec, field_type) = .{ .value = default_value };
-                len +%= 3;
-                len +%= field_format.formatLength();
-            }
-            len +%= 2;
-            return len;
-        }
-        fn lengthUnionField(field_name: []const u8, comptime field_type: type) usize {
-            const field_name_format: IdentifierFormat = .{ .value = field_name };
-            var len: usize = 0;
-            if (field_type == void) {
-                len +%= field_name_format.formatLength();
-                len +%= 2;
-            } else {
-                if (spec.inline_field_types) {
-                    const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
-                    len +%= field_name_format.formatLength();
-                    len +%= 2;
-                    len +%= type_format.formatLength();
-                } else {
-                    len +%= field_name_format.formatLength();
-                    len +%= 2;
-                    len +%= @typeName(field_type).len;
-                }
-                len +%= 2;
-            }
-            return len;
-        }
-        fn lengthEnumField(field_name: []const u8) usize {
-            const field_name_format: IdentifierFormat = .{ .value = field_name };
-            var len: usize = 0;
-            len +%= field_name_format.formatLength();
-            len +%= 2;
-            return len;
-        }
-        pub fn formatLength(comptime format: anytype) usize {
-            var len: usize = 0;
-            const type_info: builtin.Type = @typeInfo(format.value);
-            switch (type_info) {
-                .Struct => |struct_info| {
-                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
-                    if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        len +%= decl_spec_s.len;
-                        len +%= 3;
-                    } else {
-                        len +%= decl_spec_s.len;
-                        len +%= 3;
-                        inline for (struct_info.fields) |field| {
-                            len +%= lengthStructField(field.name, field.type, meta.defaultValue(field));
-                        }
-                        if (!spec.omit_container_decls) {
-                            inline for (struct_info.decls) |decl| {
-                                len +%= lengthDecl(format, decl);
                             }
                         }
                         len +%= @intFromBool(struct_info.fields.len != 0 and !omit_trailing_comma);
                     }
                 },
                 .Union => |union_info| {
-                    const decl_spec_s = meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    len +%= typeDeclSpecifier(type_info).len +% 3;
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        len +%= decl_spec_s.len;
-                        len +%= 3;
-                    } else {
-                        len +%= decl_spec_s.len;
-                        len +%= 3;
-                        inline for (union_info.fields) |field| {
-                            len +%= lengthUnionField(field.name, field.type);
-                        }
-                        if (!spec.omit_container_decls) {
-                            inline for (union_info.decls) |decl| {
-                                len +%= lengthDecl(format, decl);
+                        return len;
+                    }
+                    inline for (union_info.fields) |field| {
+                        if (field.type == void) {
+                            len +%= identifier(field.name).formatLength() +% 2;
+                        } else {
+                            if (spec.inline_field_types) {
+                                const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
+                                len +%= identifier(field.name).formatLength() +% 4 +% type_format.formatLength();
+                            } else {
+                                len +%= identifier(field.name).formatLength() +% 4 +% @typeName(field.type).len;
                             }
                         }
-                        len +%= @intFromBool(union_info.fields.len != 0 and !omit_trailing_comma);
                     }
+                    if (!spec.omit_container_decls) {
+                        inline for (union_info.decls) |decl| {
+                            if (@hasDecl(format.value, decl.name)) {
+                                len +%= lengthDecl(decl.name, @field(format.value, decl.name));
+                            }
+                        }
+                    }
+                    len +%= @intFromBool(union_info.fields.len != 0 and !omit_trailing_comma);
                 },
                 .Enum => |enum_info| {
-                    const decl_spec_s = comptime meta.sliceToArrayPointer(typeDeclSpecifier(type_info)).*;
+                    len +%= typeDeclSpecifier(type_info).len +% 3;
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        len +%= decl_spec_s.len;
-                        len +%= 3;
-                    } else {
-                        len +%= decl_spec_s.len;
-                        len +%= 3;
-                        inline for (enum_info.fields) |field| {
-                            len +%= lengthEnumField(field.name);
-                        }
-                        if (!spec.omit_container_decls) {
-                            inline for (enum_info.decls) |decl| {
-                                len +%= lengthDecl(format, decl);
+                        return len;
+                    }
+                    inline for (enum_info.fields) |field| {
+                        len +%= comptime identifier(field.name).formatLength() +% 2;
+                    }
+                    if (!spec.omit_container_decls) {
+                        inline for (enum_info.decls) |decl| {
+                            if (@hasDecl(format.value, decl.name)) {
+                                len +%= lengthDecl(decl.name, @field(format.value, decl.name));
                             }
                         }
-                        len +%= @intFromBool(enum_info.fields.len != 0 and !omit_trailing_comma);
                     }
+                    len +%= @intFromBool(enum_info.fields.len != 0 and !omit_trailing_comma);
                 },
                 else => {
-                    const type_name_s: []const u8 = @typeName(format.value);
-                    len +%= type_name_s.len;
+                    len +%= @typeName(format.value).len;
                 },
             }
             return len;
