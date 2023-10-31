@@ -3023,7 +3023,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.writeBytes(ptr, len);
+        ptr = fmt.Bytes.write(ptr, len);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
@@ -3038,7 +3038,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.writeBytes(ptr, len);
+        ptr = fmt.Bytes.write(ptr, len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += flags.formatWriteBuf(ptr);
@@ -3056,7 +3056,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.writeBytes(ptr, len);
+        ptr = fmt.Bytes.write(ptr, len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.strcpyEqu(ptr, description_s);
@@ -3074,7 +3074,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.writeBytes(ptr, len);
+        ptr = fmt.Bytes.write(ptr, len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += prot.formatWriteBuf(ptr);
@@ -3102,7 +3102,7 @@ pub const about = struct {
         ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = notation_s.*;
         ptr += 3;
-        ptr = fmt.writeBytes(ptr, abs_diff);
+        ptr = fmt.Bytes.write(ptr, abs_diff);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3123,7 +3123,7 @@ pub const about = struct {
         ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.writeBytes(ptr, up_addr -% lb_addr);
+        ptr = fmt.Bytes.write(ptr, up_addr -% lb_addr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3151,7 +3151,7 @@ pub const about = struct {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.writeBytes(ptr, len);
+        ptr = fmt.Bytes.write(ptr, len);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
@@ -3166,7 +3166,7 @@ pub const about = struct {
         ptr += 2;
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.writeBytes(ptr + 2, len);
+        ptr = fmt.Bytes.write(ptr + 2, len);
         const fmt_len: usize = flags.formatWriteBuf(ptr + 2);
         if (fmt_len != 0) {
             ptr[0..2].* = ", ".*;
@@ -3235,7 +3235,7 @@ pub const about = struct {
         ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = if (new_len < old_len) ", -".* else ", +".*;
         ptr += 3;
-        ptr = fmt.writeBytes(ptr, abs_diff);
+        ptr = fmt.Bytes.write(ptr, abs_diff);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3258,7 +3258,7 @@ pub const about = struct {
         ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.writeBytes(ptr, up_addr -% lb_addr);
+        ptr = fmt.Bytes.write(ptr, up_addr -% lb_addr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
