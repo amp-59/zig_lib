@@ -2318,7 +2318,7 @@ pub const BuildCommand = struct {
             } else if (mem.testEqualString("-fopt-bisect-limit", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.passes = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                    cmd.passes = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
                 } else {
                     return;
                 }
@@ -2592,14 +2592,14 @@ pub const BuildCommand = struct {
             } else if (mem.testEqualString("--stack", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.stack = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                    cmd.stack = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
                 } else {
                     return;
                 }
             } else if (mem.testEqualString("--image-base", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.image_base = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                    cmd.image_base = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
                 } else {
                     return;
                 }
@@ -3197,7 +3197,7 @@ pub const ObjcopyCommand = struct {
             } else if (mem.testEqualString("--pad-to", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.pad_to = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                    cmd.pad_to = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
                 } else {
                     return;
                 }
