@@ -1968,7 +1968,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             if (have_lazy) {
                 if (node.flags.is_dynamic_extension) {
-                    node.sh.dl.loadEntryAddress(dest_pathname)(node.sh.fp);
+                    node.sh.dl.loadEntryAddress(dest_pathname).entry()(node.sh.fp);
                 }
             }
             return status(results);
@@ -2492,12 +2492,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (have_size and
                     node.flags.want_binary_analysis)
                 {
-                    if (defined(node.sh.fp.about.elf.load)) {
+                    if (defined(node.sh.fp.about.dl.load)) {
                         if (cached.mode.kind == .regular and cached.size != 0) {
-                            node.extra.info_after = node.sh.fp.about.elf.load(node.sh.dl, cached_pathname);
+                            node.extra.info_after = node.sh.fp.about.dl.load(node.sh.dl, cached_pathname);
                         }
                         if (output.mode.kind == .regular and output.size != 0) {
-                            node.extra.info_before = node.sh.fp.about.elf.load(node.sh.dl, output_pathname);
+                            node.extra.info_before = node.sh.fp.about.dl.load(node.sh.dl, output_pathname);
                         }
                     }
                 }
@@ -2507,8 +2507,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.flags.want_binary_analysis)
             {
                 if (cached.mode.kind == .regular and cached.size != 0) {
-                    if (defined(node.sh.fp.about.elf.load)) {
-                        node.extra.info_after = node.sh.fp.about.elf.load(node.sh.dl, output_pathname);
+                    if (defined(node.sh.fp.about.dl.load)) {
+                        node.extra.info_after = node.sh.fp.about.dl.load(node.sh.dl, output_pathname);
                     }
                 }
             }
@@ -2918,21 +2918,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
-                indexOfCommonLeastDifference: ?*const fn (
-                    allocator: *Allocator,
-                    buf: []*tasks.BuildCommand,
-                ) usize = null,
-                fieldEditDistance: ?*const fn (
-                    s_val: *tasks.BuildCommand,
-                    t_val: *tasks.BuildCommand,
-                ) usize = null,
-                writeFieldEditDistance: ?*const fn (
-                    buf: [*]u8,
-                    name: []const u8,
-                    s_val: *tasks.BuildCommand,
-                    t_val: *tasks.BuildCommand,
-                    commit: bool,
-                ) usize = null,
             },
             format: struct {
                 formatWriteBuf: *const fn (
@@ -2951,21 +2936,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
-                indexOfCommonLeastDifference: ?*const fn (
-                    allocator: *Allocator,
-                    buf: []*tasks.FormatCommand,
-                ) usize = null,
-                fieldEditDistance: ?*const fn (
-                    s_val: *tasks.FormatCommand,
-                    t_val: *tasks.FormatCommand,
-                ) usize = null,
-                writeFieldEditDistance: ?*const fn (
-                    buf: [*]u8,
-                    name: []const u8,
-                    s_val: *tasks.FormatCommand,
-                    t_val: *tasks.FormatCommand,
-                    commit: bool,
-                ) usize = null,
             },
             archive: struct {
                 formatWriteBuf: *const fn (
@@ -2984,21 +2954,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
-                indexOfCommonLeastDifference: ?*const fn (
-                    allocator: *Allocator,
-                    buf: []*tasks.ArchiveCommand,
-                ) usize = null,
-                fieldEditDistance: ?*const fn (
-                    s_val: *tasks.ArchiveCommand,
-                    t_val: *tasks.ArchiveCommand,
-                ) usize = null,
-                writeFieldEditDistance: ?*const fn (
-                    buf: [*]u8,
-                    name: []const u8,
-                    s_val: *tasks.ArchiveCommand,
-                    t_val: *tasks.ArchiveCommand,
-                    commit: bool,
-                ) usize = null,
             },
             objcopy: struct {
                 formatWriteBuf: *const fn (
@@ -3017,21 +2972,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     p_1: *Allocator,
                     p_2: [][*:0]u8,
                 ) void,
-                indexOfCommonLeastDifference: ?*const fn (
-                    allocator: *Allocator,
-                    buf: []*tasks.ObjcopyCommand,
-                ) usize = null,
-                fieldEditDistance: ?*const fn (
-                    s_val: *tasks.ObjcopyCommand,
-                    t_val: *tasks.ObjcopyCommand,
-                ) usize = null,
-                writeFieldEditDistance: ?*const fn (
-                    buf: [*]u8,
-                    name: []const u8,
-                    s_val: *tasks.ObjcopyCommand,
-                    t_val: *tasks.ObjcopyCommand,
-                    commit: bool,
-                ) usize = null,
             },
             proc: struct {
                 executeCommandClone: ?*const fn (
@@ -3054,10 +2994,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     readResults: *const @TypeOf(PerfEvents.readResults),
                     writeResults: *const @TypeOf(PerfEvents.writeResults),
                 },
-                elf: struct {
+                dl: struct {
                     load: *const @TypeOf(DynamicLoader.load),
-                    writeBinary: *const @TypeOf(DynamicLoader.compare.writeBinary),
-                    writeBinaryDifference: *const @TypeOf(DynamicLoader.compare.writeBinaryDifference),
                 },
                 generic: struct {
                     aboutTask: *const @TypeOf(about.aboutTask),
