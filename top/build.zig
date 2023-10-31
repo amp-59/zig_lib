@@ -3391,6 +3391,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var buf1: [4096]u8 = undefined;
                 var width: ColumnWidth align(64) = .{ .cols = .{} };
                 writeAndWalkColumnWidths(0, node, &width, mode);
+                const is_top: bool = node.flags.is_top;
+                defer node.flags.is_top = is_top;
+                node.flags.is_top = true;
                 width.vec +%= @splat(5);
                 width.vec &= @splat(~@as(u16, 3));
                 width.cols.name = @max(width.cols.name, width.cols.file);
@@ -3415,7 +3418,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 var itr: Node.Iterator = Node.Iterator.init(node);
                 var buf: [4096:0]u8 = undefined;
-                if (mode == .full or mode == .files) {
+                if (mode == .full or mode == .files or node.flags.is_top) {
                     for (node.getFiles()) |*fs| {
                         width.cols.file = @intCast(@max(width.cols.file, len1 +% 4 +% @tagName(fs.key.tag).len));
                         if (node.getFilePath(fs)) |path| {
@@ -3434,7 +3437,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn lengthAndWalkInternal(len1: usize, node: *Node, width: *ColumnWidth, mode: ListMode) usize {
                 @setRuntimeSafety(false);
                 var len: usize = 0;
-                if (mode == .full or mode == .files) {
+                if (mode == .full or mode == .files or node.flags.is_top) {
                     for (node.getFiles()) |*fs| {
                         len +%= len1;
                         len +%= 2;
@@ -3459,7 +3462,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var itr: Node.Iterator = Node.Iterator.init(node);
                 var ptr1: [*]u8 = buf1 + len1;
                 var ptr0: [*]u8 = buf0;
-                if (mode == .full or mode == .files) {
+                if (mode == .full or mode == .files or node.flags.is_top) {
                     for (node.getFiles()) |*fs| {
                         ptr0 = fmt.strcpyEqu(ptr0, buf1[0..len1]);
                         ptr0[0..2].* = if (itr.idx == itr.max_idx) "  ".* else "| ".*;
