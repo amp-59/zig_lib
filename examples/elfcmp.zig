@@ -25,7 +25,7 @@ fn findPath(allocator: *mem.SimpleAllocator, vars: [][*:0]u8, name: [:0]u8) ![:0
     if (name[0] == '/') {
         return name;
     }
-    if (zl.file.accessAt(.{}, .{ .symlink_no_follow = false }, zl.file.cwd, name, .{ .exec = true })) |_| {
+    if (zl.file.accessAt(.{}, .{ .symlink_no_follow = false }, zl.file.cwd, name, .{ .read = true })) |_| {
         return name;
     } else |err| {
         if (err != error.NoSuchFileOrDirectory and
@@ -41,7 +41,7 @@ fn findPath(allocator: *mem.SimpleAllocator, vars: [][*:0]u8, name: [:0]u8) ![:0
     while (itr.next()) |dirname| {
         const dir_fd: usize = try zl.file.path(.{}, .{}, dirname);
         defer zl.file.close(.{ .errors = .{} }, dir_fd);
-        const ret: bool = zl.file.accessAt(.{}, .{ .symlink_no_follow = false }, dir_fd, name, .{ .exec = true }) catch {
+        const ret: bool = zl.file.accessAt(.{}, .{ .symlink_no_follow = false }, dir_fd, name, .{ .read = true }) catch {
             continue;
         };
         if (ret) {
