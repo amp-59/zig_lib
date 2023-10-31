@@ -1538,78 +1538,102 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             try meta.wrap(file.close(close(), info.fd));
             return info;
         }
-        pub fn loadEntryAddress(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, *fn (*anyopaque) void) {
+        pub fn loadEntryAddress(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, ElfInfo) {
             @setRuntimeSafety(builtin.is_safe);
             const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
             var st: file.Status = undefined;
+            var ei: ElfInfo = undefined;
             try meta.wrap(file.status(stat(), fd, &st));
-            const size: usize = bits.alignA4096(st.size);
-            const addr: usize = bits.alignA4096(@atomicRmw(usize, &loader.ub_prog_addr, .Add, size, .SeqCst));
-            try meta.wrap(file.map(map(), .{}, .{}, fd, addr, size, 0));
-            const ehdr: *Elf64_Ehdr = @ptrFromInt(addr);
-            var prog_len: usize = 0;
+            var size: usize = bits.alignA4096(st.size);
+            ei.meta.addr = @atomicRmw(usize, &loader.ub_meta_addr, .Add, size, .SeqCst);
+            const addr: usize = bits.alignA4096(ei.meta.addr);
+            size +%= bits.alignA4096(addr -% ei.meta.addr);
+            try meta.wrap(file.map(map(), .{}, mmap_flags, fd, addr, size, 0));
+            ei.ehdr = @ptrFromInt(addr);
+            @memset(&ei.list, 0);
             var phndx: usize = 1;
-            while (phndx != ehdr.e_phnum) : (phndx +%= 1) {
-                const phdr: *Elf64_Phdr = ehdr.programHeader(phndx);
+            while (phndx != ei.ehdr.e_phnum) : (phndx +%= 1) {
+                var phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
                 if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
-                    prog_len +%= bits.alignA4096(phdr.p_vaddr +% phdr.p_memsz);
+                    ei.prog.len +%= bits.alignA4096(phdr.p_vaddr +% phdr.p_memsz);
                 }
+            } else {
+                phndx = 1;
             }
-            phndx = 1;
-            const prog_addr: usize = bits.alignA4096(@atomicRmw(usize, &loader.ub_prog_addr, .Add, prog_len, .SeqCst));
-            while (phndx != ehdr.e_phnum) : (phndx +%= 1) {
-                const phdr: *Elf64_Phdr = ehdr.programHeader(phndx);
+            ei.prog.addr = bits.alignA4096(@atomicRmw(usize, &loader.ub_prog_addr, .Add, ei.prog.len, .SeqCst));
+            while (phndx != ei.ehdr.e_phnum) : (phndx +%= 1) {
+                var phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
                 if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
-                    const prot: sys.flags.FileProt = .{
-                        .read = phdr.p_flags.R,
-                        .write = phdr.p_flags.W,
-                        .exec = phdr.p_flags.X,
-                    };
+                    const prot: sys.flags.FileProt = .{ .read = phdr.p_flags.R, .write = phdr.p_flags.W, .exec = phdr.p_flags.X };
                     const vaddr: usize = bits.alignB4096(phdr.p_vaddr);
                     const len: usize = bits.alignA4096(phdr.p_vaddr +% phdr.p_memsz) -% vaddr;
                     const off: usize = bits.alignB4096(phdr.p_offset);
-                    try meta.wrap(file.map(map(), prot, .{ .fixed = true }, fd, prog_addr +% vaddr, len, off));
+                    try meta.wrap(file.map(map(), prot, mmap_flags, fd, ei.prog.addr +% vaddr, len, off));
                 }
+            } else {
+                phndx = 1;
             }
             try meta.wrap(file.close(close(), fd));
+            var offset: usize = addr +% ei.ehdr.e_phoff +% ei.ehdr.e_phentsize *% ei.ehdr.e_phnum;
             var shndx: usize = 1;
-            var rela_addr: usize = 0;
-            var rela_size: usize = 0;
-            var rela_entsize: usize = 0;
-            var rela_count: usize = 0;
-            while (shndx != ehdr.e_shnum) : (shndx +%= 1) {
-                const shdr: *Elf64_Shdr = ehdr.sectionHeader(shndx);
+            while (shndx != ei.ehdr.e_shnum) : (shndx +%= 1) {
+                const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
+                for (Section.tag_list) |tag| {
+                    if (ei.list[@intFromEnum(tag)] == 0 and
+                        mem.testEqualString(ei.ehdr.sectionName(shndx), @tagName(tag)))
+                    {
+                        ei.list[@intFromEnum(tag)] = @intCast(shndx);
+                        break;
+                    }
+                }
+                if (!shdr.sh_flags.ALLOC) {
+                    offset = bits.alignA64(offset, shdr.sh_addralign);
+                    mem.addrcpy(offset, addr +% shdr.sh_offset, shdr.sh_size);
+                    shdr.sh_offset = offset -% addr;
+                    offset +%= shdr.sh_size;
+                }
                 if (shdr.sh_type == .DYNAMIC) {
-                    const len: usize = @divExact(shdr.sh_size, shdr.sh_entsize);
-                    const dyn: [*]Elf64_Dyn = @ptrFromInt(addr +% shdr.sh_offset);
+                    var rela_addr: usize = 0;
+                    var rela_entsize: usize = 0;
+                    var rela_len: usize = 0;
+                    const dyn_len: usize = @divExact(shdr.sh_size, shdr.sh_entsize);
+                    const dyn: [*]Elf64_Dyn = @ptrFromInt(ei.prog.addr + shdr.sh_addr);
                     var dyn_idx: usize = 1;
-                    while (dyn_idx != len) : (dyn_idx +%= 1) {
+                    while (dyn_idx != dyn_len) : (dyn_idx +%= 1) {
                         switch (dyn[dyn_idx].d_tag) {
                             else => continue,
                             .RELA => rela_addr = dyn[dyn_idx].d_val,
-                            .RELASZ => rela_size = dyn[dyn_idx].d_val,
+                            .RELACOUNT => rela_len = dyn[dyn_idx].d_val,
                             .RELAENT => rela_entsize = dyn[dyn_idx].d_val,
-                            .RELACOUNT => rela_count = dyn[dyn_idx].d_val,
+                        }
+                    }
+                    if (rela_addr == 0) {
+                        continue;
+                    }
+                    rela_addr +%= ei.prog.addr;
+                    var rela_idx: usize = 0;
+                    while (rela_idx != rela_len) : (rela_idx +%= 1) {
+                        const rela: *Elf64_Rela = @ptrFromInt(rela_addr +% (rela_entsize *% rela_idx));
+                        if (rela.r_info.r_type == .RELATIVE) {
+                            const dest: *usize = @ptrFromInt(ei.prog.addr +% rela.r_offset);
+                            const src: isize = @bitCast(ei.prog.addr);
+                            dest.* = @bitCast(src +% rela.r_addend);
                         }
                     }
                 }
+            } else {
+                shndx = 1;
             }
-            if (@bitCast(@intFromBool(rela_addr != 0) &
-                @intFromBool(rela_size != 0) &
-                @intFromBool(rela_entsize != 0) &
-                @intFromBool(rela_count != 0)))
-            {
-                var rela_idx: usize = 0;
-                while (rela_idx != rela_count) : (rela_idx +%= 1) {
-                    const rela: *Elf64_Rela = @ptrFromInt((prog_addr +% rela_addr) +%
-                        (rela_entsize *% rela_idx));
-                    if (rela.r_info.r_type == .RELATIVE) {
-                        const vaddr: *usize = @ptrFromInt(prog_addr +% rela.r_offset);
-                        vaddr.* +%= @intCast(@as(isize, @intCast(prog_addr)) +% rela.r_addend);
-                    }
-                }
-            }
-            return @ptrFromInt(prog_addr +% ehdr.e_entry);
+            offset = relocateSection(&ei, offset);
+            return ei;
+        }
+        fn relocateSection(ei: *ElfInfo, off: usize) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            var ret: usize = bits.alignA64(off, 8);
+            mem.addrcpy(ret, @intFromPtr(ei.ehdr) +% ei.ehdr.e_shoff, ei.ehdr.e_shnum *% ei.ehdr.e_shentsize);
+            ei.ehdr.e_shoff = ret;
+            ret +%= ei.ehdr.e_shnum *% ei.ehdr.e_shentsize;
+            return bits.alignA4096(ret);
         }
         // Consider making function in `file`.
         fn readAt(fd: usize, offset: usize, addr: usize, len: usize) sys.ErrorUnion(ep1, void) {
