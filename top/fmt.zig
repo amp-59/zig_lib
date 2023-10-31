@@ -1164,30 +1164,29 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         pub fn formatWrite(format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
-        pub fn formatWriteBufFull(format: Format, buf: [*]u8) usize {
+        fn writeFull(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            var ptr: [*]u8 = writeBytes(buf, format.old_value);
-            if (format.old_value != format.new_value) {
-                if (format.new_value > format.old_value) {
-                    ptr = writeStyledChange(ptr, format.new_value -% format.old_value, inc_s);
+            var ptr: [*]u8 = Bytes.write(buf, old_count);
+            if (old_count != new_count) {
+                if (new_count > old_count) {
+                    ptr = writeStyledChange(ptr, new_count -% old_count, inc_s);
                 } else {
-                    ptr = writeStyledChange(ptr, format.old_value -% format.new_value, dec_s);
+                    ptr = writeStyledChange(ptr, old_count -% new_count, dec_s);
                 }
                 ptr[0..4].* = " => ".*;
-                ptr += 4;
-                ptr = writeBytes(ptr, format.new_value);
+                ptr = Bytes.write(ptr + 4, new_count);
             }
-            return strlen(ptr, buf);
+            return ptr;
         }
-        pub fn formatLengthFull(format: Format) usize {
-            const old_fmt: Bytes = @bitCast(format.old_value);
-            const new_fmt: Bytes = @bitCast(format.new_value);
+        fn lengthFull(old_count: usize, new_count: usize) usize {
+            const old_fmt: Bytes = @bitCast(old_count);
+            const new_fmt: Bytes = @bitCast(new_count);
             var len: usize = old_fmt.formatLength();
-            if (format.old_value != format.new_value) {
-                if (format.new_value > format.old_value) {
-                    len +%= lengthStyledChange(@bitCast(format.new_value -% format.old_value), inc_s);
+            if (old_count != new_count) {
+                if (new_count > old_count) {
+                    len +%= lengthStyledChange(@bitCast(new_count -% old_count), inc_s);
                 } else {
-                    len +%= lengthStyledChange(@bitCast(format.old_value -% format.new_value), dec_s);
+                    len +%= lengthStyledChange(@bitCast(old_count -% new_count), dec_s);
                 }
                 len +%= 4 +% new_fmt.formatLength();
             }
@@ -1197,40 +1196,39 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             @setRuntimeSafety(builtin.is_safe);
             buf[0] = '(';
             var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
-            ptr = writeBytes(ptr, count);
+            ptr = Bytes.write(ptr, count);
             ptr = strcpyEqu(ptr, no_s);
             ptr[0] = ')';
-            ptr += 1;
-            return ptr;
+            return ptr + 1;
         }
         fn lengthStyledChange(count: Bytes, style_s: []const u8) usize {
             return 2 +% style_s.len +% count.formatLength() +% no_s.len;
         }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (fmt_spec.to_from_zero) {
-                return format.formatWriteBufFull(buf);
+                return writeFull(buf, old_count, new_count);
             } else {
-                if (format.old_value == 0) {
-                    return strlen(writeStyledChange(buf, format.new_value, fmt_spec.inc_style), buf);
-                } else if (format.new_value == 0) {
-                    return strlen(writeStyledChange(buf, format.old_value, fmt_spec.dec_style), buf);
+                if (old_count == 0) {
+                    return writeStyledChange(buf, new_count, fmt_spec.inc_style);
+                } else if (new_count == 0) {
+                    return writeStyledChange(buf, old_count, fmt_spec.dec_style);
                 } else {
-                    return format.formatWriteBufFull(buf);
+                    return writeFull(buf, old_count, new_count);
                 }
             }
         }
         pub fn formatLength(format: Format) usize {
             @setRuntimeSafety(builtin.is_safe);
             if (fmt_spec.to_from_zero) {
-                return format.formatWriteLengthFull();
+                return lengthFull(format.old_value, format.new_value);
             } else {
                 if (format.old_value == 0) {
                     return lengthStyledChange(@bitCast(format.new_value), fmt_spec.inc_style);
                 } else if (format.new_value == 0) {
                     return lengthStyledChange(@bitCast(format.old_value), fmt_spec.dec_style);
                 } else {
-                    return format.formatLengthFull();
+                    return lengthFull(format.old_value, format.new_value);
                 }
             }
         }
