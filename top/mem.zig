@@ -1555,14 +1555,14 @@ pub const SimpleAllocator = struct {
         }
         return ptr.* +% (size *% len);
     }
-    pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) usize {
+    pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, alignment: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) usize {
         @setRuntimeSafety(builtin.is_safe);
         const new_max_len: Size = len +% 2;
         if (max_len.* == 0) {
-            ptr.* = allocateRaw(allocator, size *% init_len, 8);
+            ptr.* = allocateRaw(allocator, size *% init_len, alignment);
             max_len.* = init_len;
         } else if (len == max_len.*) {
-            ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+            ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, alignment);
             max_len.* = new_max_len;
         }
         return ptr.* +% (size *% len);
