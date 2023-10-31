@@ -1,6 +1,6 @@
 const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
-const version_2: bool = false;
+const version_2: bool = true;
 const safety = if (version_2)
     @import("../top/safety2.zig")
 else
