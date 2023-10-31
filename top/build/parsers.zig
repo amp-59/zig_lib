@@ -238,7 +238,7 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
         } else if (mem.testEqualString("-fopt-bisect-limit", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.passes = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                cmd.passes = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
             } else {
                 return;
             }
@@ -512,14 +512,14 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
         } else if (mem.testEqualString("--stack", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.stack = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                cmd.stack = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
             } else {
                 return;
             }
         } else if (mem.testEqualString("--image-base", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.image_base = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                cmd.image_base = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
             } else {
                 return;
             }
@@ -717,7 +717,7 @@ export fn formatParseArgsObjcopyCommand(cmd: *tasks.ObjcopyCommand, allocator: *
         } else if (mem.testEqualString("--pad-to", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.pad_to = parse.ud(usize, mem.terminate(args[args_idx], 0));
+                cmd.pad_to = parse.noexcept.unsigned(mem.terminate(args[args_idx], 0));
             } else {
                 return;
             }

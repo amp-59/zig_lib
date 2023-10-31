@@ -536,8 +536,8 @@ pub fn main() !void {
         .perf = "zl.builtin.root.Builder.PerfEvents",
         .generic = "zl.builtin.root.Builder.about",
     });
-    try writeLoadFromSources(array, FunctionPointers, "build", "zl.build.GenericCommand(zl.build.BuildCommand)");
-    try writeLoadFromSources(array, FunctionPointers, "format", "zl.build.GenericCommand(zl.build.FormatCommand)");
-    try writeLoadFromSources(array, FunctionPointers, "archive", "zl.build.GenericCommand(zl.build.ArchiveCommand)");
-    try writeLoadFromSources(array, FunctionPointers, "objcopy", "zl.build.GenericCommand(zl.build.ObjcopyCommand)");
+    try writeLoadFromSources(array, FunctionPointers, "build", "zl.build.BuildCommand");
+    try writeLoadFromSources(array, FunctionPointers, "format", "zl.build.FormatCommand");
+    try writeLoadFromSources(array, FunctionPointers, "archive", "zl.build.ArchiveCommand");
+    try writeLoadFromSources(array, FunctionPointers, "objcopy", "zl.build.ObjcopyCommand");
 }

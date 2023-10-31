@@ -1282,12 +1282,12 @@ fn writeAssignArg(array: *Array, field_name: []const u8) void {
 fn writeAssignIfIntegerArg(array: *Array, field_name: []const u8) void {
     array.writeMany("cmd.");
     array.writeMany(field_name);
-    array.writeMany("=parse.ud(usize,arg);\n");
+    array.writeMany("=parse.noexcept.unsigned(arg);\n");
 }
 fn writeAssignIfIntegerArgCurIndex(array: *Array, field_name: []const u8) void {
     array.writeMany("cmd.");
     array.writeMany(field_name);
-    array.writeMany("=parse.ud(usize,");
+    array.writeMany("=parse.noexcept.unsigned(");
     writeArgCurIndex(array);
     array.writeMany(");\n");
 }
