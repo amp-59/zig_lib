@@ -189,7 +189,7 @@ fn testBytesFormat() !void {
         .{ "15.999EiB", ~@as(u64, 0) },
     }) |pair| {
         var buf: [4096]u8 = undefined;
-        var ptr: [*]u8 = fmt.writeBytes(&buf, pair[1]);
+        var ptr: [*]u8 = fmt.Bytes.write(&buf, pair[1]);
         try testing.expectEqualMany(u8, pair[0], fmt.slice(ptr, &buf));
     }
 }
