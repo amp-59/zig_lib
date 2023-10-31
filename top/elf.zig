@@ -1229,11 +1229,11 @@ pub const LoaderSpec = struct {
     };
 };
 const Section = enum(u16) {
-    @".dynsym" = 0,
-    @".dynstr" = 1,
-    @".text" = 2,
-    @".strtab" = 3,
-    @".dynamic" = 4,
+    @".dynamic" = 0,
+    @".dynsym" = 1,
+    @".dynstr" = 2,
+    @".text" = 3,
+    @".strtab" = 4,
     @".symtab" = 5,
     @".rodata" = 6,
     @".bss" = 7,
@@ -1272,8 +1272,20 @@ const Section = enum(u16) {
     @".gnu.version_r" = 40,
     @".init_array" = 41,
     @".fini_array" = 42,
+    const tag_list: [43]Section = @bitCast([43]u16{
+        0,  1,  2,  3,  4,  5,  6,  7,
+        8,  9,  10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23,
+        24, 25, 26, 27, 28, 29, 30, 31,
+        32, 33, 34, 35, 36, 37, 38, 39,
+        40, 41, 42,
+    });
+    comptime {
+        if (@typeInfo(Section).Enum.fields.len != tag_list.len) {
+            @compileError("incomplete section tag list");
+        }
+    }
 };
-
 pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
     const T = struct {
         lb_meta_addr: usize = lb_meta_addr,
