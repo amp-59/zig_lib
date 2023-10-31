@@ -991,15 +991,29 @@ pub const Bytes = packed struct {
     pub const max_len: ?comptime_int =
         MajorIntFormat.max_len.? +%
         MinorIntFormat.max_len.? +% 3; // Unit
+
     pub inline fn formatWrite(format: Format, array: anytype) void {
         return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
     }
     pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        return strlen(writeBytes(buf, format.value), buf);
+        return @intFromPtr(Format.write(buf, format.value)) -% @intFromPtr(buf);
     }
-    pub fn formatLength(format: Format) usize {
+    pub inline fn formatLength(format: Format) usize {
+        return Format.length(format.value);
+    }
+    pub fn write(buf: [*]u8, count: usize) [*]u8 {
         @setRuntimeSafety(false);
-        const res: Bytes.Pair = bytes(format.value);
+        const res: Bytes.Pair = bytes(count);
+        var ptr: [*]u8 = Bytes.MajorIntFormat.write(buf, res.int.count);
+        if (res.rem != 0) {
+            ptr[0] = '.';
+            ptr = Bytes.MinorIntFormat.write(ptr + 1, (res.rem *% 1000) / 1024);
+        }
+        return strcpyEqu(ptr, @tagName(res.int.unit));
+    }
+    pub fn length(count: usize) usize {
+        @setRuntimeSafety(false);
+        const res: Bytes.Pair = bytes(count);
         var len: usize = Bytes.MajorIntFormat.formatLength(.{ .value = res.int.count });
         if (res.rem != 0) {
             len +%= 1;
@@ -1025,17 +1039,6 @@ pub fn bytes(count: usize) Bytes.Pair {
         }
     }
     return .{ .int = int, .rem = rem };
-}
-pub fn writeBytes(buf: [*]u8, count: usize) [*]u8 {
-    @setRuntimeSafety(false);
-    const res: Bytes.Pair = bytes(count);
-    var ptr: [*]u8 = Bytes.MajorIntFormat.writeInt(buf, res.int.count);
-    if (res.rem != 0) {
-        ptr[0] = '.';
-        ptr = Bytes.MinorIntFormat.writeInt(ptr + 1, (res.rem *% 1000) / 1024);
-    }
-    ptr = strcpyEqu(ptr, @tagName(res.int.unit));
-    return ptr;
 }
 pub const ChangedIntFormatSpec = struct {
     old_fmt_spec: PolynomialFormatSpec,
