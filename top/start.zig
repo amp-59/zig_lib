@@ -33,7 +33,9 @@ const UserEntry = struct {
     const _start = builtin.root._start;
 };
 comptime {
-    if (builtin.output_mode == .Exe) {
+    if (builtin.output_mode == .Exe and
+        @hasDecl(builtin.root, "Start"))
+    {
         @export(ZigLibEntry._start, .{ .name = "_start", .linkage = .Strong });
     }
 }
