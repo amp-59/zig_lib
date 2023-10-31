@@ -108,7 +108,7 @@ pub fn strcpyMulti(dest: [*]u8, src: []const []const u8) usize {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = dest;
     for (src) |str| ptr += strcpy(ptr, str);
-    return strlen(ptr, dest);
+    return @intFromPtr(ptr) -% @intFromPtr(dest);
 }
 pub fn strcpyMultiEqu(dest: [*]u8, src: []const []const u8) [*]u8 {
     @setRuntimeSafety(false);
@@ -127,7 +127,7 @@ pub fn strlen(end: [*]u8, buf: [*]u8) usize {
 }
 pub fn slice(end: [*]u8, buf: [*]u8) []u8 {
     @setRuntimeSafety(false);
-    return buf[0..strlen(end, buf)];
+    return buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)];
 }
 pub fn print(end: [*]u8, buf: [*]u8) void {
     @setRuntimeSafety(false);
@@ -602,8 +602,8 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         pub const StaticString = mem.array.StaticString(max_len.?);
         const min_abs_value: comptime_int = fmt_spec.range.min orelse 0;
         const max_abs_value: comptime_int = fmt_spec.range.max orelse ~@as(Abs, 0);
-        const min_digits_count: comptime_int = length(Abs, min_abs_value, fmt_spec.radix);
-        const max_digits_count: comptime_int = length(Abs, max_abs_value, fmt_spec.radix);
+        const min_digits_count: comptime_int = sigFigLen(Abs, min_abs_value, fmt_spec.radix);
+        const max_digits_count: comptime_int = sigFigLen(Abs, max_abs_value, fmt_spec.radix);
         const max_len: ?comptime_int = blk: {
             var len: comptime_int = 0;
             if (fmt_spec.radix > max_abs_value) {
@@ -628,9 +628,12 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
         pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            return strlen(writeInt(buf, format.value), buf);
+            return strlen(Format.write(buf, format.value), buf);
         }
-        pub fn writeInt(buf: [*]u8, value: Int) [*]u8 {
+        pub inline fn formatLength(format: Format) usize {
+            return length(format.value);
+        }
+        pub fn write(buf: [*]u8, value: Int) [*]u8 {
             @setRuntimeSafety(false);
             if (@inComptime() and builtin.isUndefined(value)) {
                 return strcpyEqu(buf, "undefined");
@@ -649,7 +652,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             } else if (fmt_spec.separator) |separator| {
                 var abs: Abs = @abs(value);
                 var count: usize = switch (fmt_spec.width) {
-                    .min => length(Abs, abs, fmt_spec.radix),
+                    .min => sigFigLen(Abs, abs, fmt_spec.radix),
                     .max => max_digits_count,
                     .fixed => |fixed| fixed,
                 };
@@ -672,7 +675,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             } else {
                 var abs: Abs = @abs(value);
                 var count: usize = switch (fmt_spec.width) {
-                    .min => length(Abs, abs, fmt_spec.radix),
+                    .min => sigFigLen(Abs, abs, fmt_spec.radix),
                     .max => max_digits_count,
                     .fixed => |fixed| fixed,
                 };
@@ -688,7 +691,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 return ret;
             }
         }
-        pub fn lengthInt(value: Int) usize {
+        pub fn length(value: Int) usize {
             const abs: Abs = @abs(value);
             var len: usize = 0;
             if (fmt_spec.prefix) |prefix| {
@@ -701,7 +704,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 return len +% 1;
             }
             var count: usize = switch (fmt_spec.width) {
-                .min => length(Abs, abs, fmt_spec.radix),
+                .min => sigFigLen(Abs, abs, fmt_spec.radix),
                 .max => max_digits_count,
                 .fixed => |fixed| fixed,
             };
@@ -712,9 +715,6 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 len +%= suffix.len;
             }
             return len +% count;
-        }
-        pub fn formatLength(format: Format) usize {
-            return lengthInt(format.value);
         }
         pub fn formatConvert(format: Format) StaticString {
             var array: StaticString = undefined;
