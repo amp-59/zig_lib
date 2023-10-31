@@ -647,20 +647,20 @@ pub const reinterpret = opaque {
             const what: []const u8 = @typeName(Format) ++ ".length(), ";
             if (builtin.is_fast or builtin.is_small) {
                 const s_len: usize = format.formatLength();
-                const len_0: usize = memory.impl.undefined_byte_address();
+                const addr_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
-                const len_1: usize = memory.impl.undefined_byte_address();
-                const t_len: usize = len_1 -% len_0;
+                const addr_1: usize = memory.impl.undefined_byte_address();
+                const t_len: usize = addr_1 -% addr_0;
                 if (s_len < t_len) {
-                    formatLengthFault(what, " >= ", s_len, t_len);
+                    formatLengthFault(what, " > ", s_len, t_len);
                 }
             } else {
                 const s_len: usize = format.formatLength();
-                const len_0: usize = memory.impl.undefined_byte_address();
+                const addr_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
-                const len_1: usize = memory.impl.undefined_byte_address();
-                const t_len: usize = len_1 -% len_0;
-                if (t_len != s_len) {
+                const addr_1: usize = memory.impl.undefined_byte_address();
+                const t_len: usize = addr_1 -% addr_0;
+                if (s_len != t_len) {
                     formatLengthFault(what, " == ", s_len, t_len);
                 }
             }
