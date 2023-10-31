@@ -624,6 +624,7 @@ pub fn GenericArenaAllocator(comptime allocator_spec: ArenaAllocatorSpec) type {
         pub usingnamespace Specs(Allocator);
         pub usingnamespace GenericAllocatorInterface(Allocator);
         pub usingnamespace GenericIrreversibleInterface(Allocator);
+        pub usingnamespace GenericArrayInterface(Allocator);
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
         pub fn __refAllDecls() void {
@@ -691,6 +692,7 @@ pub fn GenericRtArenaAllocator(comptime allocator_spec: RtArenaAllocatorSpec) ty
         pub usingnamespace Specs(Allocator);
         pub usingnamespace GenericAllocatorInterface(Allocator);
         pub usingnamespace GenericIrreversibleInterface(Allocator);
+        pub usingnamespace GenericArrayInterface(Allocator);
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
         pub fn __refAllDecls() void {
@@ -935,30 +937,6 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
                 Node4.write(s_np_addr, Node4.F | r_np_addr);
             }
         }
-        pub fn addGeneric(allocator: *Allocator, size: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
-            @setRuntimeSafety(builtin.is_safe);
-            const new_max_len: usize = len +% 2;
-            if (max_len.* == 0) {
-                ptr.* = allocateRaw(allocator, size *% init_len, 8);
-                max_len.* = init_len;
-            } else if (len == max_len.*) {
-                ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
-                max_len.* = new_max_len;
-            }
-            return ptr.* +% (size *% len);
-        }
-        pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) usize {
-            @setRuntimeSafety(builtin.is_safe);
-            const new_max_len: Size = len +% 2;
-            if (max_len.* == 0) {
-                ptr.* = allocateRaw(allocator, size *% init_len, 8);
-                max_len.* = init_len;
-            } else if (len == max_len.*) {
-                ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
-                max_len.* = new_max_len;
-            }
-            return ptr.* +% (size *% len);
-        }
         pub fn unmapAll(allocator: *Allocator) void {
             mem.unmap(Allocator.unmap_spec, allocator.lb_addr, allocator.up_addr -% allocator.lb_addr);
         }
@@ -1116,6 +1094,7 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
         }
         pub usingnamespace Types(Allocator);
         pub usingnamespace Specs(Allocator);
+        pub usingnamespace GenericArrayInterface(Allocator);
         pub fn __refAllDecls() void {
             meta.refAllDecls(@This(), &.{});
         }
@@ -1123,7 +1102,41 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
     };
     return T;
 }
-
+fn GenericArrayInterface(comptime Allocator: type) type {
+    const T = struct {
+        pub fn addGeneric(allocator: *Allocator, size: usize, alignment: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            defer if (Allocator.specification.options.trace_state) {
+                Allocator.Graphics.showWithReference(allocator, @src());
+            };
+            const new_max_len: usize = len +% 2;
+            if (max_len.* == 0) {
+                ptr.* = allocator.allocateRaw(size *% init_len, alignment);
+                max_len.* = init_len;
+            } else if (len == max_len.*) {
+                ptr.* = allocator.reallocateRaw(ptr.*, size *% max_len.*, size *% new_max_len, alignment);
+                max_len.* = new_max_len;
+            }
+            return ptr.* +% (size *% len);
+        }
+        pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, alignment: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            defer if (Allocator.specification.options.trace_state) {
+                Allocator.Graphics.showWithReference(allocator, @src());
+            };
+            const new_max_len: Size = len +% 2;
+            if (max_len.* == 0) {
+                ptr.* = allocator.allocateRaw(size *% init_len, alignment);
+                max_len.* = init_len;
+            } else if (len == max_len.*) {
+                ptr.* = allocator.reallocateRaw(ptr.*, size *% max_len.*, size *% new_max_len, alignment);
+                max_len.* = new_max_len;
+            }
+            return ptr.* +% (size *% len);
+        }
+    };
+    return T;
+}
 fn GenericIrreversibleInterface(comptime Allocator: type) type {
     const T = struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
@@ -1279,28 +1292,6 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             if (Allocator.specification.options.count_useful_bytes) {
                 allocator.metadata.count -%= s_aligned_bytes;
             }
-        }
-        pub fn addGeneric(allocator: *Allocator, size: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
-            const new_max_len: usize = len +% 2;
-            if (max_len.* == 0) {
-                ptr.* = allocateRaw(allocator, size *% init_len, 8);
-                max_len.* = init_len;
-            } else if (len == max_len.*) {
-                ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
-                max_len.* = new_max_len;
-            }
-            return ptr.* +% (size *% len);
-        }
-        pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) usize {
-            const new_max_len: Size = len +% 2;
-            if (max_len.* == 0) {
-                ptr.* = allocateRaw(allocator, size *% init_len, 8);
-                max_len.* = init_len;
-            } else if (len == max_len.*) {
-                ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
-                max_len.* = new_max_len;
-            }
-            return ptr.* +% (size *% len);
         }
         pub inline fn duplicate(allocator: *Allocator, comptime T: type, value: T) Allocator.allocate_payload(*T) {
             const ret: *T = try meta.wrap(allocator.create(T));
