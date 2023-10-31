@@ -20,7 +20,7 @@ pub fn writeAboveOrBelowLimit(
         " minimum (".*
     else
         " maximum (".*;
-    ptr = fmt.Xd(To).writeInt(ptr + 10, limit);
+    ptr = fmt.Xd(To).write(ptr + 10, limit);
     ptr[0] = ')';
     return ptr + 1;
 }
@@ -217,7 +217,7 @@ pub fn panicCastTruncatedData(
     ptr[0..4].* = " to ".*;
     ptr = fmt.strcpyEqu(ptr + 4, to_type_name);
     ptr[0..17].* = " truncated bits: ".*;
-    ptr = fmt.Xd(From).writeInt(ptr + 17, value);
+    ptr = fmt.Xd(From).write(ptr + 17, value);
     ptr = writeAboveOrBelowLimit(ptr, To, to_type_name, yn, if (yn) extrema.min else extrema.max);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
@@ -237,7 +237,7 @@ pub fn panicCastToUnsignedFromNegative(
     ptr[0..18].* = "integer cast from ".*;
     ptr = fmt.strcpyEqu(ptr + 18, from_type_name);
     ptr[0..2].* = " (".*;
-    ptr = fmt.Xd(From).writeInt(ptr + 2, value);
+    ptr = fmt.Xd(From).write(ptr + 2, value);
     ptr[0..5].* = ") to ".*;
     ptr = fmt.strcpyEqu(ptr + 5, to_type_name);
     ptr[0..16].* = " lost signedness".*;
@@ -256,9 +256,9 @@ pub fn panicSentinelMismatch(
     var buf: [256]u8 = undefined;
     var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
     ptr[0..29].* = " sentinel mismatch: expected ".*;
-    ptr = fmt.Xd(Number).writeInt(ptr + 29, expected);
+    ptr = fmt.Xd(Number).write(ptr + 29, expected);
     ptr[0..8].* = ", found ".*;
-    ptr = fmt.Xd(Number).writeInt(ptr + 8, found);
+    ptr = fmt.Xd(Number).write(ptr + 8, found);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicNonScalarSentinelMismatch(
@@ -299,13 +299,13 @@ pub fn panicExactDivisionWithRemainder(
     var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
     ptr[0..34].* = ": exact division had a remainder: ".*;
     ptr += 34;
-    ptr += fmt.Xd(Number).writeInt(ptr + 34, numerator);
+    ptr += fmt.Xd(Number).write(ptr + 34, numerator);
     ptr[0] = '/';
-    ptr += fmt.Xd(Number).writeInt(ptr + 1, denominator);
+    ptr += fmt.Xd(Number).write(ptr + 1, denominator);
     ptr[0..4].* = " == ".*;
-    ptr = fmt.Xd(Number).writeInt(ptr + 4, @divTrunc(numerator, denominator));
+    ptr = fmt.Xd(Number).write(ptr + 4, @divTrunc(numerator, denominator));
     ptr[0] = 'r';
-    ptr = fmt.Xd(Number).writeInt(ptr + 1, @rem(numerator, denominator));
+    ptr = fmt.Xd(Number).write(ptr + 1, @rem(numerator, denominator));
     builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicArithOverflow(comptime Number: type) type {
@@ -328,12 +328,12 @@ pub fn panicArithOverflow(comptime Number: type) type {
             var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
             ptr[0..19].* = " integer overflow: ".*;
             const res = @addWithOverflow(lhs, rhs);
-            ptr = fmt.Xd(Number).writeInt(ptr + 19, lhs);
+            ptr = fmt.Xd(Number).write(ptr + 19, lhs);
             ptr[0..3].* = " + ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 3, rhs);
+            ptr = fmt.Xd(Number).write(ptr + 3, rhs);
             if (res[1] == 0) {
                 ptr[0..2].* = " (".*;
-                ptr = fmt.Xd(Number).writeInt(ptr + 2, res[0]);
+                ptr = fmt.Xd(Number).write(ptr + 2, res[0]);
                 ptr[0] = ')';
                 ptr += 1;
             }
@@ -355,12 +355,12 @@ pub fn panicArithOverflow(comptime Number: type) type {
             var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
             ptr[0..19].* = " integer overflow: ".*;
             const res = @subWithOverflow(lhs, rhs);
-            ptr = fmt.Xd(Number).writeInt(ptr + 19, lhs);
+            ptr = fmt.Xd(Number).write(ptr + 19, lhs);
             ptr[0..3].* = " - ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 3, rhs);
+            ptr = fmt.Xd(Number).write(ptr + 3, rhs);
             if (res[1] == 0) {
                 ptr[0..2].* = " (".*;
-                ptr = fmt.Xd(Number).writeInt(ptr + 2, res[0]);
+                ptr = fmt.Xd(Number).write(ptr + 2, res[0]);
                 ptr[0] = ')';
                 ptr += 1;
             }
@@ -385,12 +385,12 @@ pub fn panicArithOverflow(comptime Number: type) type {
             var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
             ptr[0..19].* = " integer overflow: ".*;
             const res = @mulWithOverflow(lhs, rhs);
-            ptr = fmt.Xd(Number).writeInt(ptr + 19, lhs);
+            ptr = fmt.Xd(Number).write(ptr + 19, lhs);
             ptr[0..3].* = " * ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 3, rhs);
+            ptr = fmt.Xd(Number).write(ptr + 3, rhs);
             if (res[1] == 0) {
                 ptr[0..2].* = " (".*;
-                ptr = fmt.Xd(Number).writeInt(ptr + 2, res[0]);
+                ptr = fmt.Xd(Number).write(ptr + 2, res[0]);
                 ptr[0] = ')';
                 ptr += 1;
             }
@@ -411,11 +411,11 @@ pub fn panicArithOverflow(comptime Number: type) type {
             var buf: [256]u8 = undefined;
             var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
             ptr[0..29].* = " left shift overflowed bits: ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 29, value);
+            ptr = fmt.Xd(Number).write(ptr + 29, value);
             ptr[0..4].* = " << ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 4, shift_amt);
+            ptr = fmt.Xd(Number).write(ptr + 4, shift_amt);
             ptr[0..13].* = " shifted out ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 13, @popCount(absolute) -% @popCount((absolute << shift_amt) & mask));
+            ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute) -% @popCount((absolute << shift_amt) & mask));
             ptr[0..5].* = " bits".*;
             builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
@@ -434,11 +434,11 @@ pub fn panicArithOverflow(comptime Number: type) type {
             var buf: [256]u8 = undefined;
             var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
             ptr[0..30].* = " right shift overflowed bits: ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 30, value);
+            ptr = fmt.Xd(Number).write(ptr + 30, value);
             ptr[0..4].* = " >> ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 4, shift_amt);
+            ptr = fmt.Xd(Number).write(ptr + 4, shift_amt);
             ptr[0..13].* = " shifted out ".*;
-            ptr = fmt.Xd(Number).writeInt(ptr + 13, @popCount(absolute) -% @popCount((absolute >> shift_amt) & mask));
+            ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute) -% @popCount((absolute >> shift_amt) & mask));
             ptr[0..5].* = " bits".*;
             builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
