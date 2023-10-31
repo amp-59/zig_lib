@@ -3254,7 +3254,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                                 if (node.getFile(.{ .tag = .cached_generic })) |cached| {
                                     ptr[0..2].* = ", ".*;
                                     ptr += 2;
-                                    ptr += fmt.bloatDiff(output.st.size, cached.st.size).formatWriteBuf(ptr);
+                                    ptr = fmt.BloatDiff.write(ptr, output.st.size, cached.st.size);
                                 }
                             }
                         }
@@ -3298,6 +3298,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 allocator.restore(save);
             }
             fn writeTimingStats(node: *Node, results: *Node.Results, width: usize, buf: [*]u8) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
                 ptr += fmt.writeSideBarSubHeading(buf, width, "perf");
                 ptr = writeWallTime(ptr, results.time.sec, results.time.nsec);
@@ -3309,17 +3310,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return ptr;
             }
             fn writeFileSizeStats(buf: [*]u8, node: *Node, width: usize) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf + fmt.writeSideBarSubHeading(buf, width, "size");
                 if (node.getFile(.{ .tag = .output_generic })) |output| {
                     if (node.getFile(.{ .tag = .cached_generic })) |cached| {
-                        ptr += fmt.bloatDiff(output.st.size, cached.st.size).formatWriteBuf(ptr);
+                        ptr = fmt.BloatDiff.write(ptr, output.st.size, cached.st.size);
                         ptr[0] = '\n';
                         ptr += 1;
                     }
                 } else if (node.getFile(.{ .tag = .output_generic })) |output| {
-                    ptr = fmt.writeBytes(ptr, output.st.size);
+                    ptr = fmt.Bytes.write(ptr, output.st.size);
                     ptr[0] = '\n';
-                    return ptr + 1;
+                    ptr += 1;
                 }
                 if (node.extra.info_after) |after| {
                     if (node.extra.info_before) |before| {
@@ -3746,7 +3748,7 @@ fn writeWallTime(buf: [*]u8, sec: usize, nsec: usize) [*]u8 {
     ptr[0..4].* = ".000".*;
     ptr += 1;
     ud64.value = nsec;
-    const figs: usize = fmt.length(usize, nsec, 10);
+    const figs: usize = fmt.sigFigLen(usize, nsec, 10);
     ptr += (9 -% figs);
     _ = ud64.formatWriteBuf(ptr);
     ptr += (figs -% 9);
