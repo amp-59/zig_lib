@@ -411,9 +411,9 @@ pub const Status = extern struct {
         return fmt.strlen(about.writeStatus(buf, format), buf);
     }
     pub fn formatLength(format: *const Status) usize {
-        return 6 +% fmt.length(u64, format.ino, 10) +%
-            6 +% fmt.length(u64, format.dev >> 8, 10) +%
-            19 +% fmt.length(u64, format.dev & 0xff, 10) +%
+        return 6 +% fmt.sigFigLen(u64, format.ino, 10) +%
+            6 +% fmt.sigFigLen(u64, format.dev >> 8, 10) +%
+            19 +% fmt.sigFigLen(u64, format.dev & 0xff, 10) +%
             fmt.Bytes.formatLength(.{ .value = format.size });
     }
     pub fn count(st: *const Status, comptime T: type) u64 {
@@ -2550,7 +2550,7 @@ pub const about = struct {
         ptr[0..2].* = "..".*;
         ptr = fmt.writeUx64(ptr + 2, addr +% len);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.writeBytes(ptr + 2, len);
+        ptr = fmt.Bytes.write(ptr + 2, len);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
@@ -2586,7 +2586,7 @@ pub const about = struct {
         ptr[0..3].* = "fd=".*;
         ptr = fmt.writeUd64(ptr + 3, fd);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.writeBytes(ptr + 2, fd_len);
+        ptr = fmt.Bytes.write(ptr + 2, fd_len);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
@@ -3017,7 +3017,7 @@ pub const about = struct {
         ptr[0..2].* = "..".*;
         ptr = fmt.writeUx64(ptr + 2, addr +% len);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.writeBytes(ptr + 2, len);
+        ptr = fmt.Bytes.write(ptr + 2, len);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3504,7 +3504,7 @@ pub const about = struct {
         ptr[0..2].* = ", ".*;
         ptr = writeMode(ptr + 2, st.mode);
         ptr[0..7].* = ", size=".*;
-        ptr = fmt.writeBytes(ptr + 7, st.size);
+        ptr = fmt.Bytes.write(ptr + 7, st.size);
         return ptr;
     }
     fn writePollFds(buf: [*]u8, pollfds: []PollFd) [*]u8 {
