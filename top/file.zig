@@ -1650,7 +1650,7 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.
     if (map_spec.errors.throw.len != 0) {
         builtin.throw(sys.ErrorCode, map_spec.errors.throw, ret) catch |map_error| {
             if (logging.Error) {
-                about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), addr, len, flags);
+                about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
             }
             return map_error;
         };
