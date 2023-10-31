@@ -485,7 +485,7 @@ pub const StringLiteralFormat = struct {
 };
 pub fn writeSideBarIndex(buf: [*]u8, width: usize, idx: usize) usize {
     @setRuntimeSafety(false);
-    const len: usize = length(u64, idx, 10);
+    const len: usize = sigFigLen(usize, idx, 10);
     const rem: usize = builtin.message_indent -| (width +% 1);
     var ptr: [*]u8 = strsetEqu(buf, ' ', width -| len);
     ptr += ud64(idx).formatWriteBuf(ptr);
@@ -502,7 +502,7 @@ pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usi
     ptr += 1;
     return @intFromPtr(strsetEqu(ptr, ' ', rem)) -% @intFromPtr(buf);
 }
-fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
+fn sigFigMaxLen(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
     var value: if (@bitSizeOf(T) < 8) u8 else @TypeOf(@abs(@as(T, 0))) = 0;
     var len: u16 = 0;
@@ -515,7 +515,7 @@ fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     }
     return len;
 }
-pub fn length(
+pub fn sigFigLen(
     comptime U: type,
     abs_value: if (@bitSizeOf(U) < 8) u8 else U,
     comptime radix: u7,
