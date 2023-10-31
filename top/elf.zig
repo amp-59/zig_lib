@@ -1293,6 +1293,21 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         lb_prog_addr: usize = lb_prog_addr,
         ub_prog_addr: usize = lb_prog_addr,
         const DynamicLoader = @This();
+        pub const ElfInfo = extern struct {
+            ehdr: *Elf64_Ehdr,
+            meta: extern struct {
+                addr: usize = 0,
+                len: usize = 0,
+            } = .{},
+            prog: extern struct {
+                addr: usize = 0,
+                len: usize = 0,
+            } = .{},
+            list: [Section.tag_list.len]u16 = undefined,
+            pub fn entry(info: *const ElfInfo) *const fn (*anyopaque) void {
+                return @ptrFromInt(info.prog.addr +% info.ehdr.e_entry);
+            }
+        };
         pub const Info = extern struct {
             ehdr: *Elf64_Ehdr,
             shdr: usize,
