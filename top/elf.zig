@@ -1324,19 +1324,12 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fd: usize,
             impl: Sections,
             const Sections = extern struct {
-                buf: [tag_list.len]Pair,
+                buf: [Section.tag_list.len]Pair,
                 const Pair = extern struct {
                     shdr: ?*Elf64_Shdr,
                     addr: usize,
+                    shndx: u16 = 0,
                 };
-                const tag_list: [43]Section = @bitCast([43]u16{
-                    0,  1,  2,  3,  4,  5,  6,  7,
-                    8,  9,  10, 11, 12, 13, 14, 15,
-                    16, 17, 18, 19, 20, 21, 22, 23,
-                    24, 25, 26, 27, 28, 29, 30, 31,
-                    32, 33, 34, 35, 36, 37, 38, 39,
-                    40, 41, 42,
-                });
                 inline fn set(sects: *Sections, tag: Section, shdr: *Elf64_Shdr, addr: usize) void {
                     @setRuntimeSafety(false);
                     sects.buf[@intFromEnum(tag)] = .{ .shdr = shdr, .addr = addr };
@@ -1356,7 +1349,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 const next: usize = aligned +% size_of;
                 if (next > info.meta.finish) {
                     const finish: usize = bits.alignA4096(next);
-                    try meta.wrap(mem.map(map(), .{}, .{}, info.meta.finish, finish -% info.meta.finish));
+                    try meta.wrap(mem.map(map(), .{}, mmap_flags, info.meta.finish, finish -% info.meta.finish));
                     info.meta.finish = finish;
                 }
                 info.meta.next = next;
@@ -1377,7 +1370,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         const len: usize = bits.alignA4096(phdr.p_vaddr +% phdr.p_memsz) -% addr;
                         const off: usize = bits.alignB4096(phdr.p_offset);
                         addr +%= info.prog.addr;
-                        try meta.wrap(file.map(map(), .{ .read = phdr.p_flags.R, .write = phdr.p_flags.W, .exec = phdr.p_flags.X }, .{ .fixed = true }, info.fd, addr, len, off));
+                        try meta.wrap(file.map(map(), .{ .read = phdr.p_flags.R, .write = phdr.p_flags.W, .exec = phdr.p_flags.X }, mmap_flags, info.fd, addr, len, off));
                     }
                 }
             }
@@ -1438,7 +1431,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     {
                         len +%= @divExact(len, shdr.sh_entsize) *% @sizeOf(compare.Match);
                     }
-                    const tag: Section = for (Sections.tag_list) |tag| {
+                    const tag: Section = for (Section.tag_list) |tag| {
                         if (mem.testEqualString(info.sectionName(shdr), @tagName(tag))) {
                             shdr.sh_addr = try meta.wrap(info.allocateMeta(len, shdr.sh_addralign));
                             info.impl.set(tag, shdr, shdr.sh_addr);
@@ -1519,6 +1512,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             .throw = ep1.throw ++ loader_spec.errors.map.throw ++ loader_spec.errors.open.throw,
             .abort = ep1.abort ++ loader_spec.errors.map.abort ++ loader_spec.errors.open.abort,
         };
+        const mmap_flags = .{
+            .fixed = true,
+            .fixed_noreplace = false,
+        };
         fn allocateInfo(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, *Info) {
             @setRuntimeSafety(builtin.is_safe);
             const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
@@ -1528,7 +1525,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             const meta_start: usize = bits.alignA4096(@atomicRmw(usize, &loader.ub_meta_addr, .Add, len, .SeqCst));
             var meta_len: usize = 4096;
             var meta_finish: usize = meta_start +% meta_len;
-            try meta.wrap(mem.map(map(), .{}, .{}, meta_start, 4096));
+            try meta.wrap(mem.map(map(), .{}, mmap_flags, meta_start, 4096));
             try meta.wrap(readAt(fd, 0, meta_start, 4096));
             const ehdr: *Elf64_Ehdr = @ptrFromInt(meta_start);
             const phdr_start: usize = meta_start +% ehdr.e_phoff;
@@ -1536,7 +1533,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             const meta_next: usize = phdr_finish +% (@sizeOf(Info) +% 8 +% 1 +% pathname.len);
             if (meta_next > meta_finish) {
                 meta_len +%= bits.alignA4096(meta_next -% meta_finish);
-                try meta.wrap(mem.map(map(), .{}, .{}, meta_start +% 4096, meta_len -% 4096));
+                try meta.wrap(mem.map(map(), .{}, mmap_flags, meta_start +% 4096, meta_len -% 4096));
                 meta_finish = meta_start +% meta_len;
             }
             const info: *Info = @ptrFromInt(phdr_finish);
