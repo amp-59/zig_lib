@@ -270,6 +270,14 @@ pub fn buildMain(allocator: *zl.build.Allocator, toplevel: *Node) void {
 
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
+
+    const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
+    const futex: *Node = toplevel.addBuild(allocator, build_cmd, "futex", "test/futex.zig");
+    const itos: *Node = toplevel.addBuild(allocator, build_cmd, "itos", "examples/itos.zig");
+
+    imports.descr = "List files imported from root";
+    futex.descr = "Test prototype futex waiting";
+    itos.descr = "Example program for integer base conversion";
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
