@@ -3183,7 +3183,7 @@ pub const about = struct {
     }
     fn writeUpdateFdOffset(buf: [*]u8, fd: usize, offset: usize) [*]u8 {
         @setRuntimeSafety(false);
-        var ptr: [*]u8 = buf + fmt.writeSideBarIndex(buf, 4, fd);
+        var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, 4, fd);
         ptr[0..7].* = "offset=".*;
         ptr = fmt.writeUdsize(ptr + 7, offset);
         ptr[0] = '\n';
@@ -3511,7 +3511,7 @@ pub const about = struct {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         for (pollfds) |*pollfd| {
-            ptr += fmt.writeSideBarIndex(ptr, 4, pollfd.fd);
+            ptr = fmt.SideBarIndexFormat.write(ptr, 4, pollfd.fd);
             ptr = writeEvents(ptr, pollfd, "expect=", 4);
             ptr = writeEvents(ptr, pollfd, " actual=", 6);
             ptr[0] = '\n';
