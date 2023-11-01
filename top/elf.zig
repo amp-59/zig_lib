@@ -2482,30 +2482,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
         };
         pub const about = struct {
-            fn writePercentage(buf: [*]u8, sym: *const Elf64_Sym, mat: compare.Match, sizes: *compare.Sizes) [*]u8 {
-                @setRuntimeSafety(false);
-                if (sym.st_size * 200 < sizes.new +% sizes.old or
-                    mat.flags.is_insignificant)
-                {
-                    return buf;
-                }
-                const result: usize = (sym.st_size *% 100000) / switch (mat.tag) {
-                    .deletion => @max(sizes.old, 1),
-                    else => @max(sizes.new, 1),
-                };
-                const sig: usize = (result / 1000) *% 1000;
-                const exp: usize = result - sig;
-                var ptr: [*]u8 = fmt.writeUd64(buf, sig / 1000);
-                ptr[0..4].* = ".000".*;
-                ptr += 1;
-                const figs: usize = fmt.sigFigLen(usize, exp, 10);
-                ptr += (3 -% figs);
-                _ = fmt.writeUd64(ptr, exp);
-                ptr += (figs -% 3);
-                ptr += 3;
-                ptr[0..3].* = "%, ".*;
-                return ptr + 3;
-            }
             fn aboutReadMetadataSection(name: [:0]const u8) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
@@ -2578,6 +2554,56 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = fmt.strcpyEqu(ptr + 7, pathname[pos +% 1 ..]);
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+            }
+            fn lengthPercentage(sym: *const Elf64_Sym, mat: compare.Match, sizes: *compare.Sizes) usize {
+                @setRuntimeSafety(false);
+                if (sym.st_size * 200 < sizes.new +% sizes.old or
+                    mat.flags.is_insignificant)
+                {
+                    return 0;
+                }
+                const result: usize = (sym.st_size *% 100000) / switch (mat.tag) {
+                    .deletion => @max(sizes.old, 1),
+                    else => @max(sizes.new, 1),
+                };
+                const sig: usize = (result / 1000) *% 1000;
+                return fmt.Udsize.length(sig / 1000) +% 6;
+            }
+            fn writePercentage(buf: [*]u8, sym: *const Elf64_Sym, mat: compare.Match, sizes: *compare.Sizes) [*]u8 {
+                @setRuntimeSafety(false);
+                if (sym.st_size * 200 < sizes.new +% sizes.old or
+                    mat.flags.is_insignificant)
+                {
+                    return buf;
+                }
+                const result: usize = (sym.st_size *% 100000) / switch (mat.tag) {
+                    .deletion => @max(sizes.old, 1),
+                    else => @max(sizes.new, 1),
+                };
+                const sig: usize = (result / 1000) *% 1000;
+                const exp: usize = result - sig;
+                var ptr: [*]u8 = fmt.writeUd64(buf, sig / 1000);
+                ptr[0..4].* = ".000".*;
+                ptr += 1;
+                const figs: usize = fmt.sigFigLen(usize, exp, 10);
+                ptr += 3 -% figs;
+                _ = fmt.writeUd64(ptr, exp);
+                ptr += (figs -% 3);
+                ptr += 3;
+                ptr[0..3].* = "%, ".*;
+                return ptr + 3;
+            }
+            fn lengthSection(
+                info2: *const Info,
+                shdr2: *Elf64_Shdr,
+                shdr_idx2: usize,
+                width: usize,
+            ) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                var len: usize = fmt.SideBarIndexFormat.length(width, shdr_idx2);
+                len +%= info2.sectionName(shdr2).len;
+                len +%= 2 +% lengthAddress(shdr2.sh_addr);
+                return len +% fmt.Bytes.length(shdr2.sh_size) +% 6;
             }
             fn writeSection(
                 buf: [*]u8,
