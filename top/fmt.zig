@@ -1182,10 +1182,10 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
         pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            return strlen(Format.write(buf, format.value), buf);
+            return strlen(Format.write(buf, format.old_value, format.new_value), buf);
         }
         pub inline fn formatLength(format: Format) usize {
-            return length(format.value);
+            return length(format.old_value, format.new_value);
         }
         fn writeFull(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
