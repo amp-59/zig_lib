@@ -112,7 +112,7 @@ pub const BinaryOutput = enum(u8) {
 
 pub const Lists = extern struct {
     buf: [len]List,
-    const Key = extern union { tag: Tag, info: Info, id: u32 };
+    pub const Key = extern union { tag: Tag, info: Info, id: u32 };
     const Info = extern struct {
         idx: u8,
         size_of: u8,
@@ -148,14 +148,10 @@ pub const Lists = extern struct {
         max_len: usize,
         pub fn add(res: *List, allocator: *Allocator, key: Key) usize {
             defer res.len +%= 1;
-            return allocator.addGeneric(
-                key.info.size_of,
-                key.info.align_of,
-                key.info.init_len,
-                @ptrCast(&res.addr),
-                &res.max_len,
-                res.len,
-            );
+            return @call(.auto, Allocator.addGeneric, .{
+                allocator,                        key.info.size_of, key.info.align_of, key.info.init_len,
+                @as(*usize, @ptrCast(&res.addr)), &res.max_len,     res.len,
+            });
         }
     };
     pub fn set(lists: *Lists, comptime T: type, tag: Tag, val: []const T) void {
