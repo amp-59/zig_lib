@@ -1010,7 +1010,6 @@ pub const about = struct {
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-
     fn writeComparisonFailed(comptime T: type, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
         const writeDec = fmt.writeDec(T);
@@ -1093,27 +1092,23 @@ pub const about = struct {
     }
     fn writeIntCastTruncatedBitsSignedFromUnsigned(comptime T: type, comptime U: type, buf: [*]u8, lim: T, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        comptime var writeUd = fmt.Ud(U).writeInt;
-        comptime var writeId = fmt.Id(T).writeInt;
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
-        ptr = writeUd(ptr, arg);
+        ptr = fmt.Ud(U).write(ptr, arg);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), false);
         ptr[0] = '(';
         ptr += 1;
-        ptr = writeId(ptr, lim);
+        ptr = fmt.Id(T).write(ptr, lim);
         ptr[0] = ')';
         ptr += 1;
         return ptr;
     }
     fn writeIntCastTruncatedBitsUnsignedFromSigned(comptime T: type, comptime U: type, buf: [*]u8, lim: T, arg: U) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        comptime var writeUd = fmt.Ud(T).writeInt;
-        comptime var writeId = fmt.Id(U).writeInt;
         var ptr: [*]u8 = writeIntegerCastFromTo(buf, @typeName(U), @typeName(T));
-        ptr = writeId(ptr, arg);
+        ptr = fmt.Id(U).write(ptr, arg);
         ptr = writeAboveOrBelowTypeExtrema(ptr, @typeName(T), arg < 0);
         ptr[0] = '(';
-        ptr = writeUd(ptr + 1, lim);
+        ptr = fmt.Ud(T).write(ptr + 1, lim);
         ptr[0] = ')';
         ptr += 1;
         return ptr;
