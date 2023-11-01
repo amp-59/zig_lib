@@ -494,16 +494,32 @@ pub const StringLiteralFormat = struct {
         return len;
     }
 };
-pub fn writeSideBarIndex(buf: [*]u8, width: usize, idx: usize) usize {
-    @setRuntimeSafety(false);
-    const len: usize = sigFigLen(usize, idx, 10);
-    const rem: usize = builtin.message_indent -| (width +% 1);
-    var ptr: [*]u8 = strsetEqu(buf, ' ', width -| len);
-    ptr += ud64(idx).formatWriteBuf(ptr);
-    ptr[0] = ':';
-    ptr += 1;
-    return @intFromPtr(strsetEqu(ptr, ' ', rem)) -% @intFromPtr(buf);
-}
+pub const SideBarIndexFormat = struct {
+    value: struct {
+        width: usize,
+        index: usize,
+    },
+    pub fn length(width: usize, idx: usize) usize {
+        @setRuntimeSafety(false);
+        var len: usize = sigFigLen(usize, idx, 10);
+        const rem: usize = builtin.message_indent -| (width +% 1);
+        len +%= width -| len;
+        len +%= Udsize.length(idx);
+        len +%= 1;
+        len +%= rem;
+        return len;
+    }
+    pub fn write(buf: [*]u8, width: usize, idx: usize) [*]u8 {
+        @setRuntimeSafety(false);
+        const len: usize = sigFigLen(usize, idx, 10);
+        const rem: usize = builtin.message_indent -| (width +% 1);
+        var ptr: [*]u8 = strsetEqu(buf, ' ', width -| len);
+        ptr += ud64(idx).formatWriteBuf(ptr);
+        ptr[0] = ':';
+        ptr += 1;
+        return strsetEqu(ptr, ' ', rem);
+    }
+};
 pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usize {
     @setRuntimeSafety(false);
     const rem: usize = builtin.message_indent -% (width +% 1);
