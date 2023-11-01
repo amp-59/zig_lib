@@ -1177,8 +1177,15 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
         const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
         const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
-        pub fn formatWrite(format: Format, array: anytype) void {
+
+        pub inline fn formatWrite(format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
+        }
+        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            return strlen(Format.write(buf, format.value), buf);
+        }
+        pub inline fn formatLength(format: Format) usize {
+            return length(format.value);
         }
         fn writeFull(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -1217,8 +1224,8 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             ptr[0] = ')';
             return ptr + 1;
         }
-        fn lengthStyledChange(count: Bytes, style_s: []const u8) usize {
-            return 2 +% style_s.len +% count.formatLength() +% no_s.len;
+        fn lengthStyledChange(count: usize, style_s: []const u8) usize {
+            return 2 +% style_s.len +% Bytes.length(count) +% no_s.len;
         }
         pub fn write(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -1234,17 +1241,17 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                 }
             }
         }
-        pub fn formatLength(format: Format) usize {
+        pub fn length(old_count: usize, new_count: usize) usize {
             @setRuntimeSafety(builtin.is_safe);
             if (fmt_spec.to_from_zero) {
-                return lengthFull(format.old_value, format.new_value);
+                return lengthFull(old_count, new_count);
             } else {
-                if (format.old_value == 0) {
-                    return lengthStyledChange(@bitCast(format.new_value), fmt_spec.inc_style);
-                } else if (format.new_value == 0) {
-                    return lengthStyledChange(@bitCast(format.old_value), fmt_spec.dec_style);
+                if (old_count == 0) {
+                    return lengthStyledChange(@bitCast(new_count), fmt_spec.inc_style);
+                } else if (new_count == 0) {
+                    return lengthStyledChange(@bitCast(old_count), fmt_spec.dec_style);
                 } else {
-                    return lengthFull(format.old_value, format.new_value);
+                    return lengthFull(old_count, new_count);
                 }
             }
         }
