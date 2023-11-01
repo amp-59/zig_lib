@@ -5,7 +5,6 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-
 pub const Measurement = struct {
     name: []const u8,
     config: Config,
@@ -66,7 +65,6 @@ pub const Event = packed struct {
     ///
     /// See asm/perf_regs.h for details.
     sample_regs_intr: u64 = 0,
-
     /// Wakeup watermark for AUX area
     aux_watermark: u32 = 0,
     sample_max_stack: u16 = 0,
@@ -451,7 +449,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             var ptr: [*]u8 = buf;
             for (events_spec.counters, 0..) |set, set_idx| {
                 for (set.counters, 0..) |counter, event_idx| {
-                    ptr += fmt.writeSideBarIndex(ptr, width, event_idx);
+                    ptr = fmt.SideBarIndexFormat.write(ptr, width, event_idx);
                     ptr = fmt.strcpyEqu(ptr, counter.name);
                     ptr += fmt.udh(perf_events.res[set_idx][event_idx]).formatWriteBuf(ptr);
                     ptr[0] = '\n';
