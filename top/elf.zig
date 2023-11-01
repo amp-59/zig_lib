@@ -1230,11 +1230,11 @@ pub const LoaderSpec = struct {
 };
 const Section = enum(u16) {
     @".dynamic" = 0,
-    @".dynsym" = 1,
-    @".dynstr" = 2,
-    @".text" = 3,
-    @".strtab" = 4,
-    @".symtab" = 5,
+    @".symtab" = 1,
+    @".dynsym" = 2,
+    @".dynstr" = 3,
+    @".text" = 4,
+    @".strtab" = 5,
     @".rodata" = 6,
     @".bss" = 7,
     @".tbss" = 8,
@@ -1306,6 +1306,16 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             list: [Section.tag_list.len]u16 = undefined,
             pub fn entry(info: *const ElfInfo) *const fn (*anyopaque) void {
                 return @ptrFromInt(info.prog.addr +% info.ehdr.e_entry);
+            }
+            fn bestSymbolTable(ei: *const ElfInfo) ?*Elf64_Shdr {
+                @setRuntimeSafety(builtin.is_safe);
+                if (ei.list[1] != 0) {
+                    return ei.ehdr.sectionHeader(ei.list[1]);
+                }
+                if (ei.list[2] != 0) {
+                    return ei.ehdr.sectionHeader(ei.list[2]);
+                }
+                return null;
             }
         };
         pub const Info = extern struct {
