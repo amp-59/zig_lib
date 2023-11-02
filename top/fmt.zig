@@ -7,7 +7,6 @@ const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
-
 pub fn Interface(comptime Format: type) type {
     return struct {
         formatWrite: fn (Format, anytype) callconv(.Inline) void = Format.formatWrite,
@@ -1002,7 +1001,6 @@ pub const Bytes = packed struct {
     pub const max_len: ?comptime_int =
         MajorIntFormat.max_len.? +%
         MinorIntFormat.max_len.? +% 3; // Unit
-
     pub inline fn formatWrite(format: Format, array: anytype) void {
         return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
     }
@@ -1172,7 +1170,6 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
         const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
         const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
-
         pub inline fn formatWrite(format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
@@ -2469,8 +2466,6 @@ pub const RenderSpec = struct {
     infer_type_names_recursively: bool = false,
     char_literal_formatter: type = Esc,
     inline_field_types: bool = true,
-    enable_comptime_iterator: bool = false,
-    address_view: bool = false,
     forward: bool = false,
     names: Names = .{},
     views: Views = .{},
@@ -2757,7 +2752,6 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             }
             return comptime eval(default_value_spec, @as(*const field_type, @ptrCast(@alignCast(default_value))).*);
         }
-
         pub inline fn formatWrite(comptime format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
@@ -3832,7 +3826,6 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const SubFormat = meta.Return(ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const ChildFormat = AnyFormat(spec, child);
-
         const max_len: ?comptime_int = blk: {
             if (ChildFormat.max_len) |child_max_len| {
                 break :blk (4 +% @typeName(Pointer).len +% 3) +% child_max_len +% 1;
@@ -3853,10 +3846,6 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                 writeFormat(array, sub_format);
                 array.writeOne(')');
             } else {
-                if (spec.address_view) {
-                    const addr_view_format: AddressFormat = .{ .value = address };
-                    writeFormat(array, addr_view_format);
-                }
                 if (!spec.infer_type_names) {
                     array.writeCount(6 +% type_name.len, ("@as(" ++ type_name ++ ", ").*);
                 }
@@ -3887,10 +3876,6 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                 buf[len] = ')';
                 len +%= 1;
             } else {
-                if (spec.address_view) {
-                    const addr_view_format: AddressFormat = .{ .value = address };
-                    len +%= addr_view_format.formatWriteBuf(buf);
-                }
                 if (!spec.infer_type_names) {
                     @as(*[6 +% type_name.len]u8, @ptrCast(buf + len)).* = ("@as(" ++ type_name ++ ", ").*;
                     len +%= 6 +% type_name.len;
@@ -3923,10 +3908,6 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                 len +%= sub_format.formatLength();
                 len +%= 1;
             } else {
-                if (spec.address_view) {
-                    const addr_view_format: AddressFormat = .{ .value = address };
-                    len +%= addr_view_format.formatLength();
-                }
                 if (!spec.infer_type_names) {
                     len +%= 6 +% type_name.len;
                 }
@@ -4140,10 +4121,6 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 return array.define(@call(.always_inline, formatWriteBuf, .{
                     format, array.referAllUndefined().ptr,
                 }));
-            if (spec.address_view) {
-                const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
-                writeFormat(array, addr_view_format);
-            }
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
@@ -4166,10 +4143,6 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
-            if (spec.address_view) {
-                const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
-                len +%= addr_view_format.formatWriteBuf(buf);
-            }
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
@@ -4191,9 +4164,6 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         }
         pub fn formatLength(format: anytype) usize {
             var len: usize = 0;
-            if (spec.address_view) {
-                len +%= AddressFormat.formatLength(.{ .value = @intFromPtr(format.value.ptr) });
-            }
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
