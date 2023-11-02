@@ -305,25 +305,25 @@ pub fn main() !void {
     var build_cmd: build.BuildCommand = .{ .kind = .exe };
     var format_cmd: build.FormatCommand = .{};
     var loader: Loader = .{};
-    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-proc.so", 0))) |ptr| {
+    if (loader.load2(mem.terminate("zig-out/lib/libzero-proc.so", 0))) |ptr| {
         const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
         fp(&fps);
     } else |err| {
         return err;
     }
-    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-build.so", 0))) |ptr| {
+    if (loader.load2(mem.terminate("zig-out/lib/libzero-build.so", 0))) |ptr| {
         const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
         fp(&fps);
     } else |err| {
         return err;
     }
-    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-format.so", 0))) |ptr| {
+    if (loader.load2(mem.terminate("zig-out/lib/libzero-format.so", 0))) |ptr| {
         const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
         fp(&fps);
     } else |err| {
         return err;
     }
-    if (loader.loadEntryAddress(mem.terminate("zig-out/lib/libzero-about.so", 0))) |ptr| {
+    if (loader.load2(mem.terminate("zig-out/lib/libzero-about.so", 0))) |ptr| {
         const fp = @as(*fn (*Builder.FunctionPointers) void, @ptrCast(ptr));
         fp(&fps);
     } else |err| {
