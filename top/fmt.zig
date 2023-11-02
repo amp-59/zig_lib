@@ -516,14 +516,13 @@ pub const SideBarIndexFormat = struct {
         return strsetEqu(ptr + 1, ' ', rem);
     }
 };
-pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usize {
+pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) [*]u8 {
     @setRuntimeSafety(false);
     const rem: usize = builtin.message_indent -% (width +% 1);
     var ptr: [*]u8 = strsetEqu(buf, ' ', width -| heading.len);
     ptr = strcpyEqu(ptr, heading);
     ptr[0] = ':';
-    ptr += 1;
-    return @intFromPtr(strsetEqu(ptr, ' ', rem)) -% @intFromPtr(buf);
+    return strsetEqu(ptr + 1, ' ', rem);
 }
 fn sigFigMaxLen(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
