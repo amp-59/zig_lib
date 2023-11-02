@@ -826,24 +826,24 @@ pub const DwarfInfo = extern struct {
         const qwords: comptime_int = @divExact(@sizeOf(DwarfInfo), 8);
         const offset: comptime_int = @divExact(@offsetOf(DwarfInfo, "impl"), 8);
         var ret: [qwords]u64 = .{0} ** qwords;
-        var shdr: *elf.Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% (ehdr.e_shstrndx *% ehdr.e_shentsize));
-        var strtab_addr: u64 = ehdr_addr +% shdr.sh_offset;
-        var addr: u64 = ehdr_addr +% ehdr.e_shoff;
+        var shdr: *elf.Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.shoff +% (ehdr.shstrndx *% ehdr.shentsize));
+        var strtab_addr: u64 = ehdr_addr +% shdr.offset;
+        var addr: u64 = ehdr_addr +% ehdr.shoff;
         var shdr_idx: u64 = 0;
-        while (shdr_idx != ehdr.e_shnum) : (shdr_idx +%= 1) {
+        while (shdr_idx != ehdr.shnum) : (shdr_idx +%= 1) {
             shdr = @ptrFromInt(addr);
             for (DwarfInfo.names, 0..) |field_name, field_idx| {
-                const str: [*:0]u8 = @ptrFromInt(strtab_addr +% shdr.sh_name);
+                const str: [*:0]u8 = @ptrFromInt(strtab_addr +% shdr.name);
                 var idx: usize = 0;
                 while (str[idx] != 0) : (idx +%= 1) {
                     if (field_name[idx] != str[idx]) break;
                 } else {
                     const pair_idx: usize = (field_idx *% 2) +% offset;
-                    ret[pair_idx +% 0] = ehdr_addr +% shdr.sh_offset;
-                    ret[pair_idx +% 1] = shdr.sh_size;
+                    ret[pair_idx +% 0] = ehdr_addr +% shdr.offset;
+                    ret[pair_idx +% 1] = shdr.size;
                 }
             }
-            addr +%= ehdr.e_shentsize;
+            addr +%= ehdr.shentsize;
         }
         if (logging_abbrev_entry or
             logging_summary or
