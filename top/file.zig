@@ -2799,7 +2799,7 @@ pub const about = struct {
         ptr[0..2].* = ", ".*;
         ptr = CompoundPath.writeDisplayPath(ptr + 2, name);
         ptr[0..5].* = ", fd=".*;
-        ptr += fmt.ud64(fd).formatWriteBuf(ptr + 5);
+        ptr = fmt.writeUdsize(ptr + 5, fd);
         ptr[0..2].* = ", ".*;
         ptr = writeMode(ptr + 2, file_mode);
         ptr[0] = '\n';
