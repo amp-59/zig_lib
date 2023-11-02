@@ -239,285 +239,279 @@ pub const ELFDATA2LSB = 1;
 pub const ELFDATA2MSB = 2;
 pub const ELFDATANUM = 3;
 pub const Elf32_Ehdr = extern struct {
-    e_ident: [16]u8,
-    e_type: ET,
-    e_machine: EM,
-    e_version: u32,
-    e_entry: u32,
-    e_phoff: u32,
-    e_shoff: u32,
-    e_flags: u32,
-    e_ehsize: u16,
-    e_phentsize: u16,
-    e_phnum: u16,
-    e_shentsize: u16,
-    e_shnum: u16,
-    e_shstrndx: u16,
+    ident: [16]u8,
+    type: ET,
+    machine: EM,
+    version: u32,
+    entry: u32,
+    phoff: u32,
+    shoff: u32,
+    flags: u32,
+    ehsize: u16,
+    phentsize: u16,
+    phnum: u16,
+    shentsize: u16,
+    shnum: u16,
+    shstrndx: u16,
 };
 pub const Elf64_Ehdr = extern struct {
-    e_ident: [16]u8,
-    e_type: ET,
-    e_machine: EM,
-    e_version: u32,
-    e_entry: u64,
-    e_phoff: u64,
-    e_shoff: u64,
-    e_flags: u32,
-    e_ehsize: u16,
-    e_phentsize: u16,
-    e_phnum: u16,
-    e_shentsize: u16,
-    e_shnum: u16,
-    e_shstrndx: u16,
+    ident: [16]u8,
+    type: ET,
+    machine: EM,
+    version: u32,
+    entry: u64,
+    phoff: u64,
+    shoff: u64,
+    flags: u32,
+    ehsize: u16,
+    phentsize: u16,
+    phnum: u16,
+    shentsize: u16,
+    shnum: u16,
+    shstrndx: u16,
     pub fn sectionHeader(ehdr: *Elf64_Ehdr, idx: usize) *Elf64_Shdr {
         @setRuntimeSafety(false);
-        return @ptrFromInt((@intFromPtr(ehdr) +% ehdr.e_shoff) +% (ehdr.e_shentsize *% idx));
+        return @ptrFromInt((@intFromPtr(ehdr) +% ehdr.shoff) +% (ehdr.shentsize *% idx));
     }
     pub fn programHeader(ehdr: *Elf64_Ehdr, idx: usize) *Elf64_Phdr {
         @setRuntimeSafety(false);
-        return @ptrFromInt((@intFromPtr(ehdr) +% ehdr.e_phoff) +% (ehdr.e_phentsize *% idx));
+        return @ptrFromInt((@intFromPtr(ehdr) +% ehdr.phoff) +% (ehdr.phentsize *% idx));
     }
     pub fn sectionName(ehdr: *Elf64_Ehdr, idx: usize) [:0]u8 {
         @setRuntimeSafety(false);
         return mem.terminate(@ptrFromInt(@intFromPtr(ehdr) +%
-            ehdr.sectionHeader(ehdr.e_shstrndx).sh_offset +%
-            ehdr.sectionHeader(idx).sh_name), 0);
+            ehdr.sectionHeader(ehdr.shstrndx).offset +%
+            ehdr.sectionHeader(idx).name), 0);
     }
     pub fn sectionBytes(ehdr: *Elf64_Ehdr, idx: usize) []u8 {
         @setRuntimeSafety(false);
         @as([*]u8, @ptrFromInt(@intFromPtr(ehdr) +%
-            ehdr.sectionHeader(idx).sh_offset))[0..ehdr.sectionHeader(idx).sh_size];
+            ehdr.sectionHeader(idx).offset))[0..ehdr.sectionHeader(idx).size];
     }
 };
 pub const Elf32_Phdr = extern struct {
-    p_type: PT,
-    p_offset: u32,
-    p_vaddr: u32,
-    p_paddr: u32,
-    p_filesz: u32,
-    p_memsz: u32,
-    p_flags: PF,
-    p_align: u32,
+    type: PT,
+    offset: u32,
+    vaddr: u32,
+    paddr: u32,
+    filesz: u32,
+    memsz: u32,
+    flags: PF,
+    @"align": u32,
 };
 pub const Elf64_Phdr = extern struct {
-    p_type: PT,
-    p_flags: PF,
-    p_offset: u64,
-    p_vaddr: u64,
-    p_paddr: u64,
-    p_filesz: u64,
-    p_memsz: u64,
-    p_align: u64,
+    type: PT,
+    flags: PF,
+    offset: u64,
+    vaddr: u64,
+    paddr: u64,
+    filesz: u64,
+    memsz: u64,
+    @"align": u64,
 };
 pub const Elf32_Shdr = extern struct {
-    sh_name: u32,
-    sh_type: SHT,
-    sh_flags: SHF,
-    sh_addr: u32,
-    sh_offset: u32,
-    sh_size: u32,
-    sh_link: u32,
-    sh_info: u32,
-    sh_addralign: u32,
-    sh_entsize: u32,
+    name: u32,
+    type: SHT,
+    flags: SHF,
+    addr: u32,
+    offset: u32,
+    size: u32,
+    link: u32,
+    info: u32,
+    addralign: u32,
+    entsize: u32,
 };
 pub const Elf64_Shdr = extern struct {
-    sh_name: u32,
-    sh_type: SHT,
-    sh_flags: SHF,
-    sh_addr: u64,
-    sh_offset: u64,
-    sh_size: u64,
-    sh_link: u32,
-    sh_info: u32,
-    sh_addralign: u64,
-    sh_entsize: u64,
+    name: u32,
+    type: SHT,
+    flags: SHF,
+    addr: u64,
+    offset: u64,
+    size: u64,
+    link: u32,
+    info: u32,
+    addralign: u64,
+    entsize: u64,
 };
 pub const Elf32_Chdr = extern struct {
-    ch_type: u32,
-    ch_size: u32,
-    ch_addralign: u32,
+    type: u32,
+    size: u32,
+    addralign: u32,
 };
 pub const Elf64_Chdr = extern struct {
-    ch_type: u32,
-    ch_reserved: u32,
-    ch_size: u64,
-    ch_addralign: u64,
+    type: u32,
+    reserved: u32,
+    size: u64,
+    addralign: u64,
 };
 pub const Elf32_Sym = extern struct {
-    st_name: u32,
-    st_value: u32,
-    st_size: u32,
-    st_info: STT,
-    st_other: STV,
-    st_shndx: u16,
+    name: u32,
+    value: u32,
+    size: u32,
+    info: STT,
+    other: STV,
+    shndx: u16,
 };
 pub const Elf64_Sym = extern struct {
-    st_name: u32,
-    st_info: STT,
-    st_other: STV,
-    st_shndx: u16,
-    st_value: u64,
-    st_size: u64,
+    name: u32,
+    info: STT,
+    other: STV,
+    shndx: u16,
+    value: u64,
+    size: u64,
 };
 pub const Elf32_Syminfo = extern struct {
-    si_boundto: u16,
-    si_flags: u16,
+    boundto: u16,
+    flags: u16,
 };
 pub const Elf64_Syminfo = extern struct {
-    si_boundto: u16,
-    si_flags: u16,
+    boundto: u16,
+    flags: u16,
 };
 pub const Elf32_Rel = extern struct {
-    r_offset: u32,
-    r_info: u32,
+    offset: u32,
+    info: u32,
     pub inline fn r_sym(self: @This()) u24 {
-        return @as(u24, @truncate(self.r_info >> 8));
+        return @as(u24, @truncate(self.info >> 8));
     }
     pub inline fn r_type(self: @This()) u8 {
-        return @as(u8, @truncate(self.r_info & 0xff));
+        return @as(u8, @truncate(self.info & 0xff));
     }
 };
 pub const Elf64_Rel = extern struct {
-    r_offset: u64,
-    r_info: packed struct(u64) {
-        r_type: R_X86_64,
+    offset: u64,
+    info: packed struct(u64) {
+        type: R_X86_64,
         zb32: u24,
-        r_sym: u32,
+        sym: u32,
     },
 };
 pub const Elf32_Rela = extern struct {
-    r_offset: u32,
-    r_info: u32,
-    r_addend: i32,
-    pub inline fn r_sym(self: @This()) u24 {
-        return @as(u24, @truncate(self.r_info >> 8));
-    }
-    pub inline fn r_type(self: @This()) u8 {
-        return @as(u8, @truncate(self.r_info & 0xff));
-    }
+    offset: u32,
+    info: u32,
+    addend: i32,
 };
 pub const Elf64_Rela = extern struct {
-    r_offset: u64,
-    r_info: packed struct(u64) {
-        r_type: R_X86_64,
+    offset: u64,
+    info: packed struct(u64) {
+        type: R_X86_64,
         zb32: u24,
-        r_sym: u32,
+        sym: u32,
     },
-    r_addend: i64,
+    addend: i64,
 };
 pub const Elf32_Dyn = extern struct {
-    d_tag: DT,
-    d_val: u32,
+    tag: DT,
+    val: u32,
 };
 pub const Elf64_Dyn = extern struct {
-    d_tag: DT,
-    d_val: u64,
+    tag: DT,
+    val: u64,
 };
 pub const Elf32_Verdef = extern struct {
-    vd_version: u16,
-    vd_flags: u16,
-    vd_ndx: u16,
-    vd_cnt: u16,
-    vd_hash: u32,
-    vd_aux: u32,
-    vd_next: u32,
+    version: u16,
+    flags: u16,
+    ndx: u16,
+    cnt: u16,
+    hash: u32,
+    aux: u32,
+    next: u32,
 };
 pub const Elf64_Verdef = extern struct {
-    vd_version: u16,
-    vd_flags: u16,
-    vd_ndx: u16,
-    vd_cnt: u16,
-    vd_hash: u32,
-    vd_aux: u32,
-    vd_next: u32,
+    version: u16,
+    flags: u16,
+    ndx: u16,
+    cnt: u16,
+    hash: u32,
+    aux: u32,
+    next: u32,
 };
 pub const Elf32_Verdaux = extern struct {
-    vda_name: u32,
-    vda_next: u32,
+    name: u32,
+    next: u32,
 };
 pub const Elf64_Verdaux = extern struct {
-    vda_name: u32,
-    vda_next: u32,
+    name: u32,
+    next: u32,
 };
 pub const Elf32_Verneed = extern struct {
-    vn_version: u16,
-    vn_cnt: u16,
-    vn_file: u32,
-    vn_aux: u32,
-    vn_next: u32,
+    version: u16,
+    cnt: u16,
+    file: u32,
+    aux: u32,
+    next: u32,
 };
 pub const Elf64_Verneed = extern struct {
-    vn_version: u16,
-    vn_cnt: u16,
-    vn_file: u32,
-    vn_aux: u32,
-    vn_next: u32,
+    version: u16,
+    cnt: u16,
+    file: u32,
+    aux: u32,
+    next: u32,
 };
 pub const Elf32_Vernaux = extern struct {
-    vna_hash: u32,
-    vna_flags: u16,
-    vna_other: u16,
-    vna_name: u32,
-    vna_next: u32,
+    hash: u32,
+    flags: u16,
+    other: u16,
+    name: u32,
+    next: u32,
 };
 pub const Elf64_Vernaux = extern struct {
-    vna_hash: u32,
-    vna_flags: u16,
-    vna_other: u16,
-    vna_name: u32,
-    vna_next: u32,
+    hash: u32,
+    flags: u16,
+    other: u16,
+    name: u32,
+    next: u32,
 };
 pub const Elf32_auxv_t = extern struct {
-    a_type: u32,
-    a_un: extern union {
+    type: u32,
+    un: extern union {
         a_val: u32,
     },
 };
 pub const Elf64_auxv_t = extern struct {
-    a_type: u64,
-    a_un: extern union {
+    type: u64,
+    un: extern union {
         a_val: u64,
     },
 };
 pub const Elf32_Nhdr = extern struct {
-    n_namesz: u32,
-    n_descsz: u32,
-    n_type: u32,
+    namesz: u32,
+    descsz: u32,
+    ype: u32,
 };
 pub const Elf64_Nhdr = extern struct {
-    n_namesz: u32,
-    n_descsz: u32,
-    n_type: u32,
+    namesz: u32,
+    descsz: u32,
+    type: u32,
 };
 pub const Elf32_Move = extern struct {
-    m_value: u64,
-    m_info: u32,
-    m_poffset: u32,
-    m_repeat: u16,
-    m_stride: u16,
+    value: u64,
+    info: u32,
+    poffset: u32,
+    repeat: u16,
+    stride: u16,
 };
 pub const Elf64_Move = extern struct {
-    m_value: u64,
-    m_info: u64,
-    m_poffset: u64,
-    m_repeat: u16,
-    m_stride: u16,
+    value: u64,
+    info: u64,
+    poffset: u64,
+    epeat: u16,
+    stride: u16,
 };
 pub const Elf32_gptab = extern union {
-    gt_header: extern struct {
-        gt_current_g_value: u32,
-        gt_unused: u32,
+    header: extern struct {
+        current_g_value: u32,
+        unused: u32,
     },
-    gt_entry: extern struct {
-        gt_g_value: u32,
+    _entry: extern struct {
+        g_value: u32,
         gt_bytes: u32,
     },
 };
 pub const Elf32_RegInfo = extern struct {
-    ri_gprmask: u32,
-    ri_cprmask: [4]u32,
-    ri_gp_value: i32,
+    gprmask: u32,
+    cprmask: [4]u32,
+    gp_value: i32,
 };
 pub const Elf_Options = extern struct {
     kind: u8,
@@ -526,22 +520,22 @@ pub const Elf_Options = extern struct {
     info: u32,
 };
 pub const Elf_Options_Hw = extern struct {
-    hwp_flags1: u32,
-    hwp_flags2: u32,
+    flags1: u32,
+    flags2: u32,
 };
 pub const Elf32_Lib = extern struct {
-    l_name: u32,
-    l_time_stamp: u32,
-    l_checksum: u32,
-    l_version: u32,
-    l_flags: u32,
+    name: u32,
+    time_stamp: u32,
+    checksum: u32,
+    version: u32,
+    flags: u32,
 };
 pub const Elf64_Lib = extern struct {
-    l_name: u32,
-    l_time_stamp: u32,
-    l_checksum: u32,
-    l_version: u32,
-    l_flags: u32,
+    name: u32,
+    time_stamp: u32,
+    checksum: u32,
+    version: u32,
+    flags: u32,
 };
 pub const Elf32_Conflict = u32;
 pub const Elf_MIPS_ABIFlags_v0 = extern struct {
