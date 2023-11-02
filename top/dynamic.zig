@@ -4818,12 +4818,12 @@ fn GenericLinkedAllocatorGraphics(comptime Allocator: type) type {
         const PrintArray = mem.array.StaticArray(u8, 8096);
         const tab = .{
             .segment_s = "|S",
-            .allocation_s = "|A--\x1b[94;1m",
-            .free_s = "|F--\x1b[91;1m",
-            .hint_s = "|H--\x1b[92;1m",
+            .allocation_s = "|A--\x1b[94m",
+            .free_s = "|F--\x1b[91m",
+            .hint_s = "|H--\x1b[92m",
             .unaddressable_s = "|U--",
             .div_s = "\x1b[0m--",
-            .end_s = "|\n\n",
+            .end_s = "|\n",
         };
         pub fn graphPartitions(allocator: Allocator) void {
             var print_array: PrintArray = undefined;
