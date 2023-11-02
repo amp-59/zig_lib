@@ -499,25 +499,21 @@ pub const SideBarIndexFormat = struct {
         width: usize,
         index: usize,
     },
-    pub fn length(width: usize, idx: usize) usize {
+    pub fn length(width: usize, index: usize) usize {
         @setRuntimeSafety(false);
-        var len: usize = sigFigLen(usize, idx, 10);
+        var len: usize = sigFigLen(usize, index, 10);
         const rem: usize = builtin.message_indent -| (width +% 1);
         len +%= width -| len;
-        len +%= Udsize.length(idx);
-        len +%= 1;
-        len +%= rem;
-        return len;
+        return Udsize.length(index) +% len +% 1 +% rem;
     }
-    pub fn write(buf: [*]u8, width: usize, idx: usize) [*]u8 {
+    pub fn write(buf: [*]u8, width: usize, index: usize) [*]u8 {
         @setRuntimeSafety(false);
-        const len: usize = sigFigLen(usize, idx, 10);
+        const len: usize = sigFigLen(usize, index, 10);
         const rem: usize = builtin.message_indent -| (width +% 1);
         var ptr: [*]u8 = strsetEqu(buf, ' ', width -| len);
-        ptr += ud64(idx).formatWriteBuf(ptr);
+        ptr = Udsize.write(ptr, index);
         ptr[0] = ':';
-        ptr += 1;
-        return strsetEqu(ptr, ' ', rem);
+        return strsetEqu(ptr + 1, ' ', rem);
     }
 };
 pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usize {
