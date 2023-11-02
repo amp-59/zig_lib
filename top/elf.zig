@@ -1652,13 +1652,42 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             offset = relocateSection(&ei, offset);
             return ei;
         }
-        fn relocateSection(ei: *ElfInfo, off: usize) usize {
-            @setRuntimeSafety(builtin.is_safe);
-            var ret: usize = bits.alignA64(off, 8);
-            mem.addrcpy(ret, @intFromPtr(ei.ehdr) +% ei.ehdr.e_shoff, ei.ehdr.e_shnum *% ei.ehdr.e_shentsize);
-            ei.ehdr.e_shoff = ret;
-            ret +%= ei.ehdr.e_shnum *% ei.ehdr.e_shentsize;
-            return bits.alignA4096(ret);
+        pub const SymItr = packed union {
+            addr: usize,
+            sym: *Elf64_Sym,
+        };
+
+        pub fn sortSymtab(allocator: *mem.SimpleAllocator, ei: *ElfInfo, st_shdr: *Elf64_Shdr) [*][]Elf64_Sym {
+            @setRuntimeSafety(false);
+            const start: usize = @intFromPtr(ei.ehdr) +% st_shdr.offset;
+            const finish: usize = start +% st_shdr.size;
+            const counts: [*]usize = @ptrFromInt(allocator.allocateRaw(8 *% ei.ehdr.shnum, 8));
+            const slices: [*][]Elf64_Sym = @ptrFromInt(allocator.allocateRaw(16 *% ei.ehdr.shnum, 8));
+            var itr: SymItr = @bitCast(start +% st_shdr.entsize);
+            while (itr.addr != finish) : (itr.addr +%= st_shdr.entsize) {
+                if (itr.sym.shndx < ei.ehdr.shnum) {
+                    counts[itr.sym.shndx] +%= 1;
+                }
+            }
+            for (1..ei.ehdr.shnum) |shndx| {
+                const syms: [*]Elf64_Sym = @ptrFromInt(allocator.allocateRaw(
+                    st_shdr.entsize *% counts[shndx],
+                    st_shdr.addralign,
+                ));
+                slices[shndx] = syms[0..counts[shndx]];
+                counts[shndx] = 0;
+            }
+            itr.addr = start +% st_shdr.entsize;
+            while (itr.addr != finish) : (itr.addr +%= st_shdr.entsize) {
+                if (itr.sym.shndx < ei.ehdr.shnum) {
+                    slices[itr.sym.shndx][counts[itr.sym.shndx]] = itr.sym.*;
+                    counts[itr.sym.shndx] +%= 1;
+                }
+            }
+            for (1..ei.ehdr.shnum) |shndx| {
+                algo.shellSort(Elf64_Sym, compare.Sort.sortSymbolSize, slices[shndx]);
+            }
+            return slices;
         }
         // Consider making function in `file`.
         fn readAt(fd: usize, offset: usize, addr: usize, len: usize) sys.ErrorUnion(ep1, void) {
