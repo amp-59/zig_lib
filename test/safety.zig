@@ -100,7 +100,7 @@ fn causeAccessInactiveField() void {
         .std => safety.panicInactiveUnionField(E.a, E.b),
     }
 }
-fn causeOutOfBounds() void {
+fn causeAccessOutOfBounds() void {
     var index: usize = readOne(usize);
     const length: usize = readOne(usize);
     switch (version) {
@@ -108,8 +108,13 @@ fn causeOutOfBounds() void {
         .split => safety.panic(.{ .access_out_of_bounds = .{ .index = index, .length = length } }, @errorReturnTrace(), @returnAddress()),
         .std => safety.panicOutOfBounds(index, length),
     }
+    switch (version) {
+        .single => safety.panic(.access_out_of_bounds, .{ .index = 16, .length = 8 }, @errorReturnTrace(), @returnAddress()),
+        .split => safety.panic(.{ .access_out_of_bounds = .{ .index = index, .length = length } }, @errorReturnTrace(), @returnAddress()),
+        .std => safety.panicOutOfBounds(16, 8),
+    }
 }
-fn causeOutOfOrder() void {
+fn causeAccessOutOfOrder() void {
     var start: usize = readOne(usize);
     const finish: usize = intWillBelow(usize, &start);
     switch (version) {
@@ -257,8 +262,8 @@ fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
 }
 pub fn main() void {
     causeAccessInactiveField();
-    causeOutOfBounds();
-    causeOutOfOrder();
+    causeAccessOutOfBounds();
+    causeAccessOutOfOrder();
     causeSentinelMismatch(u32);
     causeSentinelMismatch(i32);
     causeNonScalarSentinelMismatch(struct { a: u64, b: u32 }, .{ .a = 1, .b = 2 }, .{ .a = 3, .b = 4 });
