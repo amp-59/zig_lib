@@ -253,6 +253,7 @@ fn topGroup(allocator: *zl.build.Allocator, group: *Node) void {
 }
 pub fn buildMain(allocator: *zl.build.Allocator, toplevel: *Node) void {
     const build_runner: *Node = toplevel.addBuild(allocator, .{ .kind = .exe }, "build_runner", "build_runner.zig");
+    //build_runner.addToplevelArgs(allocator);
     build_runner.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     build_runner.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
     build_runner.flags.want_build_config = false;
@@ -271,13 +272,15 @@ pub fn buildMain(allocator: *zl.build.Allocator, toplevel: *Node) void {
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
 
-    const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
-    const futex: *Node = toplevel.addBuild(allocator, build_cmd, "futex", "test/futex.zig");
+    // const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
+    // const futex: *Node = toplevel.addBuild(allocator, build_cmd, "futex", "test/futex.zig");
     const itos: *Node = toplevel.addBuild(allocator, build_cmd, "itos", "examples/itos.zig");
 
-    imports.descr = "List files imported from root";
-    futex.descr = "Test prototype futex waiting";
+    // imports.descr = "List files imported from root";
+    // futex.descr = "Test prototype futex waiting";
     itos.descr = "Example program for integer base conversion";
+
+    // const simple: *Node = toplevel.addBuild(allocator, build_cmd, "simple", "test/simple_example.zig");
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
