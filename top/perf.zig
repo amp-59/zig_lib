@@ -438,7 +438,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
                 while (idx != set.counters.len) : (idx +%= 1) {
                     event = builtin.zero(Event);
                     event = .{ .flags = PerfEvents.event_flags, .type = set.type, .config = set.counters[idx].config };
-                    perf_events.fds[set_idx][idx] = try meta.wrap(eventOpen(open(), &event, .self, .any, leader_fd.*, PerfEvents.fd_flags));
+                    perf_events.fds[set_idx][idx] = try meta.wrap(eventOpen(open, &event, .self, .any, leader_fd.*, PerfEvents.fd_flags));
                 }
             }
         }
@@ -451,42 +451,54 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
                 var event_idx: usize = 0;
                 while (event_idx != set.counters.len) : (event_idx +%= 1) {
                     const res: [*]u8 = @ptrCast(&perf_events.res[set_idx][event_idx]);
-                    debug.assertEqual(usize, 8, try meta.wrap(file.read(read(), perf_events.fds[set_idx][event_idx], res[0..8])));
-                    try meta.wrap(file.close(close(), perf_events.fds[set_idx][event_idx]));
+                    debug.assertEqual(usize, 8, try meta.wrap(file.read(read, perf_events.fds[set_idx][event_idx], res[0..8])));
+                    try meta.wrap(file.close(close, perf_events.fds[set_idx][event_idx]));
                 }
             }
         }
         pub fn writeResults(perf_events: *PerfEvents, width: usize, buf: [*]u8) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var ptr: [*]u8 = buf;
+            var instrs: usize = 0;
+            var cycles: usize = 0;
             for (events_spec.counters, 0..) |set, set_idx| {
                 for (set.counters, 0..) |counter, event_idx| {
                     ptr = fmt.SideBarIndexFormat.write(ptr, width, event_idx);
                     ptr = fmt.strcpyEqu(ptr, counter.name);
                     ptr += fmt.udh(perf_events.res[set_idx][event_idx]).formatWriteBuf(ptr);
+                    if (set.type == .hardware) {
+                        if (counter.config.hardware == .cpu_cycles) {
+                            cycles = perf_events.res[set_idx][event_idx];
+                        }
+                        if (counter.config.hardware == .instructions) {
+                            instrs = perf_events.res[set_idx][event_idx];
+                        }
+                    }
                     ptr[0] = '\n';
                     ptr += 1;
+                }
+                if (set.type == .hardware) {
+                    ptr = writeIPC(ptr, width, set.counters.len, instrs, cycles);
                 }
             }
             return ptr;
         }
-        fn read() file.ReadSpec {
-            return .{
-                .errors = events_spec.errors.read,
-                .logging = events_spec.logging.read,
-            };
-        }
-        fn close() file.CloseSpec {
-            return .{
-                .errors = events_spec.errors.close,
-                .logging = events_spec.logging.close,
-            };
-        }
-        fn open() PerfEventSpec {
-            return .{
-                .errors = events_spec.errors.open,
-                .logging = events_spec.logging.open,
-            };
+        fn writeIPC(buf: [*]u8, width: usize, index: usize, instrs: usize, cycles: usize) [*]u8 {
+            @setRuntimeSafety(builtin.is_safe);
+            if (instrs == 0 or cycles == 0) {
+                return buf;
+            }
+            const ipc_pcnt: usize = (instrs *% 100) / cycles;
+            const ipc_div: usize = instrs / cycles;
+            const decimal: usize = ipc_pcnt -% (ipc_div *% 100);
+            var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, index);
+            ptr[0..6].* = "IPC\t\t\t".*;
+            ptr = fmt.writeUd64(ptr + 6, ipc_div);
+            ptr[0] = '.';
+            ptr = fmt.writeUd64(ptr + 1, decimal);
+            ptr[0] = '\n';
+            ptr += 1;
+            return ptr;
         }
     };
     return T;
