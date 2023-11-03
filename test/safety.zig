@@ -1,8 +1,6 @@
 const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
-
 const version: enum { split, single, std } = .single;
-
 const safety = switch (version) {
     .single => @import("../top/safety2.zig"),
     .split => @import("../top/safety1.zig"),

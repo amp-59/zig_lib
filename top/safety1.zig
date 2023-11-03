@@ -174,7 +174,6 @@ pub fn panic(payload: Panic, st: ?*builtin.StackTrace, ret_addr: usize) void {
         },
         .memcpy_arguments_alias => |params| {
             ptr[0..32].* = "@memcpy arguments alias between ".*;
-            ptr[0..32].* = "@memcpy arguments alias between ".*;
             ptr = fmt.writeUxsize(buf[32..], @max(params.dest_start, params.src_start));
             ptr[0..5].* = " and ".*;
             ptr = fmt.writeUxsize(ptr + 5, @min(params.dest_start +% params.dest_len, params.src_start +% params.src_len));

@@ -24,7 +24,7 @@ pub fn writeAboveOrBelowLimit(
     ptr[0] = ')';
     return ptr + 1;
 }
-pub fn panicMismatchedMemcpyArgumentsLength(
+pub fn panicMismatchedMemcpyArgumentLengths(
     dest_len: usize,
     src_len: usize,
     st: ?*builtin.StackTrace,
@@ -105,7 +105,7 @@ pub fn panicMemcpyArgumentsAlias(
     ptr = fmt.writeUxsize(ptr + 5, @min(dest_start +% dest_len, src_start +% src_len));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicMismatchedForLoopLengths(
+pub fn panicMismatchedForLoopCaptureLengths(
     prev_len: usize,
     next_len: usize,
     st: ?*builtin.StackTrace,

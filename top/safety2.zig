@@ -128,10 +128,10 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
         .memcpy_arguments_alias => @call(.never_inline, safety.panicMemcpyArgumentsAlias, .{
             data.dest_start, data.dest_len, data.src_start, data.src_len, st, ret_addr,
         }),
-        .mismatched_for_loop_lengths => @call(.never_inline, safety.panicMismatchedForLoopLengths, .{
+        .mismatched_for_loop_lengths => @call(.never_inline, safety.panicMismatchedForLoopCaptureLengths, .{
             data.prev_len, data.next_len, st, ret_addr,
         }),
-        .mismatched_memcpy_lengths => @call(.never_inline, safety.panicMismatchedMemcpyArgumentsLength, .{
+        .mismatched_memcpy_lengths => @call(.never_inline, safety.panicMismatchedMemcpyArgumentLengths, .{
             data.dest_len, data.src_len, st, ret_addr,
         }),
         .cast_to_pointer_from_invalid => |child_type| @call(.never_inline, safety.panicCastToPointerFromInvalid, .{
