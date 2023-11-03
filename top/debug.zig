@@ -769,20 +769,15 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..6].* = "index ".*;
         var ptr: [*]u8 = buf[5..];
-        var ud64: fmt.Ud64 = .{ .value = idx };
         if (max_len == 0) {
             ptr[0..5].* = "ing (".*;
-            ptr += 5;
-            ptr += ud64.formatWriteBuf(ptr);
+            ptr = fmt.Ud64.write(ptr + 5, idx);
             ptr[0..18].* = ") into empty array".*;
             ptr += 18;
         } else {
-            ptr += 1;
-            ptr += ud64.formatWriteBuf(ptr);
+            ptr = fmt.Ud64.write(ptr + 1, idx);
             ptr[0..15].* = " above maximum ".*;
-            ptr += 15;
-            ud64.value = max_len -% 1;
-            ptr += ud64.formatWriteBuf(ptr);
+            ptr = fmt.Ud64.write(ptr + 15, max_len -% 1);
         }
         builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
