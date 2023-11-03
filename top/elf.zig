@@ -2338,7 +2338,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return sizes;
             }
-            pub fn writeSymtabDifference2(
+            pub fn writeSymtabDifferences(
                 mats1: []Match,
                 ei1: *ElfInfo,
                 symtab_shdr1: *Elf64_Shdr,
@@ -2789,7 +2789,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     sizes_b: Sizes = .{},
                 };
             };
-            pub fn writeBinaryDifference2(
+            pub fn writeElfDifferences(
                 cmp: *Cmp,
                 buf: [*]u8,
                 ei1: *ElfInfo,
@@ -2818,7 +2818,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                                     cmp.mats1[shndx1].mats, ei1, symtab_shdr1, cmp.syms1.?[shndx1],
                                     cmp.mats2[shndx2].mats, ei2, symtab_shdr2, cmp.syms2.?[shndx2],
                                 });
-                                ptr = @call(.auto, writeSymtabDifference2, .{
+                                ptr = @call(.auto, writeSymtabDifferences, .{
                                     cmp.mats1[shndx1].mats,
                                     ei1,
                                     symtab_shdr1,
@@ -2845,7 +2845,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr;
             }
-            pub fn compareBinaries(
+            pub fn compareElfInfo(
                 cmp: *Cmp,
                 allocator: *mem.SimpleAllocator,
                 ei1: *ElfInfo,
