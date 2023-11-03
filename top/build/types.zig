@@ -109,7 +109,6 @@ pub const BinaryOutput = enum(u8) {
     lib = @intFromEnum(File.Tag.output_lib),
     obj = @intFromEnum(File.Tag.output_obj),
 };
-
 pub const Lists = extern struct {
     buf: [len]List,
     pub const Key = extern union { tag: Tag, info: Info, id: u32 };
@@ -175,6 +174,9 @@ pub const Lists = extern struct {
         return @constCast(@ptrCast(&lists.buf[@intFromEnum(tag) & 0xf]));
     }
     const len: usize = @typeInfo(Tag).Enum.fields.len;
+    comptime {
+        @compileError("deprecated");
+    }
 };
 
 pub const AutoOnOff = enum {
