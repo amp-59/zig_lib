@@ -393,6 +393,18 @@ pub const PerfEventsSpec = struct {
     };
 };
 pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
+    const read = .{
+        .errors = events_spec.errors.read,
+        .logging = events_spec.logging.read,
+    };
+    const close = .{
+        .errors = events_spec.errors.close,
+        .logging = events_spec.logging.close,
+    };
+    const open = .{
+        .errors = events_spec.errors.open,
+        .logging = events_spec.logging.open,
+    };
     const T = struct {
         fds: Fds = builtin.zero(Fds),
         res: Results = builtin.zero(Results),
