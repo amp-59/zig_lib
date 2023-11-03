@@ -415,7 +415,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr[0..4].* = " << ".*;
             ptr = fmt.Xd(Number).write(ptr + 4, shift_amt);
             ptr[0..13].* = " shifted out ".*;
-            ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute) -% @popCount((absolute << shift_amt) & mask));
+            ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute & mask) -% @popCount((absolute << shift_amt) & mask));
             ptr[0..5].* = " bits".*;
             builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
@@ -429,8 +429,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
         ) void {
             @setCold(true);
             @setRuntimeSafety(false);
-            const Abs = @TypeOf(@abs(value));
-            const absolute: Abs = @bitCast(value);
+            const absolute: Absolute = @bitCast(value);
             var buf: [256]u8 = undefined;
             var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
             ptr[0..30].* = " right shift overflowed bits: ".*;
@@ -438,7 +437,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr[0..4].* = " >> ".*;
             ptr = fmt.Xd(Number).write(ptr + 4, shift_amt);
             ptr[0..13].* = " shifted out ".*;
-            ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute) -% @popCount((absolute >> shift_amt) & mask));
+            ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute & mask) -% @popCount((absolute << shift_amt) & mask));
             ptr[0..5].* = " bits".*;
             builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
