@@ -317,6 +317,26 @@ pub fn printBufN(comptime n: usize, any: anytype) void {
     buf[len] = '\n';
     debug.write(buf[0 .. len +% 1]);
 }
+pub fn printBuf(any: anytype) void {
+    @setRuntimeSafety(false);
+    const allocator: *Static.Allocator = blk: {
+        if (Static.allocator) |*allocator| {
+            break :blk allocator;
+        }
+        Static.allocator = Static.Allocator.init(&Static.address_space) catch {
+            return;
+        };
+        break :blk &Static.allocator.?;
+    };
+    const len: usize = fmt.any(any).formatLength();
+    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len +% 1, 1));
+    const pos: usize = fmt.any(any).formatWriteBuf(buf);
+    if (pos > len) {
+        debug.write("overflow\n");
+    }
+    buf[len] = '\n';
+    debug.write(buf[0 .. len +% 1]);
+}
 pub fn renderBufN(comptime render_spec: fmt.RenderSpec, comptime n: usize, any: anytype) void {
     @setRuntimeSafety(false);
     var buf: [n]u8 = undefined;
@@ -404,11 +424,9 @@ pub fn printResources() !void {
         var link_buf: [4096]u8 = undefined;
         ptr = fmt.strcpyEqu(ptr, name);
         ptr[0..4].* = " -> ".*;
-        ptr += 4;
-        ptr = fmt.strcpyEqu(ptr, try file.readLinkAt(.{}, fd, name, &link_buf));
+        ptr = fmt.strcpyEqu(ptr + 4, try file.readLinkAt(.{}, fd, name, &link_buf));
         ptr[0] = '\n';
-        ptr += 1;
-        fmt.print(ptr, &buf);
+        fmt.print(ptr + 1, &buf);
         ptr = &buf;
     }
     try file.close(.{}, fd);
