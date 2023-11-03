@@ -669,7 +669,6 @@ pub const MakePathSpec = struct {
         return .{
             .errors = mkpath_spec.errors.stat,
             .logging = mkpath_spec.logging.stat,
-            .options = .{ .no_follow = true },
         };
     }
     fn mkdir(comptime mkpath_spec: Specification) MakeDirSpec {
@@ -1153,26 +1152,26 @@ pub fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: usize, how: Shutdown) 
         return shutdown_error;
     }
 }
-fn pathnameLimit(pathname: []const u8) u64 {
+fn pathnameLimit(pathname: []const u8) usize {
     if (pathname.len == 0) {
         return 0;
     }
-    var index: u64 = pathname.len -% 1;
-    if (builtin.int2a(bool, pathname[index] == '/', index != 0)) {
+    var index: usize = pathname.len -% 1;
+    if (@bitCast(@intFromBool(pathname[index] == '/') & @intFromBool(index != 0))) {
         while (pathname[index] == '/') index -%= 1;
         while (pathname[index] != '/') index -%= 1;
     } else {
-        while (builtin.int2a(bool, pathname[index] == '/', index != 0)) index -%= 1;
-        while (builtin.int2a(bool, pathname[index] != '/', index != 0)) index -%= 1;
+        while (@bitCast(@intFromBool(pathname[index] == '/') & @intFromBool(index != 0))) index -%= 1;
+        while (@bitCast(@intFromBool(pathname[index] != '/') & @intFromBool(index != 0))) index -%= 1;
     }
     return index;
 }
-pub fn indexOfDirnameFinish(pathname: []const u8) u64 {
+pub fn indexOfDirnameFinish(pathname: []const u8) usize {
     return pathnameLimit(pathname);
 }
-pub fn indexOfBasenameStart(pathname: []const u8) u64 {
-    const index: u64 = pathnameLimit(pathname);
-    return index +% builtin.int(u64, pathname[index] == '/');
+pub fn indexOfBasenameStart(pathname: []const u8) usize {
+    const index: usize = pathnameLimit(pathname);
+    return index +% @intFromBool(pathname[index] == '/');
 }
 pub fn dirname(pathname: [:0]const u8) []const u8 {
     return pathname[0..indexOfDirnameFinish(pathname)];
@@ -1230,7 +1229,7 @@ pub fn pathAt(comptime path_spec: PathSpec, flags: Flags.Open, dir_fd: usize, na
         return open_error;
     }
 }
-fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
+fn writePath(buf: [*]u8, pathname: []const u8) [:0]u8 {
     @memcpy(buf, pathname);
     buf[pathname.len] = 0;
     return buf[0..pathname.len :0];
@@ -1317,7 +1316,7 @@ pub fn close(comptime close_spec: CloseSpec, fd: usize) sys.ErrorUnion(
         return close_error;
     }
 }
-pub fn makeDir(comptime mkdir_spec: MakeDirSpec, pathname: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(
+pub fn makeDir(comptime mkdir_spec: MakeDirSpec, pathname: [:0]const u8, file_mode: Mode) sys.ErrorUnion(
     mkdir_spec.errors,
     mkdir_spec.return_type,
 ) {
