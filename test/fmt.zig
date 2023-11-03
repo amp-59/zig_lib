@@ -349,7 +349,8 @@ fn testRenderSlice(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
 }
 fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     testing.announce(@src());
-    var tmp: [*]u8 = @ptrFromInt(0x40000000);
+    const tmp_max_len: usize = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c".len;
+    const tmp: [*]u8 = @constCast("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c");
     const render_spec: fmt.RenderSpec = .{
         .views = .{
             .extern_resizeable = true,
@@ -358,11 +359,27 @@ fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
             //.static_resizeable = true,
         },
     };
-    try testFormat(allocator, array, buf, fmt.render(render_spec, packed struct(u120) { x: u64 = 5, y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{}, z: u8 = 255 }{}));
-    try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: [*]u8, buf_len: usize }{ .buf = tmp, .buf_len = 16 }));
-    try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: []u8, buf_len: usize }{ .buf = tmp[16..256], .buf_len = 32 }));
-    try testFormat(allocator, array, buf, fmt.render(render_spec, struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }{}));
-    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, struct { auto: [2]type = .{ u8, u16 }, auto_len: usize = 1 }{}));
+    try testFormat(allocator, array, buf, fmt.render(render_spec, packed struct(u120) {
+        x: u64 = 5,
+        y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{},
+        z: u8 = 255,
+    }{}));
+    try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: [*]u8, buf_len: usize }{
+        .buf = tmp,
+        .buf_len = 16,
+    }));
+    try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: []u8, buf_len: usize }{
+        .buf = tmp[16..tmp_max_len],
+        .buf_len = tmp_max_len * 2,
+    }));
+    try testFormat(allocator, array, buf, fmt.render(render_spec, struct {
+        auto: [256]u8 = [1]u8{0xa} ** 256,
+        auto_len: usize = 16,
+    }{}));
+    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, struct {
+        auto: [2]type = .{ u8, u16 },
+        auto_len: usize = 1,
+    }{}));
 }
 fn testRenderUnion(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     testing.announce(@src());

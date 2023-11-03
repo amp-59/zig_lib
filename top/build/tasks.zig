@@ -3535,7 +3535,7 @@ const format_help: [:0]const u8 =
 ;
 pub const Command = struct {
     build: *BuildCommand,
+    format: *FormatCommand,
     archive: *ArchiveCommand,
     objcopy: *ObjcopyCommand,
-    format: *FormatCommand,
 };
