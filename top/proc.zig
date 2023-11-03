@@ -8,7 +8,6 @@ const file = @import("./file.zig");
 const bits = @import("./bits.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-
 pub const SignalAction = extern struct {
     handler: Handler = .{ .set = .default },
     flags: sys.flags.SignalAction,
@@ -341,7 +340,7 @@ pub const FutexSpec = struct {
     return_type: type = void,
     logging: debug.Logging.AttemptSuccessAcquireReleaseError = .{},
 };
-pub const Status = struct {
+pub const Status = if (builtin.is_debug) struct {
     pub extern fn ifSignaled(wstatus: u32) bool;
     pub extern fn ifExited(wstatus: u32) bool;
     pub extern fn ifStopped(wstatus: u32) bool;
@@ -352,32 +351,70 @@ pub const Status = struct {
     comptime {
         asm (
             \\.intel_syntax noprefix
+            \\.type ifSignaled,@function
             \\ifSignaled:
             \\    cmp   dil, 127
             \\    setne al
             \\    ret
+            \\0:
+            \\.size ifSignaled, 0b-ifSignaled
+            \\.type ifExited,@function
             \\ifExited:
             \\    test  dil, 127
             \\    sete  al
             \\    ret
+            \\0:
+            \\.size ifExited, 0b-ifExited
+            \\.type ifStopped,@function
             \\ifStopped:
             \\    cmp   dil, 127
             \\    sete  al
             \\    ret
+            \\0:
+            \\.size ifStopped, 0b-ifStopped
+            \\.type ifContinued,@function
             \\ifContinued:
             \\    cmp   edi, 65535
             \\    sete  al
             \\    ret
+            \\0:
+            \\.size ifContinued, 0b-ifContinued
+            \\.type termSignal,@function
             \\termSignal:
             \\    mov   eax, edi
             \\    and   al, 127
             \\    ret
+            \\0:
+            \\.size termSignal, 0b-termSignal
+            \\.type stopSignal,@function
             \\stopSignal:
             \\exitStatus:
             \\    mov   eax, edi
             \\    shr   eax, 8
             \\    ret
+            \\0:
+            \\.size stopSignal, 0b-stopSignal
+            \\.size exitStatus, 0b-exitStatus
         );
+    }
+} else struct {
+    pub inline fn ifSignaled(wstatus: u32) bool {
+        return @as(u8, @truncate(wstatus)) != 0x7f;
+    }
+    pub inline fn ifExited(wstatus: u32) bool {
+        return (((wstatus) & 0x7f) == 0);
+    }
+    pub inline fn ifStopped(wstatus: u32) bool {
+        return (((wstatus) & 0xff) == 0x7f);
+    }
+    pub inline fn ifContinued(wstatus: u32) bool {
+        return ((wstatus) == 0xffff);
+    }
+    pub inline fn termSignal(wstatus: u32) u8 {
+        return @truncate((wstatus) & 0x7f);
+    }
+    pub inline fn exitStatus(wstatus: u32) u8 {
+        return @truncate(((wstatus) & 0xff00) >> 8);
     }
 };
 pub fn getProcessId() u32 {
