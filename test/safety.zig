@@ -8,7 +8,7 @@ const safety = switch (version) {
     .split => @import("../top/safety1.zig"),
     .std => @import("std").builtin.default,
 };
-const just_compile: bool = false;
+const just_compile: bool = true;
 
 pub const want_stack_traces: bool = false;
 var rng: zl.file.DeviceRandomBytes(4096) = .{};
@@ -252,7 +252,7 @@ fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
     switch (version) {
         .single => safety.panic(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 10.0, @errorReturnTrace(), @returnAddress()),
         .split => safety.panicExtra(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 16384.28, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("diable"),
+        .std => @compileError("unavailable"),
     }
 }
 pub fn main() void {
@@ -270,17 +270,21 @@ pub fn main() void {
     causeMemcpyArgumentsAlias();
     causeMempcyLengthMismatch();
     causeForLoopLengthMismatch();
+
     causeCastTruncatedBits(u8, u3);
     causeCastToUnsignedFromNegative(i32, u32);
+    causeCastToIntFromInvalid(f16, u16);
+
     causeCastToErrorFromInvalid(error{ A, B, C, D, E });
     causeCastToEnumFromInvalid(enum(u16) { A, B, C, D, E = 32768 });
-    causeCastToIntFromInvalid(f16, u16);
+
     causeCastToMisalignedPointer(u32);
     causeAddWithOverflow(u32);
     causeSubWithOverflow(u32);
     causeMulWithOverflow(u32);
     causeShlWithOverflow(u32);
     causeShrWithOverflow(u32);
+
     causeCastToMisalignedPointer(i32);
     causeAddWithOverflow(i32);
     causeSubWithOverflow(i32);
