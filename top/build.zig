@@ -500,9 +500,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     readResults: *const @TypeOf(PerfEvents.readResults),
                     writeResults: *const @TypeOf(PerfEvents.writeResults),
                 },
-                dl: struct {
-                    load: *const @TypeOf(DynamicLoader.load),
-                },
+                load: *const @TypeOf(DynamicLoader.load),
                 generic: struct {
                     aboutTask: *const @TypeOf(about.aboutTask),
                     printErrors: *const @TypeOf(about.printErrors),
@@ -2437,12 +2435,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (have_size and
                     node.flags.want_binary_analysis)
                 {
-                    if (defined(node.sh.fp.about.dl.load)) {
+                    if (defined(node.sh.fp.about.load)) {
                         if (output.mode.kind == .regular and output.size != 0) {
-                            node.extra.info_before = node.sh.fp.about.dl.load(node.sh.dl, output_pathname);
+                            node.extra.info_before = node.sh.fp.about.load(node.sh.dl, output_pathname);
                         }
                         if (cached.mode.kind == .regular and cached.size != 0) {
-                            node.extra.info_after = node.sh.fp.about.dl.load(node.sh.dl, cached_pathname);
+                            node.extra.info_after = node.sh.fp.about.load(node.sh.dl, cached_pathname);
                         }
                     }
                 }
@@ -2452,8 +2450,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.flags.want_binary_analysis)
             {
                 if (cached.mode.kind == .regular and cached.size != 0) {
-                    if (defined(node.sh.fp.about.dl.load)) {
-                        node.extra.info_after = node.sh.fp.about.dl.load(node.sh.dl, cached_pathname);
+                    if (defined(node.sh.fp.about.load)) {
+                        node.extra.info_after = node.sh.fp.about.load(node.sh.dl, cached_pathname);
                     }
                 }
             }
