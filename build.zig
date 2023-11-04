@@ -25,7 +25,7 @@ const format_cmd: zl.build.FormatCommand = .{
     .ast_check = true,
 };
 pub const enable_debugging: bool = false;
-pub fn traceGroup(allocator: *zl.build.Allocator, group: *Node) void {
+pub fn traceGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     var trace_build_cmd: zl.build.BuildCommand = .{ .kind = .exe, .function_sections = true, .gc_sections = false };
     const access_inactive: *Node = group.addBuild(allocator, trace_build_cmd, "access_inactive", "test/trace/access_inactive.zig");
     const assertion_failed: *Node = group.addBuild(allocator, trace_build_cmd, "assertion_failed", "test/trace/assertion_failed.zig");
@@ -220,7 +220,7 @@ fn regenGroup(allocator: *zl.build.Allocator, group: *Node) void {
     regen.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     regen.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
 }
-fn topGroup(allocator: *zl.build.Allocator, group: *Node) void {
+fn topGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     group.addBuild(allocator, build_cmd, "decls", "test/decl.zig").descr = "Test miscellaneous declarations";
     group.addBuild(allocator, build_cmd, "builtin", "test/builtin.zig").descr = "Test builtin functions";
     group.addBuild(allocator, build_cmd, "meta", "test/meta.zig").descr = "Test meta functions";
@@ -251,7 +251,7 @@ fn topGroup(allocator: *zl.build.Allocator, group: *Node) void {
     group.addBuild(allocator, build_cmd, "fmt_cmp", "test/fmt_cmp.zig").descr = "Compare formatting methods";
     group.addBuild(allocator, build_cmd, "safety", "test/safety.zig").descr = "Test safety overhaul prototype";
 }
-pub fn buildMain(allocator: *zl.build.Allocator, toplevel: *Node) void {
+pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     const build_runner: *Node = toplevel.addBuild(allocator, .{ .kind = .exe }, "build_runner", "build_runner.zig");
     //build_runner.addToplevelArgs(allocator);
     build_runner.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
