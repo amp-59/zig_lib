@@ -418,34 +418,38 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     comptime var have_size: bool = builder_spec.options.size_command != null;
     // Enables --trace command line option.
     comptime var have_trace: bool = builder_spec.options.trace_command != null;
+    const map = .{ .errors = builder_spec.errors.map, .logging = builder_spec.logging.map };
+    const read = .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
+    const stat = .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
+    const link = .{ .errors = builder_spec.errors.link, .logging = builder_spec.logging.link };
+    const dup3 = .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
+    const poll = .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
+    const pipe = .{ .errors = builder_spec.errors.pipe, .logging = builder_spec.logging.pipe };
+    const open = .{ .errors = builder_spec.errors.open, .logging = builder_spec.logging.open };
     const clock = .{ .errors = builder_spec.errors.clock };
     const sleep = .{ .errors = builder_spec.errors.sleep };
     const mkdir = .{ .errors = builder_spec.errors.mkdir, .logging = builder_spec.logging.mkdir };
     const write = .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
+    const close = .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
+    const create = .{ .errors = builder_spec.errors.create, .logging = builder_spec.logging.create };
+    const unlink = .{ .errors = builder_spec.errors.unlink, .logging = builder_spec.logging.unlink };
+    const waitpid = .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid };
+    const fork = .{
+        .return_type = u32,
+        .errors = builder_spec.errors.fork,
+        .logging = builder_spec.logging.fork,
+    };
     const write2 = .{
         .errors = builder_spec.errors.write,
         .logging = builder_spec.logging.write,
         .child = Message.ClientHeader,
     };
-    const read = .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
     const read3 = .{
         .child = Message.ServerHeader,
         .errors = builder_spec.errors.read,
         .logging = builder_spec.logging.read,
         .return_type = void,
     };
-    const close = .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
-    const stat = .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
-    const fork = .{ .return_type = u32, .errors = builder_spec.errors.fork, .logging = builder_spec.logging.fork };
-    const waitpid = .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid };
-    const dup3 = .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
-    const poll = .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
-    const pipe = .{ .errors = builder_spec.errors.pipe, .logging = builder_spec.logging.pipe };
-    const map = .{ .errors = builder_spec.errors.map, .logging = builder_spec.logging.map };
-    const open = .{ .errors = builder_spec.errors.open, .logging = builder_spec.logging.open };
-    const create = .{ .errors = builder_spec.errors.create, .logging = builder_spec.logging.create };
-    const link = .{ .errors = builder_spec.errors.link, .logging = builder_spec.logging.link };
-    const unlink = .{ .errors = builder_spec.errors.unlink, .logging = builder_spec.logging.unlink };
     const execve = .{
         .errors = builder_spec.errors.execve,
         .logging = builder_spec.logging.execve,
