@@ -1493,6 +1493,10 @@ pub const SimpleAllocator = struct {
         const ret_addr: usize = allocator.reallocateRaw(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
         return @as([*]align(align_of) T, @ptrFromInt(ret_addr))[0..count];
     }
+    pub inline fn add(allocator: *Allocator, comptime T: type, buf: *[*]T, buf_max_len: *usize, buf_len: usize) *T {
+        @setRuntimeSafety(false);
+        return @ptrFromInt(allocator.addGeneric(@sizeOf(T), @alignOf(T), 1, @ptrCast(buf), buf_max_len, buf_len));
+    }
     pub inline fn destroy(allocator: *Allocator, comptime T: type, ptr: *T) void {
         allocator.deallocateRaw(@intFromPtr(ptr), @sizeOf(T));
     }
@@ -1567,6 +1571,7 @@ pub const SimpleAllocator = struct {
         }
         return ptr.* +% (size *% len);
     }
+
     pub fn allocateRaw(
         allocator: *Allocator,
         size_of: usize,
