@@ -1152,7 +1152,22 @@ pub fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: usize, how: Shutdown) 
         return shutdown_error;
     }
 }
-fn pathnameLimit(pathname: []const u8) usize {
+pub fn sameFile(comptime stat_spec: StatusSpec, st1: *Status, pathname1: [:0]const u8, st2: *Status, pathname2: [:0]const u8) sys.ErrorUnion(
+    stat_spec.errors,
+    bool,
+) {
+    @setRuntimeSafety(builtin.is_safe);
+    if (mem.testEqualString(pathname1, pathname2)) {
+        return true;
+    }
+    mem.zero(Status, st1);
+    try meta.wrap(statusAt(stat_spec, .{}, cwd, pathname1, st1));
+    mem.zero(Status, st2);
+    try meta.wrap(statusAt(stat_spec, .{}, cwd, pathname2, st2));
+    return (st1.mode.kind != .unknown and st2.mode.kind != .unknown) and
+        ((st1.dev == st2.dev) and (st1.ino == st2.ino));
+}
+pub fn pathnameLimit(pathname: []const u8) usize {
     if (pathname.len == 0) {
         return 0;
     }
@@ -1166,14 +1181,13 @@ fn pathnameLimit(pathname: []const u8) usize {
     }
     return index;
 }
-pub fn indexOfDirnameFinish(pathname: []const u8) usize {
-    return pathnameLimit(pathname);
-}
+pub const indexOfDirnameFinish = pathnameLimit;
+
 pub fn indexOfBasenameStart(pathname: []const u8) usize {
     const index: usize = pathnameLimit(pathname);
     return index +% @intFromBool(pathname[index] == '/');
 }
-pub fn dirname(pathname: [:0]const u8) []const u8 {
+pub fn dirname(pathname: []const u8) []const u8 {
     return pathname[0..indexOfDirnameFinish(pathname)];
 }
 pub fn basename(pathname: [:0]const u8) [:0]const u8 {
@@ -1182,10 +1196,16 @@ pub fn basename(pathname: [:0]const u8) [:0]const u8 {
 pub fn canonicalisePathVolatile(pathname: [:0]const u8, buf: []u8) [:0]const u8 {
     var tmp1: [4096]u8 = undefined;
     var tmp2: [4096]u8 = undefined;
+    const parent: []const u8 = dirname(pathname);
     const save: [:0]const u8 = getCwd(.{ .errors = .{} }, &tmp1);
-    defer changeCwd(.{ .errors = .{} }, save);
-    fmt.strcpyEqu(&tmp2, dirname(pathname))[0] = 0;
-    changeCwd(.{ .errors = .{} }, mem.terminate(&tmp2, 0));
+    const change_dir: bool = !mem.testEqualString(parent, save);
+    defer if (change_dir) {
+        changeCwd(.{ .errors = .{} }, save);
+    };
+    fmt.strcpyEqu(&tmp2, parent)[0] = 0;
+    if (change_dir) {
+        changeCwd(.{ .errors = .{} }, tmp2[0..parent.len :0]);
+    }
     var ret: [:0]u8 = getCwd(.{ .errors = .{} }, buf);
     var ptr: [*]u8 = ret.ptr + ret.len;
     ptr[0] = '/';
