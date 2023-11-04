@@ -7,7 +7,7 @@ export fn load(fp: *zl.builtin.root.Builder.FunctionPointers) void {
             .readResults = zl.builtin.root.Builder.PerfEvents.readResults,
             .writeResults = zl.builtin.root.Builder.PerfEvents.writeResults,
         },
-        .dl = .{ .load = zl.builtin.root.Builder.DynamicLoader.load },
+        .load = zl.builtin.root.Builder.DynamicLoader.load,
         .generic = .{
             .aboutTask = zl.builtin.root.Builder.about.aboutTask,
             .printErrors = zl.builtin.root.Builder.about.printErrors,
