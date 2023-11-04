@@ -49,7 +49,7 @@ pub fn traceGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     minimal_full.descr = "Test binary composition with all traces possible";
     static_exe.dependOn(allocator, static_obj);
 }
-pub fn memgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
+pub fn memgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     @setRuntimeSafety(false);
     var memgen_format_cmd: zl.build.FormatCommand = format_cmd;
     memgen_format_cmd.ast_check = false;
@@ -72,7 +72,7 @@ pub fn memgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
     generate.addDepn(allocator, .format, impls_ctn, .run);
     generate.addDepn(allocator, .format, impls_alloc, .run);
 }
-pub fn sysgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
+pub fn sysgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     @setRuntimeSafety(false);
     var sysgen_format_cmd: zl.build.FormatCommand = format_cmd;
     sysgen_format_cmd.ast_check = false;
@@ -82,7 +82,7 @@ pub fn sysgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
     flags.descr = "Generate system function option bit field struct definitions";
     format.addDepn(allocator, .format, flags, .run);
 }
-pub fn buildgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
+pub fn buildgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     @setRuntimeSafety(false);
     var buildgen_format_cmd: zl.build.FormatCommand = format_cmd;
     const impls = group.addGroupWithTask(allocator, "impls", .run);
@@ -103,7 +103,7 @@ pub fn buildgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
     impls_libs.addDepn(allocator, .build, impls_writers, .run);
     format.addDepn(allocator, .format, impls_libs, .run);
 }
-pub fn targetgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
+pub fn targetgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     @setRuntimeSafety(false);
     var targetgen_format_cmd: zl.build.FormatCommand = format_cmd;
     const impls = group.addGroupWithTask(allocator, "impls", .run);
@@ -117,7 +117,7 @@ pub fn targetgenGroup(allocator: *zl.build.Allocator, group: *Node) void {
     impls_target.dependOn(allocator, impls_arch);
     format.addDepn(allocator, .format, impls_target, .run);
 }
-pub fn generators(allocator: *zl.build.Allocator, toplevel: *Node) void {
+pub fn generators(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
     sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
     buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
