@@ -62,7 +62,7 @@ pub const ExecPhase = enum(u8) {
     ///     `zig build src
     ///
     /// e) Default is `++`. Command line argument used to split command and run
-    ///    arguments. `--` is used by `-cflags` to stop parsing commands.
+    ///    arguments. (`--` is already taken by `-cflags` to stop parsing commands).
     ///
     /// f) For tasks with binary executable output, set run command line for use
     ///    by run task.
@@ -117,7 +117,6 @@ pub const State = enum(u8) {
     /// The task is complete.
     finished = 32,
 };
-pub const Allocator = types.Allocator;
 pub const Lock = mem.ThreadSafeSet(8, State, Task);
 pub const BuilderSpec = struct {
     /// Builder options.
