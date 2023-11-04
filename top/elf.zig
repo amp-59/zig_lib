@@ -3291,6 +3291,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn lengthAddress(addr: usize) usize {
                 return 7 +% fmt.Ux64.length(addr);
             }
+            fn writeOffset(buf: [*]u8, offset: usize) [*]u8 {
+                @setRuntimeSafety(false);
+                buf[0..7].* = "offset=".*;
+                var ptr: [*]u8 = fmt.writeUx64(buf + 7, offset);
+                ptr[0..2].* = ", ".*;
+                return ptr + 2;
+            }
             fn writeAddress(buf: [*]u8, addr: usize) [*]u8 {
                 @setRuntimeSafety(false);
                 buf[0..5].* = "addr=".*;
