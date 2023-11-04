@@ -476,18 +476,25 @@ pub const StringLiteralFormat = struct {
         array.writeOne('"');
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        return strlen(write(buf, format.value), buf);
+    }
+    pub fn formatLength(format: Format) usize {
+        return length(format.value);
+    }
+    pub fn write(buf: [*]u8, string: []const u8) [*]u8 {
+        @setRuntimeSafety(false);
         buf[0] = '"';
         var ptr: [*]u8 = buf + 1;
-        for (format.value) |byte| {
+        for (string) |byte| {
             ptr = strcpyEqu(ptr, stringLiteralChar(byte));
         }
         ptr[0] = '"';
-        ptr += 1;
-        return strlen(ptr, buf);
+        return ptr + 1;
     }
-    pub fn formatLength(format: Format) usize {
+    pub fn length(string: []const u8) void {
+        @setRuntimeSafety(false);
         var len: usize = 2;
-        for (format.value) |byte| {
+        for (string) |byte| {
             len +%= stringLiteralChar(byte).len;
         }
         return len;
