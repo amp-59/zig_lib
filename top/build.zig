@@ -512,22 +512,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             build: struct {
                 formatWriteBuf: *const fn (*tasks.BuildCommand, []const u8, []const types.Path, [*]u8) usize,
                 formatLength: *const fn (*tasks.BuildCommand, []const u8, []const types.Path) usize,
-                formatParseArgs: *const fn (*tasks.BuildCommand, *Allocator, [][*:0]u8) void,
+                formatParseArgs: *const fn (*tasks.BuildCommand, *types.Allocator, [][*:0]u8) void,
             },
             format: struct {
                 formatWriteBuf: *const fn (*tasks.FormatCommand, []const u8, types.Path, [*]u8) usize,
                 formatLength: *const fn (*tasks.FormatCommand, []const u8, types.Path) usize,
-                formatParseArgs: *const fn (*tasks.FormatCommand, *Allocator, [][*:0]u8) void,
+                formatParseArgs: *const fn (*tasks.FormatCommand, *types.Allocator, [][*:0]u8) void,
             },
             archive: struct {
                 formatWriteBuf: *const fn (*tasks.ArchiveCommand, []const u8, []const types.Path, [*]u8) usize,
                 formatLength: *const fn (*tasks.ArchiveCommand, []const u8, []const types.Path) usize,
-                formatParseArgs: *const fn (*tasks.ArchiveCommand, *Allocator, [][*:0]u8) void,
+                formatParseArgs: *const fn (*tasks.ArchiveCommand, *types.Allocator, [][*:0]u8) void,
             },
             objcopy: struct {
                 formatWriteBuf: *const fn (*tasks.ObjcopyCommand, []const u8, types.Path, [*]u8) usize,
                 formatLength: *const fn (*tasks.ObjcopyCommand, []const u8, types.Path) usize,
-                formatParseArgs: *const fn (*tasks.ObjcopyCommand, *Allocator, [][*:0]u8) void,
+                formatParseArgs: *const fn (*tasks.ObjcopyCommand, *types.Allocator, [][*:0]u8) void,
             },
         };
         pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
@@ -1000,7 +1000,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return null;
             }
-            fn createFileList(node: *const Node, allocator: *Allocator, key: types.File.Key) []types.File {
+            fn createFileList(node: *const Node, allocator: *types.Allocator, key: types.File.Key) []types.File {
                 @setRuntimeSafety(builtin.is_safe);
                 const files: []types.File = node.lists.files;
                 var idx: usize = 0;
@@ -1021,7 +1021,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return buf[0..len];
             }
-            fn createPathList(node: *const Node, allocator: *Allocator, key: types.File.Key) []types.Path {
+            fn createPathList(node: *const Node, allocator: *types.Allocator, key: types.File.Key) []types.Path {
                 @setRuntimeSafety(builtin.is_safe);
                 const files: []types.File = node.lists.files;
                 var len: usize = 0;
@@ -1069,39 +1069,39 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return null;
             }
             /// Allocate a node pointer.
-            fn addNode(node: *Node, allocator: *Allocator) **Node {
+            fn addNode(node: *Node, allocator: *types.Allocator) **Node {
                 @setRuntimeSafety(builtin.is_safe);
                 defer node.lists.nodes.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf(*Node), @alignOf(*Node), 1, @ptrCast(&node.lists.nodes.ptr), &node.lists.nodes_max_len, node.lists.nodes.len));
             }
-            fn addFile(node: *Node, allocator: *Allocator) *types.File {
+            fn addFile(node: *Node, allocator: *types.Allocator) *types.File {
                 @setRuntimeSafety(builtin.is_safe);
                 defer node.lists.files.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf(types.File), @alignOf(types.File), 1, @ptrCast(&node.lists.files.ptr), &node.lists.files_max_len, node.lists.files.len));
             }
-            pub fn addCmdArg(node: *Node, allocator: *Allocator) *[*:0]u8 {
+            pub fn addCmdArg(node: *Node, allocator: *types.Allocator) *[*:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 defer node.lists.cmd_args.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf([*:0]u8), @alignOf([*:0]u8), 2, @ptrCast(&node.lists.cmd_args.ptr), &node.lists.cmd_args_max_len, node.lists.cmd_args.len));
             }
-            pub fn addRunArg(node: *Node, allocator: *Allocator) *[*:0]u8 {
+            pub fn addRunArg(node: *Node, allocator: *types.Allocator) *[*:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 defer node.lists.run_args.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf([*:0]u8), @alignOf([*:0]u8), 2, @ptrCast(&node.lists.run_args.ptr), &node.lists.run_args_max_len, node.lists.run_args.len));
             }
-            fn addConfig(node: *Node, allocator: *Allocator) *Conf {
+            fn addConfig(node: *Node, allocator: *types.Allocator) *Conf {
                 @setRuntimeSafety(builtin.is_safe);
                 defer node.lists.confs.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf(Conf), @alignOf(Conf), 1, @ptrCast(&node.lists.confs.ptr), &node.lists.confs_max_len, node.lists.confs.len));
             }
-            pub fn addConfigString(node: *Node, allocator: *Allocator, name: []const u8, value: []const u8) void {
+            pub fn addConfigString(node: *Node, allocator: *types.Allocator, name: []const u8, value: []const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(value.len +% name.len +% 2, 1);
                 fmt.strcpyEqu(@ptrFromInt(addr), name)[0] = 0;
                 fmt.strcpyEqu(@ptrFromInt(addr +% name.len +% 1), value)[0] = 0;
                 node.addConfig(allocator).data = addr;
             }
-            pub fn addConfigBool(node: *Node, allocator: *Allocator, name: []const u8, value: bool) void {
+            pub fn addConfigBool(node: *Node, allocator: *types.Allocator, name: []const u8, value: bool) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(name.len +% 2, 1);
                 const ptr: *bool = @ptrFromInt(addr);
@@ -1109,7 +1109,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 fmt.strcpyEqu(@ptrFromInt(addr +% 1), name)[0] = 0;
                 node.addConfig(allocator).data = (1 << (@bitSizeOf(usize) -% 8)) | addr;
             }
-            pub fn addConfigInt(node: *Node, allocator: *Allocator, name: []const u8, value: isize) void {
+            pub fn addConfigInt(node: *Node, allocator: *types.Allocator, name: []const u8, value: isize) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(name.len +% 1 +% 8, 8);
                 const ptr: *isize = @ptrFromInt(addr);
@@ -1119,7 +1119,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addConfigFormatter(
                 node: *Node,
-                allocator: *Allocator,
+                allocator: *types.Allocator,
                 name: []const u8,
                 formatWriteBuf: *const fn (*const anyopaque, [*]u8) usize,
                 format: *const anyopaque,
@@ -1132,7 +1132,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 fmt.strcpyEqu(@ptrFromInt(addr +% 16), name)[0] = 0;
                 node.addConfig(allocator).data = (16 << (@bitSizeOf(usize) -% 8)) | addr;
             }
-            fn addPath(node: *Node, allocator: *Allocator, tag: types.File.Tag) *types.Path {
+            fn addPath(node: *Node, allocator: *types.Allocator, tag: types.File.Tag) *types.Path {
                 @setRuntimeSafety(builtin.is_safe);
                 const paths: []types.Path = node.lists.paths;
                 const fs: *types.File = node.addFile(allocator);
@@ -1147,11 +1147,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 defer node.lists.paths.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf(types.Path), @alignOf(types.Path), 2, @ptrCast(&node.lists.paths.ptr), &node.lists.paths_max_len, node.lists.paths.len));
             }
-            pub fn addPathname(node: *Node, allocator: *Allocator, tag: types.File.Tag, pathname: []const u8) *types.Path {
+            pub fn addPathname(node: *Node, allocator: *types.Allocator, tag: types.File.Tag, pathname: []const u8) *types.Path {
                 @setRuntimeSafety(builtin.is_safe);
                 return node.addPathnames(allocator, tag, &.{pathname});
             }
-            pub fn addPathnames(node: *Node, allocator: *Allocator, tag: types.File.Tag, names: []const []const u8) *types.Path {
+            pub fn addPathnames(node: *Node, allocator: *types.Allocator, tag: types.File.Tag, names: []const []const u8) *types.Path {
                 @setRuntimeSafety(builtin.is_safe);
                 const path: *types.Path = node.addPath(allocator, tag);
                 path.* = .{};
@@ -1163,7 +1163,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return path;
             }
-            pub fn addToplevelArgs(node: *Node, allocator: *Allocator) void {
+            pub fn addToplevelArgs(node: *Node, allocator: *types.Allocator) void {
                 @setRuntimeSafety(builtin.is_safe);
                 node.addRunArg(allocator).* = node.zigExe();
                 node.addRunArg(allocator).* = node.buildRoot();
@@ -1174,7 +1174,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     node.addRunArg(allocator).* = seed.ptr;
                 }
             }
-            inline fn addDefineConfigs(node: *Node, allocator: *Allocator) void {
+            inline fn addDefineConfigs(node: *Node, allocator: *types.Allocator) void {
                 @setRuntimeSafety(builtin.is_safe);
                 node.addConfigBool(allocator, "is_safe", false);
                 node.addConfigString(allocator, "message_style", fmt.toStringLiteral(builtin.message_style orelse "null"));
@@ -1182,14 +1182,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.addConfigString(allocator, "message_suffix", fmt.toStringLiteral(builtin.message_suffix));
                 node.addConfigInt(allocator, "message_indent", builtin.message_indent);
             }
-            inline fn addBuildContextConfigs(node: *Node, allocator: *Allocator) void {
+            inline fn addBuildContextConfigs(node: *Node, allocator: *types.Allocator) void {
                 @setRuntimeSafety(builtin.is_safe);
                 node.addConfigString(allocator, "zig_exe", node.zigExe());
                 node.addConfigString(allocator, "build_root", node.buildRoot());
                 node.addConfigString(allocator, "cache_root", node.cacheRoot());
                 node.addConfigString(allocator, "global_cache_root", node.cacheRoot());
             }
-            pub fn init(allocator: *Allocator, name: []const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node {
+            pub fn init(allocator: *types.Allocator, name: []const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 const sh: *Shared = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
                 const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
@@ -1209,7 +1209,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 sh.mode = .Main;
                 return node;
             }
-            pub fn addGroup(group: *Node, allocator: *Allocator, name: [:0]const u8, env_paths: ?EnvPaths) *Node {
+            pub fn addGroup(group: *Node, allocator: *types.Allocator, name: [:0]const u8, env_paths: ?EnvPaths) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 const node: *Node = createNode(allocator, group, name, .{ .is_group = true }, .any, omni_lock);
                 if (env_paths) |paths| {
@@ -1223,7 +1223,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeGroup(allocator, node);
                 return node;
             }
-            pub fn addBuild(group: *Node, allocator: *Allocator, build_cmd: tasks.BuildCommand, name: [:0]const u8, root_pathname: []const u8) *Node {
+            pub fn addBuild(group: *Node, allocator: *types.Allocator, build_cmd: tasks.BuildCommand, name: [:0]const u8, root_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 const node: *Node = createNode(allocator, group, name, .{}, .build, obj_lock);
                 node.tasks.cmd.build = @ptrFromInt(allocator.allocateRaw(tasks.BuildCommand.size_of, tasks.BuildCommand.align_of));
@@ -1233,7 +1233,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeCommand(allocator, node);
                 return node;
             }
-            pub fn addFormat(group: *Node, allocator: *Allocator, format_cmd: tasks.FormatCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
+            pub fn addFormat(group: *Node, allocator: *types.Allocator, format_cmd: tasks.FormatCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 have_format = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .format, format_lock);
@@ -1243,7 +1243,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeCommand(allocator, node);
                 return node;
             }
-            pub fn addFetch(group: *Node, allocator: *Allocator, format_cmd: tasks.FormatCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
+            pub fn addFetch(group: *Node, allocator: *types.Allocator, format_cmd: tasks.FormatCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 have_format = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .fetch, fetch_lock);
@@ -1253,7 +1253,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeCommand(allocator, node);
                 return node;
             }
-            pub fn addArchive(group: *Node, allocator: *Allocator, archive_cmd: tasks.ArchiveCommand, name: [:0]const u8, depns: []const *Node) *Node {
+            pub fn addArchive(group: *Node, allocator: *types.Allocator, archive_cmd: tasks.ArchiveCommand, name: [:0]const u8, depns: []const *Node) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 have_archive = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .archive, archive_lock);
@@ -1264,7 +1264,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeCommand(allocator, node);
                 return node;
             }
-            pub fn addObjcopy(group: *Node, allocator: *Allocator, objcopy_cmd: tasks.ObjcopyCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
+            pub fn addObjcopy(group: *Node, allocator: *types.Allocator, objcopy_cmd: tasks.ObjcopyCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 have_objcopy = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .objcopy, objcopy_lock);
@@ -1274,7 +1274,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeCommand(allocator, node);
                 return node;
             }
-            pub fn addRun(group: *Node, allocator: *Allocator, name: [:0]const u8, args: []const []const u8) *Node {
+            pub fn addRun(group: *Node, allocator: *types.Allocator, name: [:0]const u8, args: []const []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 have_run = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .run, run_lock);
@@ -1282,7 +1282,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeCommand(allocator, node);
                 return node;
             }
-            fn addSourceInputPath(node: *Node, allocator: *Allocator, name: [:0]const u8) void {
+            fn addSourceInputPath(node: *Node, allocator: *types.Allocator, name: [:0]const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const root_path: *types.Path = node.addPath(allocator, classifySourceInputName(name));
                 root_path.* = .{};
@@ -1292,7 +1292,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     about.aboutNode(node, null, null, .add_file);
                 }
             }
-            fn addBinaryOutputPath(node: *Node, allocator: *Allocator, kind: types.File.Tag) void {
+            fn addBinaryOutputPath(node: *Node, allocator: *types.Allocator, kind: types.File.Tag) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const binary_path: *types.Path = node.addPath(allocator, kind);
                 binary_path.* = .{};
@@ -1302,7 +1302,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     about.aboutNode(node, null, null, .add_file);
                 }
             }
-            pub fn addDepn(node: *Node, allocator: *Allocator, task: Task, on_node: *Node, on_task: Task) void {
+            pub fn addDepn(node: *Node, allocator: *types.Allocator, task: Task, on_node: *Node, on_task: Task) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const node_idx: u16 = @intCast(node.lists.nodes.len);
                 const depn: *Depn = @ptrFromInt(allocator.addGeneric(8, 8, 2, @ptrCast(&node.lists.depns.ptr), &node.lists.depns_max_len, node.lists.depns.len));
@@ -1338,7 +1338,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 depn.* = .{ .task = task, .on_task = on_task, .on_state = .finished, .node_idx = node_idx };
             }
-            pub fn dependOn(node: *Node, allocator: *Allocator, on_node: *Node) void {
+            pub fn dependOn(node: *Node, allocator: *types.Allocator, on_node: *Node) void {
                 node.addDepn(
                     allocator,
                     if (node == on_node) .run else node.tasks.tag,
@@ -1348,7 +1348,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addGroupWithTask(
                 group: *Node,
-                allocator: *Allocator,
+                allocator: *types.Allocator,
                 name: [:0]const u8,
                 task: Task,
             ) *Node {
@@ -1358,7 +1358,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addBuildAnon(
                 group: *Node,
-                allocator: *Allocator,
+                allocator: *types.Allocator,
                 build_cmd: tasks.BuildCommand,
                 root_pathname: [:0]const u8,
             ) *Node {
@@ -1527,7 +1527,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return @intFromPtr(ptr) -% @intFromPtr(buf);
             }
-            pub fn find(group: *Node, allocator: *Allocator, name: []const u8, sep: u8) ?*Node {
+            pub fn find(group: *Node, allocator: *types.Allocator, name: []const u8, sep: u8) ?*Node {
                 @setRuntimeSafety(builtin.is_safe);
                 blk: {
                     var idx: usize = 0;
@@ -1565,14 +1565,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return null;
             }
         };
-        pub fn configRootRelative(allocator: *Allocator, node: *Node) [:0]u8 {
+        pub fn configRootRelative(allocator: *types.Allocator, node: *Node) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             const name_len: usize = node.formatLengthNameFull();
             const buf: [*:0]u8 = @ptrFromInt(allocator.allocateRaw(name_len +% 5, 1));
             fmt.strcpyEqu(buf + node.formatWriteNameFull('-', buf), ".zig")[0] = 0;
             return buf[0 .. name_len +% 4 :0];
         }
-        fn createConfigRoot(allocator: *Allocator, node: *Node, pathname: [:0]const u8) void {
+        fn createConfigRoot(allocator: *types.Allocator, node: *Node, pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
             const fd: usize = file.createAt(create, create_truncate_options, node.configRootFd(), pathname, file.mode.regular);
             const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(65536, 1));
@@ -1583,7 +1583,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             allocator.restore(@intFromPtr(buf));
             node.flags.have_config_root = true;
         }
-        pub fn outputRelative(allocator: *Allocator, node: *Node, tag: types.File.Tag) [:0]u8 {
+        pub fn outputRelative(allocator: *types.Allocator, node: *Node, tag: types.File.Tag) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var buf: [4096]u8 = undefined;
             const name: []u8 = if (builder_spec.options.naming_policy == .full_name) blk: {
@@ -1609,18 +1609,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             else
                 builder_spec.options.compiler_cache_hit_status;
         }
-        fn sameFile(st1: *file.Status, pathname1: [:0]const u8, st2: *file.Status, pathname2: [:0]const u8) bool {
-            @setRuntimeSafety(builtin.is_safe);
-            if (mem.testEqualString(pathname1, pathname2)) {
-                return true;
-            }
-            mem.zero(file.Status, st1);
-            file.statusAt(stat, .{}, file.cwd, pathname1, st1);
-            mem.zero(file.Status, st2);
-            file.statusAt(stat, .{}, file.cwd, pathname2, st2);
-            return (st1.mode.kind != .unknown and st2.mode.kind != .unknown) and
-                ((st1.dev == st2.dev) and (st1.ino == st2.ino));
-        }
+
         inline fn validateUserPath(pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
             var dot_dot: bool = false;
