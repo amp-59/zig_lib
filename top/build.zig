@@ -31,8 +31,8 @@ pub const ExecPhase = enum(u8) {
     ///
     /// a) Which task to execute for the primary command. Overriding task default.
     ///    Examples:
-    ///     `zig build run main`            ;; Runs the output binary produced by
-    ///                                        task `main`.
+    ///     `zig build run main`        ;; Runs the output binary produced by
+    ///                                    task `main`.
     ///
     /// b) Enable node flags by flag name.
     ///    Examples:
