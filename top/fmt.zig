@@ -742,8 +742,9 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     };
     return T;
 }
-pub fn PathFormat(comptime Format: type) type {
+pub fn PathFormat(comptime Path: type) type {
     const T = struct {
+        const Format = Path;
         pub fn formatWrite(format: Format, array: anytype) void {
             @setRuntimeSafety(builtin.is_safe);
             if (format.names_len != 0) {
@@ -755,95 +756,82 @@ pub fn PathFormat(comptime Format: type) type {
                 array.writeOne(0);
             }
         }
-        pub const formatWriteBufDisplay = blk: {
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            return strlen(write(buf, format), buf);
+        }
+        pub fn formatWriteBufLiteral(format: Format, buf: [*]u8) usize {
+            return strlen(writeLiteral(buf, format), buf);
+        }
+        pub fn formatWriteBufDisplay(format: Format, buf: [*]u8) usize {
+            return strlen(writeDisplay(buf, format), buf);
+        }
+        pub const writeDisplay = blk: {
             if (builtin.AbsoluteState != void) {
-                if (@hasField(builtin.AbsoluteState, "cwd") and
-                    @hasField(builtin.AbsoluteState, "home") and
-                    @hasField(builtin.AbsoluteState, "proj"))
-                {
-                    break :blk formatWriteBufDisplay3;
-                }
                 if (@hasField(builtin.AbsoluteState, "cwd") and
                     @hasField(builtin.AbsoluteState, "home"))
                 {
-                    break :blk formatWriteBufDisplay2;
+                    break :blk writeDisplay2;
                 }
                 if (@hasField(builtin.AbsoluteState, "cwd")) {
-                    break :blk formatWriteBufDisplay1;
+                    break :blk writeDisplay1;
                 }
             }
-            break :blk formatWriteBufDisplay0;
+            break :blk writeDisplay0;
         };
-        fn formatWriteBufDisplay0(format: Format, buf: [*]u8) usize {
+        fn writeDisplay0(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            return format.formatWriteBuf(buf) -% 1;
+            return write(path, buf) - 1;
         }
-        fn formatWriteBufDisplay1(format: Format, buf: [*]u8) usize {
+        fn writeDisplay1(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            const end: [*]u8 = buf + format.formatWriteBuf(buf);
-            var len: usize = strlen(end, buf);
+            const end: [*]u8 = Format.write(buf, path);
+            var len: usize = @intFromPtr(end) -% @intFromPtr(buf);
             const pathname: [:0]const u8 = builtin.absolute_state.ptr.cwd;
-            if (pathname.len != 0 and
-                len > pathname.len and
-                mem.testEqualString(pathname, buf[0..pathname.len]))
-            {
-                buf[0] = '.';
-                return @intFromPtr(strcpyEqu(buf + 1, buf[pathname.len..len])) -% @intFromPtr(buf);
-            }
-            return @intFromPtr(end - 1) -% @intFromPtr(buf);
-        }
-        fn formatWriteBufDisplay2(format: Format, buf: [*]u8) usize {
-            @setRuntimeSafety(builtin.is_safe);
-            const end: [*]u8 = buf + format.formatWriteBuf(buf);
-            var len: usize = strlen(end, buf);
-            var subst: u8 = '.';
-            var pathname: [:0]const u8 = builtin.absolute_state.ptr.cwd;
-            for (0..2) |_| {
-                if (pathname.len != 0 and
-                    len > pathname.len and
-                    mem.testEqualString(pathname, buf[0..pathname.len]))
-                {
-                    buf[0] = subst;
-                    return @intFromPtr(strcpyEqu(buf + 1, buf[pathname.len..len])) -% @intFromPtr(buf);
+            if (pathname.len != 0) {
+                if (pathname.len < len and mem.testEqualString(pathname, buf[0..pathname.len])) {
+                    buf[0] = '.';
+                    return strcpyEqu(buf + 1, buf[pathname.len..len]);
                 }
-                pathname = builtin.absolute_state.ptr.home;
-                subst = '~';
             }
-            return @intFromPtr(end - 1) -% @intFromPtr(buf);
+            return end - 1;
         }
-        fn formatWriteBufDisplay3(format: Format, buf: [*]u8) usize {
+        fn writeDisplay2(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            const end: [*]u8 = buf + format.formatWriteBuf(buf);
-            var len: usize = strlen(end, buf);
-            var subst: u8 = '.';
-            var pathname: [:0]const u8 = builtin.absolute_state.ptr.cwd;
-            for (0..2) |_| {
-                if (pathname.len != 0 and
-                    len > pathname.len and
-                    mem.testEqualString(pathname, buf[0..pathname.len]))
-                {
-                    buf[0] = subst;
-                    return @intFromPtr(strcpyEqu(buf + 1, buf[pathname.len..len])) -% @intFromPtr(buf);
+            const end: [*]u8 = Format.write(buf, path);
+            var len: usize = @intFromPtr(end) -% @intFromPtr(buf);
+            if (builtin.absolute_state.ptr.cwd.len != 0) {
+                if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
+                    builtin.absolute_state.ptr.cwd,
+                    buf[0..builtin.absolute_state.ptr.cwd.len],
+                )) {
+                    buf[0] = '.';
+                    return strcpyEqu(buf + 1, buf[builtin.absolute_state.ptr.cwd.len..len]);
                 }
-                pathname = builtin.absolute_state.ptr.home;
-                subst = '~';
             }
-            return @intFromPtr(end - 1) -% @intFromPtr(buf);
+            if (builtin.absolute_state.ptr.home.len != 0) {
+                if (builtin.absolute_state.ptr.home.len < len and mem.testEqualString(
+                    builtin.absolute_state.ptr.home,
+                    buf[0..builtin.absolute_state.ptr.home.len],
+                )) {
+                    buf[0] = '~';
+                    return strcpyEqu(buf + 1, buf[builtin.absolute_state.ptr.home.len..len]);
+                }
+            }
+            return end - 1;
         }
         pub fn writeDisplayPath(buf: [*]u8, pathname: [:0]const u8) [*]u8 {
             @setRuntimeSafety(false);
-            return buf + (Format{
-                .names = @constCast(@ptrCast(&pathname)),
-                .names_len = 1,
-                .names_max_len = 1,
-            }).formatWriteBufDisplay(buf);
+            return write(buf, Format{ .names = @constCast(@ptrCast(&pathname)), .names_len = 1, .names_max_len = 1 });
         }
-        pub fn formatWriteBufLiteral(format: Format, buf: [*]u8) usize {
+        pub fn writeLiteral(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            var ptr: [*]u8 = buf;
-            if (format.names_len != 0) {
-                ptr = strcpyEqu(ptr, format.names[0]);
-                for (format.names[1..format.names_len]) |name| {
+            buf[0] = '"';
+            var ptr: [*]u8 = buf + 1;
+            if (path.names_len != 0) {
+                for (path.names[0]) |byte| {
+                    ptr = strcpyEqu(ptr, stringLiteralChar(byte));
+                }
+                for (path.names[1..path.names_len]) |name| {
                     ptr[0] = '/';
                     ptr += 1;
                     for (name) |byte| {
@@ -851,7 +839,24 @@ pub fn PathFormat(comptime Format: type) type {
                     }
                 }
             }
-            return @intFromPtr(ptr) -% @intFromPtr(buf);
+            ptr[0] = '"';
+            return ptr + 1;
+        }
+        pub fn lengthLiteral(path: Path) [*]u8 {
+            @setRuntimeSafety(builtin.is_safe);
+            var len: usize = 2;
+            if (path.names_len != 0) {
+                for (path.names[0]) |byte| {
+                    len +%= stringLiteralChar(byte).len;
+                }
+                for (path.names[1..path.names_len]) |name| {
+                    len +%= 1;
+                    for (name) |byte| {
+                        len +%= stringLiteralChar(byte).len;
+                    }
+                }
+            }
+            return len;
         }
         pub fn formatWriteBufDisplayLiteral(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
@@ -860,20 +865,19 @@ pub fn PathFormat(comptime Format: type) type {
             len -%= 1;
             return stringLiteral(tmp[0..len]).formatWriteBuf(buf);
         }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var ptr: [*]u8 = buf;
-            if (format.names_len != 0) {
-                ptr = strcpyEqu(ptr, format.names[0]);
-                for (format.names[1..format.names_len]) |name| {
+            if (path.names_len != 0) {
+                ptr = strcpyEqu(ptr, path.names[0]);
+                for (path.names[1..path.names_len]) |name| {
                     ptr[0] = '/';
-                    ptr += 1;
-                    ptr = strcpyEqu(ptr, name);
+                    ptr = strcpyEqu(ptr + 1, name);
                 }
                 ptr[0] = 0;
                 ptr += 1;
             }
-            return @intFromPtr(ptr) -% @intFromPtr(buf);
+            return ptr;
         }
         pub fn formatLength(format: Format) usize {
             @setRuntimeSafety(builtin.is_safe);
