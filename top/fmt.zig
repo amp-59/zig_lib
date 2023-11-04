@@ -507,10 +507,9 @@ pub const SideBarIndexFormat = struct {
     },
     pub fn length(width: usize, index: usize) usize {
         @setRuntimeSafety(false);
-        var len: usize = sigFigLen(usize, index, 10);
-        const rem: usize = builtin.message_indent -| (width +% 1);
-        len +%= width -| len;
-        return Udsize.length(index) +% len +% 1 +% rem;
+        var len: usize = width -| sigFigLen(usize, index, 10);
+        len +%= Udsize.length(index) +% 1;
+        return len +% builtin.message_indent -| (width +% 1);
     }
     pub fn write(buf: [*]u8, width: usize, index: usize) [*]u8 {
         @setRuntimeSafety(false);
@@ -1205,16 +1204,14 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             return ptr;
         }
         fn lengthFull(old_count: usize, new_count: usize) usize {
-            const old_fmt: Bytes = @bitCast(old_count);
-            const new_fmt: Bytes = @bitCast(new_count);
-            var len: usize = old_fmt.formatLength();
+            var len: usize = Bytes.length(old_count);
             if (old_count != new_count) {
                 if (new_count > old_count) {
-                    len +%= lengthStyledChange(@bitCast(new_count -% old_count), inc_s);
+                    len +%= lengthStyledChange(new_count -% old_count, inc_s);
                 } else {
-                    len +%= lengthStyledChange(@bitCast(old_count -% new_count), dec_s);
+                    len +%= lengthStyledChange(old_count -% new_count, dec_s);
                 }
-                len +%= 4 +% new_fmt.formatLength();
+                len +%= 4 +% Bytes.length(new_count);
             }
             return len;
         }
@@ -1228,7 +1225,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             return ptr + 1;
         }
         fn lengthStyledChange(count: usize, style_s: []const u8) usize {
-            return 2 +% style_s.len +% Bytes.length(count) +% no_s.len;
+            return 1 +% style_s.len +% Bytes.length(count) +% no_s.len +% 1;
         }
         pub fn write(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -1250,9 +1247,9 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                 return lengthFull(old_count, new_count);
             } else {
                 if (old_count == 0) {
-                    return lengthStyledChange(@bitCast(new_count), fmt_spec.inc_style);
+                    return lengthStyledChange(new_count, fmt_spec.inc_style);
                 } else if (new_count == 0) {
-                    return lengthStyledChange(@bitCast(old_count), fmt_spec.dec_style);
+                    return lengthStyledChange(old_count, fmt_spec.dec_style);
                 } else {
                     return lengthFull(old_count, new_count);
                 }
