@@ -1633,7 +1633,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
         }
-        fn createNode(allocator: *Allocator, group: *Node, name: [:0]const u8, flags: Node.Flags, task_tag: Task, lock: Lock) *Node {
+        fn createNode(allocator: *types.Allocator, group: *Node, name: [:0]const u8, flags: Node.Flags, task_tag: Task, lock: Lock) *Node {
             @setRuntimeSafety(builtin.is_safe);
             const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
             group.addNode(allocator).* = node;
@@ -1647,7 +1647,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return node;
         }
         const zig_lib_module = "zl::" ++ builtin.lib_root ++ "/zig_lib.zig";
-        fn initializeExtensions(allocator: *Allocator, top: *Node) void {
+        fn initializeExtensions(allocator: *types.Allocator, top: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             const zero: *Node = top.addGroup(allocator, "zero", .{
                 .zig_exe = top.zigExe(),
@@ -1740,11 +1740,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return .input_generic;
         }
-        pub fn initializeGroup(allocator: *Allocator, node: *Node) void {
+        pub fn initializeGroup(allocator: *types.Allocator, node: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             var st: [2]file.Status = undefined;
             if (node.flags.is_top or
-                !sameFile(&st[0], node.lists.nodes[0].buildRoot(), &st[1], node.buildRoot()))
+                !file.sameFile(stat, &st[0], node.lists.nodes[0].buildRoot(), &st[1], node.buildRoot()))
             {
                 const dir_fds: *Node.DirFds = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node.DirFds), @alignOf(Node.DirFds)));
                 dir_fds.build_root = file.openAt(open, dir_options, file.cwd, node.buildRoot());
@@ -1800,7 +1800,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             initializeCommand(allocator, node);
         }
-        pub fn initializeCommand(allocator: *Allocator, node: *Node) void {
+        pub fn initializeCommand(allocator: *types.Allocator, node: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             if (node.sh.mode != .Regen and node.flags.do_init) {
                 node.flags.do_init = false;
@@ -1879,11 +1879,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub fn recursiveAction(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
-            allocator: *Allocator,
+            allocator: *types.Allocator,
             node: *Node,
             task: Task,
             arena_index: AddressSpace.Index,
-            actionFn: *const fn (*AddressSpace, *ThreadSpace, *Allocator, *Node, Task, AddressSpace.Index) bool,
+            actionFn: *const fn (*AddressSpace, *ThreadSpace, *types.Allocator, *Node, Task, AddressSpace.Index) bool,
         ) void {
             @setRuntimeSafety(builtin.is_safe);
             if (actionFn(address_space, thread_space, allocator, node, task, arena_index)) {
@@ -1900,7 +1900,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
         }
-        fn taskArgs(allocator: *Allocator, node: *Node, args: *const []const usize, grp_args: *const []const usize) [][*:0]u8 {
+        fn taskArgs(allocator: *types.Allocator, node: *Node, args: *const []const usize, grp_args: *const []const usize) [][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             const args_len: usize = args.len +% (if (node.flags.is_primary) grp_args.len else 0);
             const ret: [*]usize = @ptrFromInt(allocator.allocateRaw(8 *% (args_len +% 1), 8));
@@ -1909,7 +1909,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ret[args.len +% grp_args.len] = 0;
             return @ptrCast(ret[0..args_len]);
         }
-        fn buildTaskArgs(allocator: *Allocator, node: *Node) ?[][*:0]u8 {
+        fn buildTaskArgs(allocator: *types.Allocator, node: *Node) ?[][*:0]u8 {
             @setRuntimeSafety(false);
             const paths: []types.Path = node.lists.paths[@as(usize, 1) +% @intFromBool(node.flags.have_config_root) ..];
             if (!node.flags.have_task_data) {
@@ -1939,7 +1939,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return makeArgPtrs(allocator, buf[0..len :0]);
             }
         }
-        fn formatTaskArgs(allocator: *Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
+        fn formatTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (have_lazy) {
                 if (node.flags.is_primary) {
@@ -1963,7 +1963,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return makeArgPtrs(allocator, buf[0..len :0]);
             }
         }
-        fn fetchTaskArgs(allocator: *Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
+        fn fetchTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (have_lazy) {
                 if (node.flags.is_primary) {
@@ -1987,7 +1987,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return makeArgPtrs(allocator, buf[0..len :0]);
             }
         }
-        fn objcopyTaskArgs(allocator: *Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
+        fn objcopyTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (have_lazy) {
                 if (node.flags.is_primary) {
@@ -2011,7 +2011,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return makeArgPtrs(allocator, buf[0..len :0]);
             }
         }
-        fn archiveTaskArgs(allocator: *Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
+        fn archiveTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (have_lazy) {
                 if (node.flags.is_primary) {
@@ -2035,13 +2035,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return makeArgPtrs(allocator, buf[0..len :0]);
             }
         }
-        fn executeRunCommand(allocator: *Allocator, node: *Node) bool {
+        fn executeRunCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             const args: [][*:0]u8 = taskArgs(allocator, node, @ptrCast(&node.lists.run_args), @ptrCast(&node.lists.nodes[0].lists.run_args));
             system(node, mem.terminate(args[0], 0), args, node.sh.vars);
             return status(node.extra.results);
         }
-        fn executeBuildCommand(allocator: *Allocator, node: *Node) bool {
+        fn executeBuildCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             const dest_pathname: [:0]const u8 = node.lists.paths[0].concatenate(allocator);
             if (buildTaskArgs(allocator, node)) |args| {
@@ -2058,7 +2058,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return status(node.extra.results);
         }
-        fn executeFormatCommand(allocator: *Allocator, node: *Node) bool {
+        fn executeFormatCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             const paths: []types.Path = node.lists.paths;
             if (formatTaskArgs(allocator, node, paths)) |args| {
@@ -2066,7 +2066,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return status(node.extra.results);
         }
-        fn executeFetchCommand(allocator: *Allocator, node: *Node) bool {
+        fn executeFetchCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             const paths: []types.Path = node.lists.paths;
             if (fetchTaskArgs(allocator, node, paths)) |args| {
@@ -2074,7 +2074,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return status(node.extra.results);
         }
-        fn executeArchiveCommand(allocator: *Allocator, node: *Node) bool {
+        fn executeArchiveCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             const paths: []types.Path = node.lists.paths;
             if (archiveTaskArgs(allocator, node, paths)) |args| {
@@ -2082,7 +2082,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return status(node.extra.results);
         }
-        fn executeObjcopyCommand(allocator: *Allocator, node: *Node) bool {
+        fn executeObjcopyCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             const paths: []types.Path = node.lists.paths;
             if (objcopyTaskArgs(allocator, node, paths)) |args| {
@@ -2090,7 +2090,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return status(node.extra.results);
         }
-        fn executeCommand(allocator: *Allocator, node: *Node, task: Task, arena_index: AddressSpace.Index) bool {
+        fn executeCommand(allocator: *types.Allocator, node: *Node, task: Task, arena_index: AddressSpace.Index) bool {
             @setRuntimeSafety(builtin.is_safe);
             const ret: bool = switch (task) {
                 .build => executeBuildCommand(allocator, node),
@@ -2106,7 +2106,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn executeCommandDependencies(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
-            allocator: *Allocator,
+            allocator: *types.Allocator,
             node: *Node,
             task: Task,
             arena_index: AddressSpace.Index,
@@ -2140,7 +2140,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn tryAcquireThread(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
-            allocator: *Allocator,
+            allocator: *types.Allocator,
             node: *Node,
             task: Task,
             arena_index: AddressSpace.Index,
@@ -2164,7 +2164,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub fn prepareCommand(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
-            allocator: *Allocator,
+            allocator: *types.Allocator,
             node: *Node,
             task: Task,
             arena_index: AddressSpace.Index,
@@ -2301,7 +2301,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             arena_index: AddressSpace.Index,
         ) void {
             @setRuntimeSafety(builtin.is_safe);
-            var allocator: Allocator = Allocator.fromArena(AddressSpace.arena(arena_index));
+            var allocator: types.Allocator = types.Allocator.fromArena(AddressSpace.arena(arena_index));
             executeCommandDependencies(address_space, thread_space, &allocator, node, task, arena_index);
             while (keepGoing(node) and waitForNode(node, task, arena_index)) {
                 time.sleep(sleep, .{ .nsec = builder_spec.options.sleep_nanoseconds });
@@ -2322,7 +2322,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         inline fn executeCommandSynchronised(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
-            allocator: *Allocator,
+            allocator: *types.Allocator,
             node: *Node,
             task: Task,
             arena_index: AddressSpace.Index,
@@ -2348,7 +2348,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub fn executeSubNode(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
-            allocator: *Allocator,
+            allocator: *types.Allocator,
             node: *Node,
             task: Task,
         ) bool {
@@ -2375,7 +2375,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             file.write(write, fd, buf[0..len]);
             file.close(close, fd);
         }
-        fn mapImmediate(allocator: *Allocator, node: *Node) void {
+        fn mapImmediate(allocator: *types.Allocator, node: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             if (!(have_lazy and node.flags.is_dynamic_extension)) {
                 return;
@@ -2433,7 +2433,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builtin.is_safe);
             const output: *file.Status = node.getFile(.{ .tag = .output_generic }).?.st;
             const cached: *file.Status = node.getFile(.{ .tag = .cached_generic }).?.st;
-            if (!sameFile(output, output_pathname, cached, cached_pathname)) {
+            if (!file.sameFile(stat, output, output_pathname, cached, cached_pathname)) {
                 if (have_size and
                     node.flags.want_binary_analysis)
                 {
@@ -2515,7 +2515,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             file.close(close, in.write);
             file.close(close, out.read);
         }
-        fn serverLoop(allocator: *Allocator, node: *Node, dest_pathname: [:0]const u8, in: file.Pipe, out: file.Pipe) void {
+        fn serverLoop(allocator: *types.Allocator, node: *Node, dest_pathname: [:0]const u8, in: file.Pipe, out: file.Pipe) void {
             var hdr: Message.ServerHeader = undefined;
             var fd: [1]file.PollFd = .{.{ .fd = out.read, .expect = .{ .input = true } }};
             while (try meta.wrap(file.poll(poll, &fd, builder_spec.options.timeout_milliseconds))) {
@@ -2682,7 +2682,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub fn processCommands(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
-            allocator: *Allocator,
+            allocator: *types.Allocator,
             group: *Node,
         ) void {
             @setRuntimeSafety(builtin.is_safe);
@@ -3033,7 +3033,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ptr;
             }
-            pub fn aboutTask(allocator: *Allocator, node: *Node, task: Task, arena_index: AddressSpace.Index) void {
+            pub fn aboutTask(allocator: *types.Allocator, node: *Node, task: Task, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builtin.is_safe);
                 if (have_lazy and builtin.output_mode == .Exe) {
                     if (defined(node.sh.fp.about.generic.aboutTask)) {
@@ -3081,7 +3081,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ptr;
             }
-            pub fn aboutBaseMemoryUsageNotice(allocator: *Allocator) void {
+            pub fn aboutBaseMemoryUsageNotice(allocator: *types.Allocator) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
                 var ptr: [*]u8 = &buf;
@@ -3134,7 +3134,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 depns,
                 full,
             };
-            pub fn writeAndWalk(allocator: *Allocator, node: *Node, mode: ListMode) void {
+            pub fn writeAndWalk(allocator: *types.Allocator, node: *Node, mode: ListMode) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const save: usize = allocator.save();
                 var buf1: [4096]u8 = undefined;
@@ -3243,7 +3243,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ptr0;
             }
-            pub fn printErrors(allocator: *Allocator, node: *Node, msg: [*:0]u8) void {
+            pub fn printErrors(allocator: *types.Allocator, node: *Node, msg: [*:0]u8) void {
                 @setRuntimeSafety(builtin.is_safe);
                 if (builder_spec.options.eager_compile_errors) {
                     if (builder_spec.options.trace_compile_errors) {
@@ -3526,7 +3526,7 @@ pub const Message = struct {
         };
     };
 };
-pub fn duplicate(allocator: *Allocator, values: []const u8) [:0]u8 {
+pub fn duplicate(allocator: *types.Allocator, values: []const u8) [:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
     if (@intFromPtr(values.ptr) < 0x40000000) {
         return @constCast(values.ptr)[0..values.len :0];
@@ -3536,7 +3536,7 @@ pub fn duplicate(allocator: *Allocator, values: []const u8) [:0]u8 {
     buf[values.len] = 0;
     return buf[0..values.len :0];
 }
-fn makeCommandName(allocator: *Allocator, root: [:0]const u8) [:0]const u8 {
+fn makeCommandName(allocator: *types.Allocator, root: [:0]const u8) [:0]const u8 {
     @setRuntimeSafety(builtin.is_safe);
     const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(root.len +% 1, 1));
     @memcpy(buf, root);
@@ -3550,7 +3550,7 @@ fn makeCommandName(allocator: *Allocator, root: [:0]const u8) [:0]const u8 {
     buf[idx] = 0;
     return buf[0..idx :0];
 }
-pub fn concatenate(allocator: *Allocator, values: []const []const u8) [:0]u8 {
+pub fn concatenate(allocator: *types.Allocator, values: []const []const u8) [:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
     var len: usize = 0;
     for (values) |value| {
@@ -3565,7 +3565,7 @@ pub fn concatenate(allocator: *Allocator, values: []const []const u8) [:0]u8 {
     buf[len] = 0;
     return buf[0..len :0];
 }
-pub fn makeArgPtrs(allocator: *Allocator, args: [:0]u8) [][*:0]u8 {
+pub fn makeArgPtrs(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
     var count: usize = 0;
     for (args) |value| {
