@@ -491,7 +491,7 @@ pub const StringLiteralFormat = struct {
         ptr[0] = '"';
         return ptr + 1;
     }
-    pub fn length(string: []const u8) void {
+    pub fn length(string: []const u8) usize {
         @setRuntimeSafety(false);
         var len: usize = 2;
         for (string) |byte| {
@@ -780,7 +780,7 @@ pub fn PathFormat(comptime Path: type) type {
         };
         fn writeDisplay0(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            return write(path, buf) - 1;
+            return write(buf, path) - 1;
         }
         fn writeDisplay1(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -842,7 +842,7 @@ pub fn PathFormat(comptime Path: type) type {
             ptr[0] = '"';
             return ptr + 1;
         }
-        pub fn lengthLiteral(path: Path) [*]u8 {
+        pub fn lengthLiteral(path: Path) usize {
             @setRuntimeSafety(builtin.is_safe);
             var len: usize = 2;
             if (path.names_len != 0) {
