@@ -784,7 +784,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-const build_help: [:0]const u8 =
+const build_help: [:0]const u8 = 
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -905,7 +905,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 =
+const archive_help: [:0]const u8 = 
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -924,7 +924,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -937,7 +937,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout
