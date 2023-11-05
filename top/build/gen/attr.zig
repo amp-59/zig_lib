@@ -906,7 +906,6 @@ pub const zig_fetch_command_attributes: types.Attributes = .{
         },
     },
 };
-
 pub const zig_format_command_attributes: types.Attributes = .{
     .type_name = "FormatCommand",
     .fn_name = "format",
@@ -1261,6 +1260,11 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
     .type_name = "LLCCommand",
     .fn_name = "llc",
     .params = &.{
+        .{
+            .name = "llc_exe",
+            .tag = .{ .param = .string },
+            .type = string_type,
+        },
         .{
             .name = "aarch64_a57_fp_load_balancing_force_all",
             .string = "--aarch64-a57-fp-load-balancing-force-all",
