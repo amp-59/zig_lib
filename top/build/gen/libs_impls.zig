@@ -527,6 +527,7 @@ fn writeLoadFromSources(
     try writeOut(array, MajorVariant.autoloader, field_name);
 }
 pub fn main() !void {
+    if (return) {}
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmapAll();
     const array: *common.Array = allocator.create(common.Array);

@@ -9,6 +9,7 @@ const common = @import("./common_impls.zig");
 const testing = @import("../../testing.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
+const print_wip_llc: bool = false;
 pub const context = .Exe;
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
@@ -46,7 +47,9 @@ pub fn main() !void {
     } else {
         debug.write(array.readAll());
     }
-    for (attr.llvm_llc_command_attributes.params) |param| {
-        testing.renderBufN(.{ .infer_type_names = true, .omit_trailing_comma = true, .decls = .{ .forward_formatter = true } }, 4096, param);
+    if (print_wip_llc) {
+        for (attr.llvm_llc_command_attributes.params) |param| {
+            testing.renderBufN(.{ .infer_type_names = true, .omit_trailing_comma = true, .decls = .{ .forward_formatter = true } }, 4096, param);
+        }
     }
 }

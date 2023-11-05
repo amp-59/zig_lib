@@ -2,11 +2,6 @@ const fmt = @import("../../fmt.zig");
 const mem = @import("../../mem.zig");
 const config = @import("./config.zig");
 pub const Context = enum { Lib, Exe };
-pub const Variant = enum(u2) {
-    length,
-    write_buf,
-    write,
-};
 pub const Attributes = struct {
     /// Name of task command data structure
     type_name: []const u8,
