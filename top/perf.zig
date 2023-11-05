@@ -524,8 +524,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             ptr[0] = '.';
             ptr = fmt.Ud64.write(ptr + 1, ipc_pcnt -% (ipc_div *% 100));
             ptr[0] = '\n';
-            ptr += 1;
-            return ptr;
+            return ptr + 1;
         }
         fn lengthIPC(width: usize, index: usize, instrs: usize, cycles: usize) usize {
             @setRuntimeSafety(false);
@@ -534,7 +533,8 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             }
             const ipc_pcnt: usize = (instrs *% 100) / cycles;
             const ipc_div: usize = instrs / cycles;
-            return 8 +% fmt.SideBarIndexFormat.length(width, index) +% fmt.Ud64.length(ipc_div) +% fmt.Ud64.length(ipc_pcnt -% (ipc_div *% 100));
+            return 8 +% fmt.SideBarIndexFormat.length(width, index) +%
+                fmt.Ud64.length(ipc_div) +% fmt.Ud64.length(ipc_pcnt -% (ipc_div *% 100));
         }
     };
     return T;

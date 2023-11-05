@@ -5,13 +5,10 @@ const bits = @import("./bits.zig");
 const meta = @import("./meta.zig");
 const math = @import("./math.zig");
 const debug = @import("./debug.zig");
-
 pub const root = @import("root");
-
 /// Determines whether this library must supply compiler function types and
 /// target information.
 pub const is_zig_lib: bool = @hasDecl(@import("std"), "zig_lib");
-
 /// Determines `@setRuntimeSafety` for many scopes.
 pub const is_safe: bool = define("is_safe", bool, builtin.mode == .ReleaseSafe);
 pub const is_small: bool = define("is_small", bool, builtin.mode == .ReleaseSmall);
@@ -20,7 +17,6 @@ pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
 /// * Determine whether signals for floating point errors should be handled
 ///   verbosely.
 pub const is_debug: bool = define("is_debug", bool, builtin.mode == .Debug);
-
 /// The primary reason that these constants exist is to distinguish between
 /// reports from the build runner and reports from a run command.
 ///
@@ -35,22 +31,17 @@ pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, 
 pub const message_indent: u8 = define("message_indent", u8, 16);
 /// Sequence used to undo `message_style` if defined.
 pub const message_no_style: [:0]const u8 = "\x1b[0m";
-
 pub const never_exit_group: bool = define("never_exit_group", bool, false);
 pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
 pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
-
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const permit_discard_errors: bool = define("discard_errors", bool, true);
-
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const permit_non_scalar_sentinel: bool = define("permit_non_scalar_sentinel", bool, true);
-
 /// Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.mode == .Debug or builtin.mode == .ReleaseSafe);
 /// Determines whether `static.assert*` functions will be called at compile time.
 pub const comptime_assertions: bool = define("comptime_assertions", bool, builtin.mode == .Debug);
-
 pub const panic = define("panic", debug.PanicFn, debug.panic);
 pub const panicSentinelMismatch = define("panicSentinelMismatch", debug.PanicSentinelMismatchFn, debug.panic_extra.panicSentinelMismatch);
 pub const panicUnwrapError = define("panicUnwrapError", debug.PanicUnwrapErrorFn, debug.panic_extra.panicUnwrapError);
@@ -58,9 +49,7 @@ pub const panicOutOfBounds = define("panicOutOfBounds", debug.PanicOutOfBoundsFn
 pub const panicStartGreaterThanEnd = define("startGreaterThanEnd", debug.PanicStartGreaterThanEndFn, debug.panic_extra.panicStartGreaterThanEnd);
 pub const panicInactiveUnionField = define("panicInactiveUnionField", debug.PanicInactiveUnionFieldFn, debug.panic_extra.panicInactiveUnionField);
 pub const alarm = define("alarm", debug.AlarmFn, debug.alarm);
-
 pub const panic_return_value: u8 = define("panic_return_value", u8, 2);
-
 /// Determines text output in case of panic without formatting
 pub const panic_messages = define("panic_messages", type, struct {
     pub const unreach: [:0]const u8 = "reached unreachable code";
@@ -89,61 +78,43 @@ pub const panic_messages = define("panic_messages", type, struct {
     pub const memcpy_alias: [:0]const u8 = "@memcpy arguments alias";
     pub const noreturn_returned: [:0]const u8 = "'noreturn' function returned";
 });
-
 pub const AbsoluteState = define("AbsoluteState", type, void);
-
-pub const logging_default: debug.Logging.Default = define(
-    "logging_default",
-    debug.Logging.Default,
-    .{
-        // Never report attempted actions.
-        .Attempt = false,
-        // Never report successful actions.
-        .Success = false,
-        // Report actions where a resource is acquired when build mode is Debug.
-        .Acquire = builtin.mode == .Debug,
-        // Report actions where a resource is released when build mode is Debug.
-        .Release = builtin.mode == .Debug,
-        // Report errors when not small.
-        .Error = builtin.mode != .ReleaseSmall,
-        // Report faults when not small.
-        .Fault = builtin.mode != .ReleaseSmall,
-    },
-);
+pub const logging_default: debug.Logging.Default = define("logging_default", debug.Logging.Default, .{
+    // Never report attempted actions.
+    .Attempt = false,
+    // Never report successful actions.
+    .Success = false,
+    // Report actions where a resource is acquired when build mode is Debug.
+    .Acquire = builtin.mode == .Debug,
+    // Report actions where a resource is released when build mode is Debug.
+    .Release = builtin.mode == .Debug,
+    // Report errors when not small.
+    .Error = builtin.mode != .ReleaseSmall,
+    // Report faults when not small.
+    .Fault = builtin.mode != .ReleaseSmall,
+});
 /// These values (optionally) define all override field values for all logging
 /// sub-types and all default field values for the general logging type.
-pub const logging_override: debug.Logging.Override = define(
-    "logging_override",
-    debug.Logging.Override,
-    .{
-        .Attempt = null,
-        .Success = null,
-        .Acquire = null,
-        .Release = null,
-        .Error = null,
-        .Fault = null,
-    },
-);
+pub const logging_override: debug.Logging.Override = define("logging_override", debug.Logging.Override, .{
+    .Attempt = null,
+    .Success = null,
+    .Acquire = null,
+    .Release = null,
+    .Error = null,
+    .Fault = null,
+});
 /// All enabled in build mode `Debug`.
-pub const signal_handlers: debug.SignalHandlers = define(
-    "signal_handlers",
-    debug.SignalHandlers,
-    .{
-        .SegmentationFault = debug.logging_general.Fault,
-        .IllegalInstruction = debug.logging_general.Fault,
-        .BusError = debug.logging_general.Fault,
-        .FloatingPointError = debug.logging_general.Fault,
-        .Trap = debug.logging_general.Fault,
-    },
-);
+pub const signal_handlers: debug.SignalHandlers = define("signal_handlers", debug.SignalHandlers, .{
+    .SegmentationFault = debug.logging_general.Fault,
+    .IllegalInstruction = debug.logging_general.Fault,
+    .BusError = debug.logging_general.Fault,
+    .FloatingPointError = debug.logging_general.Fault,
+    .Trap = debug.logging_general.Fault,
+});
 /// Enabled if `SegmentationFault` enabled. This is because the alternate stack
 /// is only likely to be useful in the event of stack overflow, which is only
 /// reported by SIGSEGV.
-pub const signal_stack: mem.Vector = define(
-    "signal_stack",
-    mem.Vector,
-    .{ .addr = 0x3f000000, .len = 0x1000000 },
-);
+pub const signal_stack: mem.Vector = define("signal_stack", mem.Vector, .{ .addr = 0x3f000000, .len = 0x1000000 });
 pub const absolute_state = struct {
     pub const ptr: *AbsoluteState = @ptrFromInt(addr);
     pub const rem: mem.Vector = .{
@@ -214,7 +185,6 @@ pub const my_trace: debug.Trace = .{
         },
     },
 };
-
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
     const U = union(enum) {
@@ -2135,14 +2105,12 @@ const std_lib = struct {
 };
 pub usingnamespace zig;
 pub usingnamespace builtin;
-
 pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T) T {
     return if (@hasDecl(root, symbol)) @field(root, symbol) else default;
 }
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
 pub extern fn memmove(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
-
 extern fn __zig_probe_stack() callconv(.C) void;
 comptime {
     asm (
