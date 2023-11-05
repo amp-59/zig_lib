@@ -558,10 +558,10 @@ fn testNullByteBeforeEof() !void {
 fn testTokenize(source: [:0]const u8, expected_token_tags: []const builtin.parse.Token.Tag) !void {
     var tokenizer = builtin.parse.TokenIterator{ .buf = @constCast(source), .buf_pos = 0, .inval = null };
     for (expected_token_tags) |expected_token_tag| {
-        const token = tokenizer.next();
+        const token = tokenizer.nextToken();
         try debug.expectEqual(builtin.parse.Token.Tag, expected_token_tag, token.tag);
     }
-    const last_token = tokenizer.next();
+    const last_token = tokenizer.nextToken();
     try debug.expectEqual(builtin.parse.Token.Tag, builtin.parse.Token.Tag.eof, last_token.tag);
     try debug.expectEqual(usize, source.len, last_token.loc.start);
     try debug.expectEqual(usize, source.len, last_token.loc.finish);
