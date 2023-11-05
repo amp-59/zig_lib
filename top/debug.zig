@@ -831,10 +831,10 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..12].* = "start index ".*;
         var ptr: [*]u8 = buf[12..];
-        ptr = fmt.writeUd64(ptr, lower);
+        ptr = fmt.Ud64.write(ptr, lower);
         ptr[0..26].* = " is larger than end index ".*;
         ptr += 26;
-        ptr = fmt.writeUd64(ptr, upper);
+        ptr = fmt.Ud64.write(ptr, upper);
         builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
@@ -870,11 +870,11 @@ pub noinline fn aboutWhere(about_s: []const u8, message: []const u8, ret_addr: ?
     ptr = fmt.strcpyEqu(ptr, message);
     ptr[0..6].* = ", pid=".*;
     ptr += 6;
-    ptr = fmt.writeUd64(ptr, pid);
+    ptr = fmt.Ud64.write(ptr, pid);
     if (pid != tid) {
         ptr[0..6].* = ", tid=".*;
         ptr += 6;
-        ptr = fmt.writeUd64(ptr, tid);
+        ptr = fmt.Ud64.write(ptr, tid);
     }
     if (mb_src) |src| {
         ptr[0..2].* = ", ".*;
@@ -931,7 +931,7 @@ pub const about = struct {
         buf[0..fmt.about_exit_s.len].* = fmt.about_exit_s.*;
         ptr[0..3].* = "rc=".*;
         ptr += 3;
-        ptr = fmt.writeUd64(ptr, rc);
+        ptr = fmt.Ud64.write(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -942,7 +942,7 @@ pub const about = struct {
         var ptr: [*]u8 = writeAboutError(&buf, error_p0_s, error_name);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr = fmt.writeUd64(ptr, rc);
+        ptr = fmt.Ud64.write(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -956,7 +956,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, message);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr = fmt.writeUd64(ptr, rc);
+        ptr = fmt.Ud64.write(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -989,7 +989,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, message);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr = fmt.writeUd64(ptr, rc);
+        ptr = fmt.Ud64.write(ptr, rc);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -1205,7 +1205,7 @@ pub const about = struct {
     fn writeIncorrectAlignment(type_name: []const u8, buf: [*]u8, address: usize, alignment: usize, remainder: usize) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
         buf[0..7].* = "*align(".*;
-        var ptr: [*]u8 = fmt.writeUd64(buf + 7, alignment);
+        var ptr: [*]u8 = fmt.Ud64.write(buf + 7, alignment);
         ptr[0..2].* = ") ".*;
         ptr += 2;
         ptr = fmt.strcpyEqu(ptr, type_name);
