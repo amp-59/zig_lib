@@ -86,7 +86,6 @@ fn testMinMax() !void {
     try debug.expect(mem.testEqual(S, s, builtin.min(S, t, s)));
     try debug.expect(mem.testEqual(S, t, builtin.max(S, t, s)));
 }
-
 pub fn main() !void {
     zl.meta.refAllDecls(builtin, &.{});
     try testRuntimeAssertionsCompile();

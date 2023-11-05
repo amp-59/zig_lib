@@ -1286,6 +1286,27 @@ const Section = enum(u16) {
     }
 };
 pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
+    const stat = .{
+        .logging = loader_spec.logging.stat,
+        .errors = loader_spec.errors.stat,
+    };
+    const read2 = .{
+        .return_type = void,
+        .logging = loader_spec.logging.read,
+        .errors = loader_spec.errors.read,
+    };
+    const close = .{
+        .logging = loader_spec.logging.close,
+        .errors = loader_spec.errors.close,
+    };
+    const open = .{
+        .logging = loader_spec.logging.open,
+        .errors = loader_spec.errors.open,
+    };
+    const map = .{
+        .logging = loader_spec.logging.map,
+        .errors = loader_spec.errors.map,
+    };
     const T = struct {
         lb_meta_addr: usize = lb_meta_addr,
         ub_meta_addr: usize = lb_meta_addr,
@@ -1352,7 +1373,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 const next: usize = aligned +% size_of;
                 if (next > info.meta.finish) {
                     const finish: usize = bits.alignA4096(next);
-                    try meta.wrap(mem.map(map(), .{}, mmap_flags, info.meta.finish, finish -% info.meta.finish));
+                    try meta.wrap(mem.map(map, .{}, mmap_flags, info.meta.finish, finish -% info.meta.finish));
                     info.meta.finish = finish;
                 }
                 info.meta.next = next;
@@ -1373,7 +1394,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         const len: usize = bits.alignA4096(phdr.vaddr +% phdr.memsz) -% addr;
                         const off: usize = bits.alignB4096(phdr.offset);
                         addr +%= info.prog.addr;
-                        try meta.wrap(file.map(map(), .{ .read = phdr.flags.R, .write = phdr.flags.W, .exec = phdr.flags.X }, mmap_flags, info.fd, addr, len, off));
+                        try meta.wrap(file.map(map, .{ .read = phdr.flags.R, .write = phdr.flags.W, .exec = phdr.flags.X }, mmap_flags, info.fd, addr, len, off));
                     }
                 }
             }
@@ -1521,14 +1542,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         };
         fn allocateInfo(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, *Info) {
             @setRuntimeSafety(builtin.is_safe);
-            const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
+            const fd: usize = try meta.wrap(file.open(open, .{}, pathname));
             var st: file.Status = undefined;
-            try meta.wrap(file.statusAt(stat(), .{}, file.cwd, pathname, &st));
+            try meta.wrap(file.statusAt(stat, .{}, file.cwd, pathname, &st));
             const len: usize = bits.alignA4096(st.size);
             const meta_start: usize = bits.alignA4096(@atomicRmw(usize, &loader.ub_meta_addr, .Add, len, .SeqCst));
             var meta_len: usize = 4096;
             var meta_finish: usize = meta_start +% meta_len;
-            try meta.wrap(mem.map(map(), .{}, mmap_flags, meta_start, 4096));
+            try meta.wrap(mem.map(map, .{}, mmap_flags, meta_start, 4096));
             try meta.wrap(readAt(fd, 0, meta_start, 4096));
             const ehdr: *Elf64_Ehdr = @ptrFromInt(meta_start);
             const phdr_start: usize = meta_start +% ehdr.phoff;
@@ -1536,7 +1557,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             const meta_next: usize = phdr_finish +% (@sizeOf(Info) +% 8 +% 1 +% pathname.len);
             if (meta_next > meta_finish) {
                 meta_len +%= bits.alignA4096(meta_next -% meta_finish);
-                try meta.wrap(mem.map(map(), .{}, mmap_flags, meta_start +% 4096, meta_len -% 4096));
+                try meta.wrap(mem.map(map, .{}, mmap_flags, meta_start +% 4096, meta_len -% 4096));
                 meta_finish = meta_start +% meta_len;
             }
             const info: *Info = @ptrFromInt(phdr_finish);
@@ -1573,20 +1594,20 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             const info: *Info = try meta.wrap(loader.allocateInfo(pathname));
             try meta.wrap(loader.loadSegments(info));
             try meta.wrap(info.readInfo());
-            try meta.wrap(file.close(close(), info.fd));
+            try meta.wrap(file.close(close, info.fd));
             return info;
         }
         pub fn load2(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, ElfInfo) {
             @setRuntimeSafety(builtin.is_safe);
-            const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
+            const fd: usize = try meta.wrap(file.open(open, .{}, pathname));
             var st: file.Status = .{};
-            try meta.wrap(file.status(stat(), fd, &st));
+            try meta.wrap(file.status(stat, fd, &st));
             var size: usize = bits.alignA4096(st.size);
             var ei: ElfInfo = .{};
             ei.meta.addr = @atomicRmw(usize, &loader.ub_meta_addr, .Add, size, .SeqCst);
             const addr: usize = bits.alignA4096(ei.meta.addr);
             size +%= bits.alignA4096(ei.meta.addr -% addr);
-            try meta.wrap(file.map(map(), .{}, mmap_flags, fd, addr, size, 0));
+            try meta.wrap(file.map(map, .{}, mmap_flags, fd, addr, size, 0));
             ei.ehdr = @ptrFromInt(addr);
             var phndx: usize = 1;
             while (phndx != ei.ehdr.phnum) : (phndx +%= 1) {
@@ -1605,12 +1626,12 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     const vaddr: usize = bits.alignB4096(phdr.vaddr);
                     const len: usize = bits.alignA4096(phdr.vaddr +% phdr.memsz) -% vaddr;
                     const off: usize = bits.alignB4096(phdr.offset);
-                    try meta.wrap(file.map(map(), prot, mmap_flags, fd, ei.prog.addr +% vaddr, len, off));
+                    try meta.wrap(file.map(map, prot, mmap_flags, fd, ei.prog.addr +% vaddr, len, off));
                 }
             } else {
                 phndx = 1;
             }
-            try meta.wrap(file.close(close(), fd));
+            try meta.wrap(file.close(close, fd));
             var shndx: usize = 1;
             while (shndx != ei.ehdr.shnum) : (shndx +%= 1) {
                 const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
@@ -1706,59 +1727,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         // Consider making function in `file`.
         fn readAt(fd: usize, offset: usize, addr: usize, len: usize) sys.ErrorUnion(ep1, void) {
             @setRuntimeSafety(builtin.is_safe);
-            try meta.wrap(file.read2(read2(), .{}, fd, &[1]mem.Vector{.{ .addr = addr, .len = len }}, offset));
+            try meta.wrap(file.read2(read2, .{}, fd, &[1]mem.Vector{.{ .addr = addr, .len = len }}, offset));
         }
-        fn stat() file.StatusSpec {
-            return .{
-                .logging = loader_spec.logging.stat,
-                .errors = loader_spec.errors.stat,
-            };
-        }
-        fn seek() file.SeekSpec {
-            return .{
-                .return_type = usize,
-                .logging = loader_spec.logging.seek,
-                .errors = loader_spec.errors.seek,
-            };
-        }
-        fn read2() file.Read2Spec {
-            return .{
-                .return_type = void,
-                .logging = loader_spec.logging.read,
-                .errors = loader_spec.errors.read,
-            };
-        }
-        fn read() file.ReadSpec {
-            return .{
-                .return_type = void,
-                .logging = loader_spec.logging.read,
-                .errors = loader_spec.errors.read,
-            };
-        }
-        fn close() file.CloseSpec {
-            return .{
-                .logging = loader_spec.logging.close,
-                .errors = loader_spec.errors.close,
-            };
-        }
-        fn open() file.OpenSpec {
-            return .{
-                .logging = loader_spec.logging.open,
-                .errors = loader_spec.errors.open,
-            };
-        }
-        fn map() mem.MapSpec {
-            return .{
-                .logging = loader_spec.logging.map,
-                .errors = loader_spec.errors.map,
-            };
-        }
-        fn unmap() mem.UnmapSpec {
-            return .{
-                .logging = loader_spec.logging.unmap,
-                .errors = loader_spec.errors.unmap,
-            };
-        }
+
         pub const compare = struct {
             pub const Cmp = struct {
                 /// Match status for the before ELF
