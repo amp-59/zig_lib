@@ -520,14 +520,25 @@ pub const SideBarIndexFormat = struct {
         return strsetEqu(ptr + 1, ' ', rem);
     }
 };
-pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) [*]u8 {
-    @setRuntimeSafety(false);
-    const rem: usize = builtin.message_indent -% (width +% 1);
-    var ptr: [*]u8 = strsetEqu(buf, ' ', width -| heading.len);
-    ptr = strcpyEqu(ptr, heading);
-    ptr[0] = ':';
-    return strsetEqu(ptr + 1, ' ', rem);
-}
+pub const SideBarSubHeadingFormat = struct {
+    value: struct {
+        width: usize,
+        heading: []const u8,
+    },
+    pub fn length(width: usize, heading: []const u8) usize {
+        var len: usize = width -| heading.len;
+        len +%= heading.len +% 1;
+        return len +% (builtin.message_indent -| (width +% 1));
+    }
+    pub fn write(buf: [*]u8, width: usize, heading: []const u8) [*]u8 {
+        @setRuntimeSafety(false);
+        const rem: usize = builtin.message_indent -% (width +% 1);
+        var ptr: [*]u8 = strsetEqu(buf, ' ', width -| heading.len);
+        ptr = strcpyEqu(ptr, heading);
+        ptr[0] = ':';
+        return strsetEqu(ptr + 1, ' ', rem);
+    }
+};
 fn sigFigMaxLen(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
     var value: if (@bitSizeOf(T) < 8) u8 else @TypeOf(@abs(@as(T, 0))) = 0;
