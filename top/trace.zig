@@ -9,11 +9,8 @@ const debug = @import("./debug.zig");
 const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
-
 pub usingnamespace @import("./start.zig");
-
 const is_safe: bool = false;
-
 pub const logging_default: debug.Logging.Default = .{
     .Acquire = false,
     .Attempt = false,
@@ -30,9 +27,7 @@ pub const logging_override: debug.Logging.Override = .{
     .Success = false,
     .Release = false,
 };
-
 const test_pc_range: bool = false;
-
 const Level = struct {
     var start: usize = lb_addr;
     const lb_addr: usize = 0x600000000000;
@@ -47,7 +42,6 @@ pub const WorkingFile = struct {
     loc: LineLocation,
 };
 pub const FileMap = mem.array.GenericSimpleMap([:0]const u8, WorkingFile);
-
 pub const StackIterator = struct {
     first_addr: ?usize,
     frame_addr: usize,
@@ -134,20 +128,19 @@ pub const SourceLocation = struct {
     file: [:0]const u8,
     line: usize = 0,
     column: usize = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) [*]u8 {
+    pub fn write(buf: [*]u8, pathname: [:0]const u8, line: usize, column: usize) [*]u8 {
         @setRuntimeSafety(false);
         buf[0..4].* = "\x1b[1m".*;
-        var ptr: [*]u8 = file.CompoundPath.writeDisplayPath(buf + 4, format.file);
+        var ptr: [*]u8 = file.CompoundPath.writeDisplayPath(buf + 4, pathname);
         ptr[0] = ':';
-        ptr += 1;
-        var ud64: fmt.Ud64 = .{ .value = format.line };
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.Ud64.write(ptr + 1, line);
         ptr[0] = ':';
-        ptr += 1;
-        ud64.value = format.column;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.Ud64.write(ptr + 1, column);
         ptr[0..4].* = "\x1b[0m".*;
         return ptr + 4;
+    }
+    pub fn formatWriteBuf(format: SourceLocation, buf: [*]u8) usize {
+        return fmt.strlen(write(buf, format.file, format.line, format.column), buf);
     }
 };
 pub const LineLocation = extern struct {
@@ -175,9 +168,7 @@ pub const LineLocation = extern struct {
         return false;
     }
 };
-
 const AboutKind = enum(u8) { @"error", note };
-
 fn writeAbout(buf: [*]u8, kind: AboutKind) [*]u8 {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
@@ -203,28 +194,11 @@ fn writeTopSrcLoc(buf: [*]u8, err: *CompileErrorMessage, src: *CompileSourceLoca
     buf[0..4].* = "\x1b[1m".*;
     var ptr: [*]u8 = buf + 4;
     if (err.src_loc != 0) {
-        ptr += writeSourceLocation(ptr, mem.terminate(bytes + src.src_path, 0), src.line +% 1, src.column +% 1);
+        ptr = SourceLocation.write(ptr, mem.terminate(bytes + src.src_path, 0), src.line +% 1, src.column +% 1);
         ptr[0..2].* = ": ".*;
         ptr += 2;
     }
     return ptr;
-}
-fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: usize, column: usize) usize {
-    @setRuntimeSafety(false);
-    var ud64: fmt.Ud64 = .{ .value = line };
-    var ptr: [*]u8 = buf;
-    ptr[0..11].* = "\x1b[38;5;247m".*;
-    ptr += 11;
-    ptr = file.CompoundPath.writeDisplayPath(buf, pathname);
-    ptr[0] = ':';
-    ptr += 1;
-    ptr += ud64.formatWriteBuf(ptr);
-    ptr[0] = ':';
-    ptr += 1;
-    ud64.value = column;
-    ptr += ud64.formatWriteBuf(ptr);
-    ptr[0..4].* = "\x1b[0m".*;
-    return fmt.strlen(ptr, buf) +% 4;
 }
 fn writeTimes(buf: [*]u8, count: u64) [*]u8 {
     @setRuntimeSafety(false);
@@ -266,6 +240,17 @@ fn backTrackToLine(itr: *builtin.parse.TokenIterator) void {
         }
     }
 }
+fn backTrackToFileScope(itr: *builtin.parse.TokenIterator) void {
+    @setRuntimeSafety(false);
+    itr.buf_pos -%= @min(1, @intFromBool(itr.buf.len == itr.buf_pos));
+    var byte: u8 = itr.buf[itr.buf_pos];
+    while (itr.buf_pos != 0) : (byte = itr.buf[itr.buf_pos]) {
+        itr.buf_pos -%= 1;
+        if (itr.buf[itr.buf_pos] == '\n' and byte != ' ') {
+            break;
+        }
+    }
+}
 fn writeCompileSourceContext(
     buf: [*]u8,
     allocator: *mem.SimpleAllocator,
@@ -281,8 +266,7 @@ fn writeCompileSourceContext(
     const max: usize = (src.line +% 1) +% trace.options.context_line_count +% 1;
     var line: usize = min;
     var ptr: [*]u8 = buf;
-    var end: usize = 0;
-    var tok: builtin.parse.Token = work.itr.next();
+    var tok: builtin.parse.Token = work.itr.nextToken();
     while (line != max) : (line +%= 1) {
         if (work.loc.update(work.itr.buf, line)) {
             if (trace.options.write_sidebar) {
@@ -291,26 +275,25 @@ fn writeCompileSourceContext(
             if (trace.options.tokens.syntax) |syntax| {
                 if (work.itr.buf_pos > work.loc.start) {
                     work.itr.buf_pos = work.loc.start;
-                    backTrackToLine(&work.itr);
+                    backTrackToFileScope(&work.itr);
                 }
                 while (work.itr.buf_pos <= work.loc.start) {
-                    tok = work.itr.next();
+                    work.itr.nextExtra(&tok);
                 }
-                end = @min(work.loc.finish, tok.loc.start);
+                const end: usize = @min(work.loc.finish, tok.loc.start);
                 ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..end]);
                 work.loc.start +%= end -% work.loc.start;
-                while (work.loc.start < work.loc.finish) {
+                while (work.loc.start < work.loc.finish) : (work.itr.nextExtra(&tok)) {
                     if (work.loc.start < tok.loc.start) {
                         ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..tok.loc.start]);
                     }
                     if (work.loc.finish > tok.loc.start) {
-                        ptr = highlight(ptr, &tok, syntax);
+                        ptr = fmt.highlight(ptr, &tok, syntax);
                     }
                     ptr = fmt.strcpyEqu(ptr, work.itr.buf[tok.loc.start..tok.loc.finish]);
                     work.loc.start = tok.loc.finish;
                     ptr[0..4].* = "\x1b[0m".*;
                     ptr += 4;
-                    tok = work.itr.next();
                 }
             } else {
                 ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..work.loc.finish]);
@@ -376,11 +359,9 @@ fn writeReferenceTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, 
         if (refs[idx].src_loc != 0) {
             const ref_src: *CompileSourceLocation = @ptrCast(extra + refs[idx].src_loc);
             ptr[0..4].* = "    ".*;
-            ptr += 4;
-            ptr = fmt.strcpyEqu(ptr, mem.terminate(bytes + refs[idx].decl_name, 0));
+            ptr = fmt.strcpyEqu(ptr + 4, mem.terminate(bytes + refs[idx].decl_name, 0));
             ptr[0..2].* = ": ".*;
-            ptr += 2;
-            ptr += writeSourceLocation(ptr, mem.terminate(bytes + ref_src.src_path, 0), ref_src.line +% 1, ref_src.column +% 1);
+            ptr = SourceLocation.write(ptr + 2, mem.terminate(bytes + ref_src.src_path, 0), ref_src.line +% 1, ref_src.column +% 1);
             ptr[0] = '\n';
             ptr += 1;
         }
@@ -406,18 +387,15 @@ fn writeReferenceTraceExtended(
     while (idx != ref_len) : (idx +%= 1) {
         if (refs[idx].src_loc != 0) {
             const src: *CompileSourceLocation = @ptrCast(extra + refs[idx].src_loc);
-            ptr += writeSourceLocation(ptr, mem.terminate(bytes + src.src_path, 0), src.line +% 1, src.column +% 1);
+            ptr = SourceLocation.write(ptr, mem.terminate(bytes + src.src_path, 0), src.line +% 1, src.column +% 1);
             ptr[0..2].* = ": ".*;
-            ptr += 2;
-            ptr = writeAbout(ptr, .note);
+            ptr = writeAbout(ptr + 2, .note);
             ptr[0..11].* = "\x1b[38;5;247m".*;
             ptr += 11;
             ptr[0..15].* = "referenced by '".*;
-            ptr += 15;
-            ptr = fmt.strcpyEqu(ptr, mem.terminate(bytes + refs[idx].decl_name, 0));
+            ptr = fmt.strcpyEqu(ptr + 15, mem.terminate(bytes + refs[idx].decl_name, 0));
             ptr[0..2].* = "'\n".*;
-            ptr += 2;
-            ptr = writeCompileSourceContext(ptr, allocator, trace, file_map, width, src, mem.terminate(bytes + src.src_path, 0));
+            ptr = writeCompileSourceContext(ptr + 2, allocator, trace, file_map, width, src, mem.terminate(bytes + src.src_path, 0));
             ptr = writeLastLine(ptr, trace, width);
         }
     }
@@ -605,17 +583,6 @@ fn writeCaret(buf: [*]u8, trace: *const debug.Trace, width: u64, addr: u64, colu
     ptr[0] = '\n';
     return ptr + 1;
 }
-fn highlight(buf: [*]u8, tok: *builtin.parse.Token, syntax: anytype) [*]u8 {
-    @setRuntimeSafety(false);
-    for (syntax) |pair| {
-        for (pair.tags) |tag| {
-            if (tok.tag == tag) {
-                return fmt.strcpyEqu(buf, pair.style);
-            }
-        }
-    }
-    return buf;
-}
 fn writeExtendedSourceLocation(
     dwarf_info: *dwarf.DwarfInfo,
     buf: [*]u8,
@@ -624,7 +591,7 @@ fn writeExtendedSourceLocation(
     src: SourceLocation,
 ) [*]u8 {
     @setRuntimeSafety(false);
-    var ptr: [*]u8 = src.formatWriteBuf(buf);
+    var ptr: [*]u8 = SourceLocation.write(buf, src.file, src.line, src.column);
     ptr[0..2].* = ": ".*;
     ptr = fmt.writeUx64(ptr + 2, addr);
     if (dwarf_info.getSymbolName(addr)) |fn_name| {
@@ -655,8 +622,7 @@ fn writeSourceContext(
     var line: u64 = min;
     const work: *WorkingFile = getWorkingFile(allocator, file_map, src.file);
     var ptr: [*]u8 = buf;
-    var end: usize = 0;
-    var tok: builtin.parse.Token = work.itr.next();
+    var tok: builtin.parse.Token = work.itr.nextToken();
     while (line != max) : (line +%= 1) {
         if (work.loc.update(work.itr.buf, line)) {
             if (trace.options.write_sidebar) {
@@ -665,26 +631,25 @@ fn writeSourceContext(
             if (trace.options.tokens.syntax) |syntax| {
                 if (work.itr.buf_pos > work.loc.start) {
                     work.itr.buf_pos = work.loc.start;
-                    backTrackToLine(&work.itr);
+                    backTrackToFileScope(&work.itr);
                 }
                 while (work.itr.buf_pos <= work.loc.start) {
-                    tok = work.itr.next();
+                    work.itr.nextExtra(&tok);
                 }
-                end = @min(work.loc.finish, tok.loc.start);
+                const end: usize = @min(work.loc.finish, tok.loc.start);
                 ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..end]);
                 work.loc.start +%= end -% work.loc.start;
-                while (work.loc.start < work.loc.finish) {
+                while (work.loc.start < work.loc.finish) : (work.itr.nextExtra(&tok)) {
                     if (work.loc.start < tok.loc.start) {
                         ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..tok.loc.start]);
                     }
                     if (work.loc.finish > tok.loc.start) {
-                        ptr = highlight(ptr, &tok, syntax);
+                        ptr = fmt.highlight(ptr, &tok, syntax);
                     }
                     ptr = fmt.strcpyEqu(ptr, work.itr.buf[tok.loc.start..tok.loc.finish]);
                     work.loc.start = tok.loc.finish;
                     ptr[0..4].* = "\x1b[0m".*;
                     ptr += 4;
-                    tok = work.itr.next();
                 }
             } else {
                 ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..work.loc.finish]);
@@ -886,7 +851,6 @@ pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, ad
     }
     fmt.print(ptr, buf);
 }
-
 pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) callconv(.C) void {
     @setRuntimeSafety(false);
     const start: usize = @atomicRmw(usize, &Level.start, .Add, 0x40000000, .SeqCst);
