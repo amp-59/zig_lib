@@ -506,10 +506,9 @@ pub const SideBarIndexFormat = struct {
         index: usize,
     },
     pub fn length(width: usize, index: usize) usize {
-        @setRuntimeSafety(false);
         var len: usize = width -| sigFigLen(usize, index, 10);
         len +%= Udsize.length(index) +% 1;
-        return len +% builtin.message_indent -| (width +% 1);
+        return len +% (builtin.message_indent -| (width +% 1));
     }
     pub fn write(buf: [*]u8, width: usize, index: usize) [*]u8 {
         @setRuntimeSafety(false);
