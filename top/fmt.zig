@@ -777,7 +777,6 @@ pub fn PathFormat(comptime Path: type) type {
         pub fn formatWriteBufDisplay(format: Format, buf: [*]u8) usize {
             return strlen(writeDisplay(buf, format), buf);
         }
-
         pub const writeDisplay = blk: {
             if (builtin.AbsoluteState != void) {
                 if (@hasField(builtin.AbsoluteState, "cwd") and
@@ -845,7 +844,6 @@ pub fn PathFormat(comptime Path: type) type {
             }
             return end - 1;
         }
-
         fn lengthDisplay0(path: Path) usize {
             return length(path) -% 1;
         }

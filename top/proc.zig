@@ -900,7 +900,7 @@ pub const about = opaque {
         var ptr: [*]u8 = buf[fork_s.len..];
         ptr[0..4].* = "pid=".*;
         ptr += 4;
-        ptr = fmt.writeUd64(ptr, pid);
+        ptr = fmt.Ud64.write(ptr, pid);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -920,7 +920,7 @@ pub const about = opaque {
         ptr += 6;
         ptr += ud64.formatWriteBuf(ptr);
         ptr = fmt.strcpyEqu(ptr, status_s);
-        ptr = fmt.writeUd64(ptr, code);
+        ptr = fmt.Ud64.write(ptr, code);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -962,13 +962,13 @@ pub const about = opaque {
         ptr[0..6].* = "futex=".*;
         ptr = fmt.writeUx64(ptr + 6, @intFromPtr(futex));
         ptr[0..7].* = ", word=".*;
-        ptr = fmt.writeUd64(ptr + 7, futex.*);
+        ptr = fmt.Ud64.write(ptr + 7, futex.*);
         ptr[0..6].* = ", val=".*;
-        ptr = fmt.writeUd64(ptr + 6, value);
+        ptr = fmt.Ud64.write(ptr + 6, value);
         ptr[0..6].* = ", sec=".*;
-        ptr = fmt.writeUd64(ptr + 6, timeout.sec);
+        ptr = fmt.Ud64.write(ptr + 6, timeout.sec);
         ptr[0..7].* = ", nsec=".*;
-        ptr = fmt.writeUd64(ptr + 7, timeout.nsec);
+        ptr = fmt.Ud64.write(ptr + 7, timeout.nsec);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -980,9 +980,9 @@ pub const about = opaque {
         ptr[0..6].* = "futex=".*;
         ptr = fmt.writeUx64(ptr + 6, @intFromPtr(futex));
         ptr[0..7].* = ", word=".*;
-        ptr = fmt.writeUd64(ptr + 7, futex.*);
+        ptr = fmt.Ud64.write(ptr + 7, futex.*);
         ptr[0..6].* = ", max=".*;
-        ptr = fmt.writeUd64(ptr + 6, count);
+        ptr = fmt.Ud64.write(ptr + 6, count);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -994,11 +994,11 @@ pub const about = opaque {
         ptr[0..6].* = "futex=".*;
         ptr = fmt.writeUx64(ptr + 6, @intFromPtr(futex));
         ptr[0..7].* = ", word=".*;
-        ptr = fmt.writeUd64(ptr + 7, futex.*);
+        ptr = fmt.Ud64.write(ptr + 7, futex.*);
         ptr[0..6].* = ", max=".*;
-        ptr = fmt.writeUd64(ptr + 6, count);
+        ptr = fmt.Ud64.write(ptr + 6, count);
         ptr[0..6].* = ", ret=".*;
-        ptr = fmt.writeUd64(ptr + 6, ret);
+        ptr = fmt.Ud64.write(ptr + 6, ret);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -1010,15 +1010,15 @@ pub const about = opaque {
         ptr[0..7].* = "futex1=".*;
         ptr = fmt.writeUx64(ptr + 7, @intFromPtr(futex1));
         ptr[0..8].* = ", word1=".*;
-        ptr = fmt.writeUd64(ptr + 8, futex1.*);
+        ptr = fmt.Ud64.write(ptr + 8, futex1.*);
         ptr[0..7].* = ", max1=".*;
-        ptr = fmt.writeUd64(ptr + 7, count1);
+        ptr = fmt.Ud64.write(ptr + 7, count1);
         ptr[0..9].* = ", futex2=".*;
         ptr = fmt.writeUx64(ptr + 9, @intFromPtr(futex2));
         ptr[0..8].* = ", word2=".*;
-        ptr = fmt.writeUd64(ptr + 8, futex2.*);
+        ptr = fmt.Ud64.write(ptr + 8, futex2.*);
         ptr[0..7].* = ", max2=".*;
-        ptr = fmt.writeUd64(ptr + 7, count2);
+        ptr = fmt.Ud64.write(ptr + 7, count2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -1030,17 +1030,17 @@ pub const about = opaque {
         ptr[0..7].* = "futex1=".*;
         ptr = fmt.writeUx64(ptr + 7, @intFromPtr(futex1));
         ptr[0..8].* = ", word1=".*;
-        ptr = fmt.writeUd64(ptr + 8, futex1.*);
+        ptr = fmt.Ud64.write(ptr + 8, futex1.*);
         ptr[0..7].* = ", max1=".*;
-        ptr = fmt.writeUd64(ptr + 7, count1);
+        ptr = fmt.Ud64.write(ptr + 7, count1);
         ptr[0..9].* = ", futex2=".*;
         ptr = fmt.writeUx64(ptr + 9, @intFromPtr(futex2));
         ptr[0..8].* = ", word2=".*;
-        ptr = fmt.writeUd64(ptr + 8, futex2.*);
+        ptr = fmt.Ud64.write(ptr + 8, futex2.*);
         ptr[0..7].* = ", max2=".*;
-        ptr = fmt.writeUd64(ptr + 7, count2);
+        ptr = fmt.Ud64.write(ptr + 7, count2);
         ptr[0..6].* = ", ret=".*;
-        ptr = fmt.writeUd64(ptr + 6, ret);
+        ptr = fmt.Ud64.write(ptr + 6, ret);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -1077,13 +1077,13 @@ pub const about = opaque {
         ptr[0..8].* = ", futex=".*;
         ptr = fmt.writeUx64(ptr + 8, @intFromPtr(futex));
         ptr[0..7].* = ", word=".*;
-        ptr = fmt.writeUd64(ptr + 7, futex.*);
+        ptr = fmt.Ud64.write(ptr + 7, futex.*);
         ptr[0..6].* = ", val=".*;
-        ptr = fmt.writeUd64(ptr + 6, value);
+        ptr = fmt.Ud64.write(ptr + 6, value);
         ptr[0..6].* = ", sec=".*;
-        ptr = fmt.writeUd64(ptr + 6, timeout.sec);
+        ptr = fmt.Ud64.write(ptr + 6, timeout.sec);
         ptr[0..7].* = ", nsec=".*;
-        ptr = fmt.writeUd64(ptr + 7, timeout.nsec);
+        ptr = fmt.Ud64.write(ptr + 7, timeout.nsec);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -1094,9 +1094,9 @@ pub const about = opaque {
         ptr[0..8].* = ", futex=".*;
         ptr = fmt.writeUx64(ptr + 8, @intFromPtr(futex));
         ptr[0..7].* = ", word=".*;
-        ptr = fmt.writeUd64(ptr + 7, futex.*);
+        ptr = fmt.Ud64.write(ptr + 7, futex.*);
         ptr[0..6].* = ", max=".*;
-        ptr = fmt.writeUd64(ptr + 6, count);
+        ptr = fmt.Ud64.write(ptr + 6, count);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -1108,15 +1108,15 @@ pub const about = opaque {
         ptr[0..9].* = ", futex1=".*;
         ptr = fmt.writeUx64(ptr + 9, @intFromPtr(futex));
         ptr[0..8].* = ", word1=".*;
-        ptr = fmt.writeUd64(ptr + 7, futex.*);
+        ptr = fmt.Ud64.write(ptr + 7, futex.*);
         ptr[0..7].* = ", max2=".*;
-        ptr = fmt.writeUd64(ptr + 7, count1);
+        ptr = fmt.Ud64.write(ptr + 7, count1);
         ptr[0..9].* = ", futex2=".*;
         ptr = fmt.writeUx64(ptr + 9, @intFromPtr(futex2));
         ptr[0..8].* = ", word2=".*;
-        ptr = fmt.writeUd64(ptr + 8, futex2.*);
+        ptr = fmt.Ud64.write(ptr + 8, futex2.*);
         ptr[0..7].* = ", max2=".*;
-        ptr = fmt.writeUd64(ptr + 7, count2);
+        ptr = fmt.Ud64.write(ptr + 7, count2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -1131,10 +1131,10 @@ pub const about = opaque {
         ptr[0..12].* = " at address ".*;
         ptr = fmt.writeUx64(ptr + 12, info.fields.fault.addr);
         ptr[0..6].* = ", pid=".*;
-        ptr = fmt.writeUd64(ptr + 6, pid);
+        ptr = fmt.Ud64.write(ptr + 6, pid);
         if (pid != tid) {
             ptr[0..6].* = ", tid=".*;
-            ptr = fmt.writeUd64(ptr + 6, tid);
+            ptr = fmt.Ud64.write(ptr + 6, tid);
         }
         ptr[0..2].* = ", ".*;
         ptr += 2;
