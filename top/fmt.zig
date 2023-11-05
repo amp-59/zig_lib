@@ -1,4 +1,5 @@
 const mem = @import("./mem.zig");
+const tab = @import("./tab.zig");
 const math = @import("./math.zig");
 const meta = @import("./meta.zig");
 const time = @import("./time.zig");
@@ -777,114 +778,48 @@ pub fn PathFormat(comptime Path: type) type {
         pub fn formatWriteBufDisplay(format: Format, buf: [*]u8) usize {
             return strlen(writeDisplay(buf, format), buf);
         }
-        pub const writeDisplay = blk: {
+        fn writeDisplay(buf: [*]u8, path: Path) [*]u8 {
+            @setRuntimeSafety(builtin.is_safe);
+            const end: [*]u8 = Format.write(buf, path) - 1;
+            const len: usize = @intFromPtr(end) -% @intFromPtr(buf);
             if (builtin.AbsoluteState != void) {
-                if (@hasField(builtin.AbsoluteState, "cwd") and
-                    @hasField(builtin.AbsoluteState, "home"))
-                {
-                    break :blk writeDisplay2;
-                }
                 if (@hasField(builtin.AbsoluteState, "cwd")) {
-                    break :blk writeDisplay1;
+                    if (builtin.absolute_state.ptr.cwd.len != 0) {
+                        if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
+                            builtin.absolute_state.ptr.cwd,
+                            buf[0..builtin.absolute_state.ptr.cwd.len],
+                        )) {
+                            buf[0] = '.';
+                            return strcpyEqu(buf + 1, buf[builtin.absolute_state.ptr.cwd.len..len]);
+                        }
+                    }
+                }
+                if (@hasField(builtin.AbsoluteState, "home")) {
+                    if (builtin.absolute_state.ptr.home.len != 0) {
+                        if (builtin.absolute_state.ptr.home.len < len and mem.testEqualString(
+                            builtin.absolute_state.ptr.home,
+                            buf[0..builtin.absolute_state.ptr.home.len],
+                        )) {
+                            buf[0] = '~';
+                            return strcpyEqu(buf + 1, buf[builtin.absolute_state.ptr.home.len..len]);
+                        }
+                    }
                 }
             }
-            break :blk writeDisplay0;
-        };
-        pub const lengthDisplay = blk: {
-            if (builtin.AbsoluteState != void) {
-                if (@hasField(builtin.AbsoluteState, "cwd") and
-                    @hasField(builtin.AbsoluteState, "home"))
-                {
-                    break :blk lengthDisplay2;
-                }
-                if (@hasField(builtin.AbsoluteState, "cwd")) {
-                    break :blk lengthDisplay1;
-                }
-            }
-            break :blk lengthDisplay0;
-        };
-        fn writeDisplay0(buf: [*]u8, path: Path) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
-            return write(buf, path) - 1;
+            return end;
         }
-        fn writeDisplay1(buf: [*]u8, path: Path) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
-            const end: [*]u8 = Format.write(buf, path);
-            var len: usize = @intFromPtr(end) -% @intFromPtr(buf);
-            const pathname: [:0]const u8 = builtin.absolute_state.ptr.cwd;
-            if (pathname.len != 0) {
-                if (pathname.len < len and mem.testEqualString(pathname, buf[0..pathname.len])) {
-                    buf[0] = '.';
-                    return strcpyEqu(buf + 1, buf[pathname.len..len]);
-                }
-            }
-            return end - 1;
-        }
-        fn writeDisplay2(buf: [*]u8, path: Path) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
-            const end: [*]u8 = Format.write(buf, path);
-            var len: usize = @intFromPtr(end) -% @intFromPtr(buf);
-            if (builtin.absolute_state.ptr.cwd.len != 0) {
-                if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
-                    builtin.absolute_state.ptr.cwd,
-                    buf[0..builtin.absolute_state.ptr.cwd.len],
-                )) {
-                    buf[0] = '.';
-                    return strcpyEqu(buf + 1, buf[builtin.absolute_state.ptr.cwd.len..len]);
-                }
-            }
-            if (builtin.absolute_state.ptr.home.len != 0) {
-                if (builtin.absolute_state.ptr.home.len < len and mem.testEqualString(
-                    builtin.absolute_state.ptr.home,
-                    buf[0..builtin.absolute_state.ptr.home.len],
-                )) {
-                    buf[0] = '~';
-                    return strcpyEqu(buf + 1, buf[builtin.absolute_state.ptr.home.len..len]);
-                }
-            }
-            return end - 1;
-        }
-        fn lengthDisplay0(path: Path) usize {
-            return length(path) -% 1;
-        }
-        fn lengthDisplay1(path: Path) usize {
-            var tmp: [4096]u8 = undefined;
-            const end: [*]u8 = Format.write(&tmp, path) - 1;
-            var len: usize = strlen(end, &tmp);
-            if (builtin.absolute_state.ptr.cwd.len != 0) {
-                if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
-                    builtin.absolute_state.ptr.cwd,
-                    tmp[0..builtin.absolute_state.ptr.cwd.len],
-                )) {
-                    return 1 +% (len -% builtin.absolute_state.ptr.cwd.len);
-                }
-            }
-            return len;
-        }
-        fn lengthDisplay2(path: Path) usize {
-            var tmp: [4096]u8 = undefined;
-            const end: [*]u8 = Format.write(&tmp, path) - 1;
-            var len: usize = strlen(end, &tmp);
-            if (builtin.absolute_state.ptr.cwd.len != 0) {
-                if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
-                    builtin.absolute_state.ptr.cwd,
-                    tmp[0..builtin.absolute_state.ptr.cwd.len],
-                )) {
-                    return 1 +% (len -% builtin.absolute_state.ptr.cwd.len);
-                }
-            } else if (builtin.absolute_state.ptr.home.len != 0) {
-                if (builtin.absolute_state.ptr.home.len < len and mem.testEqualString(
-                    builtin.absolute_state.ptr.home,
-                    tmp[0..builtin.absolute_state.ptr.home.len],
-                )) {
-                    return 1 +% (len -% builtin.absolute_state.ptr.home.len);
-                }
-            }
-            return len;
+        pub fn lengthDisplay(path: Path) usize {
+            @setRuntimeSafety(false);
+            var tmp: [4096]u8 = undefined; // TODO Get rid of this by iterating names
+            return strlen(writeDisplay(&tmp, path), &tmp);
         }
         pub fn writeDisplayPath(buf: [*]u8, pathname: [:0]const u8) [*]u8 {
             @setRuntimeSafety(false);
-            return write(buf, Format{ .names = @constCast(@ptrCast(&pathname)), .names_len = 1, .names_max_len = 1 });
+            return writeDisplay(buf, Format{ .names = @constCast(@ptrCast(&pathname)), .names_len = 1, .names_max_len = 1 });
+        }
+        pub fn lengthDisplayPath(pathname: [:0]const u8) usize {
+            @setRuntimeSafety(false);
+            return lengthDisplay(Format{ .names = @constCast(@ptrCast(&pathname)), .names_len = 1, .names_max_len = 1 });
         }
         pub fn writeLiteral(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -1729,13 +1664,13 @@ pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: t
         }
     });
 }
-pub fn isValidId(values: []const u8) bool {
+pub fn isValidId(name: []const u8) bool {
     @setRuntimeSafety(builtin.is_safe);
-    if (values.len == 0) {
+    if (name.len == 0) {
         return false;
     }
-    var byte: u8 = values[0];
-    if (values.len == 1 and byte == '_') {
+    const byte: u8 = name[0];
+    if (name.len == 1 and byte == '_') {
         return false;
     }
     if (byte >= '0' and byte <= '9') {
@@ -1744,8 +1679,8 @@ pub fn isValidId(values: []const u8) bool {
     var idx: usize = 0;
     if (byte == 'i' or byte == 'u') {
         idx +%= 1;
-        while (idx != values.len) : (idx +%= 1) {
-            switch (values[idx]) {
+        while (idx != name.len) : (idx +%= 1) {
+            switch (name[idx]) {
                 '0'...'9' => {
                     continue;
                 },
@@ -1758,16 +1693,38 @@ pub fn isValidId(values: []const u8) bool {
             }
         } else return false;
     }
-    while (idx != values.len) : (idx +%= 1) {
-        switch (values[idx]) {
+    while (idx != name.len) : (idx +%= 1) {
+        switch (name[idx]) {
             '0'...'9', '_', 'a'...'z', 'A'...'Z' => {
                 continue;
             },
             else => return false,
         }
     }
-    return builtin.parse.keyword(values) == null;
+    return builtin.parse.keyword(name) == null;
 }
+pub fn highlight(buf: [*]u8, tok: *builtin.parse.Token, syntax: []const debug.Trace.Options.Tokens.Mapping) [*]u8 {
+    @setRuntimeSafety(false);
+    for (syntax) |pair| {
+        for (pair.tags) |tag| {
+            if (tok.tag == tag) {
+                return strcpyEqu(buf, pair.style);
+            }
+        }
+    }
+    return buf;
+}
+pub const SourceCodeFormat = struct {
+    src: [:0]const u8,
+
+    fn writeHighlighted(buf: [*]u8, src: [:0]const u8, syntax: []const debug.Trace.Options.Tokens.Mapping) void {
+        var itr: builtin.parse.TokenIterator = .{ .buf = @constCast(src), .buf_pos = 0 };
+        var tok: builtin.parse.Token = itr.next();
+        while (tok.tag != .eof) : (itr.nextContext(&tok)) {
+            highlight(buf, &tok, syntax);
+        }
+    }
+};
 pub inline fn typeName(comptime T: type) []const u8 {
     const type_info: builtin.Type = @typeInfo(T);
     const type_name: [:0]const u8 = @typeName(T);
