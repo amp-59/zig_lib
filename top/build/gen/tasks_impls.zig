@@ -9,7 +9,7 @@ const common = @import("./common_impls.zig");
 const testing = @import("../../testing.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
-const print_wip_llc: bool = false;
+const print_wip_llc: bool = true;
 pub const context = .Exe;
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
@@ -46,10 +46,5 @@ pub fn main() !void {
         try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
     } else {
         debug.write(array.readAll());
-    }
-    if (print_wip_llc) {
-        for (attr.llvm_llc_command_attributes.params) |param| {
-            testing.renderBufN(.{ .infer_type_names = true, .omit_trailing_comma = true, .decls = .{ .forward_formatter = true } }, 4096, param);
-        }
     }
 }

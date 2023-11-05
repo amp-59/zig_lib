@@ -4,7 +4,6 @@ const bits = @import("../../bits.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const context: types.Context = @import("root").context;
-
 pub const Variant = struct {
     function: Function,
     language: Language,
@@ -95,7 +94,7 @@ fn writeCombinedLength(array: *Array) void {
             array.writeMany("var len:usize=");
             array.writeMany(lens.readAll()[2..]);
             array.writeMany(";\n");
-        } else if (len_int != 0) {
+        } else {
             array.writeMany("var len:usize=");
             array.writeFormat(fmt.udsize(len_int));
             array.writeMany(";\n");
@@ -316,7 +315,6 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: Variant) v
 fn writeKindString(array: *Array, arg_string: []const u8, variant: Variant) void {
     var length_variant: Variant = variant;
     length_variant.function = .formatLength;
-
     switch (variant.function) {
         else => {},
         .formatWriteBuf => {
@@ -848,6 +846,8 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
     }
     if (variant.function == .formatWriteBuf and variant.notation == .ptrcast) {
         writeDeclareLength(array);
+    } else if (variant.function != .formatLength) {
+        len_decl = true;
     }
     for (params) |param_spec| {
         if (!param_spec.flags.do_write) {
@@ -1575,6 +1575,7 @@ fn writeAssignSpecifierFormatParser(
 }
 fn writeParserFunctionBody(array: *Array, calling_convention: Variant.Language, attributes: types.Attributes) void {
     var do_discard: bool = true;
+    len_decl = true;
     for (attributes.params) |param_spec| {
         if (param_spec.string.len == 0 or !param_spec.flags.do_parse) {
             continue;
