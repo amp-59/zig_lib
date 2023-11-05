@@ -125,6 +125,7 @@ pub const absolute_state = struct {
     pub const len: comptime_int = bits.alignA4096(size_of);
     const size_of: comptime_int = @sizeOf(AbsoluteState);
 };
+
 pub const trace: debug.Trace = define("trace", debug.Trace, my_trace);
 pub const my_trace: debug.Trace = .{
     .Error = true,
@@ -145,15 +146,17 @@ pub const my_trace: debug.Trace = .{
             .comment = "\x1b[2m",
             .syntax = &.{
                 .{ .style = "", .tags = parse.Token.Tag.other },
-                .{ .style = &tab.fx.color.fg.orange24, .tags = &.{.number_literal} },
+                .{ .style = &tab.fx.color.fg.orange24, .tags = &.{ .number_literal, .null_literal } },
                 .{ .style = &tab.fx.color.fg.yellow24, .tags = &.{.char_literal} },
                 .{ .style = &tab.fx.color.fg.light_green, .tags = parse.Token.Tag.strings },
                 .{ .style = &tab.fx.color.fg.bracket, .tags = parse.Token.Tag.bracket },
                 .{ .style = &tab.fx.color.fg.magenta24, .tags = parse.Token.Tag.operator },
                 .{ .style = &tab.fx.color.fg.red24, .tags = parse.Token.Tag.builtin_fn },
-                .{ .style = &tab.fx.color.fg.cyan24, .tags = parse.Token.Tag.macro_keyword },
+                .{ .style = &tab.fx.color.fg.cyan24, .tags = parse.Token.Tag.macro_keyword ++ parse.Token.Tag.macro_value },
                 .{ .style = &tab.fx.color.fg.light_purple, .tags = parse.Token.Tag.call_keyword },
+                .{ .style = &tab.fx.color.fg.light_purple, .tags = &.{.identifier_fn_name} },
                 .{ .style = &tab.fx.color.fg.redwine, .tags = parse.Token.Tag.container_keyword },
+                .{ .style = &tab.fx.color.fg.white24, .tags = &.{.identifier_type_name} },
                 .{ .style = &tab.fx.color.fg.white24, .tags = parse.Token.Tag.cond_keyword ++ parse.Token.Tag.qual_keyword },
                 .{ .style = &tab.fx.color.fg.yellow24, .tags = parse.Token.Tag.goto_keyword ++ parse.Token.Tag.value_keyword },
             },
@@ -304,9 +307,9 @@ pub const parse = struct {
             invalid,
             invalid_periodasterisks,
             identifier,
-            string_literal,
-            multiline_string_literal_line,
-            char_literal,
+            identifier_decl_name,
+            identifier_fn_name,
+            identifier_type_name,
             eof,
             builtin,
             bang,
@@ -371,7 +374,12 @@ pub const parse = struct {
             angle_bracket_angle_bracket_right,
             angle_bracket_angle_bracket_right_equal,
             tilde,
+            null_literal,
+            char_literal,
             number_literal,
+            string_literal,
+            undefined_literal,
+            multiline_string_literal_line,
             doc_comment,
             container_doc_comment,
             keyword_addrspace,
@@ -487,6 +495,9 @@ pub const parse = struct {
                 .keyword_nosuspend,
                 .keyword_unreachable,
             };
+            pub const macro_value: []const Token.Tag = &.{
+                .undefined_literal,
+            };
             pub const container_keyword: []const Token.Tag = &.{
                 .keyword_enum,
                 .keyword_packed,
@@ -535,8 +546,9 @@ pub const parse = struct {
                 .keyword_usingnamespace,
             };
             pub const other: []const Token.Tag = &.{
-                .invalid,
                 .identifier,
+                .identifier_decl_name,
+                .invalid,
                 .container_doc_comment,
                 .doc_comment,
                 .invalid_periodasterisks,
@@ -603,23 +615,60 @@ pub const parse = struct {
             period_asterisk,
             saw_at_sign,
         };
-        pub fn next(itr: *TokenIterator) Token {
+
+        const undefine_val: usize = @as(*const usize, @alignCast(@ptrCast("undefine"))).*;
+        const null_val: u32 = @as(*const u32, @alignCast(@ptrCast("null"))).*;
+
+        fn identifierExtra(itr: *TokenIterator, prev: *const Token, next: Token) Token.Tag {
+            const str: []const u8 = itr.buf[next.loc.start..next.loc.finish];
+            if (prev.tag == .keyword_var or
+                prev.tag == .keyword_const)
+            {
+                return .identifier_decl_name;
+            }
+            if (prev.tag == .keyword_fn or
+                itr.buf[next.loc.finish] == '(')
+            {
+                return .identifier_fn_name;
+            }
+            if (typeName(str)) {
+                return .identifier_type_name;
+            }
+            if (str[0] >= 'A' and str[0] <= 'Z' and prev.tag != .period) {
+                return .identifier_type_name;
+            }
+            if (mem.testEqualString("null", str)) {
+                return .null_literal;
+            }
+            if (mem.testEqualString("undefined", str)) {
+                return .undefined_literal;
+            }
+            return .identifier;
+        }
+        pub fn nextExtra(itr: *TokenIterator, prev: *Token) void {
+            var next: Token = itr.nextToken();
+            if (next.tag == .identifier) {
+                next.tag = itr.identifierExtra(prev, next);
+            }
+            prev.* = next;
+        }
+        pub fn nextToken(itr: *TokenIterator) Token {
             @setRuntimeSafety(false);
             if (itr.inval) |token| {
                 itr.inval = null;
                 return token;
             }
             var state: State = .start;
-            var ret = Token{
+            var ret: Token = .{
                 .tag = .eof,
                 .loc = .{ .start = itr.buf_pos },
             };
-            var esc_no: usize = undefined;
-            var rem_cp: usize = undefined;
+            var esc_no: usize = 0;
+            var rem_cp: usize = 0;
             while (true) : (itr.buf_pos +%= 1) {
-                const c: u8 = itr.buf[itr.buf_pos];
+                const byte: u8 = itr.buf[itr.buf_pos];
                 switch (state) {
-                    .start => switch (c) {
+                    .start => switch (byte) {
                         0 => {
                             if (itr.buf_pos != itr.buf.len) {
                                 ret.tag = .invalid;
@@ -724,7 +773,7 @@ pub const parse = struct {
                             return ret;
                         },
                     },
-                    .saw_at_sign => switch (c) {
+                    .saw_at_sign => switch (byte) {
                         '"' => {
                             ret.tag = .identifier;
                             state = .string_literal;
@@ -738,7 +787,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .ampersand => switch (c) {
+                    .ampersand => switch (byte) {
                         '=' => {
                             ret.tag = .ampersand_equal;
                             itr.buf_pos +%= 1;
@@ -749,7 +798,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .asterisk => switch (c) {
+                    .asterisk => switch (byte) {
                         '=' => {
                             ret.tag = .asterisk_equal;
                             itr.buf_pos +%= 1;
@@ -767,7 +816,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .asterisk_percent => switch (c) {
+                    .asterisk_percent => switch (byte) {
                         '=' => {
                             ret.tag = .asterisk_percent_equal;
                             itr.buf_pos +%= 1;
@@ -778,7 +827,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .asterisk_pipe => switch (c) {
+                    .asterisk_pipe => switch (byte) {
                         '=' => {
                             ret.tag = .asterisk_pipe_equal;
                             itr.buf_pos +%= 1;
@@ -789,7 +838,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .percent => switch (c) {
+                    .percent => switch (byte) {
                         '=' => {
                             ret.tag = .percent_equal;
                             itr.buf_pos +%= 1;
@@ -800,7 +849,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .plus => switch (c) {
+                    .plus => switch (byte) {
                         '=' => {
                             ret.tag = .plus_equal;
                             itr.buf_pos +%= 1;
@@ -818,7 +867,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .plus_percent => switch (c) {
+                    .plus_percent => switch (byte) {
                         '=' => {
                             ret.tag = .plus_percent_equal;
                             itr.buf_pos +%= 1;
@@ -829,7 +878,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .plus_pipe => switch (c) {
+                    .plus_pipe => switch (byte) {
                         '=' => {
                             ret.tag = .plus_pipe_equal;
                             itr.buf_pos +%= 1;
@@ -840,7 +889,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .caret => switch (c) {
+                    .caret => switch (byte) {
                         '=' => {
                             ret.tag = .caret_equal;
                             itr.buf_pos +%= 1;
@@ -851,7 +900,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .identifier => switch (c) {
+                    .identifier => switch (byte) {
                         'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
                         else => {
                             if (keyword(itr.buf[ret.loc.start..itr.buf_pos])) |tag| {
@@ -860,18 +909,18 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .builtin => switch (c) {
+                    .builtin => switch (byte) {
                         'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
                         else => break,
                     },
-                    .backslash => switch (c) {
+                    .backslash => switch (byte) {
                         '\\' => state = .multiline_string_literal_line,
                         else => {
                             ret.tag = .invalid;
                             break;
                         },
                     },
-                    .string_literal => switch (c) {
+                    .string_literal => switch (byte) {
                         '\\' => state = .string_literal_backslash,
                         '"' => {
                             itr.buf_pos +%= 1;
@@ -891,14 +940,14 @@ pub const parse = struct {
                         },
                         else => itr.checkChar(),
                     },
-                    .string_literal_backslash => switch (c) {
+                    .string_literal_backslash => switch (byte) {
                         0, '\n' => {
                             ret.tag = .invalid;
                             break;
                         },
                         else => state = .string_literal,
                     },
-                    .char_literal => switch (c) {
+                    .char_literal => switch (byte) {
                         0 => {
                             ret.tag = .invalid;
                             break;
@@ -926,7 +975,7 @@ pub const parse = struct {
                         },
                         else => state = .char_literal_end,
                     },
-                    .char_literal_backslash => switch (c) {
+                    .char_literal_backslash => switch (byte) {
                         0, '\n' => {
                             ret.tag = .invalid;
                             break;
@@ -938,7 +987,7 @@ pub const parse = struct {
                         'u' => state = .char_literal_unicode_escape_saw_u,
                         else => state = .char_literal_end,
                     },
-                    .char_literal_hex_escape => switch (c) {
+                    .char_literal_hex_escape => switch (byte) {
                         '0'...'9', 'a'...'f', 'A'...'F' => {
                             esc_no +%= 1;
                             if (esc_no == 2) {
@@ -950,7 +999,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .char_literal_unicode_escape_saw_u => switch (c) {
+                    .char_literal_unicode_escape_saw_u => switch (byte) {
                         0 => {
                             ret.tag = .invalid;
                             break;
@@ -961,7 +1010,7 @@ pub const parse = struct {
                             state = .char_literal_unicode_invalid;
                         },
                     },
-                    .char_literal_unicode_escape => switch (c) {
+                    .char_literal_unicode_escape => switch (byte) {
                         0 => {
                             ret.tag = .invalid;
                             break;
@@ -973,11 +1022,11 @@ pub const parse = struct {
                             state = .char_literal_unicode_invalid;
                         },
                     },
-                    .char_literal_unicode_invalid => switch (c) {
+                    .char_literal_unicode_invalid => switch (byte) {
                         '0'...'9', 'a'...'z', 'A'...'Z', '}' => {},
                         else => break,
                     },
-                    .char_literal_end => switch (c) {
+                    .char_literal_end => switch (byte) {
                         '\'' => {
                             ret.tag = .char_literal;
                             itr.buf_pos +%= 1;
@@ -988,7 +1037,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .char_literal_unicode => switch (c) {
+                    .char_literal_unicode => switch (byte) {
                         0x80...0xbf => {
                             rem_cp -%= 1;
                             if (rem_cp == 0) {
@@ -1000,7 +1049,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .multiline_string_literal_line => switch (c) {
+                    .multiline_string_literal_line => switch (byte) {
                         0 => break,
                         '\n' => {
                             itr.buf_pos +%= 1;
@@ -1009,7 +1058,7 @@ pub const parse = struct {
                         '\t' => {},
                         else => itr.checkChar(),
                     },
-                    .bang => switch (c) {
+                    .bang => switch (byte) {
                         '=' => {
                             ret.tag = .bang_equal;
                             itr.buf_pos +%= 1;
@@ -1020,7 +1069,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .pipe => switch (c) {
+                    .pipe => switch (byte) {
                         '=' => {
                             ret.tag = .pipe_equal;
                             itr.buf_pos +%= 1;
@@ -1036,7 +1085,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .equal => switch (c) {
+                    .equal => switch (byte) {
                         '=' => {
                             ret.tag = .equal_equal;
                             itr.buf_pos +%= 1;
@@ -1052,7 +1101,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .minus => switch (c) {
+                    .minus => switch (byte) {
                         '>' => {
                             ret.tag = .arrow;
                             itr.buf_pos +%= 1;
@@ -1070,7 +1119,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .minus_percent => switch (c) {
+                    .minus_percent => switch (byte) {
                         '=' => {
                             ret.tag = .minus_percent_equal;
                             itr.buf_pos +%= 1;
@@ -1081,7 +1130,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .minus_pipe => switch (c) {
+                    .minus_pipe => switch (byte) {
                         '=' => {
                             ret.tag = .minus_pipe_equal;
                             itr.buf_pos +%= 1;
@@ -1092,7 +1141,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .angle_bracket_left => switch (c) {
+                    .angle_bracket_left => switch (byte) {
                         '<' => state = .angle_bracket_angle_bracket_left,
                         '=' => {
                             ret.tag = .angle_bracket_left_equal;
@@ -1104,7 +1153,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .angle_bracket_angle_bracket_left => switch (c) {
+                    .angle_bracket_angle_bracket_left => switch (byte) {
                         '=' => {
                             ret.tag = .angle_bracket_angle_bracket_left_equal;
                             itr.buf_pos +%= 1;
@@ -1116,7 +1165,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .angle_bracket_angle_bracket_left_pipe => switch (c) {
+                    .angle_bracket_angle_bracket_left_pipe => switch (byte) {
                         '=' => {
                             ret.tag = .angle_bracket_angle_bracket_left_pipe_equal;
                             itr.buf_pos +%= 1;
@@ -1127,7 +1176,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .angle_bracket_right => switch (c) {
+                    .angle_bracket_right => switch (byte) {
                         '>' => state = .angle_bracket_angle_bracket_right,
                         '=' => {
                             ret.tag = .angle_bracket_right_equal;
@@ -1139,7 +1188,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .angle_bracket_angle_bracket_right => switch (c) {
+                    .angle_bracket_angle_bracket_right => switch (byte) {
                         '=' => {
                             ret.tag = .angle_bracket_angle_bracket_right_equal;
                             itr.buf_pos +%= 1;
@@ -1150,7 +1199,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .period => switch (c) {
+                    .period => switch (byte) {
                         '.' => state = .period_2,
                         '*' => state = .period_asterisk,
                         else => {
@@ -1158,7 +1207,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .period_2 => switch (c) {
+                    .period_2 => switch (byte) {
                         '.' => {
                             ret.tag = .ellipsis3;
                             itr.buf_pos +%= 1;
@@ -1169,7 +1218,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .period_asterisk => switch (c) {
+                    .period_asterisk => switch (byte) {
                         '*' => {
                             ret.tag = .invalid_periodasterisks;
                             break;
@@ -1179,7 +1228,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .slash => switch (c) {
+                    .slash => switch (byte) {
                         '/' => state = .line_comment_start,
                         '=' => {
                             ret.tag = .slash_equal;
@@ -1191,7 +1240,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .line_comment_start => switch (c) {
+                    .line_comment_start => switch (byte) {
                         0 => {
                             if (itr.buf_pos != itr.buf.len) {
                                 ret.tag = .invalid;
@@ -1214,7 +1263,7 @@ pub const parse = struct {
                             itr.checkChar();
                         },
                     },
-                    .doc_comment_start => switch (c) {
+                    .doc_comment_start => switch (byte) {
                         '/' => state = .line_comment,
                         0, '\n' => {
                             ret.tag = .doc_comment;
@@ -1230,7 +1279,7 @@ pub const parse = struct {
                             itr.checkChar();
                         },
                     },
-                    .line_comment => switch (c) {
+                    .line_comment => switch (byte) {
                         0 => {
                             if (itr.buf_pos != itr.buf.len) {
                                 ret.tag = .invalid;
@@ -1245,12 +1294,12 @@ pub const parse = struct {
                         '\t' => {},
                         else => itr.checkChar(),
                     },
-                    .doc_comment => switch (c) {
+                    .doc_comment => switch (byte) {
                         0, '\n' => break,
                         '\t' => {},
                         else => itr.checkChar(),
                     },
-                    .int => switch (c) {
+                    .int => switch (byte) {
                         '.' => state = .int_period,
                         '_',
                         'a'...'d',
@@ -1264,14 +1313,14 @@ pub const parse = struct {
                         'e', 'E', 'p', 'P' => state = .int_exponent,
                         else => break,
                     },
-                    .int_exponent => switch (c) {
+                    .int_exponent => switch (byte) {
                         '-', '+' => state = .float,
                         else => {
                             itr.buf_pos -%= 1;
                             state = .int;
                         },
                     },
-                    .int_period => switch (c) {
+                    .int_period => switch (byte) {
                         '_',
                         'a'...'d',
                         'f'...'o',
@@ -1287,7 +1336,7 @@ pub const parse = struct {
                             break;
                         },
                     },
-                    .float => switch (c) {
+                    .float => switch (byte) {
                         '_',
                         'a'...'d',
                         'f'...'o',
@@ -1300,7 +1349,7 @@ pub const parse = struct {
                         'e', 'E', 'p', 'P' => state = .float_exponent,
                         else => break,
                     },
-                    .float_exponent => switch (c) {
+                    .float_exponent => switch (byte) {
                         '-', '+' => state = .float,
                         else => {
                             itr.buf_pos -%= 1;
@@ -1561,6 +1610,39 @@ pub const parse = struct {
             return kv[1];
         }
         return null;
+    }
+    pub fn typeName(str: []const u8) bool {
+        @setRuntimeSafety(is_safe);
+        const type_names: [40][]const u8 = tab.ty;
+        lo: for (type_names) |type_name| {
+            if (type_name.len != str.len) {
+                continue;
+            }
+            for (str, type_name) |x, y| {
+                if (x != y) {
+                    continue :lo;
+                }
+            }
+            return true;
+        }
+        var idx: usize = 0;
+        if (str[idx] == 'i' or str[idx] == 'u') {
+            idx +%= 1;
+            while (idx != str.len) : (idx +%= 1) {
+                switch (str[idx]) {
+                    '0'...'9' => {
+                        continue;
+                    },
+                    '_', 'a'...'z', 'A'...'Z' => {
+                        break;
+                    },
+                    else => {
+                        return false;
+                    },
+                }
+            } else return true;
+        }
+        return false;
     }
 };
 /// Return an absolute path to a project file.
