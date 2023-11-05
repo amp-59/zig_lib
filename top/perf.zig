@@ -493,9 +493,9 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             const decimal: usize = ipc_pcnt -% (ipc_div *% 100);
             var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, index);
             ptr[0..6].* = "IPC\t\t\t".*;
-            ptr = fmt.writeUd64(ptr + 6, ipc_div);
+            ptr = fmt.Ud64.write(ptr + 6, ipc_div);
             ptr[0] = '.';
-            ptr = fmt.writeUd64(ptr + 1, decimal);
+            ptr = fmt.Ud64.write(ptr + 1, decimal);
             ptr[0] = '\n';
             ptr += 1;
             return ptr;
