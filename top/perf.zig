@@ -406,12 +406,12 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
         .logging = events_spec.logging.open,
     };
     const T = struct {
-        fds: Fds = builtin.zero(Fds),
-        res: Results = builtin.zero(Results),
+        fds: Fds,
+        res: Results,
         const PerfEvents = @This();
-        const Fds = [events_spec.counters.len][len]u32;
-        const Results = [events_spec.counters.len][len]usize;
-        const len = blk: {
+        const Fds = [events_spec.counters.len][res_len]u32;
+        const Results = [events_spec.counters.len][res_len]usize;
+        const res_len: comptime_int = blk: {
             var uniform_min: usize = 0;
             for (events_spec.counters) |set| {
                 uniform_min = @max(uniform_min, set.counters.len);
@@ -430,6 +430,8 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
         };
         pub fn openFds(perf_events: *PerfEvents) sys.ErrorUnion(events_spec.errors.open, void) {
             @setRuntimeSafety(builtin.is_safe);
+            mem.zero(Fds, &perf_events.fds);
+            mem.zero(Results, &perf_events.res);
             const leader_fd: *u32 = &perf_events.fds[0][0];
             leader_fd.* = ~@as(u32, 0);
             var event: Event = builtin.zero(Event);
@@ -455,6 +457,32 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
                     try meta.wrap(file.close(close, perf_events.fds[set_idx][event_idx]));
                 }
             }
+        }
+        pub fn lengthResults(perf_events: *PerfEvents, width: usize) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            var instrs: usize = 0;
+            var cycles: usize = 0;
+            var len: usize = 0;
+            for (events_spec.counters, 0..) |set, set_idx| {
+                for (set.counters, 0..) |counter, event_idx| {
+                    len +%= fmt.SideBarIndexFormat.length(width, event_idx);
+                    len +%= counter.name.len;
+                    len +%= fmt.Udh(usize).length(perf_events.res[set_idx][event_idx]);
+                    if (set.type == .hardware) {
+                        if (counter.config.hardware == .cpu_cycles) {
+                            cycles = perf_events.res[set_idx][event_idx];
+                        }
+                        if (counter.config.hardware == .instructions) {
+                            instrs = perf_events.res[set_idx][event_idx];
+                        }
+                    }
+                    len +%= 1;
+                }
+                if (set.type == .hardware) {
+                    len +%= lengthIPC(width, set.counters.len, instrs, cycles);
+                }
+            }
+            return len;
         }
         pub fn writeResults(perf_events: *PerfEvents, width: usize, buf: [*]u8) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -484,21 +512,29 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             return ptr;
         }
         fn writeIPC(buf: [*]u8, width: usize, index: usize, instrs: usize, cycles: usize) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
-            if (instrs == 0 or cycles == 0) {
+            @setRuntimeSafety(false);
+            if (instrs == 0 and cycles == 0) {
                 return buf;
             }
             const ipc_pcnt: usize = (instrs *% 100) / cycles;
             const ipc_div: usize = instrs / cycles;
-            const decimal: usize = ipc_pcnt -% (ipc_div *% 100);
             var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, index);
             ptr[0..6].* = "IPC\t\t\t".*;
             ptr = fmt.Ud64.write(ptr + 6, ipc_div);
             ptr[0] = '.';
-            ptr = fmt.Ud64.write(ptr + 1, decimal);
+            ptr = fmt.Ud64.write(ptr + 1, ipc_pcnt -% (ipc_div *% 100));
             ptr[0] = '\n';
             ptr += 1;
             return ptr;
+        }
+        fn lengthIPC(width: usize, index: usize, instrs: usize, cycles: usize) usize {
+            @setRuntimeSafety(false);
+            if (instrs == 0 or cycles == 0) {
+                return 0;
+            }
+            const ipc_pcnt: usize = (instrs *% 100) / cycles;
+            const ipc_div: usize = instrs / cycles;
+            return 8 +% fmt.SideBarIndexFormat.length(width, index) +% fmt.Ud64.length(ipc_div) +% fmt.Ud64.length(ipc_pcnt -% (ipc_div *% 100));
         }
     };
     return T;
