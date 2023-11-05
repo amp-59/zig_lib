@@ -768,12 +768,16 @@ pub fn PathFormat(comptime Path: type) type {
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             return strlen(write(buf, format), buf);
         }
+        pub fn formatLength(format: Format) usize {
+            return length(format);
+        }
         pub fn formatWriteBufLiteral(format: Format, buf: [*]u8) usize {
             return strlen(writeLiteral(buf, format), buf);
         }
         pub fn formatWriteBufDisplay(format: Format, buf: [*]u8) usize {
             return strlen(writeDisplay(buf, format), buf);
         }
+
         pub const writeDisplay = blk: {
             if (builtin.AbsoluteState != void) {
                 if (@hasField(builtin.AbsoluteState, "cwd") and
@@ -786,6 +790,19 @@ pub fn PathFormat(comptime Path: type) type {
                 }
             }
             break :blk writeDisplay0;
+        };
+        pub const lengthDisplay = blk: {
+            if (builtin.AbsoluteState != void) {
+                if (@hasField(builtin.AbsoluteState, "cwd") and
+                    @hasField(builtin.AbsoluteState, "home"))
+                {
+                    break :blk lengthDisplay2;
+                }
+                if (@hasField(builtin.AbsoluteState, "cwd")) {
+                    break :blk lengthDisplay1;
+                }
+            }
+            break :blk lengthDisplay0;
         };
         fn writeDisplay0(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -827,6 +844,45 @@ pub fn PathFormat(comptime Path: type) type {
                 }
             }
             return end - 1;
+        }
+
+        fn lengthDisplay0(path: Path) usize {
+            return length(path) -% 1;
+        }
+        fn lengthDisplay1(path: Path) usize {
+            var tmp: [4096]u8 = undefined;
+            const end: [*]u8 = Format.write(&tmp, path) - 1;
+            var len: usize = strlen(end, &tmp);
+            if (builtin.absolute_state.ptr.cwd.len != 0) {
+                if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
+                    builtin.absolute_state.ptr.cwd,
+                    tmp[0..builtin.absolute_state.ptr.cwd.len],
+                )) {
+                    return 1 +% (len -% builtin.absolute_state.ptr.cwd.len);
+                }
+            }
+            return len;
+        }
+        fn lengthDisplay2(path: Path) usize {
+            var tmp: [4096]u8 = undefined;
+            const end: [*]u8 = Format.write(&tmp, path) - 1;
+            var len: usize = strlen(end, &tmp);
+            if (builtin.absolute_state.ptr.cwd.len != 0) {
+                if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
+                    builtin.absolute_state.ptr.cwd,
+                    tmp[0..builtin.absolute_state.ptr.cwd.len],
+                )) {
+                    return 1 +% (len -% builtin.absolute_state.ptr.cwd.len);
+                }
+            } else if (builtin.absolute_state.ptr.home.len != 0) {
+                if (builtin.absolute_state.ptr.home.len < len and mem.testEqualString(
+                    builtin.absolute_state.ptr.home,
+                    tmp[0..builtin.absolute_state.ptr.home.len],
+                )) {
+                    return 1 +% (len -% builtin.absolute_state.ptr.home.len);
+                }
+            }
+            return len;
         }
         pub fn writeDisplayPath(buf: [*]u8, pathname: [:0]const u8) [*]u8 {
             @setRuntimeSafety(false);
@@ -888,12 +944,11 @@ pub fn PathFormat(comptime Path: type) type {
             }
             return ptr;
         }
-        pub fn formatLength(format: Format) usize {
-            @setRuntimeSafety(builtin.is_safe);
+        pub fn length(path: Path) usize {
             var len: usize = 0;
-            if (format.names_len != 0) {
-                len +%= format.names[0].len;
-                for (format.names[1..format.names_len]) |name| {
+            if (path.names_len != 0) {
+                len +%= path.names[0].len;
+                for (path.names[1..path.names_len]) |name| {
                     len +%= 1 +% name.len;
                 }
                 len +%= 1;
