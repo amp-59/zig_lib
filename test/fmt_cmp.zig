@@ -336,15 +336,15 @@ fn zigLibOptimisedMessage3(
     ptr[0..8].* = ", word1=".*;
     ptr = zl.fmt.writeUx64(ptr + 8, futex1.*);
     ptr[0..7].* = ", max1=".*;
-    ptr = zl.fmt.writeUd64(ptr + 7, count1);
+    ptr = zl.fmt.Ud64.write(ptr + 7, count1);
     ptr[0..10].* = ", futex2=@".*;
     ptr = zl.fmt.writeUx64(ptr + 10, @intFromPtr(futex2));
     ptr[0..8].* = ", word2=".*;
     ptr = zl.fmt.writeUx64(ptr + 8, futex2.*);
     ptr[0..7].* = ", max2=".*;
-    ptr = zl.fmt.writeUd64(ptr + 7, count2);
+    ptr = zl.fmt.Ud64.write(ptr + 7, count2);
     ptr[0..6].* = ", res=".*;
-    ptr = zl.fmt.writeUd64(ptr + 6, ret);
+    ptr = zl.fmt.Ud64.write(ptr + 6, ret);
     ptr[0] = '\n';
     zl.debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
 }
