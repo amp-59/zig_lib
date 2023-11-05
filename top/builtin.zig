@@ -50,7 +50,7 @@ pub const panicStartGreaterThanEnd = define("startGreaterThanEnd", debug.PanicSt
 pub const panicInactiveUnionField = define("panicInactiveUnionField", debug.PanicInactiveUnionFieldFn, debug.panic_extra.panicInactiveUnionField);
 pub const alarm = define("alarm", debug.AlarmFn, debug.alarm);
 pub const panic_return_value: u8 = define("panic_return_value", u8, 2);
-/// Determines text output in case of panic without formatting
+/// Determines text output in case of panic without formatting.
 pub const panic_messages = define("panic_messages", type, struct {
     pub const unreach: [:0]const u8 = "reached unreachable code";
     pub const unwrap_null: [:0]const u8 = "attempt to use null value";
@@ -143,45 +143,20 @@ pub const my_trace: debug.Trace = .{
             .sidebar = "│",
             .sidebar_fill = ": ",
             .comment = "\x1b[2m",
-            .syntax = &.{ .{
-                .style = "",
-                .tags = parse.Token.Tag.other,
-            }, .{
-                .style = &tab.fx.color.fg.orange24,
-                .tags = &.{.number_literal},
-            }, .{
-                .style = &tab.fx.color.fg.yellow24,
-                .tags = &.{.char_literal},
-            }, .{
-                .style = &tab.fx.color.fg.light_green,
-                .tags = parse.Token.Tag.strings,
-            }, .{
-                .style = &tab.fx.color.fg.bracket,
-                .tags = parse.Token.Tag.bracket,
-            }, .{
-                .style = &tab.fx.color.fg.magenta24,
-                .tags = parse.Token.Tag.operator,
-            }, .{
-                .style = &tab.fx.color.fg.red24,
-                .tags = parse.Token.Tag.builtin_fn,
-            }, .{
-                .style = &tab.fx.color.fg.cyan24,
-                .tags = parse.Token.Tag.macro_keyword,
-            }, .{
-                .style = &tab.fx.color.fg.light_purple,
-                .tags = parse.Token.Tag.call_keyword,
-            }, .{
-                .style = &tab.fx.color.fg.redwine,
-                .tags = parse.Token.Tag.container_keyword,
-            }, .{
-                .style = &tab.fx.color.fg.white24,
-                .tags = parse.Token.Tag.cond_keyword ++
-                    parse.Token.Tag.qual_keyword,
-            }, .{
-                .style = &tab.fx.color.fg.yellow24,
-                .tags = parse.Token.Tag.goto_keyword ++
-                    parse.Token.Tag.value_keyword,
-            } },
+            .syntax = &.{
+                .{ .style = "", .tags = parse.Token.Tag.other },
+                .{ .style = &tab.fx.color.fg.orange24, .tags = &.{.number_literal} },
+                .{ .style = &tab.fx.color.fg.yellow24, .tags = &.{.char_literal} },
+                .{ .style = &tab.fx.color.fg.light_green, .tags = parse.Token.Tag.strings },
+                .{ .style = &tab.fx.color.fg.bracket, .tags = parse.Token.Tag.bracket },
+                .{ .style = &tab.fx.color.fg.magenta24, .tags = parse.Token.Tag.operator },
+                .{ .style = &tab.fx.color.fg.red24, .tags = parse.Token.Tag.builtin_fn },
+                .{ .style = &tab.fx.color.fg.cyan24, .tags = parse.Token.Tag.macro_keyword },
+                .{ .style = &tab.fx.color.fg.light_purple, .tags = parse.Token.Tag.call_keyword },
+                .{ .style = &tab.fx.color.fg.redwine, .tags = parse.Token.Tag.container_keyword },
+                .{ .style = &tab.fx.color.fg.white24, .tags = parse.Token.Tag.cond_keyword ++ parse.Token.Tag.qual_keyword },
+                .{ .style = &tab.fx.color.fg.yellow24, .tags = parse.Token.Tag.goto_keyword ++ parse.Token.Tag.value_keyword },
+            },
         },
     },
 };
