@@ -146,15 +146,14 @@ pub const my_trace: debug.Trace = .{
             .comment = "\x1b[2m",
             .syntax = &.{
                 .{ .style = "", .tags = parse.Token.Tag.other },
-                .{ .style = &tab.fx.color.fg.orange24, .tags = &.{ .number_literal, .null_literal } },
+                .{ .style = &tab.fx.color.fg.orange24, .tags = &.{ .number_literal, .null_literal, .bool_literal } },
                 .{ .style = &tab.fx.color.fg.yellow24, .tags = &.{.char_literal} },
                 .{ .style = &tab.fx.color.fg.light_green, .tags = parse.Token.Tag.strings },
                 .{ .style = &tab.fx.color.fg.bracket, .tags = parse.Token.Tag.bracket },
                 .{ .style = &tab.fx.color.fg.magenta24, .tags = parse.Token.Tag.operator },
                 .{ .style = &tab.fx.color.fg.red24, .tags = parse.Token.Tag.builtin_fn },
-                .{ .style = &tab.fx.color.fg.cyan24, .tags = parse.Token.Tag.macro_keyword ++ parse.Token.Tag.macro_value },
+                .{ .style = &tab.fx.color.fg.cyan24, .tags = parse.Token.Tag.macro_keyword },
                 .{ .style = &tab.fx.color.fg.light_purple, .tags = parse.Token.Tag.call_keyword },
-                .{ .style = &tab.fx.color.fg.light_purple, .tags = &.{.identifier_fn_name} },
                 .{ .style = &tab.fx.color.fg.redwine, .tags = parse.Token.Tag.container_keyword },
                 .{ .style = &tab.fx.color.fg.white24, .tags = &.{.identifier_type_name} },
                 .{ .style = &tab.fx.color.fg.white24, .tags = parse.Token.Tag.cond_keyword ++ parse.Token.Tag.qual_keyword },
@@ -378,6 +377,7 @@ pub const parse = struct {
             char_literal,
             number_literal,
             string_literal,
+            bool_literal,
             undefined_literal,
             multiline_string_literal_line,
             doc_comment,
@@ -494,8 +494,6 @@ pub const parse = struct {
                 .keyword_errdefer,
                 .keyword_nosuspend,
                 .keyword_unreachable,
-            };
-            pub const macro_value: []const Token.Tag = &.{
                 .undefined_literal,
             };
             pub const container_keyword: []const Token.Tag = &.{
@@ -516,6 +514,7 @@ pub const parse = struct {
                 .keyword_inline,
                 .keyword_noalias,
                 .keyword_noinline,
+                .identifier_fn_name,
             };
             pub const cond_keyword: []const Token.Tag = &.{
                 .keyword_fn,
@@ -642,6 +641,12 @@ pub const parse = struct {
             }
             if (mem.testEqualString("undefined", str)) {
                 return .undefined_literal;
+            }
+            if (mem.testEqualString("true", str)) {
+                return .bool_literal;
+            }
+            if (mem.testEqualString("false", str)) {
+                return .bool_literal;
             }
             return .identifier;
         }
