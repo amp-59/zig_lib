@@ -7,7 +7,7 @@ pub const trace: zl.debug.Trace = .{
         .context_line_count = 1,
         .break_line_count = 1,
         .write_caret = true,
-        .tokens = zl.builtin.my_trace.options.tokens,
+        .tokens = zl.builtin.zl_trace.options.tokens,
     },
 };
 fn causeStackOverflow() void {
