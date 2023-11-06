@@ -13,7 +13,7 @@ pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 pub const trace: debug.Trace = .{
-    .options = .{ .tokens = builtin.my_trace.options.tokens },
+    .options = .{ .tokens = builtin.zl_trace.options.tokens },
 };
 const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0x40000000,
@@ -488,6 +488,12 @@ fn testStringLitChar() void {
     }
     debug.write("}\n");
 }
+fn testRenderHighlight() !void {
+    const src: [:0]const u8 = @embedFile(@src().file["test/".len..]);
+    var buf: [src.len * 16]u8 = undefined;
+    var end: [*]u8 = fmt.SourceCodeFormat.write(&buf, @constCast(src));
+    debug.write(fmt.slice(end, &buf));
+}
 pub fn main() !void {
     meta.refAllDecls(fmt, &.{});
     try testBytesFormat();
@@ -500,4 +506,5 @@ pub fn main() !void {
     //try testEquivalentIntToStringFormat();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();
+    try testRenderHighlight();
 }
