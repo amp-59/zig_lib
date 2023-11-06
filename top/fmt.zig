@@ -1716,12 +1716,23 @@ pub fn highlight(buf: [*]u8, tok: *builtin.parse.Token, syntax: []const debug.Tr
 }
 pub const SourceCodeFormat = struct {
     src: [:0]const u8,
-
-    fn writeHighlighted(buf: [*]u8, src: [:0]const u8, syntax: []const debug.Trace.Options.Tokens.Mapping) void {
-        var itr: builtin.parse.TokenIterator = .{ .buf = @constCast(src), .buf_pos = 0 };
-        var tok: builtin.parse.Token = itr.next();
-        while (tok.tag != .eof) : (itr.nextContext(&tok)) {
-            highlight(buf, &tok, syntax);
+    pub fn write(buf: [*]u8, src: [:0]const u8) [*]u8 {
+        if (builtin.trace.options.tokens.syntax) |syntax| {
+            var itr: builtin.parse.TokenIterator = .{ .buf = @constCast(src), .buf_pos = 0 };
+            var tok: builtin.parse.Token = itr.nextToken();
+            var ptr: [*]u8 = buf;
+            var prev: usize = 0;
+            while (tok.tag != .eof) : (itr.nextExtra(&tok)) {
+                const str = itr.buf[tok.loc.start..tok.loc.finish];
+                ptr = strcpyEqu(ptr, itr.buf[prev..tok.loc.start]);
+                ptr = highlight(ptr, &tok, syntax);
+                ptr = strcpyEqu(ptr, str);
+                ptr = strcpyEqu(ptr, &tab.fx.none);
+                prev = tok.loc.finish;
+            }
+            return ptr;
+        } else {
+            return strcpyEqu(buf, src);
         }
     }
 };
