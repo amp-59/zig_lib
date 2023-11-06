@@ -1897,13 +1897,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     if (!loader_spec.logging.show_insignificant_additions and
                         mat.tag == .addition)
                     {
-                        sizes.common +%= sym.size;
+                        sizes.additions +%= sym.size;
                         return true;
                     }
                     if (!loader_spec.logging.show_insignificant_deletions and
                         mat.tag == .deletion)
                     {
-                        sizes.common +%= sym.size;
+                        sizes.deletions +%= sym.size;
                         return true;
                     }
                 }
@@ -1940,25 +1940,25 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     if (!loader_spec.logging.show_insignificant_additions and
                         mat2.tag == .addition)
                     {
-                        sizes.common +%= builtin.diff(usize, sym1.size, sym2.size);
+                        sizes.additions +%= builtin.diff(usize, sym1.size, sym2.size);
                         return true;
                     }
                     if (!loader_spec.logging.show_insignificant_deletions and
                         mat2.tag == .deletion)
                     {
-                        sizes.common +%= builtin.diff(usize, sym1.size, sym2.size);
+                        sizes.deletions +%= builtin.diff(usize, sym1.size, sym2.size);
                         return true;
                     }
                     if (!loader_spec.logging.show_insignificant_increases and
                         mat2.tag == .increase)
                     {
-                        sizes.common +%= builtin.diff(usize, sym1.size, sym2.size);
+                        sizes.increases +%= builtin.diff(usize, sym1.size, sym2.size);
                         return true;
                     }
                     if (!loader_spec.logging.show_insignificant_decreases and
                         mat2.tag == .decrease)
                     {
-                        sizes.common +%= builtin.diff(usize, sym1.size, sym2.size);
+                        sizes.decreases +%= builtin.diff(usize, sym1.size, sym2.size);
                         return true;
                     }
                 }
@@ -2093,25 +2093,120 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ret;
             }
-            fn verifyInputRanges(
-                sh_sym_idx1: usize,
-                sh_sym_end1: usize,
-                mats1: [*]Match,
-                sh_sym_idx2: usize,
-                sh_sym_end2: usize,
-                mats2: [*]Match,
-            ) void {
-                @setRuntimeSafety(false);
-                for (mats1[sh_sym_idx1..sh_sym_end1]) |mat1| {
-                    if (mat1.tag != .unknown) {
-                        @panic("Known symbol in unknown section");
+            pub fn lengthSymtab2(
+                mats2: []Match,
+                ei2: *const ElfInfo,
+                symtab_shdr2: *Elf64_Shdr,
+                symtab2: []Elf64_Sym,
+                width1: usize,
+                width2: usize,
+                sizes_r1: *Sizes,
+                sizes_r2: *Sizes,
+            ) usize {
+                var len: usize = 0;
+                for (symtab2) |*sym2| {
+                    sizes_r1.new +%= sym2.size;
+                }
+                for (mats2, symtab2) |*mat2, *sym2| {
+                    mat2.flags.is_insignificant = sym2.size *% 100 < sizes_r1.new;
+                }
+                for (mats2, symtab2, 0..) |*mat2, *sym2, sym_idx2| {
+                    const name2: [:0]u8 = symbolName2(ei2, symtab_shdr2, sym2, mat2).?;
+                    if (mat2.isAnonymous()) {
+                        mat2.flags.is_hidden = true;
+                        continue;
+                    }
+                    if (filterSymbolsHalf(sym2, mat2.*, sizes_r2)) {
+                        mat2.flags.is_hidden = true;
+                        continue;
+                    }
+                    if (loader_spec.options.write_symbols) {
+                        len +%= about.lengthSymbolIntro(sym_idx2, mat2.tag, width2);
+                        len +%= about.lengthSymbol(sym2, mat2.*, name2, sizes_r1);
                     }
                 }
-                for (mats2[sh_sym_idx2..sh_sym_end2]) |mat2| {
-                    if (mat2.tag != .unknown) {
-                        @panic("Known symbol in unknown section");
+                len +%= about.lengthExcluded(width1, width2, sizes_r2);
+                return len;
+            }
+            pub fn writeSymtab2(
+                mats: []Match,
+                ei: *ElfInfo,
+                symtab_shdr: *Elf64_Shdr,
+                symtab: []Elf64_Sym,
+                width1: usize,
+                width2: usize,
+                sizes_r1: *const Sizes,
+                sizes_r2: *const Sizes,
+                buf: [*]u8,
+            ) [*]u8 {
+                var ptr: [*]u8 = buf;
+
+                for (mats, symtab, 0..) |*mat, *sym, sym_idx| {
+                    const name: [:0]u8 = symbolName2(ei, symtab_shdr, sym, mat).?;
+                    if (mat.flags.is_hidden) {
+                        continue;
+                    }
+                    if (loader_spec.options.write_symbols) {
+                        ptr = about.writeSymbolIntro(ptr, sym_idx, mat.tag, width1, width2);
+                        ptr = about.writeSymbol(ptr, sym, mat.*, name, sizes_r1);
                     }
                 }
+                ptr = about.writeExcluded(ptr, width1, width2, sizes_r2);
+                return ptr;
+            }
+            pub fn lengthElf2(
+                cmp: *Cmp,
+                allocator: *mem.SimpleAllocator,
+                ei2: *ElfInfo,
+                width1: usize,
+            ) usize {
+                @setRuntimeSafety(builtin.is_safe);
+                if (ei2.bestSymbolTable()) |st_shdr2| {
+                    cmp.syms2 = sortSymtab(allocator, ei2, st_shdr2);
+                }
+                cmp.mats2 = @ptrFromInt(allocator.allocateRaw(ei2.ehdr.shnum * @sizeOf(Cmp.Matches), @alignOf(Cmp.Matches)));
+                cmp.sizes = @ptrFromInt(allocator.allocateRaw(ei2.ehdr.shnum * @sizeOf(Cmp.SizeDiff), @alignOf(Cmp.SizeDiff)));
+                if (cmp.syms2) |symtab2| {
+                    for (cmp.mats2[1..ei2.ehdr.shnum], 1..) |*sect_mat2, shndx2| {
+                        const mats2: [*]Match = @ptrFromInt(allocator.allocateRaw(symtab2[shndx2].len * @sizeOf(Match), @alignOf(Match)));
+                        sect_mat2.mats = mats2[0..symtab2[shndx2].len];
+                        @memset(sect_mat2.mats, .{ .tag = .identical });
+                    }
+                }
+                var len: usize = 0;
+                for (1..ei2.ehdr.shnum) |shndx2| {
+                    const shdr2: *Elf64_Shdr = ei2.ehdr.sectionHeader(shndx2);
+                    const width2: usize = ei2.ehdr.sectionName(shndx2).len;
+                    len +%= about.lengthSection2(ei2, shdr2, shndx2, width1);
+                    if (ei2.bestSymbolTable()) |symtab_shdr2| {
+                        len +%= @call(.auto, lengthSymtab2, .{
+                            cmp.mats2[shndx2].mats,      ei2,                         symtab_shdr2, cmp.syms2.?[shndx2], width1, width2,
+                            &cmp.sizes[shndx2].sizes_r1, &cmp.sizes[shndx2].sizes_r2,
+                        });
+                    }
+                }
+                return len;
+            }
+            pub fn writeElf2(
+                cmp: *Cmp,
+                buf: [*]u8,
+                ei: *ElfInfo,
+                width1: usize,
+            ) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = buf;
+                for (1..ei.ehdr.shnum) |shndx| {
+                    const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
+                    const width2: usize = ei.ehdr.sectionName(shndx).len;
+                    ptr = about.writeSection2(ptr, ei, shdr, shndx, width1);
+                    if (ei.bestSymbolTable()) |symtab_shdr| {
+                        ptr = @call(.auto, writeSymtab2, .{
+                            cmp.mats2[shndx].mats,      ei,                         symtab_shdr, cmp.syms2.?[shndx], width1, width2,
+                            &cmp.sizes[shndx].sizes_r1, &cmp.sizes[shndx].sizes_r2, ptr,
+                        });
+                    }
+                }
+                return ptr;
             }
             pub fn writeBinary(buf: [*]u8, info: *Info, width: usize) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2310,10 +2405,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 symtab2: []Elf64_Sym,
                 width2: usize,
                 sizes_r1: *const Sizes,
+                sizes_r2: *const Sizes,
                 buf: [*]u8,
             ) [*]u8 {
                 var ptr: [*]u8 = buf;
-                var sizes_r2: Sizes = .{};
                 for (mats2, symtab2, 0..) |*mat2, *sym2, sym_idx2| {
                     const name2: [:0]u8 = symbolName2(ei2, symtab_shdr2, sym2, mat2).?;
                     if (mat2.idx == Match.no_idx) {
@@ -2416,9 +2511,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         }
                     }
                 }
-                if (sizes_r2.common != 0) {
-                    ptr = about.writeExcluded(ptr, width1, width2, &sizes_r2);
-                }
+                ptr = about.writeExcluded(ptr, width1, width2, sizes_r2);
                 return ptr;
             }
             fn lengthSymtabDifferences(
@@ -2475,9 +2568,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         len +%= about.lengthSymbol(sym1, mat1.*, name1, sizes_r1);
                     }
                 }
-                if (sizes_r2.common != 0) {
-                    len +%= about.lengthExcluded(width1, width2, sizes_r2);
-                }
+                len +%= about.lengthExcluded(width1, width2, sizes_r2);
                 return len;
             }
             pub fn writeSymtabDifference(
@@ -2498,7 +2589,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const sh_name2: [:0]const u8 = info2.sectionName(info2.sectionHeader(shndx2));
-                verifyInputRanges(sh_sym_idx1, sh_sym_end1, mats1, sh_sym_idx2, sh_sym_end2, mats2);
                 var sizes_r1: Sizes = .{};
                 var sizes_r2: Sizes = .{};
                 Sort.inPlace(symtab1, sh_sym_idx1, sh_sym_end1, &Sort.sortSymbolSize);
@@ -2763,9 +2853,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         if (ei1.bestSymbolTable()) |symtab_shdr1| {
                             if (ei2.bestSymbolTable()) |symtab_shdr2| {
                                 ptr = @call(.auto, writeSymtabDifferences, .{
-                                    cmp.mats1[shndx1].mats,      ei1, symtab_shdr1, cmp.syms1.?[shndx1], width1,
-                                    cmp.mats2[shndx2].mats,      ei2, symtab_shdr2, cmp.syms2.?[shndx2], width2,
-                                    &cmp.sizes[shndx2].sizes_r1, ptr,
+                                    cmp.mats1[shndx1].mats,      ei1,                         symtab_shdr1, cmp.syms1.?[shndx1], width1,
+                                    cmp.mats2[shndx2].mats,      ei2,                         symtab_shdr2, cmp.syms2.?[shndx2], width2,
+                                    &cmp.sizes[shndx2].sizes_r1, &cmp.sizes[shndx2].sizes_r2, ptr,
                                 });
                             }
                         }
@@ -3063,7 +3153,22 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += (figs -% 3);
                 ptr += 3;
                 ptr[0..3].* = "%, ".*;
-                return ptr + 3;
+                ptr += 3;
+                if (loader_spec.options.verify_lengths) {
+                    verify(ptr, buf, @src(), .{ sym, mat, sizes });
+                }
+                return ptr;
+            }
+            fn lengthSection2(
+                ei: *const ElfInfo,
+                shdr: *Elf64_Shdr,
+                shndx: usize,
+                width: usize,
+            ) usize {
+                var len: usize = fmt.SideBarIndexFormat.length(width, shndx);
+                len +%= ei.ehdr.sectionName(shndx).len;
+                len +%= 2 +% lengthAddress(shdr.addr);
+                return len +% fmt.Bytes.length(shdr.size) +% 6;
             }
             fn lengthSection(
                 info2: *const Info,
@@ -3075,6 +3180,27 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 len +%= info2.sectionName(shdr2).len;
                 len +%= 2 +% lengthAddress(shdr2.addr);
                 return len +% fmt.Bytes.length(shdr2.size) +% 6;
+            }
+            fn writeSection2(
+                buf: [*]u8,
+                ei: *const ElfInfo,
+                shdr: *Elf64_Shdr,
+                shndx: usize,
+                width: usize,
+            ) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, shndx);
+                ptr = fmt.strcpyEqu(ptr, ei.ehdr.sectionName(shndx));
+                ptr[0..2].* = ": ".*;
+                ptr = writeAddress(ptr + 2, shdr.addr);
+                ptr[0..5].* = "size=".*;
+                ptr = fmt.Bytes.write(ptr + 5, shdr.size);
+                ptr[0] = '\n';
+                ptr += 1;
+                if (loader_spec.options.verify_lengths) {
+                    verify(ptr, buf, @src(), .{ ei, shdr, shndx, width });
+                }
+                return ptr;
             }
             fn writeSection(
                 buf: [*]u8,
@@ -3324,44 +3450,73 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = fmt.Ud64.write(ptr + 4, value);
                 ptr[0..4].* = tab.fx.none;
                 ptr[4..6].* = ": ".*;
+                ptr += 6;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 6, buf, @src(), .{ value, event, width2 });
+                    verify(ptr, buf, @src(), .{ value, event, width2 });
                 }
-                return ptr + 6;
+                return ptr;
             }
-            fn lengthExcluded(
-                width1: usize,
-                width2: usize,
-                sizes_r2: *compare.Sizes,
-            ) usize {
+
+            fn lengthExcludedElement(styles_s: []const u8, bytes: usize, total: *usize) usize {
+                var len: usize = 0;
+                if (bytes != 0) {
+                    if (total.* != 0) {
+                        len +%= 2;
+                    }
+                    len +%= styles_s.len;
+                    len +%= fmt.Bytes.length(bytes);
+                    total.* +%= bytes;
+                }
+                return len;
+            }
+            fn writeExcludedElement(buf: [*]u8, styles_s: []const u8, bytes: usize, total: *usize) [*]u8 {
+                var ptr: [*]u8 = buf;
+                if (bytes != 0) {
+                    if (total.* != 0) {
+                        ptr[0..2].* = ", ".*;
+                        ptr += 2;
+                    }
+                    ptr = fmt.strcpyEqu(ptr, styles_s);
+                    ptr = fmt.Bytes.write(ptr, bytes);
+                    total.* +%= bytes;
+                }
+                return ptr;
+            }
+            fn lengthExcluded(width1: usize, width2: usize, sizes_r2: *const compare.Sizes) usize {
+                @setRuntimeSafety(builtin.is_safe);
                 var len: usize = lengthSymbolGeneric(&tab.fx.color.fg.magenta, width1, width2);
-                len +%= fmt.Bytes.length(sizes_r2.common) +% 11;
-                return len +% 5;
+                len +%= 4;
+                var total: usize = 0;
+                len +%= lengthExcludedElement("[a]=", sizes_r2.additions, &total);
+                len +%= lengthExcludedElement("[+]=", sizes_r2.increases, &total);
+                len +%= lengthExcludedElement("[d]=", sizes_r2.deletions, &total);
+                len +%= lengthExcludedElement("[-]=", sizes_r2.decreases, &total);
+                if (total == 0) {
+                    return 0;
+                }
+                len +%= 4;
+                return len;
             }
-            fn writeExcluded(
-                buf: [*]u8,
-                width1: usize,
-                width2: usize,
-                sizes_r2: *compare.Sizes,
-            ) [*]u8 {
+            fn writeExcluded(buf: [*]u8, width1: usize, width2: usize, sizes_r2: *const compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = writeSymbolGeneric(buf, &tab.fx.color.fg.magenta, '?', width1, width2);
                 ptr[0..4].* = tab.fx.style.faint;
-                ptr[4..11].* = "hidden=".*;
-                ptr = fmt.Bytes.write(ptr + 11, sizes_r2.common);
-                ptr[0..4].* = tab.fx.none;
-                ptr[4] = '\n';
-                if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 5, buf, @src(), .{ width1, width2, sizes_r2 });
+                var total: usize = 0;
+                ptr = writeExcludedElement(ptr, "[a]=", sizes_r2.additions, &total);
+                ptr = writeExcludedElement(ptr, "[+]=", sizes_r2.increases, &total);
+                ptr = writeExcludedElement(ptr, "[d]=", sizes_r2.deletions, &total);
+                ptr = writeExcludedElement(ptr, "[-]=", sizes_r2.decreases, &total);
+                if (total == 0) {
+                    return buf;
                 }
-                return ptr + 5;
+                ptr[0..4].* = tab.fx.none;
+                ptr += 4;
+                if (loader_spec.options.verify_lengths) {
+                    verify(ptr, buf, @src(), .{ width1, width2, sizes_r2 });
+                }
+                return ptr;
             }
-            fn lengthSymbol(
-                sym: *Elf64_Sym,
-                mat: compare.Match,
-                name: [:0]u8,
-                sizes_r1: *const compare.Sizes,
-            ) usize {
+            fn lengthSymbol(sym: *Elf64_Sym, mat: compare.Match, name: [:0]u8, sizes_r1: *const compare.Sizes) usize {
                 var len: usize = lengthAddress(sym.value);
                 len +%= 13;
                 len +%= switch (mat.tag) {
@@ -3371,13 +3526,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 };
                 return len +% lengthPercentage(sym, mat, sizes_r1) +% lengthCompoundNameHalf(mat, name);
             }
-            fn writeSymbol(
-                buf: [*]u8,
-                sym: *Elf64_Sym,
-                mat: compare.Match,
-                name: [:0]u8,
-                sizes_r1: *const compare.Sizes,
-            ) [*]u8 {
+            fn writeSymbol(buf: [*]u8, sym: *Elf64_Sym, mat: compare.Match, name: [:0]u8, sizes_r1: *const compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = writeAddress(buf, sym.value);
                 ptr[0..5].* = "size=".*;
@@ -3391,10 +3540,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0..5].* = "name=".*;
                 ptr = writeCompoundNameHalf(ptr + 5, mat, name);
                 ptr[0] = '\n';
+                ptr += 1;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 1, buf, @src(), .{ sym, mat, name, sizes_r1 });
+                    verify(ptr, buf, @src(), .{ sym, mat, name, sizes_r1 });
                 }
-                return ptr + 1;
+                return ptr;
             }
             fn lengthSymbolDifference(
                 sym1: *const Elf64_Sym,
@@ -3407,8 +3557,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             ) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 var len: usize = lengthAddress(sym2.value);
-                len +%= 8;
-                len +%= fmt.BloatDiff.length(sym1.size, sym2.size);
+                len +%= 8 +% fmt.BloatDiff.length(sym1.size, sym2.size);
                 len +%= lengthPercentage(sym2, mat2, sizes);
                 len +%= lengthCompoundName(mat1, name1, mat2, name2);
                 return len;
@@ -3431,27 +3580,18 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = writePercentage(ptr + 2, sym2, mat2, sizes);
                 ptr = writeCompoundName(ptr, mat1, name1, mat2, name2);
                 ptr[0] = '\n';
+                ptr += 1;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 1, buf, @src(), .{ sym1, mat1, name1, sizes, sym2, mat2, name2 });
+                    verify(ptr, buf, @src(), .{ sym1, mat1, name1, sizes, sym2, mat2, name2 });
                 }
-                return ptr + 1;
+                return ptr;
             }
             fn lengthName(style: []const u8, name: []const u8) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 const pos: usize = mem.indexOfLastEqualOne(u8, '.', name) orelse 0;
-                var to: usize = pos;
-                if (to > 80) {
-                    if (mem.indexOfFirstEqualOne(u8, '(', name[0..pos])) |end| {
-                        to = end;
-                    }
-                    while (to > 80) {
-                        to = mem.indexOfLastEqualOne(u8, '.', name[0..to]) orelse break;
-                    }
-                }
+                const to: usize = nameFromPosition(name, pos);
                 var len: usize = style.len +% to;
-                if (to != pos and name[to] == '(' and
-                    name[pos -% 1] == ')')
-                {
+                if (to != pos and name[to] == '(' and name[pos -% 1] == ')') {
                     len +%= 5;
                 }
                 len +%= name[pos..].len;
@@ -3460,9 +3600,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return len;
             }
-            fn writeName(buf: [*]u8, style: []const u8, name: []const u8) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
-                const pos: usize = mem.indexOfLastEqualOne(u8, '.', name) orelse 0;
+            fn nameFromPosition(name: []const u8, pos: usize) usize {
                 var to: usize = pos;
                 if (to > 80) {
                     if (mem.indexOfFirstEqualOne(u8, '(', name[0..pos])) |end| {
@@ -3472,6 +3610,12 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         to = mem.indexOfLastEqualOne(u8, '.', name[0..to]) orelse break;
                     }
                 }
+                return to;
+            }
+            fn writeName(buf: [*]u8, style: []const u8, name: []const u8) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                const pos: usize = mem.indexOfLastEqualOne(u8, '.', name) orelse 0;
+                var to: usize = nameFromPosition(name, pos);
                 var ptr: [*]u8 = fmt.strcpyEqu(buf, style);
                 ptr = fmt.strcpyEqu(ptr, name[0..to]);
                 if (to != pos and name[to] == '(' and name[pos -% 1] == ')') {
