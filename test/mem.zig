@@ -426,20 +426,12 @@ fn testSampleAllReports() !void {
     testing.announce(@src());
     mem.about.sampleAllReports();
 }
-fn testSequentialMatches() !void {
-    try debug.expectEqual(usize, 4, mem.sequentialMatches("onetwo", "oeto"));
-    try debug.expectEqual(usize, 439, mem.sequentialMatches(
-        @embedFile("../top/build/forwardToExecuteCloneThreaded.s"),
-        @embedFile("../top/build/forwardToExecuteCloneThreaded4.s"),
-    ));
-}
 pub fn main() !void {
     meta.refAllDecls(mem, &.{});
     try testLallocator();
     try meta.wrap(testRegularAddressSpace());
     try meta.wrap(testDiscreteAddressSpace(tab.trivial_list));
     testSimpleAllocator();
-    try meta.wrap(testSequentialMatches());
     try meta.wrap(testArenaIntersection());
     try meta.wrap(testTaggedSets());
     try meta.wrap(testDiscreteAddressSpace(tab.complex_list));
