@@ -2,10 +2,11 @@
 const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const sys = @import("../sys.zig");
-const mach = @import("../mach.zig");
+const proc = @import("../proc.zig");
+const bits = @import("../bits.zig");
 const meta = @import("../meta.zig");
+const math = @import("../math.zig");
 const algo = @import("../algo.zig");
-const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const container = @import("../container.zig");
 // start-document options-template.zig
@@ -226,16 +227,16 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             return allocator.ua_addr;
         }
         pub inline fn allocated_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unallocated_byte_address(allocator), mapped_byte_address(allocator));
+            return math.sub64(unallocated_byte_address(allocator), mapped_byte_address(allocator));
         }
         pub inline fn unallocated_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unmapped_byte_address(allocator), unallocated_byte_address(allocator));
+            return math.sub64(unmapped_byte_address(allocator), unallocated_byte_address(allocator));
         }
         pub inline fn mapped_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unmapped_byte_address(allocator), mapped_byte_address(allocator));
+            return math.sub64(unmapped_byte_address(allocator), mapped_byte_address(allocator));
         }
         pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
+            return math.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
         }
         pub inline fn alignAbove(allocator: *Allocator, comptime alignment: u64) u64 {
             allocator.ub_addr = bits.alignA64(allocator.ub_addr, alignment);
@@ -248,12 +249,12 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.require_filo_free) {
                 allocator.ub_addr = s_lb_addr;
             } else {
-                allocator.ub_addr = mach.cmov64(reusable(allocator), allocator.lb_addr, s_lb_addr);
+                allocator.ub_addr = math.cmov64(reusable(allocator), allocator.lb_addr, s_lb_addr);
             }
         }
         pub fn reset(allocator: *Allocator) void {
             if (!Allocator.allocator_spec.options.require_filo_free) {
-                allocator.ub_addr = mach.cmov64(reusable(allocator), allocator.lb_addr, allocator.ub_addr);
+                allocator.ub_addr = math.cmov64(reusable(allocator), allocator.lb_addr, allocator.ub_addr);
             }
         }
         pub fn map(allocator: *Allocator, s_bytes: u64) Allocator.allocate_void {
@@ -317,8 +318,8 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
         }
         pub fn unmapAbove(allocator: *Allocator, s_up_addr: u64) Allocator.deallocate_void {
             const t_ua_addr: u64 = bits.alignA64(s_up_addr, 4096);
-            const t_bytes: u64 = mach.sub64(t_ua_addr, mapped_byte_address(allocator));
-            const x_bytes: u64 = mach.sub64(mapped_byte_count(allocator), t_bytes);
+            const t_bytes: u64 = math.sub64(t_ua_addr, mapped_byte_address(allocator));
+            const x_bytes: u64 = math.sub64(mapped_byte_count(allocator), t_bytes);
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 debug.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
             }
@@ -329,8 +330,8 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
         }
         pub fn mapBelow(allocator: *Allocator, s_up_addr: u64) Allocator.allocate_void {
             const t_ua_addr: u64 = bits.alignA64(s_up_addr, 4096);
-            const x_bytes: u64 = mach.sub64(t_ua_addr, allocator.unmapped_byte_address());
-            const t_bytes: u64 = mach.add64(allocator.mapped_byte_count(), x_bytes);
+            const x_bytes: u64 = math.sub64(t_ua_addr, allocator.unmapped_byte_address());
+            const t_bytes: u64 = math.add64(allocator.mapped_byte_count(), x_bytes);
             if (Allocator.allocator_spec.options.max_acquire) |max| {
                 debug.assertBelowOrEqual(u64, x_bytes, max);
             }
@@ -1737,7 +1738,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 return buf.ptr[0..count];
             }
             const ret: []T = allocator.allocate(T, count);
-            mach.memcpy(@as([*]u8, @ptrCast(ret.ptr)), @as([*]const u8, @ptrCast(buf.ptr)), @sizeOf(T) *% buf.len);
+            math.memcpy(@as([*]u8, @ptrCast(ret.ptr)), @as([*]const u8, @ptrCast(buf.ptr)), @sizeOf(T) *% buf.len);
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= t_aligned_bytes -% s_aligned_bytes;
             }

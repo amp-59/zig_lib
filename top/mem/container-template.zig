@@ -6,7 +6,6 @@ const math = @import("../math.zig");
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const reference = @import("./ptr.zig");
-// start-document container-template.zig
 pub const Amount = union(enum) { // bytes: u64, count: u64 };
     bytes: u64,
     count: u64,
@@ -814,4 +813,3 @@ fn arenaIndex(comptime spec: anytype) ?u64 {
     }
     return null;
 }
-// finish-document container-template.zig
