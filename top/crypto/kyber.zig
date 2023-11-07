@@ -83,13 +83,14 @@ fn GenericKyber(comptime p: Params) type {
             pub const bytes_len: usize =
                 InnerSk.bytes_len +% InnerPk.bytes_len +% h_len +% shared_len;
             pub fn decaps(sk: SecretKey, ct: *const [ciphertext_len]u8) ![shared_len]u8 {
+                @setRuntimeSafety(builtin.is_safe);
                 const m2 = sk.sk.decrypt(ct);
                 var kr2: [64]u8 = undefined;
                 var g: hash.Sha3_512 = .{};
                 g.update(&m2);
                 g.update(&sk.hpk);
                 g.final(&kr2);
-                const ct2 = sk.pk.encrypt(&m2, kr2[32..64]);
+                const ct2: [ciphertext_len]u8 = sk.pk.encrypt(&m2, kr2[32..64]);
                 var h: hash.Sha3_256 = .{};
                 h.update(ct);
                 h.final(kr2[32..64]);
@@ -101,9 +102,21 @@ fn GenericKyber(comptime p: Params) type {
                 return ss;
             }
             pub fn toBytes(sk: SecretKey) [bytes_len]u8 {
-                return sk.sk.toBytes() ++ sk.pk.toBytes() ++ sk.hpk ++ sk.z;
+                @setRuntimeSafety(builtin.is_safe);
+                var buf: [bytes_len]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                ptr[0..InnerSk.bytes_len].* = sk.sk.toBytes();
+                ptr += InnerSk.bytes_len;
+                ptr[0..PublicKey.bytes_len].* = sk.pk.toBytes();
+                ptr += PublicKey.bytes_len;
+                ptr[0..h_len].* = sk.hpk;
+                ptr += h_len;
+                ptr[0..shared_len].* = sk.z;
+                ptr += shared_len;
+                return buf;
             }
             pub fn fromBytes(buf: *const [bytes_len]u8) !SecretKey {
+                @setRuntimeSafety(builtin.is_safe);
                 var ret: SecretKey = undefined;
                 comptime var s: usize = 0;
                 ret.sk = InnerSk.fromBytes(buf[s .. s +% InnerSk.bytes_len]);
@@ -160,7 +173,13 @@ fn GenericKyber(comptime p: Params) type {
                 return u.compress(p.du) ++ v.compress(p.dv);
             }
             fn toBytes(pk: InnerPk) [bytes_len]u8 {
-                return pk.th.toBytes() ++ pk.rho;
+                var buf: [bytes_len]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                ptr[0..V.bytes_len].* = pk.th.toBytes();
+                ptr += V.bytes_len;
+                ptr[0..32].* = pk.rho;
+                ptr += 32;
+                return buf;
             }
             fn fromBytes(buf: *const [bytes_len]u8) InnerPk {
                 var ret: InnerPk = undefined;

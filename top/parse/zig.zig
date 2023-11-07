@@ -1,4 +1,5 @@
 const abstract = .{};
+const debug = .{};
 const lit = .{};
 const fmt = .{};
 const zig = .{};
