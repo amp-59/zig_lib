@@ -1192,7 +1192,7 @@ pub const LoaderSpec = struct {
         print_final_summary2: bool = false,
         /// (.Devel) Test whether formatter expected length matches actual
         /// written length.
-        verify_lengths: bool = true,
+        verify_lengths: bool = false,
         /// Determines if and how symbols should be sorted.
         sort: bool = true,
         const SortingPolicy = enum {
