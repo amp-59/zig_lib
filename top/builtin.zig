@@ -125,7 +125,6 @@ pub const absolute_state = struct {
     pub const len: comptime_int = bits.alignA4096(size_of);
     const size_of: comptime_int = @sizeOf(AbsoluteState);
 };
-
 pub const trace: debug.Trace = define("trace", debug.Trace, zl_trace);
 pub const zl_trace: debug.Trace = .{
     .Error = true,

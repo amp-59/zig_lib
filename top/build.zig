@@ -299,7 +299,7 @@ pub const BuilderSpec = struct {
         show_waiting_tasks: bool = false,
         /// Never list special nodes among or allow explicit building.
         show_special: bool = false,
-        /// --
+        /// Show output paths in task summary.
         show_output_destination: bool = false,
         /// Report `open` Acquire and Error.
         open: debug.Logging.AttemptAcquireError = .{},
@@ -2040,7 +2040,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             if (have_lazy) {
                 if (node.flags.is_dynamic_extension) {
-                    node.sh.dl.load2(dest_pathname).entry()(node.sh.fp);
+                    node.sh.dl.load(dest_pathname).entry()(node.sh.fp);
                 }
             }
             return status(node.extra.execve_res);
@@ -2386,7 +2386,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const save: usize = allocator.next;
             var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(4097, 1));
             var len: usize = node.lists.paths[fs.path_idx].formatWriteBuf(buf) -% 1;
-            node.sh.dl.load2(buf[0..len :0])(node.sh.fp);
+            node.sh.dl.load(buf[0..len :0])(node.sh.fp);
             allocator.next = save;
             if (builder_spec.options.init_load_ok) {
                 assertExchange(node, .build, .ready, .finished, max_thread_count);
@@ -2434,10 +2434,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     node.flags.want_binary_analysis)
                 {
                     if (output.mode.kind == .regular and output.size != 0) {
-                        node.extra.binary_analysis.before = node.sh.dl.load2(output_pathname);
+                        node.extra.binary_analysis.before = node.sh.dl.load(output_pathname);
                     }
                     if (cached.mode.kind == .regular and cached.size != 0) {
-                        node.extra.binary_analysis.after = node.sh.dl.load2(cached_pathname);
+                        node.extra.binary_analysis.after = node.sh.dl.load(cached_pathname);
                     }
                 }
                 file.unlink(unlink, output_pathname);
@@ -2446,7 +2446,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.flags.want_binary_analysis)
             {
                 if (cached.mode.kind == .regular and cached.size != 0) {
-                    node.extra.binary_analysis.after = node.sh.dl.load2(cached_pathname);
+                    node.extra.binary_analysis.after = node.sh.dl.load(cached_pathname);
                 }
             }
         }
