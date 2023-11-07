@@ -5,6 +5,8 @@ const debug = zl.debug;
 
 pub usingnamespace zl.start;
 
+pub const runtime_assertions: bool = true;
+
 pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
     .index_type = u8,
     .label = "ld",
@@ -14,9 +16,16 @@ pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
     },
 });
 pub const DynamicLoader = zl.elf.GenericDynamicLoader(.{
-    .logging = .{},
-    .errors = .{},
+    .errors = zl.elf.spec.loader.errors.noexcept,
+    .options = .{ .verify_lengths = true },
     .AddressSpace = LoaderSpace,
+    .logging = .{
+        .show_insignificant = true,
+        .show_insignificant_additions = true,
+        .show_insignificant_deletions = true,
+        .show_insignificant_increases = true,
+        .show_insignificant_decreases = true,
+    },
 });
 const about_s: fmt.AboutSrc = fmt.about("xelf");
 const width: usize = fmt.aboutCentre(about_s);
@@ -48,8 +57,7 @@ fn findPath(allocator: *mem.SimpleAllocator, vars: [][*:0]u8, name: [:0]u8) ![:0
             const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(dirname.len, 1));
             var ptr: [*]u8 = fmt.strcpyEqu(buf, dirname);
             ptr[0] = '/';
-            ptr += 1;
-            ptr = fmt.strcpyEqu(ptr, name);
+            ptr = fmt.strcpyEqu(ptr + 1, name);
             ptr[1] = 0;
             return mem.terminate(buf, 0);
         }
@@ -58,23 +66,29 @@ fn findPath(allocator: *mem.SimpleAllocator, vars: [][*:0]u8, name: [:0]u8) ![:0
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var allocator: mem.SimpleAllocator = .{};
-    var info1: *DynamicLoader.Info = @ptrFromInt(8);
-    var info2: *DynamicLoader.Info = @ptrFromInt(8);
-    var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024 *% 1024, 1));
+    defer allocator.unmapAll();
+    var ei1: *DynamicLoader.ElfInfo = allocator.create(DynamicLoader.ElfInfo);
+    var ei2: *DynamicLoader.ElfInfo = allocator.create(DynamicLoader.ElfInfo);
+    var cmp: *DynamicLoader.compare.Cmp = allocator.create(DynamicLoader.compare.Cmp);
     var ld: DynamicLoader = .{};
+    defer ld.unmapAll();
     if (args.len == 1) {
         return;
     }
     if (args.len >= 2) {
-        const name: [:0]u8 = mem.terminate(args[1], 0);
-        info1 = try ld.load(try findPath(&allocator, vars, name));
+        ei1.* = try ld.load(try findPath(&allocator, vars, mem.terminate(args[1], 0)));
     }
     if (args.len == 2) {
-        debug.write(buf[0..fmt.strlen(DynamicLoader.compare.writeBinary(buf, info1, width), buf)]);
+        const len: usize = DynamicLoader.compare.lengthElf(cmp, &allocator, ei1, width);
+        const buf: []u8 = allocator.allocate(u8, len);
+        const end: [*]u8 = DynamicLoader.compare.writeElf(cmp, buf.ptr, ei1, width);
+        debug.assertEqual(usize, len, fmt.strlen(end, buf.ptr));
+        debug.write(buf[0..len]);
     } else for (args[2..]) |arg| {
         const name: [:0]u8 = mem.terminate(arg, 0);
-        info2 = try ld.load(try findPath(&allocator, vars, name));
-        debug.write(buf[0..fmt.strlen(DynamicLoader.compare.writeBinaryDifference(buf, info1, info2, width), buf)]);
-        info1 = info2;
+        ei2.* = try ld.load(try findPath(&allocator, vars, name));
+        var len: usize = DynamicLoader.compare.compareElfInfo(cmp, &allocator, ei1, ei2, 2);
+        const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len, 1));
+        fmt.print(DynamicLoader.compare.writeElfDifferences(cmp, buf, ei1, ei2, 2), buf);
     }
 }
