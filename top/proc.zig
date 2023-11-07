@@ -908,7 +908,7 @@ pub const about = opaque {
         @setRuntimeSafety(false);
         const if_signaled: bool = Status.ifSignaled(ret.status);
         const if_stopped: bool = Status.ifStopped(ret.status);
-        const code: u64 = if (if_signaled) Status.termSignal(ret.status) else if (if_stopped) Status.stopSignal(ret.status) else Status.exitStatus(ret.status);
+        const code: u64 = if (if_signaled) Status.termSignal(ret.status) else if (if_stopped) Status.termSignal(ret.status) else Status.exitStatus(ret.status);
         const status_s: []const u8 =
             if (if_signaled) ", sig=" else if (if_stopped) ", stop=" else ", exit=";
         var ud64: fmt.Ud64 = .{ .value = ret.pid };
