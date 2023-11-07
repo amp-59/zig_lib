@@ -23,7 +23,7 @@ pub const message_style: [:0]const u8 =
 pub const enable_debugging: bool =
     if (@hasDecl(root, "enable_debugging")) root.enable_debugging else false;
 pub const trace: zl.debug.Trace =
-    if (@hasDecl(root, "trace")) root.trace else zl.builtin.my_trace;
+    if (@hasDecl(root, "trace")) root.trace else zl.builtin.zl_trace;
 pub const logging_override: zl.debug.Logging.Override = .{
     .Attempt = enable_debugging,
     .Success = enable_debugging,
