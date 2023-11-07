@@ -2795,12 +2795,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     break;
                 }
             } else {
-                if (args.len == @as(usize, if (want_seed) 7 else 5)) {
-                    proc.exitErrorFault(error.NotACommand, "(null)", 2);
-                } else {
-                    proc.exitErrorFault(error.NotACommand, mem.terminate(args[args.len -% 1], 0), 2);
-                }
+                about.writeAndWalk(allocator, group, .basic);
             }
+            group.sh.dl.unmapAll();
         }
         pub const about = struct {
             fn writeWaitingOn(node: *Node, arena_index: AddressSpace.Index) void {
@@ -3199,7 +3196,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         if (node.extra.binary_analysis.before) |*before| {
                             len +%= DynamicLoader.compare.compareElfInfo(&node.extra.binary_analysis.cmp, allocator, before, after, width);
                         } else {
-                            len +%= DynamicLoader.compare.lengthElf2(&node.extra.binary_analysis.cmp, allocator, after, width);
+                            len +%= DynamicLoader.compare.lengthElf(&node.extra.binary_analysis.cmp, allocator, after, width);
                         }
                     }
                 }
