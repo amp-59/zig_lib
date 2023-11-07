@@ -279,14 +279,14 @@ pub fn Field(comptime params: FieldParams) type {
 }
 pub const arith = struct {
     pub const safety: bool = false;
-    pub export fn addcarryxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
+    pub fn addcarryxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
         const ov1 = @addWithOverflow(arg2, arg3);
         const ov2 = @addWithOverflow(ov1[0], arg1);
         out1.* = ov2[0];
         out2.* = ov1[1] | ov2[1];
     }
-    pub export fn subborrowxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
+    pub fn subborrowxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
         const ov1 = @subWithOverflow(arg2, arg3);
         const ov2 = @subWithOverflow(ov1[0], arg1);
@@ -301,7 +301,7 @@ pub const arith = struct {
     }
     pub fn cmovznzU64(out1: *u64, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
-        const mask = 0 -% @as(u64, arg1);
+        const mask: u64 = 0 -% @as(u64, arg1);
         out1.* = (mask & arg3) | ((~mask) & arg2);
     }
 };
