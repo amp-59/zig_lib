@@ -1447,8 +1447,8 @@ pub inline fn zero(comptime T: type, ptr: *T) void {
 pub inline fn unstable(comptime T: type, val: T) T {
     return @as(*const volatile T, @ptrCast(&val)).*;
 }
-pub const addrcpy = @as(*const fn (dest: usize, src: usize, len: usize) void, @ptrCast(&builtin.memcpy));
-pub const addrset = @as(*const fn (dest: usize, val: u8, count: usize) void, @ptrCast(&builtin.memset));
+pub const addrcpy = builtin.addrcpy;
+pub const addrset = builtin.addrset;
 pub fn terminate(ptr: [*]const u8, comptime value: u8) [:value]u8 {
     @setRuntimeSafety(false);
     var idx: usize = 0;
@@ -1571,7 +1571,6 @@ pub const SimpleAllocator = struct {
         }
         return ptr.* +% (size *% len);
     }
-
     pub fn allocateRaw(
         allocator: *Allocator,
         size_of: usize,

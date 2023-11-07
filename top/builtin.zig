@@ -144,9 +144,8 @@ pub const zl_trace: debug.Trace = .{
             .sidebar = "│",
             .sidebar_fill = ": ",
             .comment = "\x1b[2m",
-            .syntax = &.{
+            .syntax = if (true) &.{
                 .{ .style = "", .tags = parse.Token.Tag.other },
-                .{ .style = &tab.fx.color.fg.orange24, .tags = &.{ .number_literal, .null_literal, .bool_literal } },
                 .{ .style = &tab.fx.color.fg.yellow24, .tags = &.{.char_literal} },
                 .{ .style = &tab.fx.color.fg.light_green, .tags = parse.Token.Tag.strings },
                 .{ .style = &tab.fx.color.fg.bracket, .tags = parse.Token.Tag.bracket },
@@ -158,6 +157,14 @@ pub const zl_trace: debug.Trace = .{
                 .{ .style = &tab.fx.color.fg.white24, .tags = &.{.identifier_type_name} },
                 .{ .style = &tab.fx.color.fg.white24, .tags = parse.Token.Tag.cond_keyword ++ parse.Token.Tag.qual_keyword },
                 .{ .style = &tab.fx.color.fg.yellow24, .tags = parse.Token.Tag.goto_keyword ++ parse.Token.Tag.value_keyword },
+                .{ .style = &tab.fx.color.fg.orange24, .tags = &.{ .number_literal, .null_literal, .bool_literal } },
+            } else &.{
+                .{ .style = "\x1b[38;2;34;238;85m", .tags = &.{.string_literal} },
+                .{ .style = "\x1b[38;2;255;137;76m", .tags = &.{.builtin} },
+                .{ .style = "\x1b[38;2;238;51;51;1m", .tags = &.{.identifier_fn_name} },
+                .{ .style = "\x1b[38;2;102;136;255;1m", .tags = &.{.identifier_type_name} },
+                .{ .style = "\x1b[38;2;255;128;128m", .tags = &.{ .number_literal, .bool_literal, .null_literal } },
+                .{ .style = "\x1b[1m", .tags = parse.Token.Tag.keyword },
             },
         },
     },
@@ -190,9 +197,8 @@ pub fn ExternalError(comptime E: type) type {
 pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type {
     var error_set: type = error{};
     for (return_codes) |error_code| {
-        error_set = error_set || @Type(.{
-            .ErrorSet = &[1]zig.Type.Error{.{ .name = error_code.errorName() }},
-        });
+        error_set = error_set ||
+            @Type(.{ .ErrorSet = &[1]zig.Type.Error{.{ .name = error_code.errorName() }} });
     }
     return error_set;
 }
@@ -2224,6 +2230,8 @@ pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
 pub extern fn memmove(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
+pub extern fn addrcpy(dest: usize, src: usize, len: usize) callconv(.C) void;
+pub extern fn addrset(dest: usize, value: u8, len: usize) callconv(.C) void;
 extern fn __zig_probe_stack() callconv(.C) void;
 comptime {
     asm (
@@ -2237,6 +2245,7 @@ comptime {
 comptime {
     asm (
         \\.intel_syntax noprefix
+        \\addrset:
         \\memset:
         \\  mov     eax, esi
         \\  mov     rcx, rdx
@@ -2247,6 +2256,7 @@ comptime {
 comptime {
     asm (
         \\.intel_syntax noprefix
+        \\addrcpy:
         \\memcpy:
         \\  mov     rcx, rdx
         \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
