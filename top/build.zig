@@ -3226,7 +3226,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         if (node.extra.binary_analysis.before) |*before| {
                             ptr = DynamicLoader.compare.writeElfDifferences(&node.extra.binary_analysis.cmp, ptr, before, after, width);
                         } else {
-                            ptr = DynamicLoader.compare.writeElf2(&node.extra.binary_analysis.cmp, ptr, after, width);
+                            ptr = DynamicLoader.compare.writeElf(&node.extra.binary_analysis.cmp, ptr, after, width);
                         }
                     }
                 }
