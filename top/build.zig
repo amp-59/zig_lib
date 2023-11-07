@@ -626,9 +626,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         };
         const dyn_loader_errors = .{
             .open = builder_spec.errors.open,
-            .seek = builder_spec.errors.seek,
             .stat = builder_spec.errors.stat,
-            .read = builder_spec.errors.read,
             .close = builder_spec.errors.close,
             .map = builder_spec.errors.map,
             .unmap = builder_spec.errors.unmap,
