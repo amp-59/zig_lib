@@ -2,11 +2,7 @@ const zl = @import("../zig_lib.zig");
 const mem = zl.mem;
 const fmt = zl.fmt;
 const debug = zl.debug;
-
 pub usingnamespace zl.start;
-
-pub const runtime_assertions: bool = true;
-
 pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
     .index_type = u8,
     .label = "ld",
@@ -29,7 +25,6 @@ pub const DynamicLoader = zl.elf.GenericDynamicLoader(.{
 });
 const about_s: fmt.AboutSrc = fmt.about("xelf");
 const width: usize = fmt.aboutCentre(about_s);
-
 fn findPath(allocator: *mem.SimpleAllocator, vars: [][*:0]u8, name: [:0]u8) ![:0]u8 {
     if (name[0] == '/') {
         return name;
