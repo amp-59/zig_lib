@@ -12,9 +12,6 @@ const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
-pub const trace: debug.Trace = .{
-    .options = .{ .tokens = builtin.zl_trace.options.tokens },
-};
 const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0x40000000,
     .divisions = 128,
