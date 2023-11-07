@@ -75,6 +75,9 @@ pub inline fn ci(comptime value: comptime_int) []const u8 {
 }
 pub inline fn cx(comptime value: anytype) []const u8 {
     const S: type = @TypeOf(value);
+    if (@typeInfo(S) == .Fn) {
+        return cx(&value);
+    }
     const T = [:value]S;
     const s_type_name: []const u8 = @typeName(S);
     const t_type_name: []const u8 = @typeName(T);
