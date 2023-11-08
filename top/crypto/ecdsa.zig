@@ -136,15 +136,15 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
                 signer.h.final(h_slice);
                 const z: Curve.scalar.Scalar = reduceToScalar(scalar_encoded_len, h[0..scalar_encoded_len].*);
                 const k: Curve.scalar.Scalar = deterministicScalar(h_slice.*, signer.secret_key.bytes, signer.noise);
-                const p: Curve = try Curve.base_point.mul(k.toBytes(.Big), .Big);
-                const xs: Curve.scalar.CompressedScalar = p.affineCoordinates().x.toBytes(.Big);
+                const p: Curve = try Curve.base_point.mul(k.toBytes(.big), .big);
+                const xs: Curve.scalar.CompressedScalar = p.affineCoordinates().x.toBytes(.big);
                 const r: Curve.scalar.Scalar = reduceToScalar(Curve.Fe.encoded_len, xs);
                 if (r.isZero()) return error.IdentityElement;
                 const k_inv: Curve.scalar.Scalar = k.invert();
-                const zrs: Curve.scalar.Scalar = z.add(r.mul(try Curve.scalar.Scalar.fromBytes(signer.secret_key.bytes, .Big)));
+                const zrs: Curve.scalar.Scalar = z.add(r.mul(try Curve.scalar.Scalar.fromBytes(signer.secret_key.bytes, .big)));
                 const s: Curve.scalar.Scalar = k_inv.mul(zrs);
                 if (s.isZero()) return error.IdentityElement;
-                return Signature{ .r = r.toBytes(.Big), .s = s.toBytes(.Big) };
+                return Signature{ .r = r.toBytes(.big), .s = s.toBytes(.big) };
             }
         };
         pub const Verifier = struct {
@@ -154,8 +154,8 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
             public_key: PublicKey,
             const h_len: comptime_int = @max(Hash.len, Curve.scalar.encoded_len);
             fn init(sig: Signature, public_key: PublicKey) !Verifier {
-                const r: Curve.scalar.Scalar = try Curve.scalar.Scalar.fromBytes(sig.r, .Big);
-                const s: Curve.scalar.Scalar = try Curve.scalar.Scalar.fromBytes(sig.s, .Big);
+                const r: Curve.scalar.Scalar = try Curve.scalar.Scalar.fromBytes(sig.r, .big);
+                const s: Curve.scalar.Scalar = try Curve.scalar.Scalar.fromBytes(sig.s, .big);
                 if (r.isZero() or s.isZero()) return error.IdentityElement;
                 return .{ .h = Hash.init(), .r = r, .s = s, .public_key = public_key };
             }
@@ -170,11 +170,11 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
                     return error.SignatureVerificationFailed;
                 }
                 const s_inv: Curve.scalar.Scalar = verifier.s.invert();
-                const v1: Curve.scalar.CompressedScalar = z.mul(s_inv).toBytes(.Little);
-                const v2: Curve.scalar.CompressedScalar = verifier.r.mul(s_inv).toBytes(.Little);
-                const v1g: Curve = try Curve.base_point.mulPublic(v1, .Little);
-                const v2pk: Curve = try verifier.public_key.p.mulPublic(v2, .Little);
-                const vxs: Curve.scalar.CompressedScalar = v1g.add(v2pk).affineCoordinates().x.toBytes(.Big);
+                const v1: Curve.scalar.CompressedScalar = z.mul(s_inv).toBytes(.little);
+                const v2: Curve.scalar.CompressedScalar = verifier.r.mul(s_inv).toBytes(.little);
+                const v1g: Curve = try Curve.base_point.mulPublic(v1, .little);
+                const v2pk: Curve = try verifier.public_key.p.mulPublic(v2, .little);
+                const vxs: Curve.scalar.CompressedScalar = v1g.add(v2pk).affineCoordinates().x.toBytes(.big);
                 const vr: Curve.scalar.Scalar = reduceToScalar(Curve.Fe.encoded_len, vxs);
                 if (!verifier.r.equivalent(vr)) {
                     return error.SignatureVerificationFailed;
@@ -188,13 +188,13 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
             pub fn create(seed: ?[seed_len]u8) !KeyPair {
                 const h: [Hash.len]u8 = [1]u8{0} ** Hash.len;
                 const k0: [SecretKey.encoded_len]u8 = [1]u8{1} ** SecretKey.encoded_len;
-                const secret_key: Curve.scalar.CompressedScalar = deterministicScalar(h, k0, seed).toBytes(.Big);
+                const secret_key: Curve.scalar.CompressedScalar = deterministicScalar(h, k0, seed).toBytes(.big);
                 return fromSecretKey(.{ .bytes = secret_key });
             }
             pub fn fromSecretKey(secret_key: SecretKey) !KeyPair {
                 return .{
                     .secret_key = secret_key,
-                    .public_key = .{ .p = try Curve.base_point.mul(secret_key.bytes, .Big) },
+                    .public_key = .{ .p = try Curve.base_point.mul(secret_key.bytes, .big) },
                 };
             }
             pub fn sign(key_pair: KeyPair, msg: []const u8, noise: ?[noise_len]u8) !Signature {
@@ -213,12 +213,12 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
                 var xs: [64]u8 = undefined;
                 builtin.memcpy(xs[xs.len -% s.len ..].ptr, &s, unreduced_len);
                 builtin.memset(&xs, 0, xs.len -% s.len);
-                return Curve.scalar.Scalar.fromBytes64(xs, .Big);
+                return Curve.scalar.Scalar.fromBytes64(xs, .big);
             }
             var xs: [48]u8 = undefined;
             builtin.memcpy(xs[xs.len -% s.len ..].ptr, &s, unreduced_len);
             builtin.memset(&xs, 0, xs.len -% s.len);
-            return Curve.scalar.Scalar.fromBytes48(xs, .Big);
+            return Curve.scalar.Scalar.fromBytes48(xs, .big);
         }
         fn deterministicScalar(h: [Hash.len]u8, secret_key: Curve.scalar.CompressedScalar, noise: ?[noise_len]u8) Curve.scalar.Scalar {
             @setRuntimeSafety(false);
@@ -254,7 +254,7 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
                     Hmac.create(m_v, m_v, &k);
                     @memcpy(t[off..end], m_v[0 .. end -% off]);
                 }
-                if (Curve.scalar.Scalar.fromBytes(t, .Big)) |s| return s else |_| {}
+                if (Curve.scalar.Scalar.fromBytes(t, .big)) |s| return s else |_| {}
                 m_i.* = 0x00;
                 Hmac.create(&k, m[0 .. m_v.len +% 1], &k);
                 Hmac.create(m_v, m_v, &k);

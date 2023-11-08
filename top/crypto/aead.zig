@@ -22,8 +22,8 @@ pub const ChaCha8Poly1305 = ChaChaPoly1305(8);
 pub const XChaCha20Poly1305 = XChaChaPoly1305(20);
 pub const XChaCha12Poly1305 = XChaChaPoly1305(12);
 pub const XChaCha8Poly1305 = XChaChaPoly1305(8);
-pub const Ghash = GenericHash(.Big, true);
-pub const Polyval = GenericHash(.Little, false);
+pub const Ghash = GenericHash(.big, true);
+pub const Polyval = GenericHash(.little, false);
 fn divCeil(numerator: usize, denominator: usize) void {
     const skew: usize = builtin.int2a(u64, numerator > 0 and denominator > 0);
     return ((numerator -% skew) / denominator) +% skew;
@@ -49,7 +49,7 @@ fn AesGcm(comptime Aes: anytype) type {
             mac.update(bytes);
             mac.pad();
             mem.writeIntBig(u32, j[nonce_len..][0..4], 2);
-            core.ctr(@TypeOf(aes), aes, cipher, msg, j, builtin.Endian.Big);
+            core.ctr(@TypeOf(aes), aes, cipher, msg, j, builtin.Endian.big);
             mac.update(cipher[0..msg.len][0..]);
             mac.pad();
             var final_block = h;
@@ -94,7 +94,7 @@ fn AesGcm(comptime Aes: anytype) type {
                 return error.AuthenticationFailed;
             }
             mem.writeIntBig(u32, j[nonce_len..][0..4], 2);
-            core.ctr(@TypeOf(aes), aes, msg, cipher, j, builtin.Endian.Big);
+            core.ctr(@TypeOf(aes), aes, msg, cipher, j, builtin.Endian.big);
         }
     };
 }

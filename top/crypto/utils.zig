@@ -52,7 +52,7 @@ pub fn timingSafeCompare(comptime T: type, a: []const T, b: []const T, endian: b
     const Cext = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = bits +% 1 } });
     var gt: T = 0;
     var eq: T = 1;
-    if (endian == .Little) {
+    if (endian == .little) {
         var idx = a.len;
         while (idx != 0) {
             idx -%= 1;
@@ -81,7 +81,7 @@ pub fn timingSafeAdd(comptime T: type, a: []const T, b: []const T, result: []T, 
     const len: usize = a.len;
     debug.assert(len == b.len and len == result.len);
     var carry: u1 = 0;
-    if (endian == .Little) {
+    if (endian == .little) {
         var idx: usize = 0;
         while (idx < len) : (idx +%= 1) {
             const ov1 = @addWithOverflow(a[idx], b[idx]);
@@ -107,7 +107,7 @@ pub fn timingSafeSub(comptime T: type, a: []const T, b: []const T, result: []T, 
     const len = a.len;
     debug.assert(len == b.len and len == result.len);
     var borrow: u1 = 0;
-    if (endian == .Little) {
+    if (endian == .little) {
         var idx: usize = 0;
         while (idx < len) : (idx +%= 1) {
             const ov1 = @subWithOverflow(a[idx], b[idx]);

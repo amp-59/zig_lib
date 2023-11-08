@@ -34,13 +34,13 @@ pub fn Field(comptime params: FieldParams) type {
         };
         /// Reject non-canonical encodings of an element.
         pub fn rejectNonCanonical(s_: [encoded_len]u8, endian: builtin.Endian) !void {
-            var s = if (endian == .Little) s_ else orderSwap(s_);
+            var s = if (endian == .little) s_ else orderSwap(s_);
             const field_order_s = comptime fos: {
                 var fos: [encoded_len]u8 = undefined;
                 mem.writeIntLittle(@Type(.{ .Int = .{ .signedness = .unsigned, .bits = encoded_len * 8 } }), &fos, field_order);
                 break :fos fos;
             };
-            if (utils.timingSafeCompare(u8, &s, &field_order_s, .Little) != .lt) {
+            if (utils.timingSafeCompare(u8, &s, &field_order_s, .little) != .lt) {
                 return error.NonCanonical;
             }
         }
@@ -52,8 +52,8 @@ pub fn Field(comptime params: FieldParams) type {
         }
         /// Unpack a field element.
         pub fn fromBytes(s_: [encoded_len]u8, endian: builtin.Endian) !Fe {
-            var s = if (endian == .Little) s_ else orderSwap(s_);
-            try rejectNonCanonical(s, .Little);
+            var s = if (endian == .little) s_ else orderSwap(s_);
+            try rejectNonCanonical(s, .little);
             var limbs_z: params.fiat.NonMontgomeryDomainFieldElement = undefined;
             params.fiat.fromBytes(&limbs_z, s);
             var limbs: params.fiat.MontgomeryDomainFieldElement = undefined;
@@ -66,7 +66,7 @@ pub fn Field(comptime params: FieldParams) type {
             params.fiat.fromMontgomery(&limbs_z, fe.limbs);
             var s: [encoded_len]u8 = undefined;
             params.fiat.toBytes(&s, limbs_z);
-            return if (endian == .Little) s else orderSwap(s);
+            return if (endian == .little) s else orderSwap(s);
         }
         /// Element as an integer.
         pub const IntRepr = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = params.field_bits } });
@@ -74,11 +74,11 @@ pub fn Field(comptime params: FieldParams) type {
         pub fn fromInt(comptime x: IntRepr) !Fe {
             var s: [encoded_len]u8 = undefined;
             mem.writeIntLittle(IntRepr, &s, x);
-            return fromBytes(s, .Little);
+            return fromBytes(s, .little);
         }
         /// Return the field element as an integer.
         pub fn toInt(fe: Fe) IntRepr {
-            const s = fe.toBytes(.Little);
+            const s = fe.toBytes(.little);
             return mem.readIntLittle(IntRepr, &s);
         }
         /// Return true if the field element is zero.
@@ -93,7 +93,7 @@ pub fn Field(comptime params: FieldParams) type {
         }
         /// Return true if the element is odd.
         pub fn isOdd(fe: Fe) bool {
-            const s = fe.toBytes(.Little);
+            const s = fe.toBytes(.little);
             return @as(u1, @truncate(s[0])) != 0;
         }
         /// Conditonally replace a field element with `a` if `c` is positive.

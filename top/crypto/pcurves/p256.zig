@@ -95,15 +95,15 @@ pub const P256 = struct {
             },
             2, 3 => {
                 if (encoded.len != 32) return error.InvalidEncoding;
-                const x = try Fe.fromBytes(encoded[0..32].*, .Big);
+                const x = try Fe.fromBytes(encoded[0..32].*, .big);
                 const y_is_odd = (encoding_type == 3);
                 const y = try recoverY(x, y_is_odd);
                 return P256{ .x = x, .y = y };
             },
             4 => {
                 if (encoded.len != 64) return error.InvalidEncoding;
-                const x = try Fe.fromBytes(encoded[0..32].*, .Big);
-                const y = try Fe.fromBytes(encoded[32..64].*, .Big);
+                const x = try Fe.fromBytes(encoded[0..32].*, .big);
+                const y = try Fe.fromBytes(encoded[32..64].*, .big);
                 return P256.fromAffineCoordinates(.{ .x = x, .y = y });
             },
             else => return error.InvalidEncoding,
@@ -114,7 +114,7 @@ pub const P256 = struct {
         var out: [33]u8 = undefined;
         const xy = p.affineCoordinates();
         out[0] = if (xy.y.isOdd()) 3 else 2;
-        out[1..].* = xy.x.toBytes(.Big);
+        out[1..].* = xy.x.toBytes(.big);
         return out;
     }
     /// Serialize a point using the uncompressed SEC-1 format.
@@ -122,14 +122,14 @@ pub const P256 = struct {
         var out: [65]u8 = undefined;
         out[0] = 4;
         const xy = p.affineCoordinates();
-        out[1..33].* = xy.x.toBytes(.Big);
-        out[33..65].* = xy.y.toBytes(.Big);
+        out[1..33].* = xy.x.toBytes(.big);
+        out[33..65].* = xy.y.toBytes(.big);
         return out;
     }
     /// Return a random point.
     pub fn random() P256 {
-        const n = scalar.randomX(.Little);
-        return base_point.mul(n, .Little) catch undefined;
+        const n = scalar.randomX(.little);
+        return base_point.mul(n, .little) catch undefined;
     }
     /// Flip the sign of the X coordinate.
     pub fn neg(p: P256) P256 {
@@ -383,7 +383,7 @@ pub const P256 = struct {
     /// Multiply an elliptic curve point by a scalar.
     /// Return error.IdentityElement if the result is the identity element.
     pub fn mul(p: P256, s_: [32]u8, endian: builtin.Endian) errors.IdentityElementError!P256 {
-        const s = if (endian == .Little) s_ else Fe.orderSwap(s_);
+        const s = if (endian == .little) s_ else Fe.orderSwap(s_);
         if (p.is_base) {
             return pcMul16(&tab.base_point_pc_p256, s, false);
         }
@@ -394,7 +394,7 @@ pub const P256 = struct {
     /// Multiply an elliptic curve point by a *PUBLIC* scalar *IN VARIABLE TIME*
     /// This can be used for signature verification.
     pub fn mulPublic(p: P256, s_: [32]u8, endian: builtin.Endian) errors.IdentityElementError!P256 {
-        const s = if (endian == .Little) s_ else Fe.orderSwap(s_);
+        const s = if (endian == .little) s_ else Fe.orderSwap(s_);
         if (p.is_base) {
             return pcMul16(&tab.base_point_pc_p256, s, true);
         }
@@ -405,8 +405,8 @@ pub const P256 = struct {
     /// Double-base multiplication of public parameters - Compute (p1*s1)+(p2*s2) *IN VARIABLE TIME*
     /// This can be used for signature verification.
     pub fn mulDoubleBasePublic(p1: P256, s1_: [32]u8, p2: P256, s2_: [32]u8, endian: builtin.Endian) errors.IdentityElementError!P256 {
-        const s1 = if (endian == .Little) s1_ else Fe.orderSwap(s1_);
-        const s2 = if (endian == .Little) s2_ else Fe.orderSwap(s2_);
+        const s1 = if (endian == .little) s1_ else Fe.orderSwap(s1_);
+        const s2 = if (endian == .little) s2_ else Fe.orderSwap(s2_);
         try p1.rejectIdentity();
         var pc1_array: [9]P256 = undefined;
         const pc1 = if (p1.is_base) tab.base_point_pc_p256[0..9] else pc: {

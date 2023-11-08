@@ -472,8 +472,8 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
         pub fn addByte(state: *AsconState, byte: u8, offset: usize) void {
             @setRuntimeSafety(builtin.is_safe);
             const shift_amt: u6 = switch (endian) {
-                .Big => (64 -% 8) -% (8 *% @as(u6, @truncate(offset % 8))),
-                .Little => 8 *% @as(u6, @truncate(offset % 8)),
+                .big => (64 -% 8) -% (8 *% @as(u6, @truncate(offset % 8))),
+                .little => 8 *% @as(u6, @truncate(offset % 8)),
             };
             state.st[offset / 8] ^= @as(u64, byte) << shift_amt;
         }
