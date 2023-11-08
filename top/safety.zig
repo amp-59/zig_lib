@@ -34,9 +34,9 @@ pub fn panicMismatchedMemcpyArgumentLengths(
     @setRuntimeSafety(false);
     var buf: [256]u8 = undefined;
     buf[0..65].* = "@memcpy destination and source with mismatched lengths: expected ".*;
-    var ptr: [*]u8 = fmt.writeUdsize(buf[65..], dest_len);
+    var ptr: [*]u8 = fmt.Udsize.write(buf[65..], dest_len);
     ptr[0..8].* = ", found ".*;
-    ptr = fmt.writeUdsize(ptr + 8, src_len);
+    ptr = fmt.Udsize.write(ptr + 8, src_len);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicUnwrappedError(
@@ -63,13 +63,13 @@ pub fn panicAccessOutOfBounds(
     var ptr: [*]u8 = &buf;
     if (length == 0) {
         ptr[0..10].* = "indexing (".*;
-        ptr = fmt.writeUdsize(ptr + 10, index);
+        ptr = fmt.Udsize.write(ptr + 10, index);
         ptr = fmt.strcpyEqu(ptr, ") into empty array");
     } else {
         ptr[0..6].* = "index ".*;
-        ptr = fmt.writeUdsize(ptr + 6, index);
+        ptr = fmt.Udsize.write(ptr + 6, index);
         ptr[0..15].* = " above maximum ".*;
-        ptr = fmt.writeUdsize(ptr + 15, length -% 1);
+        ptr = fmt.Udsize.write(ptr + 15, length -% 1);
     }
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
@@ -83,9 +83,9 @@ pub fn panicAccessOutOfOrder(
     @setRuntimeSafety(false);
     var buf: [256]u8 = undefined;
     buf[0..12].* = "start index ".*;
-    var ptr: [*]u8 = fmt.writeUdsize(buf[12..], start);
+    var ptr: [*]u8 = fmt.Udsize.write(buf[12..], start);
     ptr[0..26].* = " is larger than end index ".*;
-    ptr = fmt.writeUdsize(ptr + 26, finish);
+    ptr = fmt.Udsize.write(ptr + 26, finish);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicMemcpyArgumentsAlias(
@@ -100,9 +100,9 @@ pub fn panicMemcpyArgumentsAlias(
     @setRuntimeSafety(false);
     var buf: [256]u8 = undefined;
     buf[0..32].* = "@memcpy arguments alias between ".*;
-    var ptr: [*]u8 = fmt.writeUxsize(buf[32..], @max(dest_start, src_start));
+    var ptr: [*]u8 = fmt.Uxsize.write(buf[32..], @max(dest_start, src_start));
     ptr[0..5].* = " and ".*;
-    ptr = fmt.writeUxsize(ptr + 5, @min(dest_start +% dest_len, src_start +% src_len));
+    ptr = fmt.Uxsize.write(ptr + 5, @min(dest_start +% dest_len, src_start +% src_len));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicMismatchedForLoopCaptureLengths(
@@ -115,9 +115,9 @@ pub fn panicMismatchedForLoopCaptureLengths(
     @setRuntimeSafety(false);
     var buf: [256]u8 = undefined;
     buf[0..58].* = "multi-for loop captures with mismatched lengths: expected ".*;
-    var ptr: [*]u8 = fmt.writeUdsize(buf[58..], prev_len);
+    var ptr: [*]u8 = fmt.Udsize.write(buf[58..], prev_len);
     ptr[0..8].* = ", found ".*;
-    ptr = fmt.writeUdsize(ptr + 8, next_len);
+    ptr = fmt.Udsize.write(ptr + 8, next_len);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicAccessInactiveField(
@@ -154,15 +154,15 @@ pub fn panicCastToPointerFromInvalid(
         ptr += 30;
     } else {
         ptr[0..7].* = "*align(".*;
-        ptr = fmt.writeUdsize(ptr + 7, alignment);
+        ptr = fmt.Udsize.write(ptr + 7, alignment);
         ptr[0..2].* = ") ".*;
         ptr = fmt.strcpyEqu(ptr + 2, type_name);
         ptr[0..23].* = ": incorrect alignment: ".*;
-        ptr = fmt.writeUxsize(ptr + 23, address);
+        ptr = fmt.Uxsize.write(ptr + 23, address);
         ptr[0..4].* = " == ".*;
-        ptr = fmt.writeUxsize(ptr + 4, address & ~(alignment -% 1));
+        ptr = fmt.Uxsize.write(ptr + 4, address & ~(alignment -% 1));
         ptr[0] = '+';
-        ptr = fmt.writeUxsize(ptr + 1, address & (alignment -% 1));
+        ptr = fmt.Uxsize.write(ptr + 1, address & (alignment -% 1));
     }
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
@@ -179,7 +179,7 @@ pub fn panicCastToTagFromInvalid(
     buf[0..8].* = "cast to ".*;
     var ptr: [*]u8 = fmt.strcpyEqu(buf[8..], type_name);
     ptr[0..20].* = " from invalid value ".*;
-    ptr = fmt.writeUdsize(ptr + 20, value);
+    ptr = fmt.Udsize.write(ptr + 20, value);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicCastToIntFromInvalid(
