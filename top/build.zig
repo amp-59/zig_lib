@@ -422,13 +422,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     // Enables --trace command line option.
     comptime var have_trace: bool = builder_spec.options.trace_command != null;
     const map = .{ .errors = builder_spec.errors.map, .logging = builder_spec.logging.map };
-    const read = .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
     const stat = .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
     const link = .{ .errors = builder_spec.errors.link, .logging = builder_spec.logging.link };
-    const dup3 = .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
-    const poll = .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
     const pipe = .{ .errors = builder_spec.errors.pipe, .logging = builder_spec.logging.pipe };
     const open = .{ .errors = builder_spec.errors.open, .logging = builder_spec.logging.open };
+    const read = .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
+    const dup3 = .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
+    const poll = .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
     const clock = .{ .errors = builder_spec.errors.clock };
     const sleep = .{ .errors = builder_spec.errors.sleep };
     const mkdir = .{ .errors = builder_spec.errors.mkdir, .logging = builder_spec.logging.mkdir };
@@ -479,9 +479,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         /// Function pointers for JIT compiled functions.
         fp: *FunctionPointers,
         /// Number of errors since processing user command line.
-        errors: u8,
+        errors: usize,
         /// Number of tasks finished.
-        finished: u64,
+        finished: usize,
         pub const Shared = @This();
         pub const FunctionPointers = struct {
             proc: struct {
@@ -855,7 +855,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     } else if (disp == 8) {
                         const val: *isize = @ptrFromInt(addr);
                         ptr[0..15].* = "\":comptime_int=".*;
-                        ptr = fmt.writeId64(ptr + 15, val.*);
+                        ptr = fmt.Id64.write(ptr + 15, val.*);
                     } else if (disp == 16) {
                         const fp: **fn (*anyopaque, [*]u8) usize = @ptrFromInt(addr);
                         const val: *anyopaque = @ptrFromInt(addr +% 8);
