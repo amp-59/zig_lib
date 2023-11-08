@@ -485,6 +485,13 @@ fn testStringLitChar() void {
     }
     debug.write("}\n");
 }
+fn testCaseFormat() !void {
+    var buf: [4096]u8 = undefined;
+    var end: [*]u8 = fmt.UpperCaseFormat.write(&buf, "idhiIHFGshdFshaFISahIFfhIAUFsUAIHF");
+    try testing.expectEqualString("IDHIIHFGSHDFSHAFISAHIFFHIAUFSUAIHF", fmt.slice(end, &buf));
+    end = fmt.LowerCaseFormat.write(&buf, "idhiIHFGshdFshaFISahIFfhIAUFsUAIHF");
+    try testing.expectEqualString("idhiihfgshdfshafisahiffhiaufsuaihf", fmt.slice(end, &buf));
+}
 fn testRenderHighlight() !void {
     const src: [:0]const u8 = @embedFile(@src().file["test/".len..]);
     var buf: [src.len * 16]u8 = undefined;
@@ -496,6 +503,7 @@ pub fn main() !void {
     try testBytesFormat();
     try testBytesToHex();
     try testHexToBytes();
+    try testCaseFormat();
     try testGenericRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
