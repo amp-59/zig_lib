@@ -303,7 +303,7 @@ pub const BuilderSpec = struct {
         show_output_destination: bool = false,
         /// Print the number of succeeded tasks and the number of errors
         /// following each command.
-        show_high_level_summary: bool = false,
+        show_high_level_summary: bool = true,
         /// Report `open` Acquire and Error.
         open: debug.Logging.AttemptAcquireError = .{},
         /// Report `seek` Acquire and Error.
