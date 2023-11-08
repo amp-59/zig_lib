@@ -170,7 +170,7 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.cpu) |cpu| {
         ptr[0..6].* = "-mcpu\x00".*;
         ptr += 6;
-        ptr = fmt.strcpyEqu(ptr, cpu);
+        ptr = fmt.strcpyEqu(ptr, @tagName(cpu));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -758,7 +758,7 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
         len +%= 9 +% target.len;
     }
     if (cmd.cpu) |cpu| {
-        len +%= 7 +% cpu.len;
+        len +%= 7 +% @tagName(cpu).len;
     }
     if (cmd.code_model) |code_model| {
         len +%= 10 +% @tagName(code_model).len;

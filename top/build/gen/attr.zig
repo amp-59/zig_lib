@@ -210,8 +210,11 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "cpu",
             .string = "-mcpu",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
+            .tag = .{ .optional_field = .tag },
+            .type = .{
+                .store = &types.ProtoTypeDescr.init(?types.CPU),
+                .parse = &types.ProtoTypeDescr.init(types.CPU),
+            },
             .descr = &.{"Specify target CPU and feature set"},
         },
         .{
@@ -1629,6 +1632,7 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
             .tag = .{ .optional_field = .tag },
             .type = .{ .store = &types.ProtoTypeDescr.init(?enum(u2) { Default = 0, Disable = 1, Apple = 2, Dwarf = 3 }) },
         },
+
         .{
             .name = "adce_remove_control_flow",
             .string = "--adce-remove-control-flow",

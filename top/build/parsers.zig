@@ -157,10 +157,192 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-mcpu", arg)) {
             args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.cpu = mem.terminate(args[args_idx], 0);
-            } else {
+            if (args_idx == args_len) {
                 return;
+            }
+            arg = mem.terminate(args[args_idx], 0);
+            if (mem.testEqualString("alderlake", arg)) {
+                cmd.cpu = .alderlake;
+            } else if (mem.testEqualString("amdfam10", arg)) {
+                cmd.cpu = .amdfam10;
+            } else if (mem.testEqualString("athlon", arg)) {
+                cmd.cpu = .athlon;
+            } else if (mem.testEqualString("athlon64", arg)) {
+                cmd.cpu = .athlon64;
+            } else if (mem.testEqualString("athlon64_sse3", arg)) {
+                cmd.cpu = .athlon64_sse3;
+            } else if (mem.testEqualString("athlon_4", arg)) {
+                cmd.cpu = .athlon_4;
+            } else if (mem.testEqualString("athlon_fx", arg)) {
+                cmd.cpu = .athlon_fx;
+            } else if (mem.testEqualString("athlon_mp", arg)) {
+                cmd.cpu = .athlon_mp;
+            } else if (mem.testEqualString("athlon_tbird", arg)) {
+                cmd.cpu = .athlon_tbird;
+            } else if (mem.testEqualString("athlon_xp", arg)) {
+                cmd.cpu = .athlon_xp;
+            } else if (mem.testEqualString("atom", arg)) {
+                cmd.cpu = .atom;
+            } else if (mem.testEqualString("atom_sse4_2_movbe", arg)) {
+                cmd.cpu = .atom_sse4_2_movbe;
+            } else if (mem.testEqualString("barcelona", arg)) {
+                cmd.cpu = .barcelona;
+            } else if (mem.testEqualString("bdver1", arg)) {
+                cmd.cpu = .bdver1;
+            } else if (mem.testEqualString("bdver2", arg)) {
+                cmd.cpu = .bdver2;
+            } else if (mem.testEqualString("bdver3", arg)) {
+                cmd.cpu = .bdver3;
+            } else if (mem.testEqualString("bdver4", arg)) {
+                cmd.cpu = .bdver4;
+            } else if (mem.testEqualString("bonnell", arg)) {
+                cmd.cpu = .bonnell;
+            } else if (mem.testEqualString("broadwell", arg)) {
+                cmd.cpu = .broadwell;
+            } else if (mem.testEqualString("btver1", arg)) {
+                cmd.cpu = .btver1;
+            } else if (mem.testEqualString("btver2", arg)) {
+                cmd.cpu = .btver2;
+            } else if (mem.testEqualString("c3", arg)) {
+                cmd.cpu = .c3;
+            } else if (mem.testEqualString("c3_2", arg)) {
+                cmd.cpu = .c3_2;
+            } else if (mem.testEqualString("cannonlake", arg)) {
+                cmd.cpu = .cannonlake;
+            } else if (mem.testEqualString("cascadelake", arg)) {
+                cmd.cpu = .cascadelake;
+            } else if (mem.testEqualString("cooperlake", arg)) {
+                cmd.cpu = .cooperlake;
+            } else if (mem.testEqualString("core2", arg)) {
+                cmd.cpu = .core2;
+            } else if (mem.testEqualString("corei7", arg)) {
+                cmd.cpu = .corei7;
+            } else if (mem.testEqualString("emeraldrapids", arg)) {
+                cmd.cpu = .emeraldrapids;
+            } else if (mem.testEqualString("generic", arg)) {
+                cmd.cpu = .generic;
+            } else if (mem.testEqualString("geode", arg)) {
+                cmd.cpu = .geode;
+            } else if (mem.testEqualString("goldmont", arg)) {
+                cmd.cpu = .goldmont;
+            } else if (mem.testEqualString("goldmont_plus", arg)) {
+                cmd.cpu = .goldmont_plus;
+            } else if (mem.testEqualString("grandridge", arg)) {
+                cmd.cpu = .grandridge;
+            } else if (mem.testEqualString("graniterapids", arg)) {
+                cmd.cpu = .graniterapids;
+            } else if (mem.testEqualString("graniterapids_d", arg)) {
+                cmd.cpu = .graniterapids_d;
+            } else if (mem.testEqualString("haswell", arg)) {
+                cmd.cpu = .haswell;
+            } else if (mem.testEqualString("i386", arg)) {
+                cmd.cpu = .i386;
+            } else if (mem.testEqualString("i486", arg)) {
+                cmd.cpu = .i486;
+            } else if (mem.testEqualString("i586", arg)) {
+                cmd.cpu = .i586;
+            } else if (mem.testEqualString("i686", arg)) {
+                cmd.cpu = .i686;
+            } else if (mem.testEqualString("icelake_client", arg)) {
+                cmd.cpu = .icelake_client;
+            } else if (mem.testEqualString("icelake_server", arg)) {
+                cmd.cpu = .icelake_server;
+            } else if (mem.testEqualString("ivybridge", arg)) {
+                cmd.cpu = .ivybridge;
+            } else if (mem.testEqualString("k6", arg)) {
+                cmd.cpu = .k6;
+            } else if (mem.testEqualString("k6_2", arg)) {
+                cmd.cpu = .k6_2;
+            } else if (mem.testEqualString("k6_3", arg)) {
+                cmd.cpu = .k6_3;
+            } else if (mem.testEqualString("k8", arg)) {
+                cmd.cpu = .k8;
+            } else if (mem.testEqualString("k8_sse3", arg)) {
+                cmd.cpu = .k8_sse3;
+            } else if (mem.testEqualString("knl", arg)) {
+                cmd.cpu = .knl;
+            } else if (mem.testEqualString("knm", arg)) {
+                cmd.cpu = .knm;
+            } else if (mem.testEqualString("lakemont", arg)) {
+                cmd.cpu = .lakemont;
+            } else if (mem.testEqualString("meteorlake", arg)) {
+                cmd.cpu = .meteorlake;
+            } else if (mem.testEqualString("nehalem", arg)) {
+                cmd.cpu = .nehalem;
+            } else if (mem.testEqualString("nocona", arg)) {
+                cmd.cpu = .nocona;
+            } else if (mem.testEqualString("opteron", arg)) {
+                cmd.cpu = .opteron;
+            } else if (mem.testEqualString("opteron_sse3", arg)) {
+                cmd.cpu = .opteron_sse3;
+            } else if (mem.testEqualString("penryn", arg)) {
+                cmd.cpu = .penryn;
+            } else if (mem.testEqualString("pentium", arg)) {
+                cmd.cpu = .pentium;
+            } else if (mem.testEqualString("pentium2", arg)) {
+                cmd.cpu = .pentium2;
+            } else if (mem.testEqualString("pentium3", arg)) {
+                cmd.cpu = .pentium3;
+            } else if (mem.testEqualString("pentium3m", arg)) {
+                cmd.cpu = .pentium3m;
+            } else if (mem.testEqualString("pentium4", arg)) {
+                cmd.cpu = .pentium4;
+            } else if (mem.testEqualString("pentium_m", arg)) {
+                cmd.cpu = .pentium_m;
+            } else if (mem.testEqualString("pentium_mmx", arg)) {
+                cmd.cpu = .pentium_mmx;
+            } else if (mem.testEqualString("pentiumpro", arg)) {
+                cmd.cpu = .pentiumpro;
+            } else if (mem.testEqualString("prescott", arg)) {
+                cmd.cpu = .prescott;
+            } else if (mem.testEqualString("raptorlake", arg)) {
+                cmd.cpu = .raptorlake;
+            } else if (mem.testEqualString("rocketlake", arg)) {
+                cmd.cpu = .rocketlake;
+            } else if (mem.testEqualString("sandybridge", arg)) {
+                cmd.cpu = .sandybridge;
+            } else if (mem.testEqualString("sapphirerapids", arg)) {
+                cmd.cpu = .sapphirerapids;
+            } else if (mem.testEqualString("sierraforest", arg)) {
+                cmd.cpu = .sierraforest;
+            } else if (mem.testEqualString("silvermont", arg)) {
+                cmd.cpu = .silvermont;
+            } else if (mem.testEqualString("skx", arg)) {
+                cmd.cpu = .skx;
+            } else if (mem.testEqualString("skylake", arg)) {
+                cmd.cpu = .skylake;
+            } else if (mem.testEqualString("skylake_avx512", arg)) {
+                cmd.cpu = .skylake_avx512;
+            } else if (mem.testEqualString("slm", arg)) {
+                cmd.cpu = .slm;
+            } else if (mem.testEqualString("tigerlake", arg)) {
+                cmd.cpu = .tigerlake;
+            } else if (mem.testEqualString("tremont", arg)) {
+                cmd.cpu = .tremont;
+            } else if (mem.testEqualString("westmere", arg)) {
+                cmd.cpu = .westmere;
+            } else if (mem.testEqualString("winchip2", arg)) {
+                cmd.cpu = .winchip2;
+            } else if (mem.testEqualString("winchip_c6", arg)) {
+                cmd.cpu = .winchip_c6;
+            } else if (mem.testEqualString("x86_64", arg)) {
+                cmd.cpu = .x86_64;
+            } else if (mem.testEqualString("x86_64_v2", arg)) {
+                cmd.cpu = .x86_64_v2;
+            } else if (mem.testEqualString("x86_64_v3", arg)) {
+                cmd.cpu = .x86_64_v3;
+            } else if (mem.testEqualString("x86_64_v4", arg)) {
+                cmd.cpu = .x86_64_v4;
+            } else if (mem.testEqualString("yonah", arg)) {
+                cmd.cpu = .yonah;
+            } else if (mem.testEqualString("znver1", arg)) {
+                cmd.cpu = .znver1;
+            } else if (mem.testEqualString("znver2", arg)) {
+                cmd.cpu = .znver2;
+            } else if (mem.testEqualString("znver3", arg)) {
+                cmd.cpu = .znver3;
+            } else if (mem.testEqualString("znver4", arg)) {
+                cmd.cpu = .znver4;
             }
         } else if (mem.testEqualString("-mcmodel", arg)) {
             args_idx +%= 1;
@@ -784,7 +966,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-const build_help: [:0]const u8 =
+const build_help: [:0]const u8 = 
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -905,7 +1087,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 =
+const archive_help: [:0]const u8 = 
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -924,7 +1106,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -937,7 +1119,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout
