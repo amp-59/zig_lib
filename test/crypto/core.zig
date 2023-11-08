@@ -25,7 +25,7 @@ fn testCtr() !void {
         0x1e, 0x03, 0x1d, 0xda, 0x2f, 0xbe, 0x03, 0xd1, 0x79, 0x21, 0x70, 0xa0, 0xf3, 0x00, 0x9c, 0xee,
     };
     var out: [exp_out.len]u8 = undefined;
-    crypto.core.ctr(crypto.core.GenericAesEncryptCtx(crypto.core.Aes128), crypto.core.Aes128.initEnc(key), out[0..], in[0..], iv, builtin.Endian.Big);
+    crypto.core.ctr(crypto.core.GenericAesEncryptCtx(crypto.core.Aes128), crypto.core.Aes128.initEnc(key), out[0..], in[0..], iv, builtin.Endian.big);
     try testing.expectEqualMany(u8, exp_out[0..], out[0..]);
 }
 fn testEncrypt() !void {
@@ -124,7 +124,7 @@ fn testExpand256BitKey() !void {
     }
 }
 fn testAscon() !void {
-    const Ascon = crypto.core.GenericAsconState(.Big);
+    const Ascon = crypto.core.GenericAsconState(.big);
     const bytes: [40]u8 = .{0x01} ** Ascon.blk_len;
     var st: Ascon = Ascon.init(bytes);
     var out: [Ascon.blk_len]u8 = undefined;

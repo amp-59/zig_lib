@@ -30,14 +30,14 @@ fn testTimingSafeEqlVectors() !void {
 fn testTimingSafeCompare() !void {
     var a: [32]u8 = .{10} ** 32;
     var b: [32]u8 = .{10} ** 32;
-    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Big), .eq);
-    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Little), .eq);
+    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .big), .eq);
+    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .little), .eq);
     a[31] = 1;
-    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Big), .lt);
-    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Little), .lt);
+    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .big), .lt);
+    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .little), .lt);
     a[0] = 20;
-    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Big), .gt);
-    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Little), .lt);
+    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .big), .gt);
+    try debug.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .little), .lt);
 }
 fn testTimingSafeAddSub() !void {
     var a: [32]u8 = undefined;
@@ -48,7 +48,7 @@ fn testTimingSafeAddSub() !void {
     while (iterations != 0) : (iterations -%= 1) {
         crypto.utils.bytes(&a);
         crypto.utils.bytes(&b);
-        const endian = if (iterations % 2 == 0) builtin.Endian.Big else builtin.Endian.Little;
+        const endian = if (iterations % 2 == 0) builtin.Endian.big else builtin.Endian.little;
         _ = crypto.utils.timingSafeSub(u8, &a, &b, &c, endian);
         _ = crypto.utils.timingSafeAdd(u8, &c, &b, &c, endian);
         try testing.expectEqualMany(u8, &c, &a);
