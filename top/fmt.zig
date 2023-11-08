@@ -312,122 +312,64 @@ pub inline fn ixsize(value: isize) Ixsize {
 }
 pub inline fn writeBin(comptime T: type) fn ([*]u8, T) [*]u8 {
     switch (T) {
-        usize => return writeUbsize,
-        isize => return writeIbsize,
-        u64 => return writeUb64,
-        i64 => return writeIb64,
-        u8 => return writeUb8,
-        u16 => return writeUb16,
-        u32 => return writeUb32,
-        i8 => return writeIb8,
-        i16 => return writeIb16,
-        i32 => return writeIb32,
+        usize => return Ubsize.write,
+        isize => return Ibsize.write,
+        u64 => return Ub64.write,
+        i64 => return Ib64.write,
+        u8 => return Ub8.write,
+        u16 => return Ub16.write,
+        u32 => return Ub32.write,
+        i8 => return Ib8.write,
+        i16 => return Ib16.write,
+        i32 => return Ib32.write,
         else => return Xb(T).write,
     }
 }
 pub inline fn writeOct(comptime T: type) fn ([*]u8, T) [*]u8 {
     switch (T) {
-        usize => return writeUosize,
-        isize => return writeIosize,
-        u64 => return writeUo64,
-        i64 => return writeIo64,
-        u8 => return writeUo8,
-        u16 => return writeUo16,
-        u32 => return writeUo32,
-        i8 => return writeIo8,
-        i16 => return writeIo16,
-        i32 => return writeIo32,
+        usize => return Uosize.write,
+        isize => return Iosize.write,
+        u64 => return Uo64.write,
+        i64 => return Io64.write,
+        u8 => return Uo8.write,
+        u16 => return Uo16.write,
+        u32 => return Uo32.write,
+        i8 => return Io8.write,
+        i16 => return Io16.write,
+        i32 => return Io32.write,
         else => return Xo(T).write,
     }
 }
 pub inline fn writeDec(comptime T: type) fn ([*]u8, T) [*]u8 {
     switch (T) {
-        usize => return writeUdsize,
-        isize => return writeIdsize,
-        u64 => return writeUd64,
-        i64 => return writeId64,
-        u8 => return writeUd8,
-        u16 => return writeUd16,
-        u32 => return writeUd32,
-        i8 => return writeId8,
-        i16 => return writeId16,
-        i32 => return writeId32,
+        usize => return Udsize.write,
+        isize => return Idsize.write,
+        u64 => return Ud64.write,
+        i64 => return Id64.write,
+        u8 => return Ud8.write,
+        u16 => return Ud16.write,
+        u32 => return Ud32.write,
+        i8 => return Id8.write,
+        i16 => return Id16.write,
+        i32 => return Id32.write,
         else => return Xd(T).write,
     }
 }
 pub inline fn writeHex(comptime T: type) fn ([*]u8, T) [*]u8 {
     switch (T) {
-        usize => return writeUxsize,
-        isize => return writeIxsize,
-        u64 => return writeUx64,
-        i64 => return writeIx64,
-        u8 => return writeUx8,
-        u16 => return writeUx16,
-        u32 => return writeUx32,
-        i8 => return writeIx8,
-        i16 => return writeIx16,
-        i32 => return writeIx32,
+        usize => return Uxsize.write,
+        isize => return Ixsize.write,
+        u64 => return Ux64.write,
+        i64 => return Ix64.write,
+        u8 => return Ux8.write,
+        u16 => return Ux16.write,
+        u32 => return Ux32.write,
+        i8 => return Ix8.write,
+        i16 => return Ix16.write,
+        i32 => return Ix32.write,
         else => return Xx(T).write,
     }
 }
-pub const writeIb8: fn ([*]u8, i8) [*]u8 = Ib8.write;
-pub const writeIb16: fn ([*]u8, i16) [*]u8 = Ib16.write;
-pub const writeIb32: fn ([*]u8, i32) [*]u8 = Ib32.write;
-pub const writeIb64: fn ([*]u8, i64) [*]u8 = Ib64.write;
-pub const writeIb128: fn ([*]u8, i128) [*]u8 = Ib128.write;
-pub const writeIo8: fn ([*]u8, i8) [*]u8 = Io8.write;
-pub const writeIo16: fn ([*]u8, i16) [*]u8 = Io16.write;
-pub const writeIo32: fn ([*]u8, i32) [*]u8 = Io32.write;
-pub const writeIo64: fn ([*]u8, i64) [*]u8 = Io64.write;
-pub const writeIo128: fn ([*]u8, i128) [*]u8 = Io128.write;
-pub const writeId8: fn ([*]u8, i8) [*]u8 = Id8.write;
-pub const writeId16: fn ([*]u8, i16) [*]u8 = Id16.write;
-pub const writeId32: fn ([*]u8, i32) [*]u8 = Id32.write;
-pub const writeId64: fn ([*]u8, i64) [*]u8 = Id64.write;
-pub const writeId128: fn ([*]u8, i128) [*]u8 = Id128.write;
-pub const writeIx8: fn ([*]u8, i8) [*]u8 = Ix8.write;
-pub const writeIx16: fn ([*]u8, i16) [*]u8 = Ix16.write;
-pub const writeIx32: fn ([*]u8, i32) [*]u8 = Ix32.write;
-pub const writeIx64: fn ([*]u8, i64) [*]u8 = Ix64.write;
-pub const writeIx128: fn ([*]u8, i128) [*]u8 = Ix128.write;
-pub const writeIz8: fn ([*]u8, i8) [*]u8 = Iz8.write;
-pub const writeIz16: fn ([*]u8, i16) [*]u8 = Iz16.write;
-pub const writeIz32: fn ([*]u8, i32) [*]u8 = Iz32.write;
-pub const writeIz64: fn ([*]u8, i64) [*]u8 = Iz64.write;
-pub const writeIz128: fn ([*]u8, i128) [*]u8 = Iz128.write;
-pub const writeUb8: fn ([*]u8, u8) [*]u8 = Ub8.write;
-pub const writeUb16: fn ([*]u8, u16) [*]u8 = Ub16.write;
-pub const writeUb32: fn ([*]u8, u32) [*]u8 = Ub32.write;
-pub const writeUb64: fn ([*]u8, u64) [*]u8 = Ub64.write;
-pub const writeUo8: fn ([*]u8, u8) [*]u8 = Uo8.write;
-pub const writeUo16: fn ([*]u8, u16) [*]u8 = Uo16.write;
-pub const writeUo32: fn ([*]u8, u32) [*]u8 = Uo32.write;
-pub const writeUo64: fn ([*]u8, u64) [*]u8 = Uo64.write;
-pub const writeUo128: fn ([*]u8, u128) [*]u8 = Uo128.write;
-pub const writeUd8: fn ([*]u8, u8) [*]u8 = Ud8.write;
-pub const writeUd16: fn ([*]u8, u16) [*]u8 = Ud16.write;
-pub const writeUd32: fn ([*]u8, u32) [*]u8 = Ud32.write;
-pub const writeUd64: fn ([*]u8, u64) [*]u8 = Ud64.write;
-pub const writeUd128: fn ([*]u8, u128) [*]u8 = Ud128.write;
-pub const writeUx8: fn ([*]u8, u8) [*]u8 = Ux8.write;
-pub const writeEsc: fn ([*]u8, u8) [*]u8 = Esc.write;
-pub const writeUx16: fn ([*]u8, u16) [*]u8 = Ux16.write;
-pub const writeUx32: fn ([*]u8, u32) [*]u8 = Ux32.write;
-pub const writeUx64: fn ([*]u8, u64) [*]u8 = Ux64.write;
-pub const writeUx128: fn ([*]u8, u128) [*]u8 = Ux128.write;
-pub const writeUz8: fn ([*]u8, u8) [*]u8 = Uz8.write;
-pub const writeUz16: fn ([*]u8, u16) [*]u8 = Uz16.write;
-pub const writeUz32: fn ([*]u8, u32) [*]u8 = Uz32.write;
-pub const writeUz64: fn ([*]u8, u64) [*]u8 = Uz64.write;
-pub const writeUz128: fn ([*]u8, u128) [*]u8 = Uz128.write;
-pub const writeUbsize: fn ([*]u8, usize) [*]u8 = Ubsize.write;
-pub const writeUosize: fn ([*]u8, usize) [*]u8 = Uosize.write;
-pub const writeUdsize: fn ([*]u8, usize) [*]u8 = Udsize.write;
-pub const writeUxsize: fn ([*]u8, usize) [*]u8 = Uxsize.write;
-pub const writeIbsize: fn ([*]u8, isize) [*]u8 = Ibsize.write;
-pub const writeIosize: fn ([*]u8, isize) [*]u8 = Iosize.write;
-pub const writeIdsize: fn ([*]u8, isize) [*]u8 = Idsize.write;
-pub const writeIxsize: fn ([*]u8, isize) [*]u8 = Ixsize.write;
 const lit_char: [256][*:0]const u8 = .{
     "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07",
     "\\x08", "\\t",   "\\n",   "\\x0b", "\\x0c", "\\r",   "\\x0e", "\\x0f",
