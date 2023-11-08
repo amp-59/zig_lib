@@ -87,6 +87,15 @@ pub const scope: []const types.ProtoTypeDescr.Declaration = &.{
             .name = "no",
         } },
     } },
+    .{ .name = "StringUnion", .defn = .{
+        .spec = "union(enum)",
+        .fields = &.{ .{
+            .name = "yes",
+            .type = .{ .type_decl = .{ .name = "?[]const u8" } },
+        }, .{
+            .name = "no",
+        } },
+    } },
 };
 pub const zig_build_command_attributes: types.Attributes = .{
     .type_name = "BuildCommand",
@@ -487,10 +496,12 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "entry",
-            .string = "--entry",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"Set the entrypoint symbol name"},
+            .string = "-fentry",
+            .tag = .{ .field = .string },
+            .type = string_type,
+            .char = '=',
+            .and_no = .{ .string = "-fno-entry" },
+            .descr = &.{"Override the default entry symbol name"},
         },
         .{
             .name = "lld",

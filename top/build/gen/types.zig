@@ -59,8 +59,8 @@ const Tag = union(enum) {
         repeatable_formatter,
     },
     literal: enum {
-        integer,
         string,
+        integer,
     },
 };
 pub const ParamSpec = struct {

@@ -862,7 +862,7 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
                             writeIf(array, param_spec.name);
                             writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
                             writeElse(array);
-                            writeOptStringExtra(array, no_param_spec.string, variant, param_spec.char orelse '\x00');
+                            writeOptStringExtra(array, no_param_spec.string, variant, no_param_spec.char orelse '\x00');
                             writeIfClose(array);
                             writeIfClose(array);
                         },
@@ -876,7 +876,7 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
                             writeOptArgString(array, param_spec.string, "arg", variant, param_spec.char orelse '\x00');
                             writeProngClose(array);
                             writeProng(array, "no");
-                            writeOptStringExtra(array, no_param_spec.string, variant, param_spec.char orelse '\x00');
+                            writeOptStringExtra(array, no_param_spec.string, variant, no_param_spec.char orelse '\x00');
                             writeProngClose(array);
                             writeIfClose(array);
                             writeIfClose(array);
@@ -891,7 +891,7 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
                             writeFormatter(array, param_spec.string, "arg", variant, param_spec.char orelse '\x00');
                             writeProngClose(array);
                             writeProng(array, "no");
-                            writeOptStringExtra(array, no_param_spec.string, variant, param_spec.char orelse '\x00');
+                            writeOptStringExtra(array, no_param_spec.string, variant, no_param_spec.char orelse '\x00');
                             writeProngClose(array);
                             writeIfClose(array);
                             writeIfClose(array);
@@ -915,7 +915,7 @@ fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, varia
                         writeIfClose(array);
                         writeProngClose(array);
                         writeProng(array, "no");
-                        writeOptStringExtra(array, no_param_spec.string, variant, param_spec.char orelse '\x00');
+                        writeOptStringExtra(array, no_param_spec.string, variant, no_param_spec.char orelse '\x00');
                         writeProngClose(array);
                         writeIfClose(array);
                         writeIfClose(array);
