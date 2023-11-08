@@ -1,10 +1,8 @@
 pub const zl = @import("./zig_lib.zig");
-
 pub const Builder = zl.build.GenericBuilder(.{
     .options = .{ .extensions_policy = .emergency },
 });
 const Node = Builder.Node;
-
 const build_cmd: zl.build.BuildCommand = .{
     .kind = .exe,
     .omit_frame_pointer = false,
@@ -28,7 +26,12 @@ const format_cmd: zl.build.FormatCommand = .{
 };
 pub const enable_debugging: bool = false;
 pub fn traceGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
-    var trace_build_cmd: zl.build.BuildCommand = .{ .kind = .exe, .function_sections = true, .gc_sections = false };
+    var trace_build_cmd: zl.build.BuildCommand = .{
+        .kind = .exe,
+        .function_sections = true,
+        .gc_sections = false,
+        .unwind_tables = false,
+    };
     const access_inactive: *Node = group.addBuild(allocator, trace_build_cmd, "access_inactive", "test/trace/access_inactive.zig");
     const assertion_failed: *Node = group.addBuild(allocator, trace_build_cmd, "assertion_failed", "test/trace/assertion_failed.zig");
     const out_of_bounds: *Node = group.addBuild(allocator, trace_build_cmd, "out_of_bounds", "test/trace/out_of_bounds.zig");
@@ -38,6 +41,7 @@ pub fn traceGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     const start_gt_end: *Node = group.addBuild(allocator, trace_build_cmd, "start_gt_end", "test/trace/start_gt_end.zig");
     const static_exe: *Node = group.addBuild(allocator, trace_build_cmd, "static_exe", "test/trace/static_exe.zig");
     const minimal_full: *Node = group.addBuild(allocator, trace_build_cmd, "minimal_full", "test/trace/minimal_full.zig");
+    static_exe.flags.want_stack_traces = true;
     trace_build_cmd.kind = .obj;
     trace_build_cmd.gc_sections = false;
     const static_obj: *Node = group.addBuild(allocator, trace_build_cmd, "static_obj", "test/trace/static_obj.zig");
@@ -233,7 +237,6 @@ fn topGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     group.addBuild(allocator, build_cmd, "fmt", "test/fmt.zig").descr = "Test general purpose formatting function";
     group.addBuild(allocator, build_cmd, "parse", "test/parse.zig").descr = "Test general purpose parsing functions";
     group.addBuild(allocator, build_cmd, "time", "test/time.zig").descr = "Test time-related functions";
-    group.addBuild(allocator, build_cmd, "crypto", "test/crypto.zig").descr = "Test ";
     group.addBuild(allocator, build_cmd, "zig", "test/zig.zig").descr = "Test library Zig tokeniser";
     group.addBuild(allocator, build_cmd, "mem", "test/mem.zig").descr = "Test low level memory management functions";
     group.addBuild(allocator, build_cmd, "proc", "test/proc.zig").descr = "Test process-related functions";
@@ -259,28 +262,22 @@ pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     build_runner.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
     build_runner.flags.want_build_config = false;
     build_runner.flags.want_stack_traces = false;
-
     const safety: *Node = toplevel.addBuild(allocator, build_cmd, "safety", "test/safety.zig");
     safety.flags.want_perf_events = true;
     safety.tasks.cmd.build.strip = false;
-
     traceGroup(allocator, toplevel.addGroupWithTask(allocator, "trace", .build));
     topGroup(allocator, toplevel.addGroupWithTask(allocator, "top", .build));
-
     const treez: *Node = toplevel.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
     const elfcmp: *Node = toplevel.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
     const itos: *Node = toplevel.addBuild(allocator, build_cmd, "itos", "examples/itos.zig");
     _ = toplevel.addBuild(allocator, build_cmd, "cleanup", "examples/cleanup.zig");
-
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
     itos.descr = "Example program for integer base conversion";
-
     // const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
     // const futex: *Node = toplevel.addBuild(allocator, build_cmd, "futex", "test/futex.zig");
     // imports.descr = "List files imported from root";
     // futex.descr = "Test prototype futex waiting";
-
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
