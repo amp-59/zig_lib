@@ -718,7 +718,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             lists: Lists,
             /// Pointer to the shared state. May consider storing allocators
             /// and address spaces here to make UX more convenient. It also
-            /// saves a number of paramters in many functions.
+            /// saves a number of parameters in many functions.
             sh: *Shared,
             const Lists = struct {
                 /// List of related nodes. nodes[0] = group node.
@@ -1301,7 +1301,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addDepn(node: *Node, allocator: *types.Allocator, task: Task, on_node: *Node, on_task: Task) void {
                 @setRuntimeSafety(builtin.is_safe);
-                const idx: u16 = @intCast(node.lists.nodes.len);
+                const idx: u32 = @intCast(node.lists.nodes.len);
                 const depn: *Depn = @ptrFromInt(allocator.addGeneric(8, 8, 2, @ptrCast(&node.lists.depns.ptr), &node.lists.depns_max_len, node.lists.depns.len));
                 node.lists.depns.len +%= 1;
                 node.addNode(allocator).* = on_node;
