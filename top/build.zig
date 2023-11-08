@@ -301,6 +301,9 @@ pub const BuilderSpec = struct {
         show_special: bool = false,
         /// Show output paths in task summary.
         show_output_destination: bool = false,
+        /// Print the number of succeeded tasks and the number of errors
+        /// following each command.
+        show_high_level_summary: bool = false,
         /// Report `open` Acquire and Error.
         open: debug.Logging.AttemptAcquireError = .{},
         /// Report `seek` Acquire and Error.
@@ -477,6 +480,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fp: *FunctionPointers,
         /// Number of errors since processing user command line.
         errors: u8,
+        /// Number of tasks finished.
+        finished: u64,
         pub const Shared = @This();
         pub const FunctionPointers = struct {
             proc: struct {
@@ -1837,6 +1842,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                     if (node.tasks.cmd.build.kind == .exe) {
+                        if (builder_spec.options.add_stack_traces_to_debug_executables) {
+                            node.flags.want_stack_traces = node.hasDebugInfo();
+                            if (builder_spec.logging.show_task_update) {
+                                about.aboutNode(node, .add_stack_traces_to_debug_executables, .want_stack_traces, .enable_flag);
+                            }
+                        }
                         if (builder_spec.options.add_run_task_to_executables) {
                             node.lock = exe_lock;
                             node.dependOn(allocator, node);
@@ -2323,20 +2334,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         ) void {
             @setRuntimeSafety(builtin.is_safe);
             executeCommandDependencies(address_space, thread_space, allocator, node, task, arena_index);
-            const save: usize = allocator.save();
+            const save: usize = allocator.next;
             while (keepGoing(node) and waitForNode(node, task, arena_index)) {
                 time.sleep(sleep, .{ .nsec = builder_spec.options.sleep_nanoseconds });
             }
             if (node.lock.get(task) == .working) {
                 if (executeCommand(allocator, node, task, arena_index)) {
-                    allocator.restore(save);
+                    allocator.next = save;
                     assertExchange(node, task, .working, .finished, arena_index);
                 } else {
-                    allocator.restore(save);
+                    allocator.next = save;
                     assertExchange(node, task, .working, .failed, arena_index);
                 }
             } else {
-                allocator.restore(save);
+                allocator.next = save;
             }
         }
         pub fn executeSubNode(
@@ -2577,6 +2588,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builtin.is_safe);
             const ret: bool = node.lock.atomicExchange(task, old_state, new_state);
             if (ret) {
+                if (builder_spec.logging.show_high_level_summary) {
+                    if (new_state == .finished) {
+                        node.sh.finished +%= 1;
+                    }
+                }
                 node.sh.errors +%= @intFromBool(count_errors and new_state == .failed);
                 if (builder_spec.logging.show_task_update) {
                     about.exchangeNotice(node, task, old_state, new_state, arena_index);
@@ -2594,6 +2610,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return;
             }
             if (node.lock.atomicExchange(task, old_state, new_state)) {
+                if (builder_spec.logging.show_high_level_summary) {
+                    if (new_state == .finished) {
+                        node.sh.finished +%= 1;
+                    }
+                }
                 node.sh.errors +%= @intFromBool(count_errors and new_state == .failed);
                 if (builder_spec.logging.show_task_update) {
                     about.exchangeNotice(node, task, old_state, new_state, arena_index);
@@ -2792,6 +2813,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (!executeSubNode(address_space, thread_space, allocator, node, task)) {
                         proc.exitError(error.UnfinishedRequest, 2);
                     }
+                    if (builder_spec.logging.show_high_level_summary) {
+                        about.writeErrorsAndFinished(group);
+                    }
                     break;
                 }
             } else {
@@ -2800,6 +2824,24 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             group.sh.dl.unmapAll();
         }
         pub const about = struct {
+            fn writeErrorsAndFinished(group: *Node) void {
+                @setRuntimeSafety(builtin.is_safe);
+                const errors_s = comptime fmt.about("errors");
+                const finished_s = comptime fmt.about("finished");
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                ptr[0..finished_s.len].* = finished_s.*;
+                ptr += finished_s.len;
+                ptr = fmt.Ud64.write(ptr, group.sh.finished);
+                ptr[0] = '\n';
+                ptr += 1;
+                ptr[0..errors_s.len].* = errors_s.*;
+                ptr += errors_s.len;
+                ptr = fmt.Ud64.write(ptr, group.sh.errors);
+                ptr[0] = '\n';
+                ptr += 1;
+                debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
+            }
             fn writeWaitingOn(node: *Node, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
@@ -3157,7 +3199,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 const save: usize = allocator.next;
                 defer allocator.next = save;
-                const len: usize = lengthTask(allocator, node, task, arena_index);
+                const len: usize = lengthTask(allocator, node, task, arena_index) *% 2;
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len, 1));
                 const ptr: [*]u8 = writeTask(buf, node, task, arena_index);
                 debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(buf)]);
@@ -3519,7 +3561,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         ptr[0..6].* = "extra.".*;
                         ptr = fmt.strcpyEqu(ptr + 6, @tagName(field));
                         ptr[0] = '=';
-                        ptr += fmt.Ux64.write(ptr + 1, addr);
+                        ptr = fmt.Ux64.write(ptr + 1, addr);
                     },
                     .simple => |message| {
                         ptr = fmt.strcpyEqu(ptr, message);

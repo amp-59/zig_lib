@@ -2865,8 +2865,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var name: []const u8 = fmt.cx(lengthFn);
                 if (found != expected) {
                     testing.printBufN(4096, .{ .fn_name = name, .expected = expected, .found = found });
-                } else {
-                    testing.printBufN(4096, .{ .fn_name = name });
                 }
             }
         };
