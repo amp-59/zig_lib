@@ -2170,6 +2170,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                                 if (mat1.flags.is_hidden) {
                                     continue;
                                 }
+                                if (mat1.idx != Match.no_idx) {
+                                    continue;
+                                }
                                 const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1).?;
                                 if (loader_spec.options.write_symbols) {
                                     ptr = about.writeSymbolIntro(ptr, sym1.index, mat1.tag, width1, width2);
@@ -2272,7 +2275,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = fmt.Ud64.write(ptr + 11, info.ehdr.phnum);
                 if (info.ehdr.type == .DYN) {
                     ptr[0..7].* = ", addr=".*;
-                    ptr = fmt.writeUx64(ptr + 7, info.prog.addr);
+                    ptr = fmt.Ux64.write(ptr + 7, info.prog.addr);
                 }
                 var pos: usize = 0;
                 for (pathname, 0..) |byte, idx| {
@@ -2436,14 +2439,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn writeOffset(buf: [*]u8, offset: usize) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 buf[0..7].* = "offset=".*;
-                var ptr: [*]u8 = fmt.writeUx64(buf + 7, offset);
+                var ptr: [*]u8 = fmt.Ux64.write(buf + 7, offset);
                 ptr[0..2].* = ", ".*;
                 return ptr + 2;
             }
             fn writeAddress(buf: [*]u8, addr: usize) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 buf[0..5].* = "addr=".*;
-                var ptr: [*]u8 = fmt.writeUx64(buf + 5, addr);
+                var ptr: [*]u8 = fmt.Ux64.write(buf + 5, addr);
                 ptr[0..2].* = ", ".*;
                 return ptr + 2;
             }
