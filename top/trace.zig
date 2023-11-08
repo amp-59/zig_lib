@@ -593,7 +593,7 @@ fn writeExtendedSourceLocation(
     @setRuntimeSafety(false);
     var ptr: [*]u8 = SourceLocation.write(buf, src.file, src.line, src.column);
     ptr[0..2].* = ": ".*;
-    ptr = fmt.writeUx64(ptr + 2, addr);
+    ptr = fmt.Ux64.write(ptr + 2, addr);
     if (dwarf_info.getSymbolName(addr)) |fn_name| {
         ptr[0..4].* = " in ".*;
         ptr = fmt.strcpyEqu(ptr + 4, fn_name);

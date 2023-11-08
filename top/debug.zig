@@ -1211,13 +1211,13 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, type_name);
         ptr[0..23].* = ": incorrect alignment: ".*;
         ptr += 23;
-        ptr = fmt.writeUx64(ptr, address);
+        ptr = fmt.Ux64.write(ptr, address);
         ptr[0..4].* = " == ".*;
         ptr += 4;
-        ptr = fmt.writeUx64(ptr, address -% remainder);
+        ptr = fmt.Ux64.write(ptr, address -% remainder);
         ptr[0] = '+';
         ptr += 1;
-        ptr = fmt.writeUx64(ptr, remainder);
+        ptr = fmt.Ux64.write(ptr, remainder);
         return ptr;
     }
 };
