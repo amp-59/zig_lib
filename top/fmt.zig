@@ -1644,16 +1644,16 @@ pub fn isValidId(name: []const u8) bool {
     }
     return builtin.parse.keyword(name) == null;
 }
-pub fn highlight(buf: [*]u8, tok: *builtin.parse.Token, syntax: []const debug.Trace.Options.Tokens.Mapping) [*]u8 {
+pub fn highlight(tok: *const builtin.parse.Token, syntax: []const debug.Trace.Options.Tokens.Mapping) ?[]const u8 {
     @setRuntimeSafety(false);
     for (syntax) |pair| {
         for (pair.tags) |tag| {
             if (tok.tag == tag) {
-                return strcpyEqu(buf, pair.style);
+                return pair.style;
             }
         }
     }
-    return buf;
+    return null;
 }
 pub const SourceCodeFormat = struct {
     src: [:0]const u8,
@@ -1664,9 +1664,11 @@ pub const SourceCodeFormat = struct {
             var ptr: [*]u8 = buf;
             var prev: usize = 0;
             while (tok.tag != .eof) : (itr.nextExtra(&tok)) {
-                const str = itr.buf[tok.loc.start..tok.loc.finish];
+                const str: []const u8 = itr.buf[tok.loc.start..tok.loc.finish];
                 ptr = strcpyEqu(ptr, itr.buf[prev..tok.loc.start]);
-                ptr = highlight(ptr, &tok, syntax);
+                if (highlight(&tok, syntax)) |style| {
+                    ptr = strcpyEqu(ptr, style);
+                }
                 ptr = strcpyEqu(ptr, str);
                 ptr = strcpyEqu(ptr, &tab.fx.none);
                 prev = tok.loc.finish;
@@ -1674,6 +1676,25 @@ pub const SourceCodeFormat = struct {
             return ptr;
         } else {
             return strcpyEqu(buf, src);
+        }
+    }
+    pub fn length(src: [:0]const u8) usize {
+        if (builtin.trace.options.tokens.syntax) |syntax| {
+            var itr: builtin.parse.TokenIterator = .{ .buf = @constCast(src), .buf_pos = 0 };
+            var tok: builtin.parse.Token = itr.nextToken();
+            var len: usize = 0;
+            var prev: usize = 0;
+            while (tok.tag != .eof) : (itr.nextExtra(&tok)) {
+                if (highlight(&tok, syntax)) |style| {
+                    len +%= style.len;
+                }
+                len +%= itr.buf[prev..tok.loc.start].len +%
+                    (tok.loc.finish -% tok.loc.start) +% tab.fx.none.len;
+                prev = tok.loc.finish;
+            }
+            return len;
+        } else {
+            return src.len;
         }
     }
 };
