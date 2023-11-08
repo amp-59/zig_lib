@@ -203,6 +203,51 @@ fn zigLibOptimisedMessage3(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
     ptr[0] = '\n';
     zl.debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
 }
+/// This program will execute ~8% fewer instructions, but is difficult to write,
+/// and takes longer to compile.
+fn zigLibOptimisedMessage4(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+    @setRuntimeSafety(false);
+    var buf: [4096]u8 = undefined;
+    var buf1: [16]u8 = undefined;
+    var buf2: [16]u8 = undefined;
+    var buf3: [16]u8 = undefined;
+    var buf4: [16]u8 = undefined;
+    var buf5: [16]u8 = undefined;
+    var buf6: [16]u8 = undefined;
+    var buf7: [16]u8 = undefined;
+    const end1: [*]u8 = zl.fmt.Ux64.write(&buf1, @intFromPtr(futex1));
+    const end2: [*]u8 = zl.fmt.Ud64.write(&buf2, futex1.*);
+    const end3: [*]u8 = zl.fmt.Ud64.write(&buf3, count1);
+    const end4: [*]u8 = zl.fmt.Ux64.write(&buf4, @intFromPtr(futex2));
+    const end5: [*]u8 = zl.fmt.Ud64.write(&buf5, futex2.*);
+    const end6: [*]u8 = zl.fmt.Ud64.write(&buf6, count2);
+    const end7: [*]u8 = zl.fmt.Ud64.write(&buf7, ret);
+    buf[0..about.len].* = about.*;
+    var ptr: [*]u8 = buf[about.len..];
+    ptr[0..8].* = "futex1=@".*;
+    ptr[8..24].* = buf1;
+    ptr += @intFromPtr(end1 + 8) -% @intFromPtr(&buf1);
+    ptr[0..8].* = ", word1=".*;
+    ptr[8..24].* = buf2;
+    ptr += @intFromPtr(end2 + 8) -% @intFromPtr(&buf2);
+    ptr[0..7].* = ", max1=".*;
+    ptr[7..23].* = buf3;
+    ptr += @intFromPtr(end3 + 7) -% @intFromPtr(&buf3);
+    ptr[0..10].* = ", futex2=@".*;
+    ptr[10..26].* = buf4;
+    ptr += @intFromPtr(end4 + 10) -% @intFromPtr(&buf4);
+    ptr[0..8].* = ", word2=".*;
+    ptr[8..24].* = buf5;
+    ptr += @intFromPtr(end5 + 8) -% @intFromPtr(&buf5);
+    ptr[0..7].* = ", max2=".*;
+    ptr[7..23].* = buf6;
+    ptr += @intFromPtr(end6 + 7) -% @intFromPtr(&buf6);
+    ptr[0..6].* = ", res=".*;
+    ptr[6..22].* = buf7;
+    ptr += @intFromPtr(end7 + 7) -% @intFromPtr(&buf7);
+    ptr[0] = '\n';
+    zl.debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
+}
 pub fn main() void {
     var futex0: u32 = 0xf0;
     var futex1: u32 = 0xf1;
@@ -216,4 +261,5 @@ pub fn main() void {
     //zigLibOptimisedMessage(&futex0, &futex1, count1, count2, ret);
     //zigLibOptimisedMessage2(&futex0, &futex1, count1, count2, ret);
     zigLibOptimisedMessage3(&futex0, &futex1, count1, count2, ret);
+    //zigLibOptimisedMessage4(&futex0, &futex1, count1, count2, ret);
 }
