@@ -829,13 +829,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub const Depn = packed struct(usize) {
                 /// The node holding this dependency will block on this task ...
                 task: Task,
-                /// This task ...
+                /// Until the node referenced by this index ...
+                node: u32,
+                /// Has this task ...
                 on_task: Task,
                 /// In this state ...
                 on_state: State,
-                ///  For node given by this index.
-                node_idx: u32,
-                // Padding
                 zb: u8 = 0,
             };
             pub const Conf = extern struct {
@@ -916,7 +915,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         const node: *Node = if (itr.node.flags.is_group)
                             itr.nodes[itr.idx]
                         else
-                            itr.nodes[itr.depns[itr.idx].node_idx];
+                            itr.nodes[itr.depns[itr.idx].node];
                         itr.idx +%= 1;
                         if (itr.node == node or node.flags.is_hidden) {
                             continue;
@@ -1302,7 +1301,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addDepn(node: *Node, allocator: *types.Allocator, task: Task, on_node: *Node, on_task: Task) void {
                 @setRuntimeSafety(builtin.is_safe);
-                const node_idx: u16 = @intCast(node.lists.nodes.len);
+                const idx: u16 = @intCast(node.lists.nodes.len);
                 const depn: *Depn = @ptrFromInt(allocator.addGeneric(8, 8, 2, @ptrCast(&node.lists.depns.ptr), &node.lists.depns_max_len, node.lists.depns.len));
                 node.lists.depns.len +%= 1;
                 node.addNode(allocator).* = on_node;
@@ -1334,7 +1333,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                 }
-                depn.* = .{ .task = task, .on_task = on_task, .on_state = .finished, .node_idx = node_idx };
+                depn.* = .{ .task = task, .on_task = on_task, .on_state = .finished, .node = idx };
             }
             pub fn dependOn(node: *Node, allocator: *types.Allocator, on_node: *Node) void {
                 node.addDepn(
@@ -1891,7 +1890,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 } else {
                     const deps: []Node.Depn = node.lists.depns;
                     for (deps) |dep| {
-                        recursiveAction(address_space, thread_space, allocator, nodes[dep.node_idx], task, arena_index, actionFn);
+                        recursiveAction(address_space, thread_space, allocator, nodes[dep.node], task, arena_index, actionFn);
                     }
                 }
             }
@@ -2121,14 +2120,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             } else {
                 for (node.lists.depns) |dep| {
-                    if (nodes[dep.node_idx] == node and
+                    if (nodes[dep.node] == node and
                         dep.on_task == task or dep.task != task)
                     {
                         continue;
                     }
                     if (!keepGoing(node)) return;
-                    if (exchange(nodes[dep.node_idx], dep.on_task, .ready, .blocking, arena_index)) {
-                        tryAcquireThread(address_space, thread_space, allocator, nodes[dep.node_idx], dep.on_task, arena_index);
+                    if (exchange(nodes[dep.node], dep.on_task, .ready, .blocking, arena_index)) {
+                        tryAcquireThread(address_space, thread_space, allocator, nodes[dep.node], dep.on_task, arena_index);
                     }
                 }
             }
@@ -2632,10 +2631,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const nodes: []*Node = node.lists.nodes;
             if (!node.flags.is_group) {
                 for (deps) |*dep| {
-                    if (nodes[dep.node_idx] == node and dep.on_task == task) {
+                    if (nodes[dep.node] == node and dep.on_task == task) {
                         continue;
                     }
-                    if (nodes[dep.node_idx].lock.get(dep.on_task) == state) {
+                    if (nodes[dep.node].lock.get(dep.on_task) == state) {
                         return true;
                     }
                 }
@@ -2656,13 +2655,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const deps: []Node.Depn = node.lists.depns;
             const nodes: []*Node = node.lists.nodes;
             for (deps) |*dep| {
-                if (nodes[dep.node_idx] == node and dep.on_task == task) {
+                if (nodes[dep.node] == node and dep.on_task == task) {
                     continue;
                 }
-                if (nodes[dep.node_idx].lock.get(dep.on_task) != from) {
+                if (nodes[dep.node].lock.get(dep.on_task) != from) {
                     continue;
                 }
-                if (!exchange(nodes[dep.node_idx], dep.on_task, from, to, arena_index)) {
+                if (!exchange(nodes[dep.node], dep.on_task, from, to, arena_index)) {
                     return;
                 }
             }
@@ -2806,7 +2805,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     recursiveAction(address_space, thread_space, allocator, node, task, max_thread_count, &prepareCommand);
                     const nodes: []*Node = node.sh.top.lists.nodes;
                     for (node.sh.top.lists.depns) |depn| {
-                        if (!executeSubNode(address_space, thread_space, allocator, nodes[depn.node_idx], depn.on_task)) {
+                        if (!executeSubNode(address_space, thread_space, allocator, nodes[depn.node], depn.on_task)) {
                             proc.exitError(error.UnfinishedRequest, 2);
                         }
                     }
@@ -2855,9 +2854,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 for (node.lists.depns) |dep| {
                     ptr = writeNoExchangeTask(
                         ptr,
-                        node.lists.nodes[dep.node_idx],
+                        node.lists.nodes[dep.node],
                         dep.on_task,
-                        node.lists.nodes[dep.node_idx].lock.get(dep.on_task),
+                        node.lists.nodes[dep.node].lock.get(dep.on_task),
                         dep.on_state,
                         arena_index,
                     );
@@ -3632,16 +3631,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     ptr += 52;
                     for (node.lists.depns) |dep| {
                         if (dep.on_task == .build and
-                            node.lists.nodes[dep.node_idx] != node and
-                            node.lists.nodes[dep.node_idx].flags.have_task_data and
-                            node.lists.nodes[dep.node_idx].tasks.cmd.build.kind == out)
+                            node.lists.nodes[dep.node] != node and
+                            node.lists.nodes[dep.node].flags.have_task_data and
+                            node.lists.nodes[dep.node].tasks.cmd.build.kind == out)
                         {
                             ptr[0..4].* = ".{.@".*;
                             ptr += 4;
-                            ptr += fmt.stringLiteral(node.lists.nodes[dep.node_idx].name).formatWriteBuf(ptr);
+                            ptr += fmt.stringLiteral(node.lists.nodes[dep.node].name).formatWriteBuf(ptr);
                             ptr[0..2].* = ",\"".*;
                             ptr += 2;
-                            ptr += node.lists.nodes[dep.node_idx].lists.paths[0].formatWriteBufLiteral(ptr);
+                            ptr += node.lists.nodes[dep.node].lists.paths[0].formatWriteBufLiteral(ptr);
                             ptr[0..4].* = "\"},\n".*;
                             ptr += 4;
                         }
