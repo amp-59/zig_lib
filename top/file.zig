@@ -2551,7 +2551,7 @@ pub const about = struct {
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
-        ptr = fmt.writeUdsize(ptr + 3, fd);
+        ptr = fmt.Udsize.write(ptr + 3, fd);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
@@ -2565,9 +2565,9 @@ pub const about = struct {
         ptr[0..9].* = ", offset=".*;
         ptr = fmt.Ud64.write(ptr + 9, offset);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.writeUx64(ptr + 2, addr);
+        ptr = fmt.Ux64.write(ptr + 2, addr);
         ptr[0..2].* = "..".*;
-        ptr = fmt.writeUx64(ptr + 2, addr +% len);
+        ptr = fmt.Ux64.write(ptr + 2, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr = fmt.Bytes.write(ptr + 2, len);
         ptr[0] = '\n';
@@ -2818,7 +2818,7 @@ pub const about = struct {
         ptr[0..2].* = ", ".*;
         ptr = CompoundPath.writeDisplayPath(ptr + 2, name);
         ptr[0..5].* = ", fd=".*;
-        ptr = fmt.writeUdsize(ptr + 5, fd);
+        ptr = fmt.Udsize.write(ptr + 5, fd);
         ptr[0..2].* = ", ".*;
         ptr = writeMode(ptr + 2, file_mode);
         ptr[0] = '\n';
@@ -2856,7 +2856,7 @@ pub const about = struct {
         buf[0..socket_s.len].* = socket_s.*;
         var ptr: [*]u8 = buf[socket_s.len..];
         ptr[0..3].* = "fd=".*;
-        ptr = fmt.writeUdsize(ptr + 3, fd);
+        ptr = fmt.Udsize.write(ptr + 3, fd);
         ptr[0..2].* = ", ".*;
         ptr = fmt.strcpyEqu(ptr + 2, @tagName(dom));
         ptr[0..2].* = ", ".*;
@@ -2915,13 +2915,13 @@ pub const about = struct {
         buf[0..copy_s.len].* = copy_s.*;
         var ptr: [*]u8 = buf[copy_s.len..];
         ptr[0..7].* = "src_fd=".*;
-        ptr = fmt.writeUdsize(ptr + 7, src_fd);
+        ptr = fmt.Udsize.write(ptr + 7, src_fd);
         ptr[0..10].* = ", dest_fd=".*;
-        ptr = fmt.writeUdsize(ptr + 10, dest_fd);
+        ptr = fmt.Udsize.write(ptr + 10, dest_fd);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.writeUdsize(ptr + 2, act_count);
+        ptr = fmt.Udsize.write(ptr + 2, act_count);
         ptr[0] = '/';
-        ptr = fmt.writeUdsize(ptr + 1, max_count);
+        ptr = fmt.Udsize.write(ptr + 1, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (src_offset) |off| {
@@ -3032,9 +3032,9 @@ pub const about = struct {
         ptr[0..9].* = ", offset=".*;
         ptr = fmt.Ud64.write(ptr + 9, offset);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.writeUx64(ptr + 2, addr);
+        ptr = fmt.Ux64.write(ptr + 2, addr);
         ptr[0..2].* = "..".*;
-        ptr = fmt.writeUx64(ptr + 2, addr +% len);
+        ptr = fmt.Ux64.write(ptr + 2, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr = fmt.Bytes.write(ptr + 2, len);
         ptr[0] = '\n';
@@ -3204,7 +3204,7 @@ pub const about = struct {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, 4, fd);
         ptr[0..7].* = "offset=".*;
-        ptr = fmt.writeUdsize(ptr + 7, offset);
+        ptr = fmt.Udsize.write(ptr + 7, offset);
         ptr[0] = '\n';
         return ptr + 1;
     }
