@@ -2,14 +2,12 @@ const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
-
 pub const Path = file.CompoundPath;
 pub const Allocator = mem.SimpleAllocator;
 const OtherAllocator = mem.dynamic.GenericRtArenaAllocator(.{
     .AddressSpace = builtin.root.Builder.AddressSpace,
     .errors = mem.dynamic.spec.errors.noexcept,
 });
-
 pub const File = struct {
     /// What this file represents to the node.
     key: Key,

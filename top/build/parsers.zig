@@ -632,13 +632,15 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             } else {
                 return;
             }
-        } else if (mem.testEqualString("--entry", arg)) {
+        } else if (mem.testEqualString("-fentry", arg)) {
             args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.entry = mem.terminate(args[args_idx], 0);
-            } else {
+            if (args_idx == args_len) {
                 return;
             }
+            arg = mem.terminate(args[args_idx], 0);
+            cmd.entry = .{ .yes = arg };
+        } else if (mem.testEqualString("-fno-entry", arg)) {
+            cmd.entry = .no;
         } else if (mem.testEqualString("-flld", arg)) {
             cmd.lld = true;
         } else if (mem.testEqualString("-fno-lld", arg)) {
@@ -966,7 +968,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-const build_help: [:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -1033,7 +1035,7 @@ const build_help: [:0]const u8 =
     \\    --version-script                Provide a version .map file
     \\    --dynamic-linker                Set the dynamic interpreter path
     \\    --sysroot                       Set the system root directory
-    \\    --entry                         Set the entrypoint symbol name
+    \\    -f[no-]entry[=]                 Override the default entry symbol name
     \\    -f[no-]lld                      Use LLD as the linker
     \\    -f[no-]llvm                     Use LLVM as the codegen backend
     \\    -f[no-]compiler-rt              (default) Include compiler-rt symbols in output
@@ -1087,7 +1089,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -1106,7 +1108,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -1119,7 +1121,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout

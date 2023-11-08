@@ -444,11 +444,18 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
         ptr += 1;
     }
     if (cmd.entry) |entry| {
-        ptr[0..8].* = "--entry\x00".*;
-        ptr += 8;
-        ptr = fmt.strcpyEqu(ptr, entry);
-        ptr[0] = 0;
-        ptr += 1;
+        switch (entry) {
+            .yes => |arg| {
+                ptr[0..8].* = "-fentry\x3d".*;
+                ptr += 8;
+                ptr = fmt.strcpyEqu(ptr, arg);
+                ptr[0] = 0;
+                ptr += 1;
+            },
+            .no => {
+                ptr = fmt.strcpyEqu(ptr, "-fno-entry\x00");
+            },
+        }
     }
     if (cmd.lld) |lld| {
         if (lld) {
@@ -964,7 +971,14 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
         len +%= 11 +% sysroot.len;
     }
     if (cmd.entry) |entry| {
-        len +%= 9 +% entry.len;
+        switch (entry) {
+            .yes => |arg| {
+                len +%= 9 +% arg.len;
+            },
+            .no => {
+                len +%= 11;
+            },
+        }
     }
     if (cmd.lld) |lld| {
         if (lld) {

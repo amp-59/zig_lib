@@ -9,6 +9,10 @@ pub const PathUnion = union(enum) {
     yes: ?types.Path,
     no,
 };
+pub const StringUnion = union(enum) {
+    yes: ?[]const u8,
+    no,
+};
 pub const BuildCommand = struct {
     kind: types.BinaryOutput,
     /// (default=yes) Output machine code
@@ -223,8 +227,11 @@ pub const BuildCommand = struct {
     dynamic_linker: ?[]const u8 = null,
     /// Set the system root directory
     sysroot: ?[]const u8 = null,
-    /// Set the entrypoint symbol name
-    entry: ?[]const u8 = null,
+    /// Override the default entry symbol name
+    entry: ?union(enum) {
+        yes: []const u8,
+        no,
+    } = null,
     /// Use LLD as the linker
     lld: ?bool = null,
     /// Use LLVM as the codegen backend
@@ -763,11 +770,18 @@ pub const BuildCommand = struct {
             ptr += 1;
         }
         if (cmd.entry) |entry| {
-            ptr[0..8].* = "--entry\x00".*;
-            ptr += 8;
-            ptr = fmt.strcpyEqu(ptr, entry);
-            ptr[0] = 0;
-            ptr += 1;
+            switch (entry) {
+                .yes => |arg| {
+                    ptr[0..8].* = "-fentry\x3d".*;
+                    ptr += 8;
+                    ptr = fmt.strcpyEqu(ptr, arg);
+                    ptr[0] = 0;
+                    ptr += 1;
+                },
+                .no => {
+                    ptr = fmt.strcpyEqu(ptr, "-fno-entry\x00");
+                },
+            }
         }
         if (cmd.lld) |lld| {
             if (lld) {
@@ -1281,7 +1295,14 @@ pub const BuildCommand = struct {
             len +%= 11 +% sysroot.len;
         }
         if (cmd.entry) |entry| {
-            len +%= 9 +% entry.len;
+            switch (entry) {
+                .yes => |arg| {
+                    len +%= 9 +% arg.len;
+                },
+                .no => {
+                    len +%= 11;
+                },
+            }
         }
         if (cmd.lld) |lld| {
             if (lld) {
@@ -1828,9 +1849,16 @@ pub const BuildCommand = struct {
             array.writeOne(0);
         }
         if (cmd.entry) |entry| {
-            array.writeMany("--entry\x00");
-            array.writeMany(entry);
-            array.writeOne(0);
+            switch (entry) {
+                .yes => |arg| {
+                    array.writeMany("-fentry\x3d");
+                    array.writeMany(arg);
+                    array.writeOne(0);
+                },
+                .no => {
+                    array.writeMany("-fno-entry\x00");
+                },
+            }
         }
         if (cmd.lld) |lld| {
             if (lld) {
@@ -2618,13 +2646,15 @@ pub const BuildCommand = struct {
                 } else {
                     return;
                 }
-            } else if (mem.testEqualString("--entry", arg)) {
+            } else if (mem.testEqualString("-fentry", arg)) {
                 args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.entry = mem.terminate(args[args_idx], 0);
-                } else {
+                if (args_idx == args.len) {
                     return;
                 }
+                arg = mem.terminate(args[args_idx], 0);
+                cmd.entry = .{ .yes = arg };
+            } else if (mem.testEqualString("-fno-entry", arg)) {
+                cmd.entry = .no;
             } else if (mem.testEqualString("-flld", arg)) {
                 cmd.lld = true;
             } else if (mem.testEqualString("-fno-lld", arg)) {
@@ -3415,7 +3445,7 @@ pub const FormatCommand = struct {
         }
     }
 };
-const build_help: [:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -3482,7 +3512,7 @@ const build_help: [:0]const u8 =
     \\    --version-script                Provide a version .map file
     \\    --dynamic-linker                Set the dynamic interpreter path
     \\    --sysroot                       Set the system root directory
-    \\    --entry                         Set the entrypoint symbol name
+    \\    -f[no-]entry[=]                 Override the default entry symbol name
     \\    -f[no-]lld                      Use LLD as the linker
     \\    -f[no-]llvm                     Use LLVM as the codegen backend
     \\    -f[no-]compiler-rt              (default) Include compiler-rt symbols in output
@@ -3536,7 +3566,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -3555,7 +3585,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -3568,7 +3598,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout
