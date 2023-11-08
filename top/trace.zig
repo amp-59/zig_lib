@@ -288,7 +288,9 @@ fn writeCompileSourceContext(
                         ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..tok.loc.start]);
                     }
                     if (work.loc.finish > tok.loc.start) {
-                        ptr = fmt.highlight(ptr, &tok, syntax);
+                        if (fmt.highlight(&tok, syntax)) |style| {
+                            ptr = fmt.strcpyEqu(ptr, style);
+                        }
                     }
                     ptr = fmt.strcpyEqu(ptr, work.itr.buf[tok.loc.start..tok.loc.finish]);
                     work.loc.start = tok.loc.finish;
@@ -644,7 +646,9 @@ fn writeSourceContext(
                         ptr = fmt.strcpyEqu(ptr, work.itr.buf[work.loc.start..tok.loc.start]);
                     }
                     if (work.loc.finish > tok.loc.start) {
-                        ptr = fmt.highlight(ptr, &tok, syntax);
+                        if (fmt.highlight(&tok, syntax)) |style| {
+                            ptr = fmt.strcpyEqu(ptr, style);
+                        }
                     }
                     ptr = fmt.strcpyEqu(ptr, work.itr.buf[tok.loc.start..tok.loc.finish]);
                     work.loc.start = tok.loc.finish;
