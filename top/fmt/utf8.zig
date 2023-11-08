@@ -40,8 +40,6 @@ pub fn decode2(bytes: []const u8) !u32 {
     return value;
 }
 pub fn decode3(bytes: []const u8) !u32 {
-    //debug.assertEqual(u64, bytes.len, 3);
-    //debug.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
     var value: u32 = bytes[0] & 0b00001111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
         return error.InvalidEncoding;
@@ -62,8 +60,6 @@ pub fn decode3(bytes: []const u8) !u32 {
     return value;
 }
 pub fn decode4(bytes: []const u8) !u32 {
-    //debug.assertEqual(u64, bytes.len, 4);
-    //debug.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
     var value: u32 = bytes[0] & 0b00000111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
         return error.InvalidEncoding;
