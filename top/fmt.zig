@@ -10,11 +10,15 @@ pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
 pub fn Interface(comptime Format: type) type {
     return struct {
-        formatWrite: fn (Format, anytype) callconv(.Inline) void = Format.formatWrite,
-        formatWriteBuf: fn (Format, [*]u8) callconv(.Inline) usize = Format.formatWriteBuf,
-        formatLength: fn (Format) callconv(.Inline) usize = Format.formatLength,
-        write: fn ([*]u8, @TypeOf(undef.value)) [*]u8 = Format.write,
-        length: fn (@TypeOf(undef.value)) usize = Format.length,
+        pub inline fn formatWrite(format: Format, array: anytype) void {
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
+        }
+        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            return strlen(Format.write(buf, format.value), buf);
+        }
+        pub inline fn formatLength(format: Format) usize {
+            return Format.length(format.value);
+        }
         const undef: Format = undefined;
     };
 }
@@ -596,15 +600,6 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
             break :blk len;
         };
-        pub inline fn formatWrite(format: Format, array: anytype) void {
-            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
-        }
-        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            return strlen(Format.write(buf, format.value), buf);
-        }
-        pub inline fn formatLength(format: Format) usize {
-            return length(format.value);
-        }
         pub fn write(buf: [*]u8, value: Int) [*]u8 {
             @setRuntimeSafety(false);
             if (@inComptime() and builtin.isUndefined(value)) {
@@ -694,6 +689,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             array.writeFormat(format);
             return array;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
@@ -954,7 +950,7 @@ pub const Bytes = packed struct {
         return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
     }
     pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        return @intFromPtr(Format.write(buf, format.value)) -% @intFromPtr(buf);
+        return strlen(Format.write(buf, format.value), buf);
     }
     pub inline fn formatLength(format: Format) usize {
         return Format.length(format.value);
@@ -2138,29 +2134,39 @@ pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
 pub fn lowerCase(name: []const u8) LowerCaseFormat {
     return .{ .value = name };
 }
+pub const UpperCaseFormat = struct {
+    value: []const u8,
+    const Format = @This();
+    pub fn write(buf: [*]u8, string: []const u8) [*]u8 {
+        for (string, 0..) |byte, idx| {
+            buf[idx] = switch (byte) {
+                'a'...'z' => byte -% ('a' -% 'A'),
+                else => byte,
+            };
+        }
+        return buf + string.len;
+    }
+    pub fn length(string: []const u8) usize {
+        return string.len;
+    }
+    pub usingnamespace Interface(Format);
+};
 pub const LowerCaseFormat = struct {
     value: []const u8,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        for (format.value) |byte| {
-            array.writeOne(switch (byte) {
-                'A'...'Z' => byte +% ('a' -% 'A'),
-                else => byte,
-            });
-        }
-    }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        for (format.value, 0..) |byte, idx| {
+    pub fn write(buf: [*]u8, string: []const u8) [*]u8 {
+        for (string, 0..) |byte, idx| {
             buf[idx] = switch (byte) {
                 'A'...'Z' => byte +% ('a' -% 'A'),
                 else => byte,
             };
         }
-        return format.value.len;
+        return buf + string.len;
     }
-    pub fn formatLength(format: Format) usize {
-        return format.value.len;
+    pub fn length(string: []const u8) usize {
+        return string.len;
     }
+    pub usingnamespace Interface(Format);
 };
 /// .{ 0xff, 0xff, 0xff, 0xff } => "ffffffff";
 pub fn bytesToHex(dest: []u8, src: []const u8) []const u8 {
@@ -2704,7 +2710,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
     };
     return T;
 }
-pub const BoolFormat = struct {
+pub const BoolFormat = packed struct {
     value: bool,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
