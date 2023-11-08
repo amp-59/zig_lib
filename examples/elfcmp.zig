@@ -12,8 +12,8 @@ pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
     },
 });
 pub const DynamicLoader = zl.elf.GenericDynamicLoader(.{
-    .errors = zl.elf.spec.loader.errors.noexcept,
-    .options = .{ .verify_lengths = true },
+    .errors = .{},
+    .options = .{},
     .AddressSpace = LoaderSpace,
     .logging = .{
         .show_insignificant = true,
