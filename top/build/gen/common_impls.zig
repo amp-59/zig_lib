@@ -2054,9 +2054,11 @@ pub fn writeFields(array: *Array, attributes: types.Attributes) void {
             param_spec.tag == .optional_field)
         {
             for (param_spec.descr) |line| {
-                array.writeMany("/// ");
-                array.writeMany(line);
-                array.writeMany("\n");
+                if (line.len != 0) {
+                    array.writeMany("/// ");
+                    array.writeMany(line);
+                    array.writeMany("\n");
+                }
             }
             array.writeMany(param_spec.name);
             array.writeMany(":");
