@@ -915,17 +915,13 @@ pub const SourceLocationFormat = struct {
         const line_fmt: LineColFormat = .{ .value = format.value.line };
         const column_fmt: LineColFormat = .{ .value = format.value.column };
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
-        var len: usize = 4;
+        var len: usize = 16;
         len +%= file_name.len;
-        len +%= 1;
         len +%= line_fmt.formatLength();
-        len +%= 1;
         len +%= column_fmt.formatLength();
-        len +%= 2;
         len +%= ret_addr_fmt.formatLength();
-        len +%= 4;
         len +%= fn_name.len;
-        return len +% 4;
+        return len;
     }
     pub fn init(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
         return .{ .value = value, .return_address = ret_addr orelse @returnAddress() };
