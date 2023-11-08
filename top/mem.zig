@@ -362,6 +362,7 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
     map_spec.errors,
     map_spec.return_type,
 ) {
+    @setRuntimeSafety(builtin.is_safe);
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
     const ret: isize = asm volatile ("syscall # mmap"
         : [ret] "={rax}" (-> isize),
@@ -440,16 +441,36 @@ pub fn resize(comptime resize_spec: RemapSpec, old_addr: usize, old_len: usize, 
     }
 }
 pub fn unmap(comptime unmap_spec: UnmapSpec, addr: usize, len: usize) sys.ErrorUnion(unmap_spec.errors, unmap_spec.return_type) {
+    @setRuntimeSafety(builtin.is_safe);
     const logging: debug.Logging.ReleaseError = comptime unmap_spec.logging.override();
-    if (meta.wrap(sys.call(.munmap, unmap_spec.errors, unmap_spec.return_type, .{ addr, len }))) {
-        if (logging.Release) {
-            about.aboutAddrLenNotice(about.unmap_s, addr, len);
-        }
-    } else |unmap_error| {
-        if (logging.Error) {
-            about.aboutAddrLenError(about.unmap_s, @errorName(unmap_error), addr, len);
-        }
-        return unmap_error;
+    const ret: isize = asm volatile ("syscall # mmap"
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (@intFromEnum(sys.Fn.munmap)),
+          [_] "{rdi}" (addr),
+          [_] "{rsi}" (len),
+        : "rcx", "r11", "memory"
+    );
+    if (unmap_spec.errors.throw.len != 0) {
+        builtin.throw(sys.ErrorCode, unmap_spec.errors.throw, ret) catch |munmap_error| {
+            if (logging.Error) {
+                about.aboutAddrLenError(about.map_s, @errorName(munmap_error), addr, len);
+            }
+            return munmap_error;
+        };
+    }
+    if (unmap_spec.errors.abort.len != 0) {
+        builtin.throw(sys.ErrorCode, unmap_spec.errors.abort, ret) catch |munmap_error| {
+            if (logging.Error) {
+                about.aboutAddrLenError(about.map_s, @errorName(munmap_error), addr, len);
+            }
+            proc.exitError(munmap_error, 2);
+        };
+    }
+    if (logging.Release) {
+        about.aboutAddrLenNotice(about.map_s, addr, len);
+    }
+    if (unmap_spec.return_type != void) {
+        return @intCast(ret);
     }
 }
 pub fn protect(comptime protect_spec: ProtectSpec, prot: sys.flags.MemProt, addr: usize, len: usize) sys.ErrorUnion(protect_spec.errors, protect_spec.return_type) {
