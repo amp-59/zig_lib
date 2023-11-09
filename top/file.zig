@@ -1,12 +1,12 @@
-const sys = @import("./sys.zig");
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const meta = @import("./meta.zig");
-const bits = @import("./bits.zig");
-const time = @import("./time.zig");
-const proc = @import("./proc.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const sys = @import("sys.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const meta = @import("meta.zig");
+const bits = @import("bits.zig");
+const time = @import("time.zig");
+const proc = @import("proc.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 pub const cwd: comptime_int = @as(usize, @bitCast(@as(isize, -100)));
 pub const mode = struct {
     pub const regular: Mode = .{
@@ -421,28 +421,28 @@ pub const Status = extern struct {
     }
 };
 pub const StatusExtended = extern struct {
-    mask: u32,
-    blksize: u32,
-    attributes: u64,
-    nlink: u32,
-    uid: u32,
-    gid: u32,
-    mode: Mode,
-    zb240: u16,
-    ino: u64,
-    size: u64,
-    blocks: u64,
-    attributes_mask: u64,
-    atime: time.TimeSpec,
-    btime: time.TimeSpec,
-    ctime: time.TimeSpec,
-    mtime: time.TimeSpec,
-    rdev_major: u32,
-    rdev_minor: u32,
-    dev_major: u32,
-    dev_minor: u32,
-    mnt_id: u64,
-    zb1216: [13]u64,
+    mask: u32 = 0,
+    blksize: u32 = 0,
+    attributes: u64 = 0,
+    nlink: u32 = 0,
+    uid: u32 = 0,
+    gid: u32 = 0,
+    mode: Mode = .{},
+    zb240: u16 = 0,
+    ino: u64 = 0,
+    size: u64 = 0,
+    blocks: u64 = 0,
+    attributes_mask: u64 = 0,
+    atime: time.TimeSpec = .{},
+    btime: time.TimeSpec = .{},
+    ctime: time.TimeSpec = .{},
+    mtime: time.TimeSpec = .{},
+    rdev_major: u32 = 0,
+    rdev_minor: u32 = 0,
+    dev_major: u32 = 0,
+    dev_minor: u32 = 0,
+    mnt_id: u64 = 0,
+    zb1216: [13]u64 = .{0} ** 13,
     pub const Fields = packed struct(usize) {
         type: bool = true,
         mode: bool = true,
