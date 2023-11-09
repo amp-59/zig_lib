@@ -1,5 +1,5 @@
 //! Example build program:
-pub const zl = @import("./zig_lib/zig_lib.zig");
+pub const zl = @import("zig_lib/zig_lib.zig");
 
 const build = zl.build;
 const Node = build.GenericNode(.{});
