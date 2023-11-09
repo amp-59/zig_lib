@@ -326,5 +326,5 @@ pub fn main() !void {
     try testEquivalentLEBFormatAndParse();
     try testParseUserInt();
     try testParseReusableIntExhaustive();
-    try @import("./parse/float.zig").floatTestMain();
+    try @import("parse/float.zig").floatTestMain();
 }

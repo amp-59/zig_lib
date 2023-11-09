@@ -86,7 +86,7 @@ fn causePanicOutOfBounds() void {
 pub fn main() void {
     //var b: bool = zl.mem.unstable(bool, true);
     //if (b) {
-    @import("./stack_overflow.zig").main();
+    @import("stack_overflow.zig").main();
     causePanicSentinelMismatchNonScalarSentinel();
     causePanicOutOfBounds();
     causePanicInactiveUnionField();

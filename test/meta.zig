@@ -75,11 +75,7 @@ fn testMemoryMetaFunctions() !void {
     try testInitializer();
 }
 fn testInitializer() !void {
-    const T = struct {
-        x: u64 = 0,
-        y: u32 = 0,
-        z: u16 = 0,
-    };
+    const T = struct { x: u64 = 0, y: u32 = 0, z: u16 = 0 };
     const c: []const meta.Initializer = &meta.initializers(T, .{ .x = 25, .y = 15 });
     var t: T = meta.initialize(T, c);
     try debug.expectEqual(T, t, .{ .x = 25, .y = 15 });

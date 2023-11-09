@@ -7,8 +7,8 @@ const debug = zl.debug;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;
-const tab = @import("./tab.zig");
-const htest = @import("./hash.zig").htest;
+const tab = @import("tab.zig");
+const htest = @import("hash.zig").htest;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 fn testEd25519KeyPairCreation() !void {
