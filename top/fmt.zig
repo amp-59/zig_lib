@@ -1915,47 +1915,14 @@ pub fn GenericLEB128Format(comptime Int: type) type {
     return extern struct {
         value: Int,
         const Format = @This();
-        pub fn formatWrite(format: Format, array: anytype) void {
-            if (@typeInfo(Int).Int.signedness == .signed) {
-                const Abs = @Type(.{ .Int = .{
-                    .signedness = .unsigned,
-                    .bits = bit_size_of,
-                } });
-                var value: Int = format.value;
-                while (true) {
-                    const uvalue: Abs = @bitCast(value);
-                    const byte: u8 = @truncate(uvalue);
-                    value >>= 6;
-                    if (value == -1 or value == 0) {
-                        array.writeOne(byte & 0x7f);
-                        break;
-                    } else {
-                        value >>= 1;
-                        array.writeOne(byte | 0x80);
-                    }
-                }
-            } else {
-                var value: Int = format.value;
-                while (true) {
-                    const byte: u8 = @truncate(value & 0x7f);
-                    value >>= 7;
-                    if (value == 0) {
-                        array.writeOne(byte);
-                        break;
-                    } else {
-                        array.writeOne(byte | 0x80);
-                    }
-                }
-            }
-        }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, int: Int) usize {
             var len: usize = 0;
             if (@typeInfo(Int).Int.signedness == .signed) {
                 const Abs = @Type(.{ .Int = .{
                     .signedness = .unsigned,
                     .bits = bit_size_of,
                 } });
-                var value: Int = format.value;
+                var value: Int = int;
                 while (true) {
                     const uvalue: Abs = @bitCast(value);
                     const byte: u8 = @truncate(uvalue);
@@ -1971,7 +1938,7 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                     }
                 }
             } else {
-                var value: Int = format.value;
+                var value: Int = int;
                 while (true) {
                     const byte: u8 = @truncate(value & 0x7f);
                     value >>= 7;
@@ -1987,10 +1954,10 @@ pub fn GenericLEB128Format(comptime Int: type) type {
             }
             return len;
         }
-        pub fn formatLength(format: Format) usize {
+        pub fn length(int: Int) usize {
             var len: usize = 0;
             if (@typeInfo(Int).Int.signedness == .signed) {
-                var value: Int = format.value;
+                var value: Int = int;
                 while (true) {
                     value >>= 6;
                     if (value == -1 or value == 0) {
@@ -2002,7 +1969,7 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                     }
                 }
             } else {
-                var value: Int = format.value;
+                var value: Int = int;
                 while (true) {
                     value >>= 7;
                     if (value == 0) {
@@ -2015,6 +1982,7 @@ pub fn GenericLEB128Format(comptime Int: type) type {
             }
             return len;
         }
+        pub usingnamespace Interface(Format);
     };
 }
 pub fn writeUnsignedFixedLEB128(comptime width: usize, ptr: *[width]u8, int: @Type(.{ .Int = .{
@@ -3163,7 +3131,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                    if (spec.omit_default_fields and field.default_value != null) {
+                    if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
                         if (builtin.requireComptime(field.type)) {
                             if (comptime !mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                                 writeFieldInitializer(array, field_name_format, field_format);
@@ -3256,7 +3224,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                    if (spec.omit_default_fields and field.default_value != null) {
+                    if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
                         if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                             len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
                             fields_len +%= 1;
@@ -3329,7 +3297,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     }
                 }
                 const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                if (spec.omit_default_fields and field.default_value != null) {
+                if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
                     if (builtin.requireComptime(field.type)) {
                         if (comptime !mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
@@ -3845,6 +3813,11 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
             const address: usize = if (@inComptime()) 8 else @intFromPtr(format.value);
             const type_name: []const u8 = @typeName(Pointer);
             var len: usize = 0;
+            if (@typeInfo(child) == .Array and
+                @typeInfo(child).Array.child == u8)
+            {
+                return stringLiteral(format.value).formatWriteBuf(buf);
+            }
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = address };
                 @as(*[14 +% type_name.len]u8, @ptrCast(buf + len)).* = ("@intFromPtr(" ++ type_name ++ ", ").*;
