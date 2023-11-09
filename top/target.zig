@@ -238,6 +238,6 @@ pub const Target = struct {
         plan9 = 9,
         nvptx = 10,
     };
-    pub const aarch64 = @import("./target/aarch64.zig");
-    pub const x86 = @import("./target/x86.zig");
+    pub const aarch64 = @import("target/aarch64.zig");
+    pub const x86 = @import("target/x86.zig");
 };

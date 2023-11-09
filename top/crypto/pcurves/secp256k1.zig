@@ -2,8 +2,8 @@ const mem = @import("../../mem.zig");
 const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const errors = @import("../errors.zig");
-const tab = @import("./tab.zig");
-const common = @import("./common.zig");
+const tab = @import("tab.zig");
+const common = @import("common.zig");
 
 /// Group operations over secp256k1.
 pub const Secp256k1 = struct {
@@ -12,8 +12,8 @@ pub const Secp256k1 = struct {
     z: Fe = Fe.one,
     is_base: bool = false,
     /// Field arithmetic mod the order of the main subgroup.
-    pub const scalar = @import("./secp256k1/scalar.zig");
-    pub const fiat = @import("./secp256k1/secp256k1_64.zig");
+    pub const scalar = @import("secp256k1/scalar.zig");
+    pub const fiat = @import("secp256k1/secp256k1_64.zig");
     /// The underlying prime field.
     pub const Fe = common.Field(.{
         .fiat = fiat,

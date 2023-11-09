@@ -4,9 +4,9 @@ const gen = @import("../../gen.zig");
 const meta = @import("../../meta.zig");
 const builtin = @import("../../builtin.zig");
 
-const tok = @import("./tok.zig");
-const types = @import("./types.zig");
-const ptr_fn = @import("./ptr_fn.zig");
+const tok = @import("tok.zig");
+const types = @import("types.zig");
+const ptr_fn = @import("ptr_fn.zig");
 
 pub fn get(comptime tag: Fn) *const Fn {
     comptime {

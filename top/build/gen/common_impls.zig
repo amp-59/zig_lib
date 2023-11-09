@@ -1,8 +1,8 @@
 const fmt = @import("../../fmt.zig");
 const mem = @import("../../mem.zig");
 const bits = @import("../../bits.zig");
-const types = @import("./types.zig");
-const config = @import("./config.zig");
+const types = @import("types.zig");
+const config = @import("config.zig");
 const context: types.Context = @import("root").context;
 pub const Variant = struct {
     function: Function,

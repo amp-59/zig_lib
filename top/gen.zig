@@ -1,10 +1,10 @@
-const sys = @import("./sys.zig");
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const file = @import("./file.zig");
-const meta = @import("./meta.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const sys = @import("sys.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const file = @import("file.zig");
+const meta = @import("meta.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 pub const TypeDescr = fmt.GenericTypeDescrFormat(.{});
 pub const ListKind = enum {
     Parameter,

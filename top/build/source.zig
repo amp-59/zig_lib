@@ -2,7 +2,7 @@ const mach = @import("../mach.zig");
 const file = @import("../file.zig");
 const proc = @import("../proc.zig");
 const builtin = @import("../builtin.zig");
-const build = @import("./../build.zig");
+const build = @import("../build.zig");
 const Node = builtin.define(type, "Node", undefined);
 export fn forwardToExecuteCloneThreaded(
     address_space: *Node.AddressSpace,

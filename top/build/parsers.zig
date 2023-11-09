@@ -2,8 +2,8 @@ const mem = @import("../mem.zig");
 const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
 const builtin = @import("../builtin.zig");
-const tasks = @import("./tasks.zig");
-const types = @import("./types.zig");
+const tasks = @import("tasks.zig");
+const types = @import("types.zig");
 pub usingnamespace @import("../start.zig");
 export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);

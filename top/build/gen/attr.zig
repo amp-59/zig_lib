@@ -1,6 +1,6 @@
 const builtin = @import("../../builtin.zig");
 const types = struct {
-    pub usingnamespace @import("./types.zig");
+    pub usingnamespace @import("types.zig");
     pub usingnamespace @import("../types.zig");
 };
 const string_type: types.ProtoTypeDescrMap = .{

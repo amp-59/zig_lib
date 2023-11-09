@@ -1,8 +1,8 @@
-const sys = @import("./sys.zig");
-const bits = @import("./bits.zig");
-const proc = @import("./proc.zig");
-const meta = @import("./meta.zig");
-const builtin = @import("./builtin.zig");
+const sys = @import("sys.zig");
+const bits = @import("bits.zig");
+const proc = @import("proc.zig");
+const meta = @import("meta.zig");
+const builtin = @import("builtin.zig");
 pub const TimeSpec = extern struct {
     sec: u64 = 0,
     nsec: u64 = 0,

@@ -3,7 +3,7 @@ const mem = @import("../mem.zig");
 const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./types.zig");
+const types = @import("types.zig");
 pub const LLCCommand = struct {
     /// Always modify dest registers regardless of color
     aarch64_a57_fp_load_balancing_force_all: bool = false,

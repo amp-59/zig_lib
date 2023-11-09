@@ -1,19 +1,19 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const sys = @import("./sys.zig");
-const elf = @import("./elf.zig");
-const file = @import("./file.zig");
-const perf = @import("./perf.zig");
-const bits = @import("./bits.zig");
-const meta = @import("./meta.zig");
-const proc = @import("./proc.zig");
-const time = @import("./time.zig");
-const trace = @import("./trace.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
-pub const tasks = @import("./build/tasks.zig");
-pub const types = @import("./build/types.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const sys = @import("sys.zig");
+const elf = @import("elf.zig");
+const file = @import("file.zig");
+const perf = @import("perf.zig");
+const bits = @import("bits.zig");
+const meta = @import("meta.zig");
+const proc = @import("proc.zig");
+const time = @import("time.zig");
+const trace = @import("trace.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
+const testing = @import("testing.zig");
+pub const tasks = @import("build/tasks.zig");
+pub const types = @import("build/types.zig");
 pub usingnamespace tasks;
 pub const ExecPhase = enum(u8) {
     /// This phase initialises the toplevel node and the builder shared state.

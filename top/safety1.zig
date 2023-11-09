@@ -1,9 +1,9 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const math = @import("./math.zig");
-const meta = @import("./meta.zig");
-const safety = @import("./safety.zig");
-const builtin = @import("./builtin.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const math = @import("math.zig");
+const meta = @import("meta.zig");
+const safety = @import("safety.zig");
+const builtin = @import("builtin.zig");
 const Panic = union(enum(usize)) {
     message: []const u8,
     unwrapped_error: []const u8,

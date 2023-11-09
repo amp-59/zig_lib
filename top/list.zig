@@ -1,10 +1,10 @@
-const fmt = @import("./fmt.zig");
-const mem = @import("./mem.zig");
-const meta = @import("./meta.zig");
-const bits = @import("./bits.zig");
-const file = @import("./file.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const fmt = @import("fmt.zig");
+const mem = @import("mem.zig");
+const meta = @import("meta.zig");
+const bits = @import("bits.zig");
+const file = @import("file.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 pub const ListSpec = struct {
     child: type,
     low_alignment: ?u64,

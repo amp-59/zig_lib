@@ -5,8 +5,8 @@ const meta = @import("../../meta.zig");
 const file = @import("../../file.zig");
 const proc = @import("../../proc.zig");
 const builtin = @import("../../builtin.zig");
-const types = @import("./types.zig");
-const config = @import("./config.zig");
+const types = @import("types.zig");
+const config = @import("config.zig");
 pub usingnamespace @import("../../start.zig");
 const create_spec = .{
     .options = .{ .exclusive = false },

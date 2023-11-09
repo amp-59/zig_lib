@@ -3,9 +3,9 @@ const fmt = @import("../../fmt.zig");
 const meta = @import("../../meta.zig");
 const builtin = @import("../../builtin.zig");
 const testing = @import("../../testing.zig");
-const tok = @import("./tok.zig");
-const types = @import("./types.zig");
-const config = @import("./config.zig");
+const tok = @import("tok.zig");
+const types = @import("types.zig");
+const config = @import("config.zig");
 
 // zig fmt: off
 pub const abstract_specs: []const types.AbstractSpecification = &[_]types.AbstractSpecification{

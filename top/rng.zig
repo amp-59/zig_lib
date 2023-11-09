@@ -1,7 +1,7 @@
-const mem = @import("./mem.zig");
-const math = @import("./math.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const mem = @import("mem.zig");
+const math = @import("math.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 
 pub const Xoroshiro128 = struct {
     s: [2]u64,

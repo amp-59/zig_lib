@@ -1,8 +1,8 @@
 const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const errors = @import("../errors.zig");
-const tab = @import("./tab.zig");
-const common = @import("./common.zig");
+const tab = @import("tab.zig");
+const common = @import("common.zig");
 /// Group operations over P384.
 pub const P384 = extern struct {
     x: Fe,

@@ -1,15 +1,15 @@
-const mem = @import("./mem.zig");
-const sys = @import("./sys.zig");
-const fmt = @import("./fmt.zig");
-const zig = @import("./zig.zig");
-const proc = @import("./proc.zig");
-const math = @import("./math.zig");
-const file = @import("./file.zig");
-const debug = @import("./debug.zig");
-const dwarf = @import("./dwarf.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
-pub usingnamespace @import("./start.zig");
+const mem = @import("mem.zig");
+const sys = @import("sys.zig");
+const fmt = @import("fmt.zig");
+const zig = @import("zig.zig");
+const proc = @import("proc.zig");
+const math = @import("math.zig");
+const file = @import("file.zig");
+const debug = @import("debug.zig");
+const dwarf = @import("dwarf.zig");
+const builtin = @import("builtin.zig");
+const testing = @import("testing.zig");
+pub usingnamespace @import("start.zig");
 const is_safe: bool = false;
 pub const logging_default: debug.Logging.Default = .{
     .Acquire = false,

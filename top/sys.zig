@@ -1,7 +1,7 @@
 //! Linux x86_64
-const builtin = @import("./builtin.zig");
-const meta = @import("./meta.zig");
-pub const flags = @import("./sys/flags.zig");
+const builtin = @import("builtin.zig");
+const meta = @import("meta.zig");
+pub const flags = @import("sys/flags.zig");
 
 pub const MAP = struct {
     const FILE = 0x0;

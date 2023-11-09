@@ -1,1 +1,1 @@
-const extra = @import("./extra.zig");
+const extra = @import("extra.zig");

@@ -1,7 +1,7 @@
-const math = @import("./math.zig");
-const meta = @import("./meta.zig");
-const safety = @import("./safety.zig");
-const builtin = @import("./builtin.zig");
+const math = @import("math.zig");
+const meta = @import("meta.zig");
+const safety = @import("safety.zig");
+const builtin = @import("builtin.zig");
 const PanicCause = union(enum) {
     message,
     unwrapped_error,

@@ -1,4 +1,4 @@
-const extra = @import("./extra.zig");
+const extra = @import("extra.zig");
 pub const MemMap = struct {
     pub const SHARED = 1;
     pub const PRIVATE = 2;

@@ -1,11 +1,11 @@
-const tab = @import("./tab.zig");
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const bits = @import("./bits.zig");
-const math = @import("./math.zig");
-const meta = @import("./meta.zig");
-const proc = @import("./proc.zig");
-const builtin = @import("./builtin.zig");
+const tab = @import("tab.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const bits = @import("bits.zig");
+const math = @import("math.zig");
+const meta = @import("meta.zig");
+const proc = @import("proc.zig");
+const builtin = @import("builtin.zig");
 const debug = @This();
 pub const Error = error{
     SubCausedOverflow,
@@ -663,7 +663,7 @@ const special = struct {
     extern fn printStackTrace(*const Trace, usize, usize) void;
     extern fn printSourceCodeAtAddress(*const Trace, usize) void;
     extern fn printSourceCodeAtAddresses(*const Trace, usize, [*]usize, usize) void;
-    pub const trace = @import("./trace.zig");
+    pub const trace = @import("trace.zig");
 };
 pub const printStackTrace = blk: {
     if (builtin.strip_debug_info)

@@ -1,13 +1,13 @@
-const sys = @import("./sys.zig");
-const fmt = @import("./fmt.zig");
-const mem = @import("./mem.zig");
-const elf = @import("./elf.zig");
-const meta = @import("./meta.zig");
-const time = @import("./time.zig");
-const file = @import("./file.zig");
-const bits = @import("./bits.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const sys = @import("sys.zig");
+const fmt = @import("fmt.zig");
+const mem = @import("mem.zig");
+const elf = @import("elf.zig");
+const meta = @import("meta.zig");
+const time = @import("time.zig");
+const file = @import("file.zig");
+const bits = @import("bits.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 pub const SignalAction = extern struct {
     handler: Handler = .{ .set = .default },
     flags: sys.flags.SignalAction,

@@ -1,10 +1,10 @@
 const builtin = @import("builtin");
-const mem = @import("./mem.zig");
-const tab = @import("./tab.zig");
-const bits = @import("./bits.zig");
-const meta = @import("./meta.zig");
-const math = @import("./math.zig");
-const debug = @import("./debug.zig");
+const mem = @import("mem.zig");
+const tab = @import("tab.zig");
+const bits = @import("bits.zig");
+const meta = @import("meta.zig");
+const math = @import("math.zig");
+const debug = @import("debug.zig");
 pub const root = @import("root");
 /// Determines whether this library must supply compiler function types and
 /// target information.

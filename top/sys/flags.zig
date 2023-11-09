@@ -1,7 +1,7 @@
 pub const fmt = @import("../fmt.zig");
 pub const debug = @import("../debug.zig");
 pub const builtin = @import("../builtin.zig");
-pub const extra = @import("./extra.zig");
+pub const extra = @import("extra.zig");
 pub const MemMap = packed struct(usize) {
     visibility: enum(u2) {
         shared = 0x1,

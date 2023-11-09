@@ -1,13 +1,13 @@
-const sys = @import("./sys.zig");
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const proc = @import("./proc.zig");
-const bits = @import("./bits.zig");
-const math = @import("./math.zig");
-const meta = @import("./meta.zig");
-const algo = @import("./algo.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const sys = @import("sys.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const proc = @import("proc.zig");
+const bits = @import("bits.zig");
+const math = @import("math.zig");
+const meta = @import("meta.zig");
+const algo = @import("algo.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 pub const ArenaAllocatorOptions = struct {
     /// Experimental feature:
     check_parametric: bool = builtin.is_debug,

@@ -3,9 +3,9 @@
 //! package). It serves the same purpose in both cases, achieved by different
 //! means.
 
-const proc = @import("./proc.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const proc = @import("proc.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 
 pub const panic = debug.panic;
 pub usingnamespace debug.panic_extra;

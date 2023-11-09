@@ -1,8 +1,8 @@
 const builtin = @import("../../builtin.zig");
 const debug = @import("../../debug.zig");
 const errors = @import("../errors.zig");
-const tab = @import("./tab.zig");
-const common = @import("./common.zig");
+const tab = @import("tab.zig");
+const common = @import("common.zig");
 /// Group operations over P256.
 pub const P256 = struct {
     x: Fe,

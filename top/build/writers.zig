@@ -1,7 +1,7 @@
 const fmt = @import("../fmt.zig");
 const file = @import("../file.zig");
-const tasks = @import("./tasks.zig");
-const types = @import("./types.zig");
+const tasks = @import("tasks.zig");
+const types = @import("types.zig");
 pub usingnamespace @import("../start.zig");
 export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize, buf: [*]u8) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];

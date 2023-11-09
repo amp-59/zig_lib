@@ -3,11 +3,11 @@ const fmt = @import("../../fmt.zig");
 const gen = @import("../../gen.zig");
 const bits = @import("../../bits.zig");
 const builtin = @import("../../builtin.zig");
-const tok = @import("./tok.zig");
-const attr = @import("./attr.zig");
-const types = @import("./types.zig");
-const ctn_fn = @import("./ctn_fn.zig");
-const ptr_fn = @import("./ptr_fn.zig");
+const tok = @import("tok.zig");
+const attr = @import("attr.zig");
+const types = @import("types.zig");
+const ctn_fn = @import("ctn_fn.zig");
+const ptr_fn = @import("ptr_fn.zig");
 
 const ExprTag = enum(u8) {
     scrub,

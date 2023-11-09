@@ -1,12 +1,12 @@
-const fmt = @import("./fmt.zig");
-const mem = @import("./mem.zig");
-const meta = @import("./meta.zig");
-const bits = @import("./bits.zig");
-const math = @import("./math.zig");
-const proc = @import("./proc.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
-const pointer = @import("./pointer.zig");
+const fmt = @import("fmt.zig");
+const mem = @import("mem.zig");
+const meta = @import("meta.zig");
+const bits = @import("bits.zig");
+const math = @import("math.zig");
+const proc = @import("proc.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
+const pointer = @import("pointer.zig");
 
 pub fn StaticStream(comptime child: type, comptime count: u64) type {
     return StructuredAutomaticStreamVector(child, null, count, @alignOf(child), .{});

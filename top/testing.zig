@@ -1,16 +1,16 @@
 //! Before the value renderer can be used this import is a place for all
 //! miscellaneous testing functions which will not be used in the long term.
 //! Still more infrastructure is needed.
-const tab = @import("./tab.zig");
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const sys = @import("./sys.zig");
-const file = @import("./file.zig");
-const meta = @import("./meta.zig");
-const algo = @import("./algo.zig");
-const debug = @import("./debug.zig");
-const parse = @import("./parse.zig");
-const builtin = @import("./builtin.zig");
+const tab = @import("tab.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const sys = @import("sys.zig");
+const file = @import("file.zig");
+const meta = @import("meta.zig");
+const algo = @import("algo.zig");
+const debug = @import("debug.zig");
+const parse = @import("parse.zig");
+const builtin = @import("builtin.zig");
 pub inline fn announce(src: builtin.SourceLocation) void {
     var buf: [4096]u8 = undefined;
     buf[0] = '\r';

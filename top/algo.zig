@@ -1,7 +1,7 @@
-const tab = @import("./tab.zig");
-const math = @import("./math.zig");
-const bits = @import("./bits.zig");
-const builtin = @import("./builtin.zig");
+const tab = @import("tab.zig");
+const math = @import("math.zig");
+const bits = @import("bits.zig");
+const builtin = @import("builtin.zig");
 /// Derives and packs approximation counts.
 fn packSingleApproxB(n_bytes: u64) u16 {
     const n_bytes_clz: u8 = builtin.lzcnt(u64, n_bytes);

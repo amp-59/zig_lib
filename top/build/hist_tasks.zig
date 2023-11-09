@@ -1,4 +1,4 @@
-const tasks = @import("./tasks.zig");
+const tasks = @import("tasks.zig");
 const safety: bool = false;
 pub const BuildCommand = packed struct {
     key: Key,

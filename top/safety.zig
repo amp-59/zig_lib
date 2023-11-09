@@ -1,8 +1,8 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const math = @import("./math.zig");
-const meta = @import("./meta.zig");
-const builtin = @import("./builtin.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const math = @import("math.zig");
+const meta = @import("meta.zig");
+const builtin = @import("builtin.zig");
 pub fn writeAboveOrBelowLimit(
     buf: [*]u8,
     comptime To: type,

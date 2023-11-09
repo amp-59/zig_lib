@@ -1,13 +1,13 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const sys = @import("./sys.zig");
-const file = @import("./file.zig");
-const meta = @import("./meta.zig");
-const bits = @import("./bits.zig");
-const math = @import("./math.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const sys = @import("sys.zig");
+const file = @import("file.zig");
+const meta = @import("meta.zig");
+const bits = @import("bits.zig");
+const math = @import("math.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
+const testing = @import("testing.zig");
 pub fn length(comptime T: type, any: anytype) u64 {
     const S = @TypeOf(any);
     if (T == S) {

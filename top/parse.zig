@@ -1,8 +1,8 @@
-const meta = @import("./meta.zig");
-const math = @import("./math.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
-const _float = @import("./parse/float.zig");
+const meta = @import("meta.zig");
+const math = @import("math.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
+const _float = @import("parse/float.zig");
 
 pub usingnamespace _float;
 

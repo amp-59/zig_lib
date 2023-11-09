@@ -1,7 +1,7 @@
-const bits = @import("./bits.zig");
-const meta = @import("./meta.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const bits = @import("bits.zig");
+const meta = @import("meta.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 pub inline fn sub64(arg1: u64, arg2: u64) u64 {
     return arg1 -% arg2;
 }

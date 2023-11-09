@@ -1,12 +1,12 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const math = @import("./math.zig");
-const algo = @import("./algo.zig");
-const debug = @import("./debug.zig");
-const parse = @import("./parse.zig");
-const ascii = @import("./fmt/ascii.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
+const mem = @import("mem.zig");
+const fmt = @import("fmt.zig");
+const math = @import("math.zig");
+const algo = @import("algo.zig");
+const debug = @import("debug.zig");
+const parse = @import("parse.zig");
+const ascii = @import("fmt/ascii.zig");
+const builtin = @import("builtin.zig");
+const testing = @import("testing.zig");
 pub const Assembler = struct {
     buf: []const u8,
     buf_pos: usize = 0,

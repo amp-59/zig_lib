@@ -9,7 +9,7 @@ pub const encoded_len: comptime_int = 48;
 /// A compressed scalar, in canonical form.
 pub const CompressedScalar = [encoded_len]u8;
 const Fe = Field(.{
-    .fiat = @import("./p384_scalar_64.zig"),
+    .fiat = @import("p384_scalar_64.zig"),
     .field_order = 39402006196394479212279040100143613805079739270465446667946905279627659399113263569398956308152294913554433653942643,
     .field_bits = 384,
     .saturated_bits = 384,

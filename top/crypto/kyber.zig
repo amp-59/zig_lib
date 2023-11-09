@@ -1,8 +1,8 @@
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
-const hash = @import("./hash.zig");
-const core = @import("./core.zig");
-const utils = @import("./utils.zig");
+const hash = @import("hash.zig");
+const core = @import("core.zig");
+const utils = @import("utils.zig");
 pub const Q: i16 = 3329;
 pub const R: comptime_int = 1 << 16;
 pub const N: usize = 256;

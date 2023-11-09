@@ -1,8 +1,8 @@
-const algo = @import("./algo.zig");
-const bits = @import("./bits.zig");
-const math = @import("./math.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const algo = @import("algo.zig");
+const bits = @import("bits.zig");
+const math = @import("math.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 inline fn automatic_storage_address(impl: anytype) u64 {
     return @intFromPtr(impl) +% @offsetOf(@TypeOf(impl.*), "auto");
 }

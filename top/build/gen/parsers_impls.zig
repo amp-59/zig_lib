@@ -1,9 +1,9 @@
 const mem = @import("../../mem.zig");
 const gen = @import("../../gen.zig");
 const debug = @import("../../debug.zig");
-const attr = @import("./attr.zig");
-const config = @import("./config.zig");
-const common = @import("./common_impls.zig");
+const attr = @import("attr.zig");
+const config = @import("config.zig");
+const common = @import("common_impls.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
 pub const context = .Lib;

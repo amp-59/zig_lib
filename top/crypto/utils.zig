@@ -5,7 +5,7 @@ const file = @import("../file.zig");
 const proc = @import("../proc.zig");
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
-const random = @import("./random.zig");
+const random = @import("random.zig");
 /// Compares two arrays in constant time (for a given length) and returns whether they are equal.
 /// This function was designed to compare short cryptographic secrets (MACs, signatures).
 /// For all other applications, use mem.eql() instead.

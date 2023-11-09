@@ -1,5 +1,5 @@
 pub const target = @import("../target.zig");
-pub const feat = @import("./feat.zig");
+pub const feat = @import("feat.zig");
 pub const Feature = enum(u8) {
     a510 = 0,
     a65 = 1,

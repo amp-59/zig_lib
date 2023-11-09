@@ -2,8 +2,8 @@ const mem = @import("../mem.zig");
 const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
 
-const errors = @import("./errors.zig");
-const utils = @import("./utils.zig");
+const errors = @import("errors.zig");
+const utils = @import("utils.zig");
 
 /// The scalar field order.
 pub const field_order: u256 = 7237005577332262213973186563042994240857116359379907606001950938285454250989;

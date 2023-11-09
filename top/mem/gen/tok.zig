@@ -1,4 +1,4 @@
-const config = @import("./config.zig");
+const config = @import("config.zig");
 
 // Basic
 pub const word_type_name: [:0]const u8 = @typeName(config.word_size_type);

@@ -1,8 +1,8 @@
-const fmt = @import("./fmt.zig");
-const mem = @import("./mem.zig");
-const math = @import("./math.zig");
-const debug = @import("./debug.zig");
-const builtin = @import("./builtin.zig");
+const fmt = @import("fmt.zig");
+const mem = @import("mem.zig");
+const math = @import("math.zig");
+const debug = @import("debug.zig");
+const builtin = @import("builtin.zig");
 pub const Empty = struct {};
 pub const empty = &.{};
 pub const default = .{};

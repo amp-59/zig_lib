@@ -5,11 +5,11 @@ const algo = @import("../../algo.zig");
 const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const testing = @import("../../testing.zig");
-const tok = @import("./tok.zig");
-const attr = @import("./attr.zig");
-const types = @import("./types.zig");
-const config = @import("./config.zig");
-pub const kind = @import("./ctn_kinds.zig");
+const tok = @import("tok.zig");
+const attr = @import("attr.zig");
+const types = @import("types.zig");
+const config = @import("config.zig");
+pub const kind = @import("ctn_kinds.zig");
 pub const list = meta.tagList(Fn);
 
 pub const Fn = enum(u8) {

@@ -2,12 +2,12 @@ const mem = @import("../mem.zig");
 const file = @import("../file.zig");
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
-const tab = @import("./tab.zig");
-const hash = @import("./hash.zig");
-const utils = @import("./utils.zig");
-const errors = @import("./errors.zig");
-const scalar = @import("./scalar.zig");
-const pcurves = @import("./pcurves.zig");
+const tab = @import("tab.zig");
+const hash = @import("hash.zig");
+const utils = @import("utils.zig");
+const errors = @import("errors.zig");
+const scalar = @import("scalar.zig");
+const pcurves = @import("pcurves.zig");
 pub const Curve25519 = struct {
     x: Fe,
     pub fn fromBytes(s: [32]u8) Curve25519 {
