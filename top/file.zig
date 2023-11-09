@@ -2691,8 +2691,7 @@ pub const about = struct {
         ptr[0] = '/';
         ptr = fmt.Ud64.write(ptr + 1, max_len);
         ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
+        debug.write(buf[0..(@intFromPtr(ptr + 7) -% @intFromPtr(&buf))]);
     }
     fn aboutFdFdNotice(about_s: fmt.AboutSrc, fd1_s: []const u8, fd2_s: []const u8, fd1: u64, fd2: u64) void {
         @setRuntimeSafety(false);
@@ -2741,7 +2740,7 @@ pub const about = struct {
     pub fn writeDirFd(buf: [*]u8, dir_fd_s: []const u8, dir_fd: usize) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = fmt.strcpyEqu(buf, dir_fd_s);
-        if (dir_fd > 1024) {
+        if (dir_fd == cwd) {
             ptr[0..3].* = "CWD".*;
             return ptr + 3;
         } else {
@@ -2799,11 +2798,9 @@ pub const about = struct {
         ptr[0..2].* = ", ".*;
         ptr = writeMode(ptr + 2, file_mode);
         ptr[0..6].* = ", dev=".*;
-        ptr += 6;
-        ptr = fmt.Ud64.write(ptr, dev.major);
+        ptr = fmt.Ud64.write(ptr + 6, dev.major);
         ptr[0] = ':';
-        ptr += 1;
-        ptr = fmt.Ud64.write(ptr, dev.minor);
+        ptr = fmt.Ud64.write(ptr + 1, dev.minor);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2829,7 +2826,7 @@ pub const about = struct {
         ptr[0..2].* = ", ".*;
         ptr = CompoundPath.writeDisplayPath(ptr + 2, name);
         ptr[0..5].* = ", fd=".*;
-        ptr += fmt.ud64(fd).formatWriteBuf(ptr + 5);
+        ptr = fmt.Ud64.write(ptr + 5, fd);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2985,18 +2982,14 @@ pub const about = struct {
         buf[0..seek_s.len].* = seek_s.*;
         var ptr: [*]u8 = buf[seek_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
-        ptr += 3;
-        ptr = fmt.Ud64.write(ptr, fd);
+        ptr = fmt.Ud64.write(ptr + 3, fd);
         ptr[0..6].* = ", cur=".*;
-        ptr += 6;
-        ptr = fmt.Ud64.write(ptr, to);
+        ptr = fmt.Ud64.write(ptr + 6, to);
         if (whence != .set) {
             ptr[0..2].* = ", ".*;
-            ptr += 2;
-            ptr = fmt.strcpyEqu(ptr, @tagName(whence));
+            ptr = fmt.strcpyEqu(ptr + 2, @tagName(whence));
             ptr[0] = '+';
-            ptr += 1;
-            ptr = fmt.Ud64.write(ptr, offset);
+            ptr = fmt.Ud64.write(ptr + 1, offset);
         }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
@@ -3007,14 +3000,11 @@ pub const about = struct {
         buf[0..poll_s.len].* = poll_s.*;
         var ptr: [*]u8 = buf[poll_s.len..].ptr;
         ptr[0..3].* = "fd=".*;
-        ptr += 3;
-        ptr = fmt.Ud64.write(ptr, pollfds.len);
+        ptr = fmt.Ud64.write(ptr + 3, pollfds.len);
         ptr[0..10].* = ", timeout=".*;
-        ptr += 10;
-        ptr = fmt.Ud64.write(ptr, timeout);
+        ptr = fmt.Ud64.write(ptr + 10, timeout);
         ptr[0..3].* = "ms\n".*;
-        ptr += 3;
-        ptr = writePollFds(ptr, pollfds);
+        ptr = writePollFds(ptr + 3, pollfds);
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
     fn listenNotice(sock_fd: usize, backlog: u64) void {
@@ -3023,11 +3013,9 @@ pub const about = struct {
         buf[0..listen_s.len].* = listen_s.*;
         var ptr: [*]u8 = buf[listen_s.len..].ptr;
         ptr[0..8].* = "sock_fd=".*;
-        ptr += 8;
-        ptr = fmt.Ud64.write(ptr, sock_fd);
+        ptr = fmt.Ud64.write(ptr + 8, sock_fd);
         ptr[0..10].* = ", backlog=".*;
-        ptr += 10;
-        ptr = fmt.Ud64.write(ptr, backlog);
+        ptr = fmt.Ud64.write(ptr + 10, backlog);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3102,8 +3090,7 @@ pub const about = struct {
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr + 2, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3115,8 +3102,7 @@ pub const about = struct {
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..5].* = ", fd=".*;
-        ptr += 5;
-        ptr = fmt.Ud64.write(ptr, fd);
+        ptr = fmt.Ud64.write(ptr + 5, fd);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3128,8 +3114,7 @@ pub const about = struct {
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..5].* = ", fd=".*;
-        ptr += 5;
-        ptr = fmt.Ud64.write(ptr, fd);
+        ptr = fmt.Ud64.write(ptr + 5, fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += flags.formatWriteBuf(ptr);
@@ -3145,9 +3130,8 @@ pub const about = struct {
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
         ptr = fmt.strcpyEqu(ptr + 2, fd1_s);
-        ptr = fmt.Ud64.write(ptr + fd1_s.len, fd1);
+        ptr = fmt.Ud64.write(ptr, fd1);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
         ptr = fmt.strcpyEqu(ptr + 2, fd2_s);
         ptr = fmt.Ud64.write(ptr, fd2);
         ptr[0] = '\n';
@@ -3161,8 +3145,7 @@ pub const about = struct {
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname1);
+        ptr = fmt.strcpyEqu(ptr + 2, pathname1);
         ptr = fmt.strcpyEqu(ptr, relation_s);
         ptr = fmt.strcpyEqu(ptr, pathname2);
         ptr[0] = '\n';
@@ -3194,16 +3177,13 @@ pub const about = struct {
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = writeDirFd(ptr, dir_fd1_s, dir_fd1);
+        ptr = writeDirFd(ptr + 2, dir_fd1_s, dir_fd1);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name1);
+        ptr = fmt.strcpyEqu(ptr + 2, name1);
         ptr = fmt.strcpyEqu(ptr, relation_s);
         ptr = writeDirFd(ptr, dir_fd2_s, dir_fd2);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name2);
+        ptr = fmt.strcpyEqu(ptr + 2, name2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3216,11 +3196,9 @@ pub const about = struct {
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], @errorName(socket_error));
         ptr += @errorName(socket_error).len;
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, @tagName(dom));
+        ptr = fmt.strcpyEqu(ptr + 2, @tagName(dom));
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, @tagName(flags.conn));
+        ptr = fmt.strcpyEqu(ptr + 2, @tagName(flags.conn));
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3240,17 +3218,13 @@ pub const about = struct {
         buf[send_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], @errorName(sendfile_error));
         ptr[0..9].* = ", src_fd=".*;
-        ptr += 9;
-        ptr = fmt.Ud64.write(ptr, src_fd);
+        ptr = fmt.Ud64.write(ptr + 9, src_fd);
         ptr[0..10].* = ", dest_fd=".*;
-        ptr += 10;
-        ptr = fmt.Ud64.write(ptr, dest_fd);
+        ptr = fmt.Ud64.write(ptr + 10, dest_fd);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = fmt.Ud64.write(ptr, 0);
+        ptr = fmt.Ud64.write(ptr + 2, 0);
         ptr[0] = '/';
-        ptr += 1;
-        ptr = fmt.Ud64.write(ptr, max_count);
+        ptr = fmt.Ud64.write(ptr + 1, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (offset) |off| {
