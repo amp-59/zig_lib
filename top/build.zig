@@ -1186,7 +1186,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.addConfigString(allocator, "cache_root", node.cacheRoot());
                 node.addConfigString(allocator, "global_cache_root", node.cacheRoot());
             }
-            pub fn init(allocator: *types.Allocator, name: []const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node {
+            pub fn init(allocator: *types.Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 const sh: *Shared = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
                 const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
@@ -1196,15 +1196,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.sh = sh;
                 node.flags = .{ .is_top = true, .is_group = true };
                 node.addNode(allocator).* = node;
-                node.name = duplicate(allocator, name);
-                node.addPath(allocator, .zig_compiler_exe).addName(allocator).* = duplicate(allocator, mem.terminate(args[1], 0));
-                node.addPath(allocator, .build_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[2], 0));
-                node.addPath(allocator, .cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[3], 0));
-                node.addPath(allocator, .global_cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[4], 0));
+                node.addPath(allocator, .zig_compiler_exe).addName(allocator).* = mem.terminate(args[1], 0);
+                node.addPath(allocator, .build_root).addName(allocator).* = mem.terminate(args[2], 0);
+                node.addPath(allocator, .cache_root).addName(allocator).* = mem.terminate(args[3], 0);
+                node.addPath(allocator, .global_cache_root).addName(allocator).* = mem.terminate(args[4], 0);
+                node.name = basename(node.buildRoot());
                 initializeGroup(allocator, node);
                 initializeExtensions(allocator, node);
                 sh.mode = .Main;
                 return node;
+            }
+            fn basename(pathname: [:0]u8) [:0]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                var idx: usize = pathname.len -% 1;
+                while (pathname[idx] != '/') idx -%= 1;
+                return pathname[idx +% 1 .. :0];
             }
             pub fn addGroup(group: *Node, allocator: *types.Allocator, name: [:0]const u8, env_paths: ?EnvPaths) *Node {
                 @setRuntimeSafety(builtin.is_safe);
@@ -1640,10 +1646,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             node.tasks.tag = task_tag;
             node.flags = flags;
             node.lock = lock;
-            node.descr = "";
+            node.descr = &.{};
             return node;
         }
-        const zig_lib_module = "zl::" ++ builtin.lib_root ++ "/zig_lib.zig";
         fn initializeExtensions(allocator: *types.Allocator, top: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             const zero: *Node = top.addGroup(allocator, "zero", .{
@@ -1670,21 +1675,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             mem.zero(Extensions, top.sh.extns);
             top.sh.extns.stack_traces = zero.addBuild(allocator, trace_build_cmd, "stack_traces", "top/trace.zig");
             if (have_lazy) {
-                var ptr: *[25][*:0]u8 = @ptrFromInt(allocator.allocateRaw(25 *% 8, 8));
-                var tmp = [25][*:0]const u8{
-                    top.zigExe(),             "build-lib",
-                    "--cache-dir",            zero.cacheRoot(),
-                    "--global-cache-dir",     zero.globalCacheRoot(),
-                    "--main-mod-path",        zero.buildRoot(),
-                    "--mod",                  zig_lib_module,
-                    "-dynamic",               "--listen=-",
-                    "--deps",                 "zl",
-                    "--entry",                "load",
-                    "-z",                     "defs",
-                    "-fsingle-threaded",      "-fno-compiler-rt",
-                    "-fno-stack-check",       "-fno-unwind-tables",
-                    "-fno-function-sections", "-fstrip",
-                    "-ODebug",
+                var ptr: *[24][*:0]u8 = @ptrFromInt(allocator.allocateRaw(24 *% 8, 8));
+                var tmp = [24][*:0]const u8{
+                    top.zigExe(),         "build-lib",
+                    "--cache-dir",        zero.cacheRoot(),
+                    "--global-cache-dir", zero.globalCacheRoot(),
+                    "--main-mod-path",    zero.buildRoot(),
+                    "--mod",              "zl::" ++ builtin.lib_root ++ "/zig_lib.zig",
+                    "-dynamic",           "--listen=-",
+                    "--deps",             "zl",
+                    "-fentry=load",       "-z",
+                    "defs",               "-fsingle-threaded",
+                    "-fno-compiler-rt",   "-fno-stack-check",
+                    "-fno-unwind-tables", "-fno-function-sections",
+                    "-fstrip",            "-ODebug",
                 };
                 for (ptr, tmp) |*dest, src| dest.* = @constCast(src);
                 top.sh.extns.proc = createNode(allocator, zero, "proc", extn_flags, .build, obj_lock);
@@ -2815,6 +2819,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (builder_spec.logging.show_high_level_summary) {
                         about.writeErrorsAndFinished(group);
                     }
+                    break;
+                } else {
                     break;
                 }
             } else {
