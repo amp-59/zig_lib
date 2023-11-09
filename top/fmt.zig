@@ -1,13 +1,13 @@
-const mem = @import("./mem.zig");
-const tab = @import("./tab.zig");
-const math = @import("./math.zig");
-const meta = @import("./meta.zig");
-const time = @import("./time.zig");
-const debug = @import("./debug.zig");
-const parse = @import("./parse.zig");
-const builtin = @import("./builtin.zig");
-pub const utf8 = @import("./fmt/utf8.zig");
-pub const ascii = @import("./fmt/ascii.zig");
+const mem = @import("mem.zig");
+const tab = @import("tab.zig");
+const math = @import("math.zig");
+const meta = @import("meta.zig");
+const time = @import("time.zig");
+const debug = @import("debug.zig");
+const parse = @import("parse.zig");
+const builtin = @import("builtin.zig");
+pub const utf8 = @import("fmt/utf8.zig");
+pub const ascii = @import("fmt/ascii.zig");
 pub fn Interface(comptime Format: type) type {
     return struct {
         pub inline fn formatWrite(format: Format, array: anytype) void {
@@ -1481,7 +1481,7 @@ pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
             ptr = dt_spec.month.write(ptr + 1, @intFromEnum(date.mon));
             ptr[0] = '-';
             ptr = dt_spec.month_day.write(ptr + 1, date.mday);
-            ptr[0] = 'T';
+            ptr[0] = ' ';
             ptr = dt_spec.hour.write(ptr + 1, date.hour);
             ptr[0] = ':';
             ptr = dt_spec.minute.write(ptr + 1, date.min);
@@ -1489,16 +1489,11 @@ pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
             return dt_spec.second.write(ptr + 1, date.sec);
         }
         pub fn length(date: time.DateTime) usize {
-            var len: usize = dt_spec.year.length(date.year);
-            len +%= 1;
+            var len: usize = 5 +% dt_spec.year.length(date.year);
             len +%= dt_spec.mont.length(date.month);
-            len +%= 1;
             len +%= dt_spec.month_day.length(date.month_day);
-            len +%= 1;
             len +%= dt_spec.hour.length(date.hour);
-            len +%= 1;
             len +%= dt_spec.minute.length(date.min);
-            len +%= 1;
             return dt_spec.second.length(date.sec);
         }
         pub usingnamespace Interface(Format);
@@ -4115,8 +4110,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        const str_fmt: StringLiteral = .{ .value = format.value };
-                        return str_fmt.formatWrite(array);
+                        return stringLiteral(format.value).formatWrite(array);
                     }
                 }
             }
@@ -4137,8 +4131,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        const str_fmt: StringLiteral = .{ .value = format.value };
-                        return len +% str_fmt.formatWriteBuf(buf);
+                        return stringLiteral(format.value).formatWriteBuf(buf);
                     }
                 }
             }
@@ -4158,8 +4151,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        const str_fmt: StringLiteral = .{ .value = format.value };
-                        return len +% str_fmt.formatLength();
+                        return stringLiteral(format.value).formatLength();
                     }
                 }
             }

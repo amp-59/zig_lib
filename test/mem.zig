@@ -10,7 +10,7 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 
-const tab = @import("./tab.zig");
+const tab = @import("tab.zig");
 
 pub usingnamespace zl.start;
 
