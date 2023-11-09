@@ -1463,70 +1463,45 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
     return T;
 }
 pub const DateTimeFormatSpec = struct {
-    month_fn: meta.Generic = meta.generic(mon),
-    month_day_fn: meta.Generic = meta.generic(mday),
-    year_fn: meta.Generic = meta.generic(year),
-    hour_fn: meta.Generic = meta.generic(hour),
-    minute_fn: meta.Generic = meta.generic(min),
-    second_fn: meta.Generic = meta.generic(sec),
+    month: type = Month,
+    month_day: type = MonthDay,
+    year: type = Year,
+    hour: type = Hour,
+    minute: type = Minute,
+    second: type = Second,
 };
 pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
     const T = struct {
         value: time.DateTime,
         const Format: type = @This();
         pub const max_len: ?comptime_int = 19;
-        pub fn formatConvert(format: Format) mem.StaticString(max_len) {
-            var array: mem.StaticString(max_len) = undefined;
-            array.undefineAll();
-            format.formatWrite(&array);
-            return array;
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            array.writeFormat((format.value.year));
-            array.writeOne('-');
-            array.writeFormat(@intFromEnum(mon(format.value.mon)));
-            array.writeOne('-');
-            array.writeFormat(mday(format.value.mday));
-            array.writeOne(' ');
-            array.writeFormat(hour(format.value.hour));
-            array.writeOne(':');
-            array.writeFormat(min(format.value.min));
-            array.writeOne(':');
-            array.writeFormat(sec(format.value.sec));
-        }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            var ptr: [*]u8 = buf + dt_spec.year_fn.cast()(format.value.year).formatWriteBuf(buf);
+        pub fn write(buf: [*]u8, date: time.DateTime) [*]u8 {
+            var ptr: [*]u8 = dt_spec.year.write(buf, date.year);
             ptr[0] = '-';
-            ptr += 1;
-            ptr += dt_spec.month_fn.cast()(format.value.mon).formatWriteBuf(ptr);
+            ptr = dt_spec.month.write(ptr + 1, @intFromEnum(date.mon));
             ptr[0] = '-';
-            ptr += 1;
-            ptr += dt_spec.month_day_fn.cast()(format.value.mday).formatWriteBuf(ptr);
-            ptr[0] = ' ';
-            ptr += 1;
-            ptr += dt_spec.hour_fn.cast()(format.value.hour).formatWriteBuf(ptr);
+            ptr = dt_spec.month_day.write(ptr + 1, date.mday);
+            ptr[0] = 'T';
+            ptr = dt_spec.hour.write(ptr + 1, date.hour);
             ptr[0] = ':';
-            ptr += 1;
-            ptr += dt_spec.minute_fn.cast()(format.value.min).formatWriteBuf(ptr);
+            ptr = dt_spec.minute.write(ptr + 1, date.min);
             ptr[0] = ':';
-            ptr += 1;
-            ptr += dt_spec.second_fn.cast()(format.value.sec).formatWriteBuf(ptr);
-            return @intFromPtr(ptr) -% @intFromPtr(buf);
+            return dt_spec.second.write(ptr + 1, date.sec);
         }
-        pub fn formatLength(format: Format) usize {
-            var len: usize = dt_spec.year_fn.cast()(format.value.year).formatWriteBuf();
-            len += 1;
-            len += dt_spec.month_fn.cast()(format.value.mon).formatLength();
-            len += 1;
-            len += dt_spec.month_day_fn.cast()(format.value.mday).formatLength();
-            len += 1;
-            len += dt_spec.hour_fn.cast()(format.value.hour).formatLength();
-            len += 1;
-            len += dt_spec.minute_fn.cast()(format.value.min).formatLength();
-            len += 1;
-            len += dt_spec.second_fn.cast()(format.value.sec).formatLength();
-            return len;
+        pub fn length(date: time.DateTime) usize {
+            var len: usize = dt_spec.year.length(date.year);
+            len +%= 1;
+            len +%= dt_spec.mont.length(date.month);
+            len +%= 1;
+            len +%= dt_spec.month_day.length(date.month_day);
+            len +%= 1;
+            len +%= dt_spec.hour.length(date.hour);
+            len +%= 1;
+            len +%= dt_spec.minute.length(date.min);
+            len +%= 1;
+            return dt_spec.second.length(date.sec);
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
