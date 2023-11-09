@@ -1915,8 +1915,8 @@ pub fn GenericLEB128Format(comptime Int: type) type {
     return extern struct {
         value: Int,
         const Format = @This();
-        pub fn write(buf: [*]u8, int: Int) usize {
-            var len: usize = 0;
+        pub fn write(buf: [*]u8, int: Int) [*]u8 {
+            var ptr: [*]u8 = buf;
             if (@typeInfo(Int).Int.signedness == .signed) {
                 const Abs = @Type(.{ .Int = .{
                     .signedness = .unsigned,
@@ -1928,13 +1928,13 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                     const byte: u8 = @truncate(uvalue);
                     value >>= 6;
                     if (value == -1 or value == 0) {
-                        buf[len] = byte & 0x7f;
-                        len +%= 1;
+                        ptr[0] = byte & 0x7f;
+                        ptr += 1;
                         break;
                     } else {
                         value >>= 1;
-                        buf[len] = byte | 0x80;
-                        len +%= 1;
+                        ptr[0] = byte | 0x80;
+                        ptr += 1;
                     }
                 }
             } else {
@@ -1943,16 +1943,16 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                     const byte: u8 = @truncate(value & 0x7f);
                     value >>= 7;
                     if (value == 0) {
-                        buf[len] = byte;
-                        len +%= 1;
+                        ptr[0] = byte;
+                        ptr += 1;
                         break;
                     } else {
-                        buf[len] = byte | 0x80;
-                        len +%= 1;
+                        ptr[0] = byte | 0x80;
+                        ptr += 1;
                     }
                 }
             }
-            return len;
+            return ptr;
         }
         pub fn length(int: Int) usize {
             var len: usize = 0;

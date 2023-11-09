@@ -158,7 +158,7 @@ pub const BuilderSpec = struct {
         /// Assert no command line exceeds this number of individual arguments.
         max_cmdline_args: ?usize = 1024,
         /// Time slept in nanoseconds between dependency scans.
-        sleep_nanoseconds: usize = 50000,
+        sleep_nanoseconds: usize = 5000000,
         /// Time in milliseconds allowed per build node.
         timeout_milliseconds: usize = 1000 * 60 * 60 * 24,
         /// Add run task for all executable build outputs.
