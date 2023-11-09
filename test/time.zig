@@ -7,7 +7,7 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 
-const tab = @import("./tab.zig");
+const tab = @import("tab.zig");
 pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 pub usingnamespace zl.start;
@@ -32,7 +32,7 @@ pub fn main() !void {
     var buf: [4096]u8 = undefined;
     var len: usize = 0;
     for (tab.time_pairs) |pair| {
-        len = fmt.GenericDateTimeFormat(.{}).formatWriteBuf(.{ .value = time.DateTime.init(pair[0]) }, &buf);
+        len = fmt.dt(time.DateTime.init(pair[0])).formatWriteBuf(&buf);
         try testing.expectEqualString(pair[1], buf[0..len]);
     }
 }

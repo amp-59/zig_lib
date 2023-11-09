@@ -509,7 +509,7 @@ pub fn main() !void {
     try testSystemFlagsFormatters();
     try testIntToStringWithSeparators();
     //try testEquivalentIntToStringFormat();
-    try @import("./fmt/utf8.zig").testUtf8();
-    try @import("./fmt/ascii.zig").testAscii();
+    try @import("fmt/utf8.zig").testUtf8();
+    try @import("fmt/ascii.zig").testAscii();
     try testRenderHighlight();
 }

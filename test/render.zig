@@ -10,5 +10,5 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 const tokenizer = zl.tokenizer;
-const virtual = @import("./virtual.zig");
+const virtual = @import("virtual.zig");
 pub usingnamespace zl.start;
