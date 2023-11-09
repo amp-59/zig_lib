@@ -2648,8 +2648,7 @@ pub const about = struct {
         ptr[0] = '/';
         ptr = fmt.Ud64.write(ptr + 1, max_len);
         ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
+        debug.write(buf[0..(@intFromPtr(ptr + 7) -% @intFromPtr(&buf))]);
     }
     fn aboutFdReadWriteMaxLenLenNotice(about_s: fmt.AboutSrc, fd: usize, flags: sys.flags.ReadWrite, max_len: usize, act_len: usize) void {
         @setRuntimeSafety(false);
