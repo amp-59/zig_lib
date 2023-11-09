@@ -1801,12 +1801,12 @@ pub fn readIntForeign(comptime T: type, bytes: *const [@divExact(@typeInfo(T).In
     return @byteSwap(readIntNative(T, bytes));
 }
 pub const readIntLittle = switch (builtin.native_endian) {
-    .Little => readIntNative,
-    .Big => readIntForeign,
+    .little => readIntNative,
+    .big => readIntForeign,
 };
 pub const readIntBig = switch (builtin.native_endian) {
-    .Little => readIntForeign,
-    .Big => readIntNative,
+    .little => readIntForeign,
+    .big => readIntNative,
 };
 pub fn readInt(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8, endian: builtin.Endian) T {
     if (endian == builtin.native_endian) {
@@ -1822,12 +1822,12 @@ pub fn writeIntForeign(comptime T: type, buf: *[@divExact(@typeInfo(T).Int.bits,
     writeIntNative(T, buf, @byteSwap(value));
 }
 pub const writeIntBig = switch (builtin.native_endian) {
-    .Little => writeIntForeign,
-    .Big => writeIntNative,
+    .little => writeIntForeign,
+    .big => writeIntNative,
 };
 pub const writeIntLittle = switch (builtin.native_endian) {
-    .Little => writeIntNative,
-    .Big => writeIntForeign,
+    .little => writeIntNative,
+    .big => writeIntForeign,
 };
 pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T, endian: builtin.Endian) void {
     if (endian == builtin.native_endian) {
@@ -1877,47 +1877,47 @@ pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
     }
 }
 pub const writeIntSliceNative = switch (builtin.native_endian) {
-    .Little => writeIntSliceLittle,
-    .Big => writeIntSliceBig,
+    .little => writeIntSliceLittle,
+    .big => writeIntSliceBig,
 };
 pub const writeIntSliceForeign = switch (builtin.native_endian) {
-    .Little => writeIntSliceBig,
-    .Big => writeIntSliceLittle,
+    .little => writeIntSliceBig,
+    .big => writeIntSliceLittle,
 };
 pub fn nativeTo(comptime T: type, x: T, desired_endianness: builtin.Endian) T {
     return switch (desired_endianness) {
-        .Little => nativeToLittle(T, x),
-        .Big => nativeToBig(T, x),
+        .little => nativeToLittle(T, x),
+        .big => nativeToBig(T, x),
     };
 }
 pub fn littleToNative(comptime T: type, x: T) T {
     return switch (builtin.native_endian) {
-        .Little => x,
-        .Big => @byteSwap(x),
+        .little => x,
+        .big => @byteSwap(x),
     };
 }
 pub fn bigToNative(comptime T: type, x: T) T {
     return switch (builtin.native_endian) {
-        .Little => @byteSwap(x),
-        .Big => x,
+        .little => @byteSwap(x),
+        .big => x,
     };
 }
 pub fn toNative(comptime T: type, x: T, endianness_of_x: builtin.Endian) T {
     return switch (endianness_of_x) {
-        .Little => littleToNative(T, x),
-        .Big => bigToNative(T, x),
+        .little => littleToNative(T, x),
+        .big => bigToNative(T, x),
     };
 }
 pub fn nativeToLittle(comptime T: type, x: T) T {
     return switch (builtin.native_endian) {
-        .Little => x,
-        .Big => @byteSwap(x),
+        .little => x,
+        .big => @byteSwap(x),
     };
 }
 pub fn nativeToBig(comptime T: type, x: T) T {
     return switch (builtin.native_endian) {
-        .Little => @byteSwap(x),
-        .Big => x,
+        .little => @byteSwap(x),
+        .big => x,
     };
 }
 pub fn readIntSliceNative(comptime T: type, bytes: []const u8) T {
@@ -1929,12 +1929,12 @@ pub fn readIntSliceForeign(comptime T: type, bytes: []const u8) T {
     return @byteSwap(readIntSliceNative(T, bytes));
 }
 pub const readIntSliceLittle = switch (builtin.native_endian) {
-    .Little => readIntSliceNative,
-    .Big => readIntSliceForeign,
+    .little => readIntSliceNative,
+    .big => readIntSliceForeign,
 };
 pub const readIntSliceBig = switch (builtin.native_endian) {
-    .Little => readIntSliceForeign,
-    .Big => readIntSliceNative,
+    .little => readIntSliceForeign,
+    .big => readIntSliceNative,
 };
 fn AsBytesReturnType(comptime P: type) type {
     const type_info: builtin.Type = @typeInfo(P);
