@@ -1,6 +1,5 @@
 const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
-pub const logging_default: zl.debug.Logging.Default = zl.debug.spec.logging.default.silent;
 pub const signal_handlers: zl.debug.SignalHandlers = .{
     .SegmentationFault = false,
     .IllegalInstruction = false,
@@ -96,9 +95,9 @@ fn createMirrorFileSystemCache(
     try zl.file.statusExtended(.{}, stat_at_flags, statx_fields, cache_root_fd, &.{}, &cache_file_st);
     const cache_file_fd: usize = try zl.file.createAt(.{}, creat_flags, cache_root_fd, name, zl.file.mode.regular);
     const buf: [*:0]u8 = try allocateFileBuf(file_allocator, build_root_fd, &build_file_st, name);
+    const tmp: []u8 = file_allocator.allocate(u8, build_file_st.size);
     var itr: zl.builtin.parse.TokenIterator = .{ .buf = buf[0..build_file_st.size :0] };
     var tok: zl.builtin.parse.Token = .{ .tag = .invalid, .loc = .{} };
-    const tmp: []u8 = file_allocator.allocate(u8, build_file_st.size);
     var ptr: [*]u8 = tmp.ptr;
     while (tok.tag != .eof) : (tok = itr.nextToken()) {
         if (tok.tag == .builtin and zl.mem.testEqualString("@import", itr.buf[tok.loc.start..tok.loc.finish])) {
@@ -117,6 +116,9 @@ fn createMirrorFileSystemCache(
         build_inodes, build_root, build_root_fd, cache_inodes, cache_root, cache_root_fd, name);
 }
 pub fn main(args: [][*:0]u8) !void {
+    if (args.len != 6) {
+        zl.proc.exitFault("missing input pathname", 2);
+    }
     var file_allocator: zl.mem.SimpleAllocator = .{
         .start = 0x100000000,
         .next = 0x100000000,
