@@ -1,4 +1,4 @@
-pub const zl = @import("./zig_lib.zig");
+pub const zl = @import("zig_lib.zig");
 pub const Builder = zl.build.GenericBuilder(.{
     .options = .{ .extensions_policy = .emergency },
 });
@@ -284,9 +284,9 @@ pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
     itos.descr = "Example program for integer base conversion";
-    const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
+    // const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
     // const futex: *Node = toplevel.addBuild(allocator, build_cmd, "futex", "test/futex.zig");
-    imports.descr = "List files imported from root";
+    // imports.descr = "List files imported from root";
     // futex.descr = "Test prototype futex waiting";
     // generators(allocator, toplevel);
 }
