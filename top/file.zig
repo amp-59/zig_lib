@@ -1179,7 +1179,6 @@ pub fn pathnameLimit(pathname: []const u8) usize {
     return index;
 }
 pub const indexOfDirnameFinish = pathnameLimit;
-
 pub fn indexOfBasenameStart(pathname: []const u8) usize {
     const index: usize = pathnameLimit(pathname);
     return index +% @intFromBool(pathname[index] == '/');
@@ -3589,6 +3588,15 @@ pub const about = struct {
             ptr += 16;
         }
         return ptr;
+    }
+    var fd_paths: [128][4096]u8 = undefined;
+    var fd_paths_len: [128]usize = undefined;
+    fn setFdPath(fd: usize, pathname: [:0]const u8) void {
+        fd_paths_len[fd] = fmt.strcpy(&fd_paths[fd], pathname);
+        fd_paths[fd][fd_paths_len[fd]] = 0;
+    }
+    fn getFdPath(fd: usize) [:0]const u8 {
+        return fd_paths[fd][0..fd_paths_len[fd] :0];
     }
     pub fn sampleAllReports() void {
         const about_s: fmt.AboutSrc = comptime fmt.about("about");
