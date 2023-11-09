@@ -1251,6 +1251,36 @@ fn writePath(buf: [*]u8, pathname: []const u8) [:0]u8 {
     buf[pathname.len] = 0;
     return buf[0..pathname.len :0];
 }
+fn makePathAtInternal(comptime mkpath_spec: MakePathSpec, dir_fd: usize, name: [:0]u8, file_mode: Mode) sys.ErrorUnion(.{
+    .throw = mkpath_spec.errors.mkdir.throw ++ mkpath_spec.errors.stat.throw,
+    .abort = mkpath_spec.errors.mkdir.abort ++ mkpath_spec.errors.stat.abort,
+}, void) {
+    const stat_spec: StatusSpec = comptime mkpath_spec.stat();
+    const make_dir_spec: MakeDirSpec = mkpath_spec.mkdir();
+    var st: Status = comptime builtin.zero(Status);
+    statusAt(stat_spec, .{}, dir_fd, name, &st) catch |err| blk: {
+        if (err == error.NoSuchFileOrDirectory) {
+            const idx: u64 = indexOfDirnameFinish(name);
+            if (idx != 0) {
+                name[idx] = 0;
+                try makePathAtInternal(mkpath_spec, dir_fd, name[0..idx :0], file_mode);
+                name[idx] = '/';
+            }
+        }
+        try makeDirAt(make_dir_spec, dir_fd, name, file_mode);
+        break :blk try statusAt(stat_spec, .{}, dir_fd, name, &st);
+    };
+    if (st.mode.kind != .directory) {
+        return error.NotADirectory;
+    }
+}
+pub fn makePathAt(comptime mkpath_spec: MakePathSpec, dir_fd: usize, name: []const u8, file_mode: Mode) sys.ErrorUnion(.{
+    .throw = mkpath_spec.errors.mkdir.throw ++ mkpath_spec.errors.stat.throw,
+    .abort = mkpath_spec.errors.mkdir.abort ++ mkpath_spec.errors.stat.abort,
+}, void) {
+    var buf: [4096:0]u8 = undefined;
+    return makePathAtInternal(mkpath_spec, dir_fd, writePath(&buf, name), file_mode);
+}
 fn makePathInternal(comptime mkpath_spec: MakePathSpec, pathname: [:0]u8, file_mode: Mode) sys.ErrorUnion(.{
     .throw = mkpath_spec.errors.mkdir.throw ++ mkpath_spec.errors.stat.throw,
     .abort = mkpath_spec.errors.mkdir.abort ++ mkpath_spec.errors.stat.abort,
