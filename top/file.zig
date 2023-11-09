@@ -1641,7 +1641,7 @@ pub fn statusExtended(
         fd, @intFromPtr(pathname.ptr), @bitCast(at), @bitCast(mask), @intFromPtr(st),
     }))) {
         if (logging.Success) {
-            about.aboutDirFdNameStatusNotice(about.stat_s, fd, pathname, @ptrCast(st));
+            about.aboutDirFdNameStatusExtendedNotice(about.stat_s, fd, pathname, mask, @ptrCast(st));
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -2736,6 +2736,22 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
+    fn aboutDirFdNameStatusExtendedNotice(about_s: fmt.AboutSrc, dir_fd: usize, name: [:0]const u8, mask: sys.flags.StatX, st: *const StatusExtended) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        if (name[0] != '/') {
+            ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+        }
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
+        ptr[0..2].* = ", ".*;
+        ptr = writeStatusExtended(ptr + 2, mask, st);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
     pub fn writeDirFd(buf: [*]u8, dir_fd_s: []const u8, dir_fd: usize) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = fmt.strcpyEqu(buf, dir_fd_s);
@@ -3507,6 +3523,38 @@ pub const about = struct {
             .socket => return socket_file_s,
             .symbolic_link => return symbolic_link_file_s,
         }
+    }
+    pub fn writeStatusExtended(buf: [*]u8, mask: sys.flags.StatX, st: *const StatusExtended) [*]u8 {
+        @setRuntimeSafety(false);
+        var ptr: [*]u8 = buf;
+        if (mask.ino) {
+            ptr[0..6].* = "inode=".*;
+            ptr = fmt.Ud64.write(ptr + 6, st.ino);
+        }
+        if (ptr != buf) {
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+        }
+        ptr[0..4].* = "dev=".*;
+        ptr = fmt.Ud64.write(ptr + 4, st.dev_major);
+        ptr[0] = ':';
+        ptr = fmt.Ud64.write(ptr + 1, st.dev_minor);
+        if (mask.size) {
+            if (ptr != buf) {
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+            }
+            ptr[0..7].* = ", size=".*;
+            ptr = fmt.Bytes.write(ptr + 7, st.size);
+        }
+        if (mask.mode) {
+            if (ptr != buf) {
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+            }
+            ptr = writeMode(ptr, st.mode);
+        }
+        return ptr;
     }
     pub fn writeStatus(buf: [*]u8, st: *const Status) [*]u8 {
         @setRuntimeSafety(false);
