@@ -1194,16 +1194,16 @@ pub fn canonicalisePathVolatile(pathname: [:0]const u8, buf: []u8) [:0]const u8 
     var tmp1: [4096]u8 = undefined;
     var tmp2: [4096]u8 = undefined;
     const parent: []const u8 = dirname(pathname);
-    const save: [:0]const u8 = getCwd(.{ .errors = .{} }, &tmp1);
+    const save: [:0]const u8 = getCwd(.{ .logging = .{ .Success = false, .Error = false }, .errors = .{} }, &tmp1);
     const change_dir: bool = !mem.testEqualString(parent, save);
     defer if (change_dir) {
-        changeCwd(.{ .errors = .{} }, save);
+        changeCwd(.{ .logging = .{ .Success = false, .Error = false }, .errors = .{} }, save);
     };
     fmt.strcpyEqu(&tmp2, parent)[0] = 0;
     if (change_dir) {
-        changeCwd(.{ .errors = .{} }, tmp2[0..parent.len :0]);
+        changeCwd(.{ .logging = .{ .Success = false, .Error = false }, .errors = .{} }, tmp2[0..parent.len :0]);
     }
-    var ret: [:0]u8 = getCwd(.{ .errors = .{} }, buf);
+    var ret: [:0]u8 = getCwd(.{ .logging = .{ .Success = false, .Error = false }, .errors = .{} }, buf);
     var ptr: [*]u8 = ret.ptr + ret.len;
     ptr[0] = '/';
     ptr = fmt.strcpyEqu(ptr + 1, basename(pathname));
