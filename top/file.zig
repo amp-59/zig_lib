@@ -924,9 +924,6 @@ pub fn open(comptime open_spec: OpenSpec, flags: sys.flags.Open, pathname: [:0]c
     @setRuntimeSafety(builtin.is_safe);
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const logging: debug.Logging.AttemptAcquireError = comptime open_spec.logging.override();
-    if (logging.Attempt) {
-        about.aboutPathnameNotice(about.open_s, pathname);
-    }
     if (meta.wrap(sys.call(.open, open_spec.errors, open_spec.return_type, .{ pathname_buf_addr, @bitCast(flags), 0 }))) |fd| {
         if (logging.Acquire) {
             about.aboutPathnameFdNotice(about.open_s, pathname, fd);
