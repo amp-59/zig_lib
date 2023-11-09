@@ -1788,7 +1788,7 @@ pub const native_endian: zig.Endian = switch (builtin.cpu.arch) {
     .dxil,
     .loongarch32,
     .loongarch64,
-    => .Little,
+    => .little,
     .arc,
     .armeb,
     .aarch64_be,
@@ -2083,8 +2083,8 @@ const zig_lib = struct {
         Optimized = 1,
     };
     pub const Endian = enum(u1) {
-        Big = 0,
-        Little = 1,
+        big = 0,
+        little = 1,
     };
     pub const Signedness = enum(u1) {
         signed = 0,
