@@ -726,7 +726,7 @@ pub fn PathFormat(comptime Path: type) type {
             if (builtin.AbsoluteState != void) {
                 if (@hasField(builtin.AbsoluteState, "cwd")) {
                     if (builtin.absolute_state.ptr.cwd.len != 0) {
-                        if (builtin.absolute_state.ptr.cwd.len < len and mem.testEqualString(
+                        if (builtin.absolute_state.ptr.cwd.len <= len and mem.testEqualString(
                             builtin.absolute_state.ptr.cwd,
                             buf[0..builtin.absolute_state.ptr.cwd.len],
                         )) {
@@ -737,7 +737,7 @@ pub fn PathFormat(comptime Path: type) type {
                 }
                 if (@hasField(builtin.AbsoluteState, "home")) {
                     if (builtin.absolute_state.ptr.home.len != 0) {
-                        if (builtin.absolute_state.ptr.home.len < len and mem.testEqualString(
+                        if (builtin.absolute_state.ptr.home.len <= len and mem.testEqualString(
                             builtin.absolute_state.ptr.home,
                             buf[0..builtin.absolute_state.ptr.home.len],
                         )) {
