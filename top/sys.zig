@@ -1952,6 +1952,7 @@ pub const Fn = enum(comptime_int) {
             .syncfs,
             .fsync,
             .fdatasync,
+            .fchdir,
             => return 1,
             .memfd_create,
             .stat,
