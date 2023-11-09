@@ -1379,7 +1379,7 @@ pub fn makeDir(comptime mkdir_spec: MakeDirSpec, pathname: [:0]const u8, file_mo
         return mkdir_error;
     }
 }
-pub fn makeDirAt(comptime mkdir_spec: MakeDirSpec, dir_fd: usize, name: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(
+pub fn makeDirAt(comptime mkdir_spec: MakeDirSpec, dir_fd: usize, name: [:0]const u8, file_mode: Mode) sys.ErrorUnion(
     mkdir_spec.errors,
     mkdir_spec.return_type,
 ) {
