@@ -18,7 +18,7 @@ const build_cmd: zl.build.BuildCommand = .{
     .compiler_rt = false,
     .gc_sections = true,
     .image_base = 65536,
-    .modules = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }},
+    .modules = &.{.{ .name = "zig_lib", .path = zl.builtin.lib_root ++ "/zig_lib.zig" }},
     .dependencies = &.{.{ .name = "zig_lib" }},
 };
 const format_cmd: zl.build.FormatCommand = .{
@@ -31,6 +31,7 @@ pub fn traceGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
         .function_sections = true,
         .gc_sections = false,
         .unwind_tables = false,
+        .compiler_rt = false,
     };
     const access_inactive: *Node = group.addBuild(allocator, trace_build_cmd, "access_inactive", "test/trace/access_inactive.zig");
     const assertion_failed: *Node = group.addBuild(allocator, trace_build_cmd, "assertion_failed", "test/trace/assertion_failed.zig");
@@ -135,7 +136,10 @@ pub fn userGroup(allocator: *zl.build.Allocator, group: *Node) void {
     user_build_cmd.dependencies = &.{};
     const std_lib_cfg: *Node = group.addBuild(allocator, user_build_cmd, "std_lib_cfg", "test/user/std_lib_cfg.zig");
     const _std_lib: *Node = group.addBuild(allocator, user_build_cmd, "_std_lib", "test/user/std_lib.zig");
-    user_build_cmd.modules = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
+    user_build_cmd.modules = &.{.{
+        .name = "zig_lib",
+        .path = zl.builtin.lib_root ++ "/zig_lib.zig",
+    }};
     user_build_cmd.dependencies = &.{.{ .name = "zig_lib" }};
     const std_lib_cfg_pkg: *Node = group.addBuild(allocator, user_build_cmd, "std_lib_cfg_pkg", "test/user/std_lib_cfg_pkg.zig");
     const std_lib_pkg: *Node = group.addBuild(allocator, user_build_cmd, "std_lib_pkg", "test/user/std_lib_pkg.zig");
@@ -175,7 +179,10 @@ pub fn buildRunnerTestGroup(allocator: *zl.build.Allocator, group: *Node) void {
     test_build_cmd.strip = false;
     const dynamic_extensions: *Node = group.addBuild(allocator, test_build_cmd, "dynamic_extensions", "test/build/dynamic_extensions.zig");
     test_build_cmd.dependencies = &.{.{ .name = "@build" }};
-    test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
+    test_build_cmd.modules = &.{.{
+        .name = "@build",
+        .path = zl.builtin.lib_root ++ "/build.zig",
+    }};
     const build_runner: *Node = group.addBuild(allocator, test_build_cmd, "build_runner", "build_runner.zig");
     build_runner.flags.want_binary_analysis = true;
     build_runner.flags.want_perf_events = true;
@@ -188,10 +195,10 @@ pub fn buildRunnerTestGroup(allocator: *zl.build.Allocator, group: *Node) void {
     };
     test_build_cmd.modules = &.{ .{
         .name = "@build",
-        .path = "./build.zig",
+        .path = zl.builtin.lib_root ++ "/build.zig",
     }, .{
         .name = "zl",
-        .path = "./zig_lib.zig",
+        .path = zl.builtin.lib_root ++ "/zig_lib.zig",
     } };
     test_build_cmd.kind = .lib;
     test_build_cmd.dynamic = true;
@@ -258,7 +265,10 @@ fn topGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
 }
 pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     const build_runner: *Node = toplevel.addBuild(allocator, .{ .kind = .exe }, "build_runner", "build_runner.zig");
-    build_runner.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
+    build_runner.tasks.cmd.build.modules = &.{.{
+        .name = "@build",
+        .path = zl.builtin.lib_root ++ "/build.zig",
+    }};
     build_runner.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
     build_runner.flags.want_build_config = false;
     build_runner.flags.want_stack_traces = false;
@@ -274,10 +284,11 @@ pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
     itos.descr = "Example program for integer base conversion";
-    // const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
+    const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
     // const futex: *Node = toplevel.addBuild(allocator, build_cmd, "futex", "test/futex.zig");
-    // imports.descr = "List files imported from root";
+    imports.descr = "List files imported from root";
     // futex.descr = "Test prototype futex waiting";
+    // generators(allocator, toplevel);
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
