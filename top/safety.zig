@@ -277,11 +277,9 @@ pub fn panicNonScalarSentinelMismatch(
         buf[0..type_name.len].* = type_name.*;
         var ptr: [*]u8 = buf[type_name.len..];
         ptr[0..29].* = " sentinel mismatch: expected ".*;
-        ptr += 29;
-        ptr += Format.formatWriteBuf(.{ .value = expected }, ptr);
+        ptr = Format.write(ptr + 29, expected);
         ptr[0..8].* = ", found ".*;
-        ptr += 8;
-        ptr += Format.formatWriteBuf(.{ .value = found }, ptr);
+        ptr = Format.write(ptr + 8, found);
         builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
     }
 }
