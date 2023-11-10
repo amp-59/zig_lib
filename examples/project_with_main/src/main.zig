@@ -12,7 +12,7 @@ pub usingnamespace zl.start;
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     // Use undefined to avoid pulling in memset for register-sized assignments
-    var array: mem.StaticString(4096) = undefined;
+    var array: mem.array.StaticString(4096) = undefined;
     // `undefineAll` sets the length of the value defined by `array` to 0.
     array.undefineAll();
 
@@ -31,7 +31,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         // This specification configures `writeAny` to dereference pointers with
         // the same child type as the container, and by default converts
         // sentinel-terminated-slices-to-many to full slices.
-        array.writeAny(zl.spec.reinterpret.ptr, .{ vars[idx], '\n' });
+        array.writeAny(zl.mem.array.spec.reinterpret.ptr, .{ vars[idx], '\n' });
     }
     debug.write(array.readAll());
     array.undefineAll();
