@@ -3073,7 +3073,6 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             continue;
                         }
                     }
-                    const field_name_format: IdentifierFormat = .{ .value = field.name };
                     const field_value: field.type = @field(value, field.name);
                     const field_type_info: builtin.Type = @typeInfo(field.type);
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
@@ -3082,7 +3081,10 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
                             if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
                                 const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(value, tag_field_name));
-                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
+                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                                ptr = AnyFormat(field_spec, field.type).write(ptr, render(field_spec, view));
+                                ptr[0..2].* = ", ".*;
+                                ptr += 2;
                                 fields_len +%= 1;
                                 continue;
                             }
@@ -3092,13 +3094,19 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         if (field_type_info.Pointer.size == .Many) {
                             if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(value, len_field_name)];
-                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
+                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                                ptr = AnyFormat(field_spec, field.type).write(ptr, render(field_spec, view));
+                                ptr[0..2].* = ", ".*;
+                                ptr += 2;
                                 fields_len +%= 1;
                                 continue;
                             }
                             if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(value, len_field_name)];
-                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
+                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                                ptr = AnyFormat(field_spec, field.type).write(ptr, render(field_spec, view));
+                                ptr[0..2].* = ", ".*;
+                                ptr += 2;
                                 fields_len +%= 1;
                                 continue;
                             }
@@ -3106,7 +3114,10 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         if (field_type_info.Pointer.size == .Slice) {
                             if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(value, len_field_name)];
-                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
+                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                                ptr = AnyFormat(field_spec, field.type).write(ptr, render(field_spec, view));
+                                ptr[0..2].* = ", ".*;
+                                ptr += 2;
                                 fields_len +%= 1;
                                 continue;
                             }
@@ -3115,7 +3126,10 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                         if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(value, len_field_name)];
-                            ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
+                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = AnyFormat(field_spec, field.type).write(ptr, render(field_spec, view));
+                            ptr[0..2].* = ", ".*;
+                            ptr += 2;
                             fields_len +%= 1;
                             continue;
                         }
@@ -3816,54 +3830,33 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         const type_info: builtin.Type = @typeInfo(Pointer);
         const child: type = type_info.Pointer.child;
         const max_len: ?comptime_int = null;
-        pub fn formatWrite(format: Format, array: anytype) void {
-            if (spec.forward) {
-                return array.define(@call(.always_inline, formatWriteBuf, .{
-                    format, array.referAllUndefined().ptr,
-                }));
-            }
-            if (type_info.Pointer.sentinel) |sentinel_ptr| {
-                const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
-                var len: usize = 0;
-                while (!mem.testEqual(child, format.value[len], sentinel)) len +%= 1;
-                const Slice: type = meta.ManyToSlice(Pointer);
-                const slice_fmt_type: type = PointerSliceFormat(spec, Slice);
-                const slice_fmt: slice_fmt_type = .{ .value = format.value[0..len :sentinel] };
-                writeFormat(array, slice_fmt);
-            } else {
-                array.writeMany(@typeName(Pointer) ++ "{ ... }");
-            }
-        }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, value: Pointer) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            var len: usize = 0;
+            var ptr: [*]u8 = buf;
             if (type_info.Pointer.sentinel) |sentinel_ptr| {
                 const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
-                while (!mem.testEqual(child, format.value[len], sentinel)) len +%= 1;
+                var idx: usize = 0;
+                while (!mem.testEqual(child, value[idx], sentinel)) idx +%= 1;
                 const Slice: type = meta.ManyToSlice(Pointer);
-                const slice_fmt_type: type = PointerSliceFormat(spec, Slice);
-                const slice_fmt: slice_fmt_type = .{ .value = format.value[0..len :sentinel] };
-                len = slice_fmt.formatWriteBuf(buf);
+                return PointerSliceFormat(spec, Slice).write(ptr, value[0..idx :sentinel]);
             } else {
-                @as(*[7]u8, @ptrCast(buf)).* = "{ ... }".*;
-                len +%= 7;
+                ptr[0..7].* = "{ ... }".*;
+                return ptr + 7;
             }
-            return len;
         }
-        pub fn formatLength(format: Format) usize {
-            var len: usize = 0;
+        pub fn length(value: Pointer) usize {
+            @setRuntimeSafety(builtin.is_safe);
             if (type_info.Pointer.sentinel) |sentinel_ptr| {
                 const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
-                while (!mem.testEqual(child, format.value[len], sentinel)) len +%= 1;
+                var idx: usize = 0;
+                while (!mem.testEqual(child, value[idx], sentinel)) idx +%= 1;
                 const Slice: type = meta.ManyToSlice(Pointer);
-                const slice_fmt_type: type = PointerSliceFormat(spec, Slice);
-                const slice_fmt: slice_fmt_type = .{ .value = format.value[0..len :sentinel] };
-                len +%= slice_fmt.formatLength();
+                return PointerSliceFormat(spec, Slice).length(value[0..idx :sentinel]);
             } else {
-                len +%= 7;
+                return 7;
             }
-            return len;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
