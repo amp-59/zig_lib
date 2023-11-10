@@ -1126,7 +1126,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
     };
 }
 pub fn TagUnion(comptime Union: type, comptime tag_type: type) type {
-    var union_info: builtin.Type = union_info_base;
+    var union_info: builtin.Type.Union = union_info_base;
     union_info.fields = @typeInfo(Union).Union.fields;
     union_info.tag_type = tag_type;
     return @Type(.{ .Union = union_info });
