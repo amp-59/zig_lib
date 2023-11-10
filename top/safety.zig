@@ -304,7 +304,7 @@ pub fn panicExactDivisionWithRemainder(
     ptr = fmt.Xd(Number).write(ptr + 4, @divTrunc(numerator, denominator));
     ptr[0] = 'r';
     ptr = fmt.Xd(Number).write(ptr + 1, @rem(numerator, denominator));
-    builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 pub fn panicArithOverflow(comptime Number: type) type {
     return struct {
