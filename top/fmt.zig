@@ -1489,12 +1489,12 @@ pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
             return dt_spec.second.write(ptr + 1, date.sec);
         }
         pub fn length(date: time.DateTime) usize {
-            var len: usize = 5 +% dt_spec.year.length(date.year);
-            len +%= dt_spec.mont.length(date.month);
-            len +%= dt_spec.month_day.length(date.month_day);
-            len +%= dt_spec.hour.length(date.hour);
-            len +%= dt_spec.minute.length(date.min);
-            return dt_spec.second.length(date.sec);
+            return 5 +% dt_spec.year.length(date.year) +%
+                dt_spec.mont.length(date.month) +%
+                dt_spec.month_day.length(date.month_day) +%
+                dt_spec.hour.length(date.hour) +%
+                dt_spec.minute.length(date.min) +%
+                dt_spec.second.length(date.sec);
         }
         pub usingnamespace Interface(Format);
     };
@@ -1503,74 +1503,65 @@ pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
 pub const LazyIdentifierFormat = struct {
     value: []const u8,
     const Format = @This();
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        const str: StringLiteralFormat = .{ .value = format.value };
+    pub fn write(buf: [*]u8, name: []const u8) [*]u8 {
         buf[0] = '@';
-        const len: usize = str.formatWriteBuf(buf + 1);
-        return 1 +% len;
+        return StringLiteralFormat.write(buf + 1, name);
     }
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeOne('@');
-        array.writeFormat(StringLiteralFormat{ .value = format.value });
+    pub fn length(name: []const u8) usize {
+        return 1 +% StringLiteralFormat.length(name);
     }
-    pub fn formatLength(format: Format) usize {
-        const str: StringLiteralFormat = .{ .value = format.value };
-        return str.formatLength() +% 1;
+    pub usingnamespace Interface(Format);
+};
+pub inline fn fieldIdentifier(comptime field_name: []const u8) []const u8 {
+    comptime {
+        var type_info: builtin.Type = @typeInfo(union {});
+        var field: builtin.Type.UnionField = .{ .type = void, .name = field_name, .alignment = 1 };
+        type_info.Union.fields = &.{field};
+        const Union = @Type(type_info);
+        const ty_name = @typeName([:@unionInit(Union, field_name, {})]Union);
+        return ty_name[6 .. (ty_name.len -% @typeName(Union).len) -% 8];
     }
+}
+pub inline fn fieldInitializer(comptime field_name: []const u8) []const u8 {
+    comptime {
+        var type_info: builtin.Type = @typeInfo(union {});
+        var field: builtin.Type.UnionField = .{ .type = void, .name = field_name, .alignment = 1 };
+        type_info.Union.fields = &.{field};
+        const Union = @Type(type_info);
+        const ty_name = @typeName([:@unionInit(Union, field_name, {})]Union);
+        return ty_name[6 .. (ty_name.len -% @typeName(Union).len) -% 5];
+    }
+}
+pub const FieldIdentifierFormat = struct {
+    value: []const u8,
+    const Format: type = @This();
+    pub fn write(buf: [*]u8, comptime name: []const u8) [*]u8 {
+        const field_name: []const u8 = comptime fieldIdentifier(name);
+        buf[0..field_name.len].* = field_name[0..field_name.len].*;
+        return buf + field_name.len;
+    }
+    pub fn length(comptime name: []const u8) usize {
+        return comptime fieldIdentifier(name).len;
+    }
+    pub usingnamespace Interface(Format);
 };
 pub const IdentifierFormat = struct {
     value: []const u8,
     const Format: type = @This();
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        @setRuntimeSafety(builtin.is_safe);
-        var len: usize = 0;
-        if (isValidId(format.value)) {
-            @memcpy(buf, format.value);
-            len +%= format.value.len;
-        } else {
-            @as(*[2]u8, @ptrCast(buf + len)).* = "@\"".*;
-            len +%= 2;
-            @memcpy(buf + len, format.value);
-            len +%= format.value.len;
-            buf[len] = '"';
-            len +%= 1;
+    pub fn write(buf: [*]u8, name: []const u8) [*]u8 {
+        if (isValidId(name)) {
+            return strcpyEqu(buf, name);
         }
-        return len;
+        return LazyIdentifierFormat.write(buf, name);
     }
-    pub fn formatWrite(format: Format, array: anytype) void {
-        if (isValidId(format.value)) {
-            array.writeMany(format.value);
-        } else {
-            array.writeMany("@\"");
-            array.writeMany(format.value);
-            array.writeMany("\"");
+    pub fn length(name: []const u8) usize {
+        if (isValidId(name)) {
+            return name.len;
         }
+        return LazyIdentifierFormat.length(name);
     }
-    pub fn formatLength(format: Format) usize {
-        var len: usize = 0;
-        if (isValidId(format.value)) {
-            len +%= format.value.len;
-        } else {
-            len +%= 2;
-            len +%= format.value.len;
-            len +%= 1;
-        }
-        return len;
-    }
+    pub usingnamespace Interface(Format);
 };
-pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: type) type {
-    return (struct {
-        value: ToplevelAddressSpace,
-        const Format = @This();
-        pub fn formatWrite(format: Format, array: anytype) void {
-            _ = array;
-            _ = format;
-        }
-        pub fn formatLength(format: Format) void {
-            _ = format;
-        }
-    });
-}
 pub fn isValidId(name: []const u8) bool {
     @setRuntimeSafety(builtin.is_safe);
     if (name.len == 0) {
@@ -1623,6 +1614,7 @@ pub fn highlight(tok: *const builtin.parse.Token, syntax: []const debug.Trace.Op
 }
 pub const SourceCodeFormat = struct {
     src: [:0]const u8,
+    const Format = @This();
     pub fn write(buf: [*]u8, src: [:0]const u8) [*]u8 {
         if (builtin.trace.options.tokens.syntax) |syntax| {
             var itr: builtin.parse.TokenIterator = .{ .buf = @constCast(src), .buf_pos = 0 };
@@ -1663,6 +1655,7 @@ pub const SourceCodeFormat = struct {
             return src.len;
         }
     }
+    pub usingnamespace Interface(Format);
 };
 pub inline fn typeName(comptime T: type) []const u8 {
     const type_info: builtin.Type = @typeInfo(T);
@@ -1750,9 +1743,7 @@ pub fn typeTypeName(comptime type_id: builtin.TypeId) []const u8 {
 pub inline fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
     switch (type_info) {
         .Array, .Pointer, .Optional => {
-            const type_name: []const u8 = @typeName(@Type(type_info));
-            const child_type_name: []const u8 = @typeName(@field(type_info, @tagName(type_info)).child);
-            return type_name[0 .. type_name.len -% child_type_name.len];
+            return @typeName(@Type(type_info))[0 .. @typeName(@Type(type_info)).len -% @typeName(@field(type_info, @tagName(type_info)).child).len];
         },
         .Enum => |enum_info| {
             return "enum(" ++ @typeName(enum_info.tag_type) ++ ")";
@@ -3050,10 +3041,9 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 len +%= 1;
             } else {
                 inline for (fields) |field| {
-                    const field_name_format: IdentifierFormat = .{ .value = field.name };
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                     const FieldFormat = AnyFormat(field_spec, field.type);
-                    len +%= 1 +% field_name_format.formatLength() +% 3;
+                    len +%= 1 +% fieldIdentifier(field.name).len +% 3;
                     if (FieldFormat.max_len) |field_max_len| {
                         len +%= field_max_len;
                     } else {
@@ -3130,14 +3120,19 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             continue;
                         }
                     }
-                    const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
                         if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                            ptr += writeFieldInitializerBuf(ptr, field_name_format, field_format);
+                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
+                            ptr[0..2].* = ", ".*;
+                            ptr += 2;
                             fields_len +%= 1;
                         }
                     } else {
-                        ptr += writeFieldInitializerBuf(ptr, field_name_format, field_format);
+                        ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                        ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
+                        ptr[0..2].* = ", ".*;
+                        ptr += 2;
                         fields_len +%= 1;
                     }
                 }
@@ -3291,19 +3286,17 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             ptr += 2;
             inline for (fields) |field| {
                 if (value == @field(tag_type.?, field.name)) {
-                    const field_name_format: IdentifierFormat = .{ .value = field.name };
                     if (field.type == void) {
                         ptr += neg2;
-                        ptr +%= field_name_format.formatWriteBuf(ptr);
+                        ptr = strcpyEqu(ptr, fieldIdentifier(field.name));
                     } else {
-                        const FieldFormat: type = AnyFormat(spec, field.type);
-                        const field_format: FieldFormat = .{ .value = @field(value, field.name) };
-                        ptr += writeFieldInitializerBuf(ptr, field_name_format, field_format);
+                        ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                        ptr = AnyFormat(spec, field.type).write(ptr, @field(value, field.name));
                     }
                 }
             }
-            ptr[neg4..neg2].* = " }".*;
-            return ptr;
+            ptr[0..2].* = " }".*;
+            return ptr + 2;
         }
         pub fn length(value: Union) usize {
             if (tag_type == null) {
@@ -3320,9 +3313,8 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                         len -%= 2;
                         return len +% field_name_format.formatLength();
                     } else {
-                        const FieldFormat: type = AnyFormat(spec, field.type);
-                        const field_format: FieldFormat = .{ .value = @field(value, field.name) };
-                        len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
+                        len +%= fieldInitializer(field.name).len +%
+                            AnyFormat(spec, field.type).length(@field(value, field.name)) +% 2;
                     }
                 }
             }
@@ -3338,6 +3330,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: ?comptime_int = 1 +% meta.maxNameLength(Enum);
+
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatWrite(.{ .value = @intFromEnum(format.value) }, array);
