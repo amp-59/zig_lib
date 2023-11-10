@@ -574,12 +574,11 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const Format: type = @This();
         pub const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         pub const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
-        pub const specification: PolynomialFormatSpec = fmt_spec;
-        pub const StaticString = mem.array.StaticString(max_len.?);
         const min_abs_value: comptime_int = fmt_spec.range.min orelse 0;
         const max_abs_value: comptime_int = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: comptime_int = sigFigLen(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: comptime_int = sigFigLen(Abs, max_abs_value, fmt_spec.radix);
+        const specification: PolynomialFormatSpec = fmt_spec;
         const max_len: ?comptime_int = blk: {
             var len: comptime_int = 0;
             if (fmt_spec.radix > max_abs_value) {
@@ -683,8 +682,8 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
             return len +% count;
         }
-        pub fn formatConvert(format: Format) StaticString {
-            var array: StaticString = undefined;
+        pub fn formatConvert(format: Format) mem.array.StaticString(max_len.?) {
+            var array: mem.array.StaticString(max_len.?) = undefined;
             array.undefineAll();
             array.writeFormat(format);
             return array;
@@ -1004,6 +1003,9 @@ pub const ChangedIntFormatSpec = struct {
     arrow_style: []const u8 = " => ",
 };
 pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
+    const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
+    const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
+    const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
     const T = struct {
         old_value: Old,
         new_value: New,
@@ -1013,63 +1015,53 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const OldIntFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
         const NewIntFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
         const DeltaIntFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
-        const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
-        const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
-        const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
         pub const max_len: ?comptime_int = OldIntFormat.max_len.? +% 1 +%
             DeltaIntFormat.max_len.? +% 5 +%
             fmt_spec.no_style.len +%
             NewIntFormat.max_len.? +%
             @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len);
-        pub fn formatWriteDelta(format: Format, array: anytype) void {
-            return array.define(format.formatWriteDeltaBuf(@ptrCast(array.referOneUndefined())));
-        }
-        fn formatWriteDeltaBuf(format: Format, buf: [*]u8) usize {
-            var len: usize = 0;
-            if (format.old_value == format.new_value) {
-                @as(*[4]u8, @ptrCast(buf)).* = "(+0)".*;
-                len +%= 4;
-            } else if (format.new_value > format.old_value) {
-                const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
-                buf[len] = '(';
-                len +%= 1;
-                @as(*[inc_s.len]u8, @ptrCast(buf + len)).* = inc_s.*;
-                len +%= inc_s.len;
-                len +%= del_fmt.formatWriteBuf(buf + len);
-                @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
-                len +%= no_s.len;
-                buf[len] = ')';
-                len +%= 1;
+        fn writeDelta(buf: [*]u8, old_value: Old, new_value: New) [*]u8 {
+            var ptr: [*]u8 = buf;
+            if (old_value == new_value) {
+                ptr[0..4].* = "(+0)".*;
+                ptr += 4;
+            } else if (new_value > old_value) {
+                ptr[0] = '(';
+                ptr += 1;
+                ptr[0..inc_s.len].* = inc_s.*;
+                ptr += inc_s.len;
+                ptr = DeltaIntFormat.write(ptr, new_value -% old_value);
+                ptr[0..no_s.len].* = no_s.*;
+                ptr += no_s.len;
+                ptr[0] = ')';
+                ptr += 1;
             } else {
-                const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
-                buf[len] = '(';
-                len +%= 1;
-                @as(*[dec_s.len]u8, @ptrCast(buf + len)).* = dec_s.*;
-                len +%= dec_s.len;
-                len +%= del_fmt.formatWriteBuf(buf + len);
-                @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
-                len +%= no_s.len;
-                buf[len] = ')';
-                len +%= 1;
+                ptr[0] = '(';
+                ptr += 1;
+                ptr[0..dec_s.len].* = dec_s.*;
+                ptr += dec_s.len;
+                ptr = DeltaIntFormat.write(ptr, old_value -% new_value);
+                ptr[0..no_s.len].* = no_s.*;
+                ptr += no_s.len;
+                ptr[0] = ')';
+                ptr += 1;
             }
-            return len;
+            return ptr;
         }
-        fn formatLengthDelta(format: Format) usize {
+        fn lengthDelta(old_value: Old, new_value: New) usize {
             var len: usize = 0;
-            if (format.old_value == format.new_value) {
+            if (old_value == new_value) {
                 len +%= 4;
-            } else if (format.new_value > format.old_value) {
-                const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
+            } else if (new_value > old_value) {
                 len +%= 1;
                 len +%= inc_s.len;
-                len +%= del_fmt.formatLength();
+                len +%= DeltaIntFormat.length(new_value -% old_value);
                 len +%= no_s.len;
                 len +%= 1;
             } else {
-                const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
                 len +%= 1;
                 len +%= dec_s.len;
-                len +%= del_fmt.formatLength();
+                len +%= DeltaIntFormat.length(old_value -% new_value);
                 len +%= no_s.len;
                 len +%= 1;
             }
@@ -1078,24 +1070,18 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         pub fn formatWrite(format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            const old_fmt: OldIntFormat = .{ .value = format.old_value };
-            const new_fmt: NewIntFormat = .{ .value = format.new_value };
-            var len: usize = old_fmt.formatWriteBuf(buf);
-            len +%= format.formatWriteDeltaBuf(buf + len);
-            @memcpy(buf + len, fmt_spec.arrow_style);
-            len +%= fmt_spec.arrow_style.len;
-            len +%= new_fmt.formatWriteBuf(buf + len);
-            return len;
+        pub fn write(buf: [*]u8, old_value: Old, new_value: New) [*]u8 {
+            var ptr: [*]u8 = OldIntFormat.write(buf, old_value);
+            ptr = writeDelta(ptr, old_value, new_value);
+            ptr[0..fmt_spec.arrow_style.len].* = fmt_spec.arrow_style[0..fmt_spec.arrow_style.len].*;
+            ptr += fmt_spec.arrow_style.len;
+            return NewIntFormat.write(ptr, new_value);
         }
-        pub fn formatLength(format: Format) usize {
-            const old_fmt: OldIntFormat = .{ .value = format.old_value };
-            const new_fmt: NewIntFormat = .{ .value = format.new_value };
-            var len: usize = 0;
-            len +%= old_fmt.formatLength();
-            len +%= formatLengthDelta(format);
+        pub fn length(old_value: Old, new_value: New) usize {
+            var len: usize = OldIntFormat.length(old_value);
+            len +%= lengthDelta(old_value, new_value);
             len +%= 4;
-            len +%= new_fmt.formatLength();
+            len +%= NewIntFormat.length(new_value);
             return len;
         }
     };
@@ -1208,50 +1194,69 @@ pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             break :blk tmp;
         });
         pub const max_len: ?comptime_int = (SubFormat.max_len.? *% 2) +% 4;
-        pub fn formatLength(format: Format) usize {
-            const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
-            const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
-            const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
-            const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
-            const lower_s_count: u64 = lower_s.len();
-            const upper_s_count: u64 = upper_s.len();
-            const len: usize = if (fmt_spec.prefix) |prefix| prefix.len else 0;
-            for (lower_s.readAll(), 0..) |v, idx| {
-                if (v != upper_s.readOneAt(idx)) {
-                    return len +% (upper_s_count -% lower_s_count) +% idx +% 1 +% (lower_s_count -% idx) +% 2 +% (upper_s_count -% idx) +% 1;
-                }
-            }
-            return len +% (upper_s_count -% lower_s_count) +% lower_s.len() +% 4;
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
-            const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
-            const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
-            const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
-            var idx: usize = 0;
+        pub fn length(lower: SubFormat.Int, upper: SubFormat.Int) usize {
+            var l_buf: [SubFormat.max_len.?]u8 = undefined;
+            var u_buf: [SubFormat.max_len.?]u8 = undefined;
+            const l_end: [*]u8 = SubFormat.write(&l_buf, lower);
+            const u_end: [*]u8 = SubFormat.write(&u_buf, upper);
+            const l_len: usize = strlen(l_end, &l_buf);
+            const u_len: usize = strlen(u_end, &u_buf);
+            var len: usize = 0;
             if (fmt_spec.prefix) |prefix| {
-                array.writeMany(prefix);
+                len +%= prefix.len;
             }
-            const lower_s_count: u64 = lower_s.len();
-            const upper_s_count: u64 = upper_s.len();
-            while (idx != lower_s_count) : (idx +%= 1) {
-                if (upper_s.readOneAt(idx) != lower_s.readOneAt(idx)) {
+            var idx: usize = 0;
+            while (idx != l_len) : (idx +%= 1) {
+                if (u_buf[idx] != l_buf[idx]) {
                     break;
                 }
             }
-            array.writeMany(upper_s.readAll()[0..idx]);
-            array.writeOne('{');
-            var del: u64 = upper_s_count -% lower_s_count;
-            while (del != 0) : (del -%= 1) {
-                array.writeOne('0');
+            len +%= idx +% 1 +% (u_len -% l_len) +% 2;
+            len +%= l_len -% idx;
+            len +%= u_len -% idx;
+            return len +% 1;
+        }
+        pub fn write(buf: [*]u8, lower: SubFormat.Int, upper: SubFormat.Int) [*]u8 {
+            var l_buf: [SubFormat.max_len.?]u8 = undefined;
+            var u_buf: [SubFormat.max_len.?]u8 = undefined;
+            const l_end: [*]u8 = SubFormat.write(&l_buf, lower);
+            const u_end: [*]u8 = SubFormat.write(&u_buf, upper);
+            const l_len: usize = strlen(l_end, &l_buf);
+            const u_len: usize = strlen(u_end, &u_buf);
+            var ptr: [*]u8 = buf;
+            if (fmt_spec.prefix) |prefix| {
+                ptr[0..prefix.len].* = prefix[0..prefix.len].*;
+                ptr += prefix.len;
             }
-            array.writeMany(lower_s.readAll()[idx..lower_s_count]);
-            array.writeMany("..");
-            array.writeMany(upper_s.readAll()[idx..upper_s_count]);
-            array.writeOne('}');
+            var idx: usize = 0;
+            while (idx != l_len) : (idx +%= 1) {
+                if (u_buf[idx] != l_buf[idx]) {
+                    break;
+                }
+            }
+            ptr = strcpyEqu(ptr, u_buf[0..idx]);
+            ptr[0] = '{';
+            ptr += 1;
+            @memset(ptr[0 .. u_len -% l_len], '0');
+            ptr += u_len -% l_len;
+            ptr = strcpyEqu(ptr, l_buf[idx..l_len]);
+            ptr[0..2].* = "..".*;
+            ptr += 2;
+            ptr = strcpyEqu(ptr, u_buf[idx..u_len]);
+            ptr[0] = '}';
+            return ptr + 1;
         }
         pub fn init(lower: SubFormat.Int, upper: SubFormat.Int) Format {
             return .{ .lower = lower, .upper = upper };
+        }
+        pub inline fn formatLength(format: anytype) usize {
+            return Format.length(format.lower, format.upper);
+        }
+        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            return strlen(Format.write(buf, format.lower, format.upper), buf);
+        }
+        pub inline fn formatWrite(format: Format, array: anytype) void {
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
     };
     return T;
@@ -1323,14 +1328,14 @@ pub const ChangedRangeFormatSpec = struct {
 };
 pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
     const T = struct {
-        old_lower: OldGenericPolynomialFormat.Int,
-        old_upper: OldGenericPolynomialFormat.Int,
-        new_lower: NewGenericPolynomialFormat.Int,
-        new_upper: NewGenericPolynomialFormat.Int,
+        old_lower: OldIntFormat.Int,
+        old_upper: OldIntFormat.Int,
+        new_lower: NewIntFormat.Int,
+        new_upper: NewIntFormat.Int,
         const Format: type = @This();
-        const OldGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
-        const NewGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
-        const DelGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
+        const OldIntFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
+        const NewIntFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
+        const DelIntFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
         const LowerChangedIntFormat = GenericChangedIntFormat(.{
             .old_fmt_spec = fmt_spec.old_fmt_spec,
             .new_fmt_spec = fmt_spec.new_fmt_spec,
@@ -1347,110 +1352,124 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             .inc_style = fmt_spec.upper_inc_style,
             .arrow_style = fmt_spec.arrow_style,
         });
-        pub fn formatWrite(format: Format, array: anytype) void {
-            const old_lower_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_lower };
-            const old_upper_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_upper };
-            const old_lower_s: OldGenericPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
-            const old_upper_s: OldGenericPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
-            const new_lower_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_lower };
-            const new_upper_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_upper };
-            const new_lower_s: NewGenericPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
-            const new_upper_s: NewGenericPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
-            const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
-            const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
+        pub fn write(
+            buf: [*]u8,
+            old_lower: OldIntFormat.Int,
+            old_upper: OldIntFormat.Int,
+            new_lower: NewIntFormat.Int,
+            new_upper: NewIntFormat.Int,
+        ) [*]u8 {
+            var ol_buf: [OldIntFormat.max_len.?]u8 = undefined;
+            var ou_buf: [OldIntFormat.max_len.?]u8 = undefined;
+            var nl_buf: [NewIntFormat.max_len.?]u8 = undefined;
+            var nu_buf: [NewIntFormat.max_len.?]u8 = undefined;
+            const ol_end: [*]u8 = OldIntFormat.write(&ol_buf, old_lower);
+            const ou_end: [*]u8 = OldIntFormat.write(&ou_buf, old_upper);
+            const nl_end: [*]u8 = NewIntFormat.write(&nl_buf, new_lower);
+            const nu_end: [*]u8 = NewIntFormat.write(&nu_buf, new_upper);
+            const ol_len: usize = strlen(ol_end, &ol_buf);
+            const ou_len: usize = strlen(ou_end, &ou_buf);
+            const nl_len: usize = strlen(nl_end, &nl_buf);
+            const nu_len: usize = strlen(nu_end, &nu_buf);
             var idx: usize = 0;
-            const old_lower_s_count: usize = old_lower_s.len();
-            const old_upper_s_count: usize = old_upper_s.len();
-            while (idx != old_lower_s_count) : (idx +%= 1) {
-                if (old_upper_s.readOneAt(idx) != old_lower_s.readOneAt(idx)) {
+            while (idx != ol_len) : (idx +%= 1) {
+                if (ou_buf[idx] != ol_buf[idx]) {
                     break;
                 }
             }
-            array.writeMany(old_upper_s.readAll()[0..idx]);
-            array.writeOne('{');
-            var x: u64 = old_upper_s_count -% old_lower_s_count;
-            while (x != 0) : (x -%= 1) array.writeOne('0');
-            array.writeMany(old_lower_s.readAll()[idx..old_lower_s_count]);
-            if (format.old_lower != format.new_lower) {
-                lower_del_fmt.formatWriteDelta(array);
+            var ptr: [*]u8 = strcpyEqu(buf, ou_buf[0..idx]);
+            ptr[0] = '{';
+            ptr += 1;
+            @memset(ptr[0 .. ou_len -% ol_len], '0');
+            ptr += ou_len -% ol_len;
+            ptr = strcpyEqu(ptr, ol_buf[idx..ol_len]);
+            if (old_lower != new_lower) {
+                ptr = LowerChangedIntFormat.writeDelta(ptr, old_lower, new_lower);
             }
-            array.writeMany("..");
-            array.writeMany(old_upper_s.readAll()[idx..old_upper_s_count]);
-            if (format.old_upper != format.new_upper) {
-                upper_del_fmt.formatWriteDelta(array);
+            ptr[0..2].* = "..".*;
+            ptr += 2;
+            ptr = strcpyEqu(ptr, ou_buf[idx..ol_len]);
+            if (old_upper != new_upper) {
+                ptr = UpperChangedIntFormat.writeDelta(ptr, old_upper, new_upper);
             }
-            array.writeOne('}');
-            array.writeMany(" => ");
+            ptr[0] = '}';
+            ptr += 1;
+            ptr[0..4].* = " => ".*;
+            ptr += 4;
             idx = 0;
-            const new_lower_s_count: u64 = new_lower_s.len();
-            const new_upper_s_count: u64 = new_upper_s.len();
-            while (idx != new_lower_s_count) : (idx +%= 1) {
-                if (new_upper_s.readOneAt(idx) != new_lower_s.readOneAt(idx)) {
+            while (idx != nl_len) : (idx +%= 1) {
+                if (nu_buf[idx] != nl_buf[idx]) {
                     break;
                 }
             }
-            array.writeMany(new_upper_s.readAll()[0..idx]);
-            array.writeOne('{');
-            var y: u64 = new_upper_s_count -% new_lower_s_count;
-            while (y != 0) : (y -%= 1) array.writeOne('0');
-            array.writeMany(new_lower_s.readAll()[idx..new_lower_s_count]);
-            array.writeMany("..");
-            array.writeMany(new_upper_s.readAll()[idx..new_upper_s_count]);
-            array.writeOne('}');
+            ptr = strcpyEqu(ptr, nu_buf[0..idx]);
+            ptr[0] = '{';
+            ptr += 1;
+            @memset(ptr[0 .. nu_len -% nl_len], '0');
+            ptr += nu_len -% nl_len;
+            ptr = strcpyEqu(ptr, nl_buf[idx..nl_len]);
+            ptr[0..2].* = "..".*;
+            ptr += 2;
+            ptr = strcpyEqu(ptr, nu_buf[idx..nu_len]);
+            ptr[0] = '}';
+            return ptr + 1;
         }
-        pub fn formatLength(format: Format) usize {
+        pub fn length(
+            old_lower: OldIntFormat.Int,
+            old_upper: OldIntFormat.Int,
+            new_lower: NewIntFormat.Int,
+            new_upper: NewIntFormat.Int,
+        ) usize {
             var len: usize = 0;
-            const old_lower_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_lower };
-            const old_upper_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_upper };
-            const old_lower_s: OldGenericPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
-            const old_upper_s: OldGenericPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
-            const new_lower_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_lower };
-            const new_upper_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_upper };
-            const new_lower_s: NewGenericPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
-            const new_upper_s: NewGenericPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
-            const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
-            const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
+            var ol_buf: [OldIntFormat.max_len.?]u8 = undefined;
+            var ou_buf: [OldIntFormat.max_len.?]u8 = undefined;
+            var nl_buf: [NewIntFormat.max_len.?]u8 = undefined;
+            var nu_buf: [NewIntFormat.max_len.?]u8 = undefined;
+            const ol_end: [*]u8 = OldIntFormat.write(&ol_buf, old_lower);
+            const ou_end: [*]u8 = OldIntFormat.write(&ou_buf, old_upper);
+            const nl_end: [*]u8 = NewIntFormat.write(&nl_buf, new_lower);
+            const nu_end: [*]u8 = NewIntFormat.write(&nu_buf, new_upper);
+            const ol_len: usize = strlen(ol_end, &ol_buf);
+            const ou_len: usize = strlen(ou_end, &ou_buf);
+            const nl_len: usize = strlen(nl_end, &nl_buf);
+            const nu_len: usize = strlen(nu_end, &nu_buf);
             var idx: usize = 0;
-            const old_lower_s_count: usize = old_lower_s.len();
-            const old_upper_s_count: usize = old_upper_s.len();
-            while (idx != old_lower_s_count) : (idx +%= 1) {
-                if (old_upper_s.readOneAt(idx) != old_lower_s.readOneAt(idx)) {
+            while (idx != ol_len) : (idx +%= 1) {
+                if (ou_buf[idx] != ol_buf[idx]) {
                     break;
                 }
             }
             len +%= idx +% 1;
-            len +%= old_upper_s_count -% old_lower_s_count;
-            len +%= old_lower_s_count -% idx;
-            if (format.old_lower != format.new_lower) {
-                len +%= lower_del_fmt.formatLengthDelta();
+            len +%= ou_len -% ol_len;
+            len +%= ol_len -% idx;
+            if (old_lower != new_lower) {
+                len +%= LowerChangedIntFormat.lengthDelta(old_lower, new_lower);
             }
             len +%= 2;
-            len +%= old_upper_s_count -% idx;
-            if (format.old_upper != format.new_upper) {
-                len +%= upper_del_fmt.formatLengthDelta();
+            len +%= ou_len -% idx;
+            if (old_upper != new_upper) {
+                len +%= UpperChangedIntFormat.lengthDelta(old_upper, new_upper);
             }
             len +%= 5;
             idx = 0;
-            const new_lower_s_count: u64 = new_lower_s.len();
-            const new_upper_s_count: u64 = new_upper_s.len();
-            while (idx != new_lower_s_count) : (idx +%= 1) {
-                if (new_upper_s.readOneAt(idx) != new_lower_s.readOneAt(idx)) {
+            while (idx != ol_len) : (idx +%= 1) {
+                if (nu_buf[idx] != nl_buf[idx]) {
                     break;
                 }
             }
             len +%= idx +% 1;
-            len +%= new_upper_s_count -% new_lower_s_count;
-            len +%= new_lower_s_count -% idx;
+            len +%= nu_len -% nl_len;
+            len +%= nl_len -% idx;
             len +%= 2;
-            len +%= new_upper_s_count -% idx;
+            len +%= nu_len -% idx;
             len +%= 1;
             return len;
         }
         pub fn init(
-            old_lower: OldGenericPolynomialFormat.Int,
-            old_upper: OldGenericPolynomialFormat.Int,
-            new_lower: NewGenericPolynomialFormat.Int,
-            new_upper: NewGenericPolynomialFormat.Int,
+            old_lower: OldIntFormat.Int,
+            old_upper: OldIntFormat.Int,
+            new_lower: NewIntFormat.Int,
+            new_upper: NewIntFormat.Int,
         ) Format {
             return .{
                 .old_lower = old_lower,
@@ -1458,6 +1477,15 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
                 .new_lower = new_lower,
                 .new_upper = new_upper,
             };
+        }
+        pub inline fn formatLength(format: anytype) usize {
+            return Format.length(format.old_lower, format.old_upper, format.new_lower, format.new_upper);
+        }
+        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            return strlen(Format.write(buf, format.old_lower, format.old_upper, format.new_lower, format.new_upper), buf);
+        }
+        pub inline fn formatWrite(format: Format, array: anytype) void {
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
     };
     return T;
@@ -1903,7 +1931,7 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
 }
 pub fn GenericLEB128Format(comptime Int: type) type {
     const bit_size_of: comptime_int = @bitSizeOf(Int);
-    return extern struct {
+    return packed struct {
         value: Int,
         const Format = @This();
         pub fn write(buf: [*]u8, int: Int) [*]u8 {
@@ -3213,8 +3241,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     fields_len +%= 1;
                 }
             }
-            len +%= @intFromBool(!omit_trailing_comma and fields_len != 0);
-            return len;
+            return len +% @intFromBool(!omit_trailing_comma and fields_len != 0);
         }
         pub usingnamespace Interface(Format);
     };
@@ -3226,15 +3253,15 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             return FormatFormat(Union);
         }
     }
+    if (@typeInfo(Union) != .Union) {
+        return AnyFormat(spec, Union);
+    }
     const type_name = if (spec.infer_type_names) "." else @typeInfo(Union);
     const T = struct {
         value: Union,
         const Format = @This();
         const fields: []const builtin.Type.UnionField = @typeInfo(Union).Union.fields;
         const tag_type: ?type = @typeInfo(Union).Union.tag_type;
-        const show_enum_field: bool = fields.len == 2 and (@typeInfo(fields[0].type) == .Enum and
-            fields[1].type == @typeInfo(fields[0].type).Enum.tag_type);
-        const Int: type = meta.LeastRealBitSize(Union);
         pub const max_len: ?comptime_int = blk: {
             var max_field_len: usize = 0;
             inline for (fields) |field| {
@@ -3256,7 +3283,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
             buf[0 .. 11 +% type_name.len].* = ("@bitCast(" ++ type_name ++ ", ").*;
             var ptr: [*]u8 = buf + 11 +% type_name.len;
-            ptr = Ub(Int).write(ptr, meta.leastRealBitCast(value));
+            ptr = Ub(meta.LeastRealBitSize(Union)).write(ptr, meta.leastRealBitCast(value));
             ptr[0] = ')';
             return ptr + 1;
         }
@@ -3271,7 +3298,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             if (@sizeOf(Union) > @sizeOf(usize)) {
                 return type_name.len +% 2;
             }
-            return ("@bitCast(" ++ type_name ++ ", ").len +% Ub(Int).length(meta.leastRealBitCast(value)) +% 1;
+            return 12 +% type_name.len +% Ub(meta.LeastRealBitSize(Union)).length(meta.leastRealBitCast(value));
         }
         pub fn write(buf: [*]u8, value: Union) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -4077,20 +4104,18 @@ pub const TypeDescrFormatSpec = struct {
     };
 };
 pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
+    const decl_s = spec.tokens.decl[0..spec.tokens.decl.len].*;
+    const lbrace_s = spec.tokens.lbrace[0..spec.tokens.lbrace.len].*;
+    const equal_s = spec.tokens.equal[0..spec.tokens.equal.len].*;
+    const rbrace_s = spec.tokens.rbrace[0..spec.tokens.rbrace.len].*;
+    const next_s = spec.tokens.next[0..spec.tokens.next.len].*;
+    const end_s = spec.tokens.end[0..spec.tokens.end.len].*;
+    const colon_s = spec.tokens.colon[0..spec.tokens.colon.len].*;
+    const indent_s = spec.tokens.indent[0..spec.tokens.indent.len].*;
     const U = union(enum) {
         type_decl: Declaration,
         type_ref: Reference,
         const Format = @This();
-        const tab = .{
-            .decl = spec.tokens.decl[0..spec.tokens.decl.len].*,
-            .lbrace = spec.tokens.lbrace[0..spec.tokens.lbrace.len].*,
-            .equal = spec.tokens.equal[0..spec.tokens.equal.len].*,
-            .rbrace = spec.tokens.rbrace[0..spec.tokens.rbrace.len].*,
-            .next = spec.tokens.next[0..spec.tokens.next.len].*,
-            .end = spec.tokens.end[0..spec.tokens.end.len].*,
-            .colon = spec.tokens.colon[0..spec.tokens.colon.len].*,
-            .indent = spec.tokens.indent[0..spec.tokens.indent.len].*,
-        };
         pub var scope: []const Declaration = &.{};
         pub const Reference = struct { spec: spec.token, type: *const Format };
         pub const Container = struct {
@@ -4138,11 +4163,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 var len: usize = 0;
                 @memcpy(buf + len, format.spec);
                 len +%= format.spec.len;
-                @as(*@TypeOf(Format.tab.lbrace), @ptrCast(buf + len)).* = Format.tab.lbrace;
-                len +%= Format.tab.lbrace.len;
+                @as(*@TypeOf(lbrace_s), @ptrCast(buf + len)).* = lbrace_s;
+                len +%= lbrace_s.len;
                 for (0..depth +% 1) |_| {
-                    @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                    len +%= Format.tab.indent.len;
+                    @as(*@TypeOf(indent_s), @ptrCast(buf + len)).* = indent_s;
+                    len +%= indent_s.len;
                 }
                 for (format.fields) |field| {
                     len +%= field.formatWriteBufInternal(buf + len, depth +% 1);
@@ -4157,8 +4182,8 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     }
                 }
                 len -%= spec.tokens.indent.len;
-                @as(*@TypeOf(Format.tab.rbrace), @ptrCast(buf + len)).* = Format.tab.rbrace;
-                len +%= Format.tab.rbrace.len;
+                @as(*@TypeOf(rbrace_s), @ptrCast(buf + len)).* = rbrace_s;
+                len +%= rbrace_s.len;
                 return len;
             }
             fn formatLengthInternal(format: Container, depth: usize) usize {
@@ -4169,8 +4194,8 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
                 var len: usize = 0;
                 len +%= format.spec.len;
-                len +%= Format.tab.lbrace.len;
-                len +%= (depth +% 1) *% Format.tab.indent.len;
+                len +%= lbrace_s.len;
+                len +%= (depth +% 1) *% indent_s.len;
                 for (format.fields) |field| {
                     len +%= field.formatLengthInternal(depth +% 1);
                 }
@@ -4184,7 +4209,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     }
                 }
                 len -%= spec.tokens.indent.len;
-                len +%= Format.tab.rbrace.len;
+                len +%= rbrace_s.len;
                 return len;
             }
         };
@@ -4224,28 +4249,28 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     spec.depth != depth)
                 {
                     for (0..depth) |_| {
-                        @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                        len +%= Format.tab.indent.len;
+                        @as(*@TypeOf(indent_s), @ptrCast(buf + len)).* = indent_s;
+                        len +%= indent_s.len;
                     }
                 }
                 if (type_decl.name) |type_name| {
                     if (type_decl.defn) |type_defn| {
-                        @as(*@TypeOf(Format.tab.decl), @ptrCast(buf + len)).* = Format.tab.decl;
-                        len +%= Format.tab.decl.len;
+                        @as(*@TypeOf(decl_s), @ptrCast(buf + len)).* = decl_s;
+                        len +%= decl_s.len;
                         if (spec.identifier_name) {
                             len +%= identifier(type_name).formatWriteBuf(buf + len);
                         } else {
                             @memcpy(buf, type_name);
                             len +%= type_name.len;
                         }
-                        @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
-                        len +%= Format.tab.equal.len;
+                        @as(*@TypeOf(equal_s), @ptrCast(buf + len)).* = equal_s;
+                        len +%= equal_s.len;
                         len +%= type_defn.formatWriteBufInternal(buf + len, depth);
-                        @as(*@TypeOf(Format.tab.end), @ptrCast(buf + len)).* = Format.tab.end;
-                        len +%= Format.tab.end.len;
+                        @as(*@TypeOf(end_s), @ptrCast(buf + len)).* = end_s;
+                        len +%= end_s.len;
                         for (0..depth) |_| {
-                            @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                            len +%= Format.tab.indent.len;
+                            @as(*@TypeOf(indent_s), @ptrCast(buf + len)).* = indent_s;
+                            len +%= indent_s.len;
                         }
                     } else {
                         @memcpy(buf, type_name);
@@ -4263,20 +4288,20 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 if (spec.depth != 0 and
                     spec.depth != depth)
                 {
-                    len +%= depth *% Format.tab.indent.len;
+                    len +%= depth *% indent_s.len;
                 }
                 if (type_decl.name) |type_name| {
                     if (type_decl.defn) |type_defn| {
-                        len +%= Format.tab.decl.len;
+                        len +%= decl_s.len;
                         if (spec.identifier_name) {
                             len +%= identifier(type_name).formatLength();
                         } else {
                             len +%= type_name.len;
                         }
-                        len +%= Format.tab.equal.len;
+                        len +%= equal_s.len;
                         len +%= type_defn.formatLengthInternal(depth);
-                        len +%= Format.tab.end.len;
-                        len +%= depth *% Format.tab.indent.len;
+                        len +%= end_s.len;
+                        len +%= depth *% indent_s.len;
                     } else {
                         len +%= type_name.len;
                     }
@@ -4331,30 +4356,30 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     len +%= format.name;
                 }
                 if (format.type) |field_type| {
-                    @as(*@TypeOf(Format.tab.colon), @ptrCast(buf + len)).* = Format.tab.colon;
-                    len +%= Format.tab.colon.len;
+                    @as(*@TypeOf(colon_s), @ptrCast(buf + len)).* = colon_s;
+                    len +%= colon_s.len;
                     len +%= field_type.formatWriteBufInternal(buf + len, depth);
                 }
                 switch (format.value) {
                     .default => |mb_default_value| {
                         if (mb_default_value) |default_value| {
-                            @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
-                            len +%= Format.tab.equal.len;
+                            @as(*@TypeOf(equal_s), @ptrCast(buf + len)).* = equal_s;
+                            len +%= equal_s.len;
                             @memcpy(buf + len, default_value);
                             len +%= default_value.len;
                         }
                     },
                     .enumeration => {
-                        @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
-                        len +%= Format.tab.equal.len;
+                        @as(*@TypeOf(equal_s), @ptrCast(buf + len)).* = equal_s;
+                        len +%= equal_s.len;
                         len +%= idsize(format.value.enumeration).formatWriteBuf(buf + len);
                     },
                 }
-                @as(*@TypeOf(Format.tab.next), @ptrCast(buf + len)).* = Format.tab.next;
-                len +%= Format.tab.next.len;
+                @as(*@TypeOf(next_s), @ptrCast(buf + len)).* = next_s;
+                len +%= next_s.len;
                 for (0..depth) |_| {
-                    @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                    len +%= Format.tab.indent.len;
+                    @as(*@TypeOf(indent_s), @ptrCast(buf + len)).* = indent_s;
+                    len +%= indent_s.len;
                 }
                 return len;
             }
@@ -4372,12 +4397,12 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 switch (format.value) {
                     .default => |mb_default_value| {
                         if (mb_default_value) |default_value| {
-                            len +%= Format.tab.equal.len;
+                            len +%= equal_s.len;
                             len +%= default_value.len;
                         }
                     },
                     .enumeration => {
-                        len +%= Format.tab.equal.len;
+                        len +%= equal_s.len;
                         len +%= idsize(format.value.enumeration).formatLength();
                     },
                 }
