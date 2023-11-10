@@ -26,7 +26,6 @@ const Array = Allocator.StructuredHolder(u8);
 const TypeDescr = fmt.GenericTypeDescrFormat(.{});
 const BigTypeDescr = fmt.GenericTypeDescrFormat(.{ .decls = true, .default_field_values = .{ .exact_safe = .{} } });
 const test_size: bool = false;
-
 fn testIntToString() !void {
     const T: type = u64;
     var arg1: T = 0;
@@ -211,42 +210,34 @@ fn testEquivalentIntToStringFormat() !void {
         const sint_32: i32 = @bitReverse(@as(i32, @bitCast(@as(u32, @truncate(uint)))));
         const sint_16: i16 = @bitReverse(@as(i16, @bitCast(@as(u16, @truncate(uint)))));
         const sint_8: i8 = @bitReverse(@as(i8, @bitCast(@as(u8, @truncate(uint)))));
-
         try testing.expectEqualMany(u8, fmt.ub64(uint).readAll(), buf[0..fmt.ub64(uint).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ub32(uint_32).readAll(), buf[0..fmt.ub32(uint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ub16(uint_16).readAll(), buf[0..fmt.ub16(uint_16).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ub8(uint_8).readAll(), buf[0..fmt.ub8(uint_8).formatWriteBuf(&buf)]);
-
         try testing.expectEqualMany(u8, fmt.uo64(uint).readAll(), buf[0..fmt.uo64(uint).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.uo32(uint_32).readAll(), buf[0..fmt.uo32(uint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.uo16(uint_16).readAll(), buf[0..fmt.uo16(uint_16).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.uo8(uint_8).readAll(), buf[0..fmt.uo8(uint_8).formatWriteBuf(&buf)]);
-
         try testing.expectEqualMany(u8, fmt.ud64(uint).readAll(), buf[0..fmt.ud64(uint).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ud32(uint_32).readAll(), buf[0..fmt.ud32(uint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ud16(uint_16).readAll(), buf[0..fmt.ud16(uint_16).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ud8(uint_8).readAll(), buf[0..fmt.ud8(uint_8).formatWriteBuf(&buf)]);
-
         try testing.expectEqualMany(u8, fmt.ux64(uint).readAll(), buf[0..fmt.ux64(uint).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ux32(uint_32).readAll(), buf[0..fmt.ux32(uint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ux16(uint_16).readAll(), buf[0..fmt.ux16(uint_16).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ux8(uint_8).readAll(), buf[0..fmt.ux8(uint_8).formatWriteBuf(&buf)]);
-
         try testing.expectEqualMany(u8, fmt.ib64(sint_64).readAll(), buf[0..fmt.ib64(sint_64).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ib32(sint_32).readAll(), buf[0..fmt.ib32(sint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ib16(sint_16).readAll(), buf[0..fmt.ib16(sint_16).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ib8(sint_8).readAll(), buf[0..fmt.ib8(sint_8).formatWriteBuf(&buf)]);
-
         try testing.expectEqualMany(u8, fmt.io64(sint_64).readAll(), buf[0..fmt.io64(sint_64).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.io32(sint_32).readAll(), buf[0..fmt.io32(sint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.io16(sint_16).readAll(), buf[0..fmt.io16(sint_16).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.io8(sint_8).readAll(), buf[0..fmt.io8(sint_8).formatWriteBuf(&buf)]);
-
         try testing.expectEqualMany(u8, fmt.id64(sint_64).readAll(), buf[0..fmt.id64(sint_64).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.id32(sint_32).readAll(), buf[0..fmt.id32(sint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.id16(sint_16).readAll(), buf[0..fmt.id16(sint_16).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.id8(sint_8).readAll(), buf[0..fmt.id8(sint_8).formatWriteBuf(&buf)]);
-
         try testing.expectEqualMany(u8, fmt.ix64(sint_64).readAll(), buf[0..fmt.ix64(sint_64).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ix32(sint_32).readAll(), buf[0..fmt.ix32(sint_32).formatWriteBuf(&buf)]);
         try testing.expectEqualMany(u8, fmt.ix16(sint_16).readAll(), buf[0..fmt.ix16(sint_16).formatWriteBuf(&buf)]);
@@ -348,32 +339,51 @@ fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     testing.announce(@src());
     const tmp_max_len: usize = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c".len;
     const tmp: [*]u8 = @constCast("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c");
-    const render_spec: fmt.RenderSpec = .{
+    try testFormat(allocator, array, buf, fmt.render(.{}, packed struct(u120) {
+        x: u64 = 5,
+        y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{},
+        z: u8 = 255,
+    }{
+        .x = 25,
+        .y = .{ .a = 3, .b = 4 },
+        .z = 127,
+    }));
+    try testFormat(allocator, array, buf, fmt.render(.{
+        .views = .{ .extern_tagged_union = true },
+    }, struct {
+        value_tag: enum { a, b },
+        value: extern union { a: usize, b: usize },
+    }{
+        .value_tag = .a,
+        .value = .{ .a = 2342342 },
+    }));
+    try testFormat(allocator, array, buf, fmt.render(.{
+        .views = .{ .extern_resizeable = true },
+    }, struct { buf: [*]u8, buf_len: usize }{
+        .buf = tmp,
+        .buf_len = 16,
+    }));
+    try testFormat(allocator, array, buf, fmt.render(.{
+        .views = .{ .zig_resizeable = true },
+    }, struct { buf: []u8, buf_len: usize }{
+        .buf = tmp[16..tmp_max_len],
+        .buf_len = tmp_max_len - 16,
+    }));
+    try testFormat(allocator, array, buf, fmt.render(.{
+        .views = .{ .static_resizeable = true },
+    }, struct {
+        auto: [256]u8 = [1]u8{0xa} ** 256,
+        auto_len: usize = 16,
+    }{}));
+    if (return) {}
+    try testFormat(allocator, array, buf, fmt.render(.{
         .views = .{
             .extern_resizeable = true,
             .extern_slice = true,
             .extern_tagged_union = true,
-            //.static_resizeable = true,
+            .static_resizeable = true,
         },
-    };
-    try testFormat(allocator, array, buf, fmt.render(render_spec, packed struct(u120) {
-        x: u64 = 5,
-        y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{},
-        z: u8 = 255,
-    }{}));
-    try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: [*]u8, buf_len: usize }{
-        .buf = tmp,
-        .buf_len = 16,
-    }));
-    try testFormat(allocator, array, buf, fmt.render(render_spec, struct { buf: []u8, buf_len: usize }{
-        .buf = tmp[16..tmp_max_len],
-        .buf_len = tmp_max_len * 2,
-    }));
-    try testFormat(allocator, array, buf, fmt.render(render_spec, struct {
-        auto: [256]u8 = [1]u8{0xa} ** 256,
-        auto_len: usize = 16,
-    }{}));
-    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, struct {
+    }, struct {
         auto: [2]type = .{ u8, u16 },
         auto_len: usize = 1,
     }{}));
@@ -396,7 +406,6 @@ fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !
     try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
     try testFormat(allocator, array, buf, comptime BigTypeDescr.init(@import("std").builtin));
     try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
-
     const td1: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
     const td2: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
     try testFormats(allocator, array, td1, td2);
@@ -426,7 +435,6 @@ fn testGenericRangeFormat() !void {
 fn testIntToStringWithSeparators() !void {
     var buf: [4096]u8 = undefined;
     var len: usize = fmt.udh(10_000_000).formatWriteBuf(&buf);
-
     try testing.expectEqualString("10,000,000", buf[0..len]);
 }
 fn testSystemFlagsFormatters() !void {
@@ -498,8 +506,39 @@ fn testRenderHighlight() !void {
     var end: [*]u8 = fmt.SourceCodeFormat.write(&buf, @constCast(src));
     debug.write(fmt.slice(end, &buf));
 }
+pub fn testLEB() !void {
+    @setRuntimeSafety(false);
+    var rng: file.DeviceRandomBytes(4096) = .{};
+    inline for (.{ u8, u16, u32, u64 }) |T| {
+        var val: T = rng.readOne(T);
+        var idx: usize = 0;
+        var buf: [4096]u8 = undefined;
+        while (idx != 0x100000) : (idx +%= 1) {
+            const l: T = @truncate(val -% idx);
+            const u: T = @truncate(val +% idx);
+            const u_len: usize = fmt.strlen(fmt.U64xLEB128.write(&buf, u), &buf);
+            const u_res = try parse.readLEB128(T, buf[0..u_len]);
+            try debug.expectEqual(T, u, u_res[0]);
+            const l_len: usize = fmt.strlen(fmt.U64xLEB128.write(&buf, l), &buf);
+            const l_res = try parse.readLEB128(T, buf[0..l_len]);
+            try debug.expectEqual(T, l, l_res[0]);
+        }
+    }
+}
+pub fn test1() !void {
+    const X = struct {
+        x: [25]u8 = .{'a'} ** 25,
+        x_len: usize = 0,
+    };
+    var x: X = .{};
+    var buf: [4096]u8 = undefined;
+    const end: [*]u8 = fmt.AnyFormat(.{}, X).write(&buf, x);
+    debug.write(fmt.slice(end, &buf));
+}
 pub fn main() !void {
     meta.refAllDecls(fmt, &.{});
+    try testLEB();
+    try testRenderHighlight();
     try testBytesFormat();
     try testBytesToHex();
     try testHexToBytes();
@@ -511,5 +550,4 @@ pub fn main() !void {
     //try testEquivalentIntToStringFormat();
     try @import("fmt/utf8.zig").testUtf8();
     try @import("fmt/ascii.zig").testAscii();
-    try testRenderHighlight();
 }
