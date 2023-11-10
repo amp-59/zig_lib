@@ -234,7 +234,7 @@ pub fn signed(str: []const u8) !isize {
     }
     const neg: bool = str[0] == '-';
     const pos: bool = str[0] == '+';
-    var idx: usize = @intFromBool(neg) + @intFromBool(pos);
+    var idx: usize = @intFromBool(neg) +% @intFromBool(pos);
     idx +%= @intFromBool(str[idx] == '0');
     if (idx == str.len) {
         return 0;

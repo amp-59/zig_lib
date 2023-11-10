@@ -264,7 +264,9 @@ pub fn main() void {
     causeAccessOutOfOrder();
     causeSentinelMismatch(u32);
     causeSentinelMismatch(i32);
+
     causeNonScalarSentinelMismatch(struct { a: u64, b: u32 }, .{ .a = 1, .b = 2 }, .{ .a = 3, .b = 4 });
+    causeNonScalarSentinelMismatch(union(enum) { a: u64, b: u32 }, .{ .a = 1 }, .{ .b = 4 });
 
     if (version == .std) {
         return;
