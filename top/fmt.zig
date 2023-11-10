@@ -2508,6 +2508,11 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime T: type) type {
         else => @compileError(@typeName(T)),
     }
 }
+
+// These are required by the absence of comptime pointer subtract.
+const neg1: usize = @as(usize, 0) -% 1;
+const neg2: usize = @as(usize, 0) -% 2;
+
 pub fn GenericFormat(comptime spec: RenderSpec) type {
     const T = struct {
         value: meta.Generic,
