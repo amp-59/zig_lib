@@ -265,10 +265,7 @@ fn topGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
 }
 pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     const build_runner: *Node = toplevel.addBuild(allocator, .{ .kind = .exe }, "build_runner", "build_runner.zig");
-    build_runner.tasks.cmd.build.modules = &.{.{
-        .name = "@build",
-        .path = zl.builtin.lib_root ++ "/build.zig",
-    }};
+    build_runner.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = zl.builtin.lib_root ++ "/build.zig" }};
     build_runner.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
     build_runner.flags.want_build_config = false;
     build_runner.flags.want_stack_traces = false;
@@ -280,15 +277,12 @@ pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     const treez: *Node = toplevel.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
     const elfcmp: *Node = toplevel.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
     const itos: *Node = toplevel.addBuild(allocator, build_cmd, "itos", "examples/itos.zig");
-    _ = toplevel.addBuild(allocator, build_cmd, "cleanup", "examples/cleanup.zig");
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
     itos.descr = "Example program for integer base conversion";
-    // const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
-    // const futex: *Node = toplevel.addBuild(allocator, build_cmd, "futex", "test/futex.zig");
-    // imports.descr = "List files imported from root";
-    // futex.descr = "Test prototype futex waiting";
-    // generators(allocator, toplevel);
+    const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
+    imports.addToplevelArgs(allocator);
+    imports.descr = "List files imported from root";
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
