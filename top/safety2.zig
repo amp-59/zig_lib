@@ -44,38 +44,78 @@ fn PanicData(comptime panic_extra_cause: PanicCause) type {
     switch (panic_extra_cause) {
         else => void,
         .access_out_of_bounds => {
-            return struct { index: usize, length: usize };
+            return struct {
+                index: usize,
+                length: usize,
+            };
         },
         .access_out_of_order => {
-            return struct { start: usize, finish: usize };
+            return struct {
+                start: usize,
+                finish: usize,
+            };
         },
         .access_inactive_field => {
-            return struct { expected: []const u8, found: []const u8 };
+            return struct {
+                expected: []const u8,
+                found: []const u8,
+            };
         },
         .memcpy_arguments_alias => {
-            return struct { dest_start: usize, dest_len: usize, src_start: usize, src_len: usize };
+            return struct {
+                dest_start: usize,
+                dest_len: usize,
+                src_start: usize,
+                src_len: usize,
+            };
         },
         .mismatched_memcpy_lengths => {
-            return struct { dest_len: usize, src_len: usize };
+            return struct {
+                dest_len: usize,
+                src_len: usize,
+            };
         },
         .mismatched_for_loop_lengths => {
-            return struct { prev_index: usize, prev_len: usize, next_len: usize };
+            return struct {
+                prev_index: usize,
+                prev_len: usize,
+                next_len: usize,
+            };
         },
         .mismatched_sentinel,
         .mismatched_non_scalar_sentinel,
         => |child| {
-            return struct { expected: child, found: child };
+            return struct {
+                expected: child,
+                found: child,
+            };
         },
-        .shl_overflowed, .shr_overflowed => |int_type| {
-            return struct { value: int_type, shift_amt: builtin.ShiftAmount(int_type) };
+        .mul_overflowed,
+        .add_overflowed,
+        .sub_overflowed,
+        => |val_type| {
+            return struct {
+                lhs: val_type,
+                rhs: val_type,
+            };
         },
-        .mul_overflowed, .add_overflowed, .sub_overflowed => |val_type| {
-            return struct { lhs: val_type, rhs: val_type };
+        .shl_overflowed,
+        .shr_overflowed,
+        => |int_type| {
+            return struct {
+                value: int_type,
+                shift_amt: builtin.ShiftAmount(int_type),
+            };
         },
         .div_with_remainder => |num_type| {
-            return struct { numerator: num_type, denominator: num_type };
+            return struct {
+                numerator: num_type,
+                denominator: num_type,
+            };
         },
-        .message, .unwrapped_error => {
+        .message,
+        .unwrapped_error,
+        => {
             return []const u8;
         },
         .cast_to_int_from_invalid => |num_type| {
@@ -87,7 +127,9 @@ fn PanicData(comptime panic_extra_cause: PanicCause) type {
         .cast_to_unsigned_from_negative => |num_type| {
             return num_type.from;
         },
-        .cast_to_pointer_from_invalid => return usize,
+        .cast_to_pointer_from_invalid => {
+            return usize;
+        },
         .cast_to_enum_from_invalid,
         .cast_to_error_from_invalid,
         => |tag_type| return meta.Child(tag_type),
