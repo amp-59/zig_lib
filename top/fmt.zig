@@ -3026,7 +3026,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             return ContainerFormat(spec, Struct);
         }
     }
-    const type_name = @typeName(Struct);
+    const type_name = if (spec.infer_type_names) "." else @typeName(Struct);
     const field_spec_if_not_type: RenderSpec = blk: {
         var tmp: RenderSpec = spec;
         tmp.infer_type_names = true;
@@ -3062,118 +3062,19 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             }
             break :blk len;
         };
-        fn writeFieldInitializer(array: anytype, field_name_format: IdentifierFormat, field_format: anytype) void {
-            array.writeOne('.');
-            writeFormat(array, field_name_format);
-            array.writeCount(3, " = ".*);
-            writeFormat(array, field_format);
-            array.writeCount(2, ", ".*);
-        }
-        pub fn formatWrite(format: anytype, array: anytype) void {
-            if (spec.infer_type_names) {
-                array.writeOne('.');
-            } else {
-                array.writeMany(type_name);
-            }
-            if (fields.len == 0) {
-                array.writeMany("{}");
-            } else {
-                comptime var field_idx: usize = 0;
-                var fields_len: usize = 0;
-                array.writeMany("{ ");
-                inline while (field_idx != fields.len) : (field_idx +%= 1) {
-                    const field: builtin.Type.StructField = fields[field_idx];
-                    if (spec.ignore_padding_fields) {
-                        if (comptime field.name.len > 1 and field.name[0] == 'z' and field.name[1] == 'b') {
-                            continue;
-                        }
-                    }
-                    const field_name_format: IdentifierFormat = .{ .value = field.name };
-                    const field_value: field.type = @field(format.value, field.name);
-                    const field_type_info: builtin.Type = @typeInfo(field.type);
-                    const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
-                    if (field_type_info == .Union) {
-                        if (field_type_info.Union.layout != .Auto) {
-                            comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
-                            if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
-                                const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
-                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                                fields_len +%= 1;
-                                continue;
-                            }
-                        }
-                    } else if (field_type_info == .Pointer) {
-                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
-                        if (field_type_info.Pointer.size == .Many) {
-                            if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(format.value, len_field_name)];
-                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                                fields_len +%= 1;
-                                continue;
-                            }
-                            if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(format.value, len_field_name)];
-                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                                fields_len +%= 1;
-                                continue;
-                            }
-                        }
-                        if (field_type_info.Pointer.size == .Slice) {
-                            if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(format.value, len_field_name)];
-                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                                fields_len +%= 1;
-                                continue;
-                            }
-                        }
-                    } else if (field_type_info == .Array) {
-                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
-                        if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(format.value, len_field_name)];
-                            writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                            fields_len +%= 1;
-                            continue;
-                        }
-                    }
-                    const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                    if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
-                        if (builtin.requireComptime(field.type)) {
-                            if (comptime !mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                                writeFieldInitializer(array, field_name_format, field_format);
-                                fields_len +%= 1;
-                            }
-                        } else {
-                            if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                                writeFieldInitializer(array, field_name_format, field_format);
-                                fields_len +%= 1;
-                            }
-                        }
-                    } else {
-                        writeFieldInitializer(array, field_name_format, field_format);
-                        fields_len +%= 1;
-                    }
-                }
-                writeTrailingComma(array, omit_trailing_comma, fields_len);
-            }
-        }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, value: anytype) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            var len: usize = 0;
-            if (spec.infer_type_names) {
-                buf[len] = '.';
-                len +%= 1;
-            } else {
-                buf[0..type_name.len].* = type_name.*;
-                len +%= type_name.len;
-            }
+            var ptr: [*]u8 = buf;
+            ptr[0..type_name.len].* = type_name.*;
+            ptr += type_name.len;
             if (fields.len == 0) {
-                @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
-                len +%= 2;
+                ptr[0..2].* = "{}".*;
+                ptr += 2;
             } else {
                 comptime var field_idx: usize = 0;
                 var fields_len: usize = 0;
-                @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
-                len +%= 2;
+                ptr[0..2].* = "{ ".*;
+                ptr += 2;
                 inline while (field_idx != fields.len) : (field_idx +%= 1) {
                     const field: builtin.Type.StructField = fields[field_idx];
                     if (spec.ignore_padding_fields) {
@@ -3182,15 +3083,15 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                     const field_name_format: IdentifierFormat = .{ .value = field.name };
-                    const field_value: field.type = @field(format.value, field.name);
+                    const field_value: field.type = @field(value, field.name);
                     const field_type_info: builtin.Type = @typeInfo(field.type);
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                     if (field_type_info == .Union) {
                         if (field_type_info.Union.layout != .Auto) {
                             comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
                             if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
-                                const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
-                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
+                                const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(value, tag_field_name));
+                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
                                 continue;
                             }
@@ -3199,22 +3100,22 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                         if (field_type_info.Pointer.size == .Many) {
                             if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(format.value, len_field_name)];
-                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
+                                const view = field_value[0..@field(value, len_field_name)];
+                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
                                 continue;
                             }
                             if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(format.value, len_field_name)];
-                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
+                                const view = field_value[0..@field(value, len_field_name)];
+                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
                                 continue;
                             }
                         }
                         if (field_type_info.Pointer.size == .Slice) {
                             if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(format.value, len_field_name)];
-                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
+                                const view = field_value[0..@field(value, len_field_name)];
+                                ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
                                 continue;
                             }
@@ -3222,8 +3123,8 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     } else if (field_type_info == .Array) {
                         comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                         if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(format.value, len_field_name)];
-                            len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
+                            const view = field_value[0..@field(value, len_field_name)];
+                            ptr += writeFieldInitializerBuf(ptr, field_name_format, render(field_spec, view));
                             fields_len +%= 1;
                             continue;
                         }
@@ -3231,38 +3132,33 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
                         if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                            len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
+                            ptr += writeFieldInitializerBuf(ptr, field_name_format, field_format);
                             fields_len +%= 1;
                         }
                     } else {
-                        len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
+                        ptr += writeFieldInitializerBuf(ptr, field_name_format, field_format);
                         fields_len +%= 1;
                     }
                 }
-                len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, fields_len);
+                ptr += writeTrailingCommaBuf(ptr + neg2, omit_trailing_comma, fields_len);
             }
-            return len;
+            return ptr;
         }
-        pub fn formatLength(format: anytype) usize {
-            var len: usize = 0;
-            if (spec.infer_type_names) {
-                len +%= 3;
-            } else {
-                len +%= @typeName(Struct).len +% 2;
-            }
+        pub fn length(value: anytype) usize {
+            var len: usize = type_name.len +% 2;
             comptime var field_idx: usize = 0;
             var fields_len: usize = 0;
             inline while (field_idx != fields.len) : (field_idx +%= 1) {
                 const field: builtin.Type.StructField = fields[field_idx];
                 const field_name_format: IdentifierFormat = .{ .value = field.name };
                 const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
-                const field_value: field.type = @field(format.value, field.name);
+                const field_value: field.type = @field(value, field.name);
                 const field_type_info: builtin.Type = @typeInfo(field.type);
                 if (field_type_info == .Union) {
                     if (field_type_info.Union.layout != .Auto) {
                         const tag_field_name: []const u8 = field.name ++ spec.names.tag_field_suffix;
                         if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
-                            const view = meta.tagUnion(field.type, meta.Field(tag_field_name), field_value, @field(format.value, tag_field_name));
+                            const view = meta.tagUnion(field.type, meta.Field(tag_field_name), field_value, @field(value, tag_field_name));
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
@@ -3272,13 +3168,13 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                     if (field_type_info.Pointer.size == .Many) {
                         if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(format.value, len_field_name)];
+                            const view = field_value[0..@field(value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
                         }
                         if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(format.value, len_field_name)];
+                            const view = field_value[0..@field(value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
@@ -3286,7 +3182,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     }
                     if (field_type_info.Pointer.size == .Slice) {
                         if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(format.value, len_field_name)];
+                            const view = field_value[0..@field(value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
@@ -3295,7 +3191,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 } else if (field_type_info == .Array) {
                     comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                     if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
-                        const view = field_value[0..@field(format.value, len_field_name)];
+                        const view = field_value[0..@field(value, len_field_name)];
                         len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                         fields_len +%= 1;
                         continue;
@@ -3322,6 +3218,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             len +%= @intFromBool(!omit_trailing_comma and fields_len != 0);
             return len;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
