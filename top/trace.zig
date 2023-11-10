@@ -202,17 +202,13 @@ fn writeTopSrcLoc(buf: [*]u8, err: *CompileErrorMessage, src: *CompileSourceLoca
 }
 fn writeTimes(buf: [*]u8, count: u64) [*]u8 {
     @setRuntimeSafety(false);
-    var ud64: fmt.Ud64 = .{ .value = count };
     var ptr: [*]u8 = buf - 1;
     ptr[0..4].* = "\x1b[2m".*;
-    ptr += 4;
-    ptr[0..2].* = " (".*;
-    ptr += 2;
-    ptr += ud64.formatWriteBuf(ptr);
+    ptr[4..6].* = " (".*;
+    ptr = fmt.Ud64.write(ptr + 6, count);
     ptr[0..7].* = " times)".*;
-    ptr += 7;
-    ptr[0..5].* = "\x1b[0m\n".*;
-    return ptr + 5;
+    ptr[7..12].* = "\x1b[0m\n".*;
+    return ptr + 12;
 }
 fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: usize, indent: usize) [*]u8 {
     @setRuntimeSafety(false);
@@ -533,23 +529,24 @@ fn writeSideBar(buf: [*]u8, trace: *const debug.Trace, width: u64, number: Numbe
     var ptr: [*]u8 = buf;
     const fill: []const u8 = trace.options.tokens.sidebar_fill;
     const fill_len: usize = @min(width, fill.len);
-    const pos: usize = switch (number) {
-        .none => fmt.strcpy(&tmp, fill[0..fill_len]),
+    const end: [*]u8 = switch (number) {
+        .none => fmt.strcpyEqu(&tmp, fill[0..fill_len]),
         .pc_addr => |pc_addr| if (trace.options.show_pc_addr) blk: {
             if (trace.options.tokens.pc_addr) |style| {
                 ptr = fmt.strcpyEqu(ptr, style);
             }
-            break :blk fmt.ux64(pc_addr).formatWriteBuf(&tmp);
-        } else fmt.strcpy(&tmp, fill[0..fill_len]),
+            break :blk fmt.Ux64.write(&tmp, pc_addr);
+        } else fmt.strcpyEqu(&tmp, fill[0..fill_len]),
         .line_no => |line_no| if (trace.options.show_line_no) blk: {
             if (trace.options.tokens.line_no) |style| {
                 ptr = fmt.strcpyEqu(ptr, style);
             }
-            break :blk fmt.ud64(line_no).formatWriteBuf(&tmp);
-        } else fmt.strcpy(&tmp, fill[0..fill_len]),
+            break :blk fmt.Ud64.write(&tmp, line_no);
+        } else fmt.strcpyEqu(&tmp, fill[0..fill_len]),
     };
-    ptr = fmt.strsetEqu(ptr, ' ', width -| (pos +% 1));
-    ptr = fmt.strcpyEqu(ptr, tmp[0..pos]);
+    const side: []const u8 = fmt.slice(end, &tmp);
+    ptr = fmt.strsetEqu(ptr, ' ', width -| (side.len +% 1));
+    ptr = fmt.strcpyEqu(ptr, side);
     ptr[0..4].* = "\x1b[0m".*;
     ptr += 4;
     if (sidebar_char) {
