@@ -3,6 +3,7 @@ const fmt = @import("fmt.zig");
 const math = @import("math.zig");
 const meta = @import("meta.zig");
 const builtin = @import("builtin.zig");
+const fill = undefined;
 pub fn writeAboveOrBelowLimit(
     buf: [*]u8,
     comptime To: type,
@@ -296,7 +297,6 @@ pub fn panicExactDivisionWithRemainder(
     var buf: [256]u8 = undefined;
     var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
     ptr[0..34].* = ": exact division had a remainder: ".*;
-    ptr += 34;
     ptr += fmt.Xd(Number).write(ptr + 34, numerator);
     ptr[0] = '/';
     ptr += fmt.Xd(Number).write(ptr + 1, denominator);
