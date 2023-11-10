@@ -10,14 +10,14 @@ pub const utf8 = @import("fmt/utf8.zig");
 pub const ascii = @import("fmt/ascii.zig");
 pub fn Interface(comptime Format: type) type {
     return struct {
-        pub inline fn formatWrite(format: Format, array: anytype) void {
-            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
+        pub inline fn formatWrite(format: anytype, array: anytype) void {
+            return array.define(@as(*const Format, @ptrCast(format)).formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
-        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            return strlen(Format.write(buf, format.value), buf);
+        pub inline fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            return strlen(Format.write(buf, @as(*const Format, @ptrCast(format)).value), buf);
         }
-        pub inline fn formatLength(format: Format) usize {
-            return Format.length(format.value);
+        pub inline fn formatLength(format: anytype) usize {
+            return Format.length(@as(*const Format, @ptrCast(format)).value);
         }
         const undef: Format = undefined;
     };
@@ -2512,6 +2512,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime T: type) type {
 // These are required by the absence of comptime pointer subtract.
 const neg1: usize = @as(usize, 0) -% 1;
 const neg2: usize = @as(usize, 0) -% 2;
+const neg4: usize = @as(usize, 0) -% 4;
 
 pub fn GenericFormat(comptime spec: RenderSpec) type {
     const T = struct {
@@ -3228,327 +3229,106 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             return FormatFormat(Union);
         }
     }
+    const type_name = if (spec.infer_type_names) "." else @typeInfo(Union);
     const T = struct {
         value: Union,
         const Format = @This();
         const fields: []const builtin.Type.UnionField = @typeInfo(Union).Union.fields;
-        // This is the actual tag type
         const tag_type: ?type = @typeInfo(Union).Union.tag_type;
-        // This is the bit-field tag type name
-        const tag_type_name: []const u8 = typeName(@typeInfo(fields[0].type).Enum.tag_type, spec);
         const show_enum_field: bool = fields.len == 2 and (@typeInfo(fields[0].type) == .Enum and
             fields[1].type == @typeInfo(fields[0].type).Enum.tag_type);
         const Int: type = meta.LeastRealBitSize(Union);
-        const max_len: ?comptime_int = blk: {
-            if (show_enum_field) {
-                var len: usize = 0;
-                const enum_info: builtin.Type = @typeInfo(fields[0].type);
-                inline for (enum_info.Enum.fields) |field| {
-                    const field_name_format: IdentifierFormat = .{ .value = field.name };
-                    len +%= field_name_format.formatLength();
-                }
-                len +%= fields.len *% 3;
-                len +%= 10;
-                len +%= tag_type_name.len;
-                len +%= 3;
-                len +%= 1;
-                len +%= fields.len -% 1;
-                len +%= 2 +% 1 +% IntFormat(enum_info.Enum.tag_type).max_len +% 1;
-                break :blk len;
-            } else {
-                var max_field_len: usize = 0;
-                inline for (fields) |field| {
-                    max_field_len = @max(max_field_len, AnyFormat(spec, field.type).max_len);
-                }
-                break :blk (@typeName(Union).len +% 2) +% 1 +% meta.maxNameLength(Union) +% 3 +% max_field_len +% 2;
+        pub const max_len: ?comptime_int = blk: {
+            var max_field_len: usize = 0;
+            inline for (fields) |field| {
+                max_field_len = @max(max_field_len, AnyFormat(spec, field.type).max_len.?);
             }
+            break :blk (@typeName(Union).len +% 2) +% 1 +% meta.maxNameLength(Union) +% 3 +% max_field_len +% 2;
         };
-        fn formatWriteEnumField(format: Format, array: anytype) void {
-            const enum_info: builtin.Type = @typeInfo(fields[0].type);
-            const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            array.writeMany("bit_field(" ++ @typeName(enum_info.Enum.tag_type) ++ "){ ");
-            var x: enum_info.Enum.tag_type = w;
-            comptime var idx: usize = enum_info.Enum.fields.len;
-            inline while (idx != 0) {
-                idx -%= 1;
-                const field: builtin.Type.EnumField = enum_info.Enum.fields[idx];
-                if (field.value != 0 or w == 0) {
-                    const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
-                    if (y == field.value) {
-                        array.writeOne('.');
-                        const tag_name_format: IdentifierFormat = .{ .value = field.name };
-                        writeFormat(array, tag_name_format);
-                        array.writeMany(" | ");
-                        x &= ~y;
-                    }
-                }
-            }
-            if (x != w) {
-                if (x != 0) {
-                    const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
-                    writeFormat(array, int_format);
-                    array.writeCount(2, " }".*);
-                } else {
-                    array.undefine(1);
-                    array.overwriteCountBack(2, " }".*);
-                }
-            } else {
-                if (x != 0) {
-                    const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
-                    writeFormat(array, int_format);
-                    array.writeCount(2, " }".*);
-                } else {
-                    array.overwriteOneBack('}');
-                }
-            }
-        }
-        fn formatWriteBufEnumField(format: Format, buf: [*]u8) usize {
-            const enum_info: builtin.Type = @typeInfo(fields[0].type);
-            const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            @as(*[10]u8, @ptrCast(buf)).* = "bit_field(".*;
-            var len: usize = 10;
-            @as(meta.TypeName(enum_info.Enum.tag_type), @ptrCast(buf + len)).* = @typeName(enum_info.Enum.tag_type).*;
-            len +%= @typeName(enum_info.Enum.tag_type).len;
-            @as(*[3]u8, @ptrCast(buf + len)).* = "){ ".*;
-            len +%= 3;
-            var x: enum_info.Enum.tag_type = w;
-            comptime var idx: usize = enum_info.Enum.fields.len;
-            inline while (idx != 0) {
-                idx -%= 1;
-                const field: builtin.Type.EnumField = enum_info.Enum.fields[idx];
-                if (field.value != 0 or w == 0) {
-                    const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
-                    if (y == field.value) {
-                        buf[len] = '.';
-                        len +%= 1;
-                        const tag_name_format: IdentifierFormat = .{ .value = field.name };
-                        len +%= tag_name_format.formatWriteBuf(buf + len);
-                        @as(*[3]u8, @ptrCast(buf + len)).* = " | ".*;
-                        len +%= 3;
-                        x &= ~y;
-                    }
-                }
-            }
-            if (x != w) {
-                if (x != 0) {
-                    const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
-                    len +%= int_format.formatWriteBuf(buf + len);
-                    @as(*[2]u8, @ptrCast(buf + len)).* = " }".*;
-                    len +%= 2;
-                } else {
-                    len -%= 1;
-                    @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
-                }
-            } else {
-                if (x != 0) {
-                    const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
-                    len +%= int_format.formatWriteBuf(buf + len);
-                    @as(*[2]u8, @ptrCast(buf + len)).* = " }".*;
-                    len +%= 2;
-                } else {
-                    len -%= 1;
-                    (buf + (len -% 1))[0] = '}';
-                }
-            }
-            return len;
-        }
-        fn formatLengthEnumField(format: Format) usize {
-            const enum_info: builtin.Type = @typeInfo(fields[0].type);
-            const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            var len: usize = 10;
-            len +%= @typeName(enum_info.Enum.tag_type).len;
-            len +%= 3;
-            var x: enum_info.Enum.tag_type = w;
-            comptime var idx: usize = enum_info.Enum.fields.len;
-            inline while (idx != 0) {
-                idx -%= 1;
-                const field: builtin.Type.EnumField = enum_info.Enum.fields[idx];
-                if (field.value != 0 or w == 0) {
-                    const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
-                    if (y == field.value) {
-                        len +%= 1;
-                        const tag_name_format: IdentifierFormat = .{ .value = field.name };
-                        len +%= tag_name_format.formatLength();
-                        x &= ~y;
-                        len +%= 3;
-                    }
-                }
-            }
-            if (x != 0) {
-                const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
-                len +%= int_format.formatLength();
-                len +%= 2;
-            } else {
-                len -%= 1;
-            }
-            return len;
-        }
-        fn formatWriteUntagged(format: Format, array: anytype) void {
+        fn writeUntagged(buf: [*]u8, value: Union) [*]u8 {
             if (@hasDecl(Union, "tagged") and
                 @hasDecl(Union, "Tagged") and
                 spec.view.extern_tagged_union)
             {
                 const TaggedFormat = AnyFormat(spec, Union.Tagged);
-                const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
-                writeFormat(array, tagged_format);
-            } else {
-                if (spec.infer_type_names) {
-                    array.writeOne('.');
-                } else {
-                    array.writeMany(@typeName(Union));
-                }
-                if (@sizeOf(Union) > @sizeOf(usize)) {
-                    array.writeMany("{}");
-                } else {
-                    const int_format: Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
-                    array.writeMany("@bitCast(" ++ @typeName(Union) ++ ", ");
-                    writeFormat(array, int_format);
-                    array.writeMany(")");
-                }
+                return TaggedFormat.write(buf, value.tagged());
             }
+            if (@sizeOf(Union) > @sizeOf(usize)) {
+                buf[0..2].* = "{}".*;
+                return buf + 2;
+            }
+            buf[0 .. 11 +% type_name.len].* = ("@bitCast(" ++ type_name ++ ", ").*;
+            var ptr: [*]u8 = buf + 11 +% type_name.len;
+            ptr = Ub(Int).write(ptr, meta.leastRealBitCast(value));
+            ptr[0] = ')';
+            return ptr + 1;
         }
-        fn formatWriteBufUntagged(format: Format, buf: [*]u8) usize {
-            var len: usize = 0;
+        fn lengthUntagged(value: Union) usize {
             if (@hasDecl(Union, "tagged") and
                 @hasDecl(Union, "Tagged") and
                 spec.view.extern_tagged_union)
             {
                 const TaggedFormat = AnyFormat(spec, Union.Tagged);
-                const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
-                len +%= tagged_format.formatWriteBuf(buf);
-            } else {
-                if (@sizeOf(Union) > @sizeOf(usize)) {
-                    buf[0..2].* = "{}".*;
-                    len +%= 2;
-                } else {
-                    const int_format: Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
-                    buf[0 .. 11 +% @typeName(Union).len].* = ("@bitCast(" ++ @typeName(Union) ++ ", ").*;
-                    len +%= 11 +% @typeName(Union).len;
-                    len +%= int_format.formatWriteBuf(buf + len);
-                    buf[len] = ')';
-                    len +%= 1;
-                }
+                return TaggedFormat.length(value.tagged());
             }
-            return len;
+            if (@sizeOf(Union) > @sizeOf(usize)) {
+                return type_name.len +% 2;
+            }
+            return ("@bitCast(" ++ type_name ++ ", ").len +% Ub(Int).length(meta.leastRealBitCast(value)) +% 1;
         }
-        fn formatLengthUntagged(format: Format) usize {
-            var len: usize = 0;
-            if (@hasDecl(Union, "tagged") and
-                @hasDecl(Union, "Tagged") and
-                spec.view.extern_tagged_union)
-            {
-                const TaggedFormat = AnyFormat(spec, Union.Tagged);
-                len +%= TaggedFormat.formatLength(.{ .value = format.value.tagged() });
-            } else {
-                const type_name = if (spec.infer_type_names) "." else @typeName(Union);
-                if (@sizeOf(Union) > @sizeOf(usize)) {
-                    len +%= type_name.len +% 2;
-                } else {
-                    const int_format: Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
-                    len +%= ("@bitCast(" ++ @typeName(Union) ++ ", ").len;
-                    len +%= int_format.formatLength();
-                    len +%= 1;
-                }
-            }
-            return len;
-        }
-        fn formatWriteField(array: anytype, field_name_format: IdentifierFormat, field_format: anytype) void {
-            array.writeOne('.');
-            writeFormat(array, field_name_format);
-            array.writeCount(3, " = ".*);
-            writeFormat(array, field_format);
-            array.writeCount(2, ", ".*);
-        }
-        pub fn formatWrite(format: anytype, array: anytype) void {
-            if (show_enum_field) {
-                return format.formatWriteEnumField(array);
-            }
-            if (tag_type == null) {
-                return format.formatWriteUntagged(array);
-            }
-            const type_name = if (spec.infer_type_names) "." else @typeName(Union);
-            if (fields.len == 0) {
-                array.writeMany(type_name ++ "{}");
-            } else {
-                array.writeMany(type_name ++ "{ ");
-                inline for (fields) |field| {
-                    if (format.value == @field(tag_type.?, field.name)) {
-                        const field_name_format: IdentifierFormat = .{ .value = field.name };
-                        if (field.type == void) {
-                            array.undefine(2);
-                            return writeFormat(array, field_name_format);
-                        } else {
-                            const FieldFormat: type = AnyFormat(spec, field.type);
-                            const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            formatWriteField(array, field_name_format, field_format);
-                        }
-                    }
-                }
-                array.overwriteCountBack(2, " }".*);
-            }
-        }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, value: Union) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            if (show_enum_field) {
-                return format.formatWriteBufEnumField(buf);
-            }
             if (tag_type == null) {
-                return format.formatWriteBufUntagged(buf);
+                return writeUntagged(buf, value);
             }
-            const type_name = if (spec.infer_type_names) "." else @typeName(Union);
-            @as(*[type_name.len]u8, @ptrCast(buf)).* = type_name.*;
+            buf[0..type_name.len].* = type_name.*;
+            var ptr: [*]u8 = buf + type_name.len;
             if (fields.len == 0) {
-                @as(*[2]u8, @ptrCast(buf + type_name.len)).* = "{}".*;
-                return type_name.len +% 2;
-            } else {
-                var len: usize = type_name.len;
-                @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
-                len +%= 2;
-                inline for (fields) |field| {
-                    if (format.value == @field(tag_type.?, field.name)) {
-                        const field_name_format: IdentifierFormat = .{ .value = field.name };
-                        if (field.type == void) {
-                            len -%= 2;
-                            len +%= field_name_format.formatWriteBuf(buf + len);
-                        } else {
-                            const FieldFormat: type = AnyFormat(spec, field.type);
-                            const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
-                        }
+                ptr[0..2].* = "{}".*;
+                return ptr + 2;
+            }
+            ptr[0..2].* = "{ ".*;
+            ptr += 2;
+            inline for (fields) |field| {
+                if (value == @field(tag_type.?, field.name)) {
+                    const field_name_format: IdentifierFormat = .{ .value = field.name };
+                    if (field.type == void) {
+                        ptr += neg2;
+                        ptr +%= field_name_format.formatWriteBuf(ptr);
+                    } else {
+                        const FieldFormat: type = AnyFormat(spec, field.type);
+                        const field_format: FieldFormat = .{ .value = @field(value, field.name) };
+                        ptr += writeFieldInitializerBuf(ptr, field_name_format, field_format);
                     }
                 }
-                @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
+            }
+            ptr[neg4..neg2].* = " }".*;
+            return ptr;
+        }
+        pub fn length(value: Union) usize {
+            if (tag_type == null) {
+                return lengthUntagged(value);
+            }
+            var len: usize = type_name.len +% 2;
+            if (fields.len == 0) {
                 return len;
             }
-        }
-        pub fn formatLength(format: anytype) usize {
-            if (show_enum_field) {
-                return format.formatLengthEnumField();
-            }
-            if (tag_type == null) {
-                return format.formatLengthUntagged();
-            }
-            const type_name = if (spec.infer_type_names) "." else @typeName(Union);
-            if (fields.len == 0) {
-                return type_name.len +% 2;
-            } else {
-                var len: usize = type_name.len +% 2;
-                inline for (fields) |field| {
-                    if (format.value == @field(tag_type.?, field.name)) {
-                        const field_name_format: IdentifierFormat = .{ .value = field.name };
-                        if (field.type == void) {
-                            len -%= 2;
-                            return len +% field_name_format.formatLength();
-                        } else {
-                            const FieldFormat: type = AnyFormat(spec, field.type);
-                            const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
-                        }
+            inline for (fields) |field| {
+                if (value == @field(tag_type.?, field.name)) {
+                    const field_name_format: IdentifierFormat = .{ .value = field.name };
+                    if (field.type == void) {
+                        len -%= 2;
+                        return len +% field_name_format.formatLength();
+                    } else {
+                        const FieldFormat: type = AnyFormat(spec, field.type);
+                        const field_format: FieldFormat = .{ .value = @field(value, field.name) };
+                        len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                     }
                 }
-                return len;
             }
+            return len;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
