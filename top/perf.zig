@@ -493,7 +493,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
                 for (set.counters, 0..) |counter, event_idx| {
                     ptr = fmt.SideBarIndexFormat.write(ptr, width, event_idx);
                     ptr = fmt.strcpyEqu(ptr, counter.name);
-                    ptr += fmt.udh(perf_events.res[set_idx][event_idx]).formatWriteBuf(ptr);
+                    ptr = fmt.Udh(usize).write(ptr, perf_events.res[set_idx][event_idx]);
                     if (set.type == .hardware) {
                         if (counter.config.hardware == .cpu_cycles) {
                             cycles = perf_events.res[set_idx][event_idx];
