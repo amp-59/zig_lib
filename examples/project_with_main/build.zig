@@ -25,7 +25,7 @@ var build_cmd: build.BuildCommand = .{
 // actually in build_runner.zig and might be useful for the name of one of the
 // target (as below), and `build` is the name of import containing build system
 // components.
-pub fn buildMain(allocator: *build.Allocator, top: *Builder.Node) !void {
+pub fn buildMain(allocator: *build.types.Allocator, top: *Builder.Node) !void {
     const main: *Builder.Node = top.addBuild(
         allocator,
         build_cmd,
