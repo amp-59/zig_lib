@@ -968,10 +968,10 @@ pub const Bytes = packed struct {
     pub fn length(count: usize) usize {
         @setRuntimeSafety(false);
         const res: Bytes.Pair = bytes(count);
-        var len: usize = Bytes.MajorIntFormat.formatLength(.{ .value = res.int.count });
+        var len: usize = Bytes.MajorIntFormat.length(res.int.count);
         if (res.rem != 0) {
             len +%= 1;
-            len +%= Bytes.MinorIntFormat.formatLength(.{ .value = (res.rem *% 1000) / 1024 });
+            len +%= Bytes.MinorIntFormat.length((res.rem *% 1000) / 1024);
         }
         return len +% @tagName(res.int.unit).len;
     }
