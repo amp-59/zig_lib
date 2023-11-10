@@ -11,13 +11,13 @@ pub const ascii = @import("fmt/ascii.zig");
 pub fn Interface(comptime Format: type) type {
     return struct {
         pub inline fn formatWrite(format: anytype, array: anytype) void {
-            return array.define(@as(*const Format, @ptrCast(format)).formatWriteBuf(@ptrCast(array.referOneUndefined())));
+            return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
         pub inline fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
-            return strlen(Format.write(buf, @as(*const Format, @ptrCast(format)).value), buf);
+            return strlen(Format.write(buf, format.value), buf);
         }
         pub inline fn formatLength(format: anytype) usize {
-            return Format.length(@as(*const Format, @ptrCast(format)).value);
+            return Format.length(format.value);
         }
         const undef: Format = undefined;
     };
