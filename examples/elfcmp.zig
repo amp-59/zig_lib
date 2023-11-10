@@ -44,7 +44,7 @@ fn findPath(allocator: *mem.SimpleAllocator, vars: [][*:0]u8, name: [:0]u8) ![:0
     defer itr.done();
     while (itr.next()) |dirname| {
         const dir_fd: usize = try zl.file.path(.{}, .{}, dirname);
-        defer zl.file.close(.{ .errors = .{} }, dir_fd);
+        try zl.file.close(.{}, dir_fd);
         const ret: bool = zl.file.accessAt(.{}, .{ .symlink_no_follow = false }, dir_fd, name, .{ .read = true }) catch {
             continue;
         };
