@@ -343,8 +343,28 @@ fn testRenderType(allocator: *Allocator, array: *Array) !void {
     try TestFormatAlloc(render, type).run(
         allocator,
         array,
-        "packed struct(u120) { x: u64 = 5, y: packed struct { @\"0\": u32, @\"1\": u16 }, z: u8 }",
+        "packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @\"0\": u32, @\"1\": u16, }, z: u8, }",
         packed struct(u120) { x: u64 = 5, y: packed struct { @"0": u32, @"1": u16 }, z: u8 },
+    );
+    try TestFormatAlloc(render, type).run(
+        allocator,
+        array,
+        "extern union { x: u64, }",
+        extern union { x: u64 },
+    );
+    try TestFormatAlloc(render, type).run(
+        allocator,
+        array,
+        "enum(u3) { x, y, z, }",
+        enum(u3) { x, y, z },
+    );
+    render.omit_trailing_comma = true;
+    render.omit_container_decls = false;
+    try TestFormatAlloc(render, type).run(
+        allocator,
+        array,
+        "struct { x: u64 = 5, y: struct { @\"0\": u32, @\"1\": u16 }, z: u8 }",
+        struct { x: u64 = 5, y: struct { @"0": u32, @"1": u16 }, z: u8 },
     );
     try TestFormatAlloc(render, type).run(
         allocator,
@@ -355,15 +375,9 @@ fn testRenderType(allocator: *Allocator, array: *Array) !void {
     try TestFormatAlloc(render, type).run(
         allocator,
         array,
-        "enum(u3) {x, y, x }",
+        "enum(u3) { x, y, z }",
         enum(u3) { x, y, z },
     );
-    if (return) {}
-    render.omit_trailing_comma = true;
-    render.omit_container_decls = false;
-    try TestFormatAlloc(render, type).run(allocator, array, struct { x: u64 = 5, y: struct { @"0": u32, @"1": u16 }, z: u8 });
-    try TestFormatAlloc(render, type).run(allocator, array, extern union { x: u64 });
-    try TestFormatAlloc(render, type).run(allocator, array, enum(u3) { x, y, z });
 }
 fn testRenderSlice(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
