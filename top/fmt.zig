@@ -3424,7 +3424,6 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
     const T = struct {
         value: Pointer,
         const Format = @This();
-        const SubFormat = meta.Return(ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const ChildFormat = AnyFormat(spec, child);
         const max_len: ?comptime_int = blk: {
@@ -3434,97 +3433,59 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                 break :blk null;
             }
         };
-        pub fn formatWrite(format: anytype, array: anytype) void {
-            if (spec.forward)
-                return array.define(@call(.always_inline, formatWriteBuf, .{
-                    format, array.referAllUndefined().ptr,
-                }));
-            const address: usize = @intFromPtr(format.value);
-            const type_name: []const u8 = @typeName(Pointer);
-            if (child == anyopaque) {
-                const sub_format: SubFormat = .{ .value = address };
-                array.writeCount(14 +% type_name.len, ("@intFromPtr(" ++ type_name ++ ", ").*);
-                writeFormat(array, sub_format);
-                array.writeOne(')');
-            } else {
-                if (!spec.infer_type_names) {
-                    array.writeCount(6 +% type_name.len, ("@as(" ++ type_name ++ ", ").*);
-                }
-                if (@typeInfo(child) == .Fn) {
-                    const sub_format: SubFormat = .{ .value = address };
-                    array.writeMany("@");
-                    writeFormat(array, sub_format);
-                } else {
-                    array.writeOne('&');
-                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                    writeFormat(array, sub_format);
-                }
-                if (!spec.infer_type_names) {
-                    array.writeOne(')');
-                }
-            }
-        }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, value: Pointer) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            const address: usize = if (@inComptime()) 8 else @intFromPtr(format.value);
-            const type_name: []const u8 = @typeName(Pointer);
-            var len: usize = 0;
             if (@typeInfo(child) == .Array and
                 @typeInfo(child).Array.child == u8)
             {
-                return stringLiteral(format.value).formatWriteBuf(buf);
+                return StringLiteralFormat.write(buf, value);
             }
+            const type_name: []const u8 = @typeName(Pointer);
+            const address: usize = if (@inComptime()) 8 else @intFromPtr(value);
+            var ptr: [*]u8 = buf;
             if (child == anyopaque) {
-                const sub_format: SubFormat = .{ .value = address };
-                @as(*[14 +% type_name.len]u8, @ptrCast(buf + len)).* = ("@intFromPtr(" ++ type_name ++ ", ").*;
-                len +%= 14 +% type_name.len;
-                len +%= sub_format.formatWriteBuf(buf + len);
-                buf[len] = ')';
-                len +%= 1;
+                ptr[0 .. 14 +% type_name.len].* = ("@intFromPtr(" ++ type_name ++ ", ").*;
+                ptr += 14 +% type_name.len;
+                ptr = Uxsize.write(ptr, address);
+                ptr[0] = ')';
+                ptr += 1;
             } else {
                 if (!spec.infer_type_names) {
-                    @as(*[6 +% type_name.len]u8, @ptrCast(buf + len)).* = ("@as(" ++ type_name ++ ", ").*;
-                    len +%= 6 +% type_name.len;
+                    ptr[0 .. 6 +% type_name.len].* = ("@as(" ++ type_name ++ ", ").*;
+                    ptr += 6 +% type_name.len;
                 }
                 if (@typeInfo(child) == .Fn) {
-                    const sub_format: SubFormat = .{ .value = address };
-                    buf[len] = '@';
-                    len +%= 1;
-                    len +%= sub_format.formatWriteBuf(buf + len);
+                    ptr[0] = '@';
+                    ptr = Uxsize.write(ptr + 1, address);
                 } else {
-                    buf[len] = '&';
-                    len +%= 1;
-                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                    len +%= sub_format.formatWriteBuf(buf + len);
+                    ptr[0] = '&';
+                    ptr = AnyFormat(spec, child).write(ptr + 1, value.*);
                 }
                 if (!spec.infer_type_names) {
-                    buf[len] = ')';
-                    len +%= 1;
+                    ptr[0] = ')';
+                    ptr += 1;
                 }
             }
-            return len;
+            return ptr;
         }
-        pub fn formatLength(format: Format) usize {
+        pub fn length(value: Pointer) usize {
             var len: usize = 0;
-            const address: usize = if (@inComptime()) 8 else @intFromPtr(format.value);
+            const address: usize = if (@inComptime()) 8 else @intFromPtr(value);
             const type_name: []const u8 = @typeName(Pointer);
             if (child == anyopaque) {
-                const sub_format: SubFormat = .{ .value = address };
                 len +%= 12 +% type_name.len;
-                len +%= sub_format.formatLength();
+                len +%= Uxsize.length(address);
                 len +%= 1;
             } else {
                 if (!spec.infer_type_names) {
                     len +%= 6 +% type_name.len;
                 }
                 if (@typeInfo(child) == .Fn) {
-                    const sub_format: SubFormat = .{ .value = address };
                     len +%= 1;
-                    len +%= sub_format.formatLength();
+                    len +%= Uxsize.length(address);
                 } else {
                     len +%= 1;
-                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                    len +%= sub_format.formatLength();
+                    len +%= AnyFormat(spec, child).length(value.*);
                 }
                 if (!spec.infer_type_names) {
                     len +%= 1;
@@ -3532,6 +3493,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
             }
             return len;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
