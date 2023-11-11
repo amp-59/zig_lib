@@ -47,7 +47,9 @@ fn PanicData(comptime panic_extra_cause: PanicCause) type {
         .unwrapped_null,
         .returned_noreturn,
         .reached_unreachable,
-        => void,
+        => {
+            return void;
+        },
         .access_out_of_bounds => {
             return struct { index: usize, length: usize };
         },
@@ -105,9 +107,12 @@ fn PanicData(comptime panic_extra_cause: PanicCause) type {
         .cast_to_pointer_from_invalid => {
             return usize;
         },
-        .cast_to_enum_from_invalid,
-        .cast_to_error_from_invalid,
-        => |tag_type| return meta.Child(tag_type),
+        .cast_to_enum_from_invalid => |tag_type| {
+            return meta.Child(tag_type);
+        },
+        .cast_to_error_from_invalid => {
+            return u16;
+        },
     }
 }
 pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*builtin.StackTrace, ret_addr: usize) void {
