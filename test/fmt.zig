@@ -381,9 +381,24 @@ fn testRenderType(allocator: *Allocator, array: *Array) !void {
 }
 fn testRenderSlice(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    try TestFormatAlloc().run(allocator, array, fmt.any(@as([]const u8, "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c")));
-    try TestFormatAlloc().run(allocator, array, fmt.any(@as([]const u8, "one\ntwo\nthree\n")));
-    try TestFormatAlloc().run(allocator, array, fmt.any(@as([]const u16, &.{ 'o', 'n', 'e', '\n', 't', 'w', 'o', '\n', 't', 'h', 'r', 'e', 'e', '\n' })));
+    try TestFormatAlloc(.{}, []const u8).run(
+        allocator,
+        array,
+        "\"c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c\"",
+        "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c",
+    );
+    try TestFormatAlloc(.{}, []const u8).run(
+        allocator,
+        array,
+        "\"one\\ntwo\\nthree\\n\"",
+        "one\ntwo\nthree\n",
+    );
+    try TestFormatAlloc(.{}, []const u16).run(
+        allocator,
+        array,
+        "&.{ 111, 110, 101, 10, 116, 119, 111, 10, 116, 104, 114, 101, 101, 10 }",
+        &.{ 'o', 'n', 'e', '\n', 't', 'w', 'o', '\n', 't', 'h', 'r', 'e', 'e', '\n' },
+    );
 }
 fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     _ = buf;
@@ -449,16 +464,15 @@ fn testRenderEnum(allocator: *Allocator, array: *Array) !void {
 }
 fn testRenderTypeDescription(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    const any = TypeDescr.init;
     try TestFormatAlloc().run(allocator, array, //
-        comptime any(packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
-    try TestFormatAlloc().run(allocator, array, comptime any(struct { buf: [*]u8, buf_len: usize }));
-    try TestFormatAlloc().run(allocator, array, comptime any(struct { buf: []u8, buf_len: usize }));
-    try TestFormatAlloc().run(allocator, array, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+        comptime TypeDescr.init(packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
+    try TestFormatAlloc().run(allocator, array, comptime TypeDescr.init(struct { buf: [*]u8, buf_len: usize }));
+    try TestFormatAlloc().run(allocator, array, comptime TypeDescr.init(struct { buf: []u8, buf_len: usize }));
+    try TestFormatAlloc().run(allocator, array, comptime TypeDescr.init(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
     try TestFormatAlloc().run(allocator, array, comptime BigTypeDescr.init(@import("std").builtin));
     try TestFormatAlloc().run(allocator, array, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
-    const td1: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
-    const td2: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
+    const td1: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no });
+    const td2: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no });
     try testFormats(allocator, array, td1, td2);
     try debug.expectEqualMemory(TypeDescr, td1, td2);
 }
@@ -469,7 +483,7 @@ pub fn testRenderFunctions() !void {
     var array: Array = Array.init(&allocator);
     try testRenderArray(&allocator, &array);
     try testRenderType(&allocator, &array);
-    //try testRenderSlice(&allocator, &array);
+    try testRenderSlice(&allocator, &array);
     //try testRenderStruct(&allocator, &array);
 }
 fn testGenericRangeFormat() !void {
