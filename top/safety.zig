@@ -742,7 +742,7 @@ fn panicArithOverflow(comptime Number: type) type {
             ptr[0..23].* = " RHS of shift too big: ".*;
             ptr = fmt.Xd(Number).write(ptr + 23, shift_amt);
             ptr[0..3].* = " > ".*;
-            ptr = fmt.Xd(Number).write(ptr + 4, bit_count);
+            ptr = fmt.Xd(Number).write(ptr + 3, bit_count);
             builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
     };
