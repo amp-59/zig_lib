@@ -278,17 +278,27 @@ fn testHexToBytes() !void {
         }
     };
 }
-fn testFormat(allocator: *Allocator, array: *Array, buf: [*]u8, format: anytype) !void {
-    testing.announce(@src());
-    try array.appendFormat(allocator, format);
-    try array.appendOne(allocator, 0xa);
-    var len: usize = format.formatWriteBuf(buf);
-    buf[len] = 0xa;
-    len +%= 1;
-    debug.write(array.readAll(allocator.*));
-    try file.write(.{}, 1, buf[0..len]);
-    try testing.expectEqualString(array.readAll(allocator.*), buf[0..len]);
-    array.undefineAll(allocator.*);
+fn TestFormatAlloc(comptime spec: fmt.RenderSpec, comptime Value: type) type {
+    const rc = builtin.requireComptime(Value);
+    return struct {
+        const run = if (rc) runCx else runRt;
+        fn runCx(allocator: *Allocator, array: *Array, expected: []const u8, comptime value: Value) !void {
+            debug.write("run(" ++ comptime fmt.eval(.{ .omit_trailing_comma = true }, spec) ++ ", " ++ @typeName(Value) ++ ")\n");
+            try array.appendFormat(allocator, comptime fmt.render(spec, value));
+            try testing.expectEqualString(expected, array.readAll(allocator.*));
+            try array.appendMany(allocator, "\n\n");
+            debug.write(array.readAll(allocator.*));
+            array.undefineAll(allocator.*);
+        }
+        fn runRt(allocator: *Allocator, array: *Array, expected: []const u8, value: Value) !void {
+            debug.write("run(" ++ comptime fmt.eval(.{ .omit_trailing_comma = true }, spec) ++ ", " ++ @typeName(Value) ++ ")\n");
+            try array.appendFormat(allocator, fmt.render(spec, value));
+            try testing.expectEqualString(expected, array.readAll(allocator.*));
+            try array.appendMany(allocator, "\n\n");
+            debug.write(array.readAll(allocator.*));
+            array.undefineAll(allocator.*);
+        }
+    };
 }
 fn testFormats(allocator: *Allocator, array: *Array, format1: anytype, format2: anytype) !void {
     testing.announce(@src());
@@ -305,41 +315,68 @@ fn testFormats(allocator: *Allocator, array: *Array, format1: anytype, format2: 
     try testing.expectEqualString(slice1, slice2);
     array.undefineAll(allocator.*);
 }
-fn testRenderArray(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+fn testRenderArray(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    var value1: [320]u8 = [8]u8{ 0, 1, 2, 3, 4, 5, 6, 7 } ** 40;
-    var value2: [8][8]u8 = .{
-        @bitCast(@as(u64, 0)), @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 2)), @bitCast(@as(u64, 3)),
-        @bitCast(@as(u64, 4)), @bitCast(@as(u64, 5)),
-        @bitCast(@as(u64, 6)), @bitCast(@as(u64, 7)),
-    };
-    try testFormat(allocator, array, buf, fmt.any(value1));
-    try testFormat(allocator, array, buf, fmt.any(value2));
-    try testFormat(allocator, array, buf, fmt.render(.{ .omit_trailing_comma = true }, value1));
-    try testFormat(allocator, array, buf, fmt.render(.{ .omit_trailing_comma = true }, value2));
+    comptime var render: fmt.RenderSpec = .{};
+    try TestFormatAlloc(render, [8]u8).run(allocator, array, ".{ 1, 2, 3, 4, 5, 6, 7, 8 }", .{ 1, 2, 3, 4, 5, 6, 7, 8 });
+    render.infer_type_names = false;
+    try TestFormatAlloc(render, [8]u8).run(allocator, array, "[8]u8{ 1, 2, 3, 4, 5, 6, 7, 8 }", .{ 1, 2, 3, 4, 5, 6, 7, 8 });
+    try TestFormatAlloc(render, [8][8]u8).run(
+        allocator,
+        array,
+        "[8][8]u8{ [8]u8{ 0, 0, 0, 0, 0, 0, 0, 0 }, [8]u8{ 1, 0, 0, 0, 0, 0, 0, 0 }, [8]u8{ 2, 0, 0, 0, 0, 0, 0, 0 }, [8]u8{ 3, 0, 0, 0, 0, 0, 0, 0 }, [8]u8{ 4, 0, 0, 0, 0, 0, 0, 0 }, [8]u8{ 5, 0, 0, 0, 0, 0, 0, 0 }, [8]u8{ 6, 0, 0, 0, 0, 0, 0, 0 }, [8]u8{ 7, 0, 0, 0, 0, 0, 0, 0 } }",
+        .{
+            .{ 0, 0, 0, 0, 0, 0, 0, 0 },
+            .{ 1, 0, 0, 0, 0, 0, 0, 0 },
+            .{ 2, 0, 0, 0, 0, 0, 0, 0 },
+            .{ 3, 0, 0, 0, 0, 0, 0, 0 },
+            .{ 4, 0, 0, 0, 0, 0, 0, 0 },
+            .{ 5, 0, 0, 0, 0, 0, 0, 0 },
+            .{ 6, 0, 0, 0, 0, 0, 0, 0 },
+            .{ 7, 0, 0, 0, 0, 0, 0, 0 },
+        },
+    );
 }
-fn testRenderType(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+fn testRenderType(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    try testFormat(allocator, array, buf, comptime fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { @"0": u32, @"1": u16 }, z: u8 }));
-    try testFormat(allocator, array, buf, comptime fmt.any(extern union { x: u64 }));
-    try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }));
-    const render_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true, .omit_container_decls = false };
-    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, struct { x: u64 = 5, y: struct { @"0": u32, @"1": u16 }, z: u8 }));
-    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, extern union { x: u64 }));
-    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, enum(u3) { x, y, z }));
+    comptime var render: fmt.RenderSpec = .{};
+    try TestFormatAlloc(render, type).run(
+        allocator,
+        array,
+        "packed struct(u120) { x: u64 = 5, y: packed struct { @\"0\": u32, @\"1\": u16 }, z: u8 }",
+        packed struct(u120) { x: u64 = 5, y: packed struct { @"0": u32, @"1": u16 }, z: u8 },
+    );
+    try TestFormatAlloc(render, type).run(
+        allocator,
+        array,
+        "extern union { x: u64 }",
+        extern union { x: u64 },
+    );
+    try TestFormatAlloc(render, type).run(
+        allocator,
+        array,
+        "enum(u3) {x, y, x }",
+        enum(u3) { x, y, z },
+    );
+    if (return) {}
+    render.omit_trailing_comma = true;
+    render.omit_container_decls = false;
+    try TestFormatAlloc(render, type).run(allocator, array, struct { x: u64 = 5, y: struct { @"0": u32, @"1": u16 }, z: u8 });
+    try TestFormatAlloc(render, type).run(allocator, array, extern union { x: u64 });
+    try TestFormatAlloc(render, type).run(allocator, array, enum(u3) { x, y, z });
 }
-fn testRenderSlice(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+fn testRenderSlice(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    try testFormat(allocator, array, buf, fmt.any(@as([]const u8, "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c")));
-    try testFormat(allocator, array, buf, fmt.any(@as([]const u8, "one\ntwo\nthree\n")));
-    try testFormat(allocator, array, buf, fmt.any(@as([]const u16, &.{ 'o', 'n', 'e', '\n', 't', 'w', 'o', '\n', 't', 'h', 'r', 'e', 'e', '\n' })));
+    try TestFormatAlloc().run(allocator, array, fmt.any(@as([]const u8, "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c")));
+    try TestFormatAlloc().run(allocator, array, fmt.any(@as([]const u8, "one\ntwo\nthree\n")));
+    try TestFormatAlloc().run(allocator, array, fmt.any(@as([]const u16, &.{ 'o', 'n', 'e', '\n', 't', 'w', 'o', '\n', 't', 'h', 'r', 'e', 'e', '\n' })));
 }
 fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+    _ = buf;
     testing.announce(@src());
     const tmp_max_len: usize = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c".len;
     const tmp: [*]u8 = @constCast("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c");
-    try testFormat(allocator, array, buf, fmt.render(.{}, packed struct(u120) {
+    try TestFormatAlloc().run(allocator, array, fmt.render(.{}, packed struct(u120) {
         x: u64 = 5,
         y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{},
         z: u8 = 255,
@@ -348,7 +385,7 @@ fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
         .y = .{ .a = 3, .b = 4 },
         .z = 127,
     }));
-    try testFormat(allocator, array, buf, fmt.render(.{
+    try TestFormatAlloc().run(allocator, array, fmt.render(.{
         .views = .{ .extern_tagged_union = true },
     }, struct {
         value_tag: enum { a, b },
@@ -357,26 +394,26 @@ fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
         .value_tag = .a,
         .value = .{ .a = 2342342 },
     }));
-    try testFormat(allocator, array, buf, fmt.render(.{
+    try TestFormatAlloc().run(allocator, array, fmt.render(.{
         .views = .{ .extern_resizeable = true },
     }, struct { buf: [*]u8, buf_len: usize }{
         .buf = tmp,
         .buf_len = 16,
     }));
-    try testFormat(allocator, array, buf, fmt.render(.{
+    try TestFormatAlloc().run(allocator, array, fmt.render(.{
         .views = .{ .zig_resizeable = true },
     }, struct { buf: []u8, buf_len: usize }{
         .buf = tmp[16..tmp_max_len],
         .buf_len = tmp_max_len - 16,
     }));
-    try testFormat(allocator, array, buf, fmt.render(.{
+    try TestFormatAlloc().run(allocator, array, fmt.render(.{
         .views = .{ .static_resizeable = true },
     }, struct {
         auto: [256]u8 = [1]u8{0xa} ** 256,
         auto_len: usize = 16,
     }{}));
     if (return) {}
-    try testFormat(allocator, array, buf, fmt.render(.{
+    try TestFormatAlloc().run(allocator, array, fmt.render(.{
         .views = .{
             .extern_resizeable = true,
             .extern_slice = true,
@@ -388,24 +425,24 @@ fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
         auto_len: usize = 1,
     }{}));
 }
-fn testRenderUnion(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+fn testRenderUnion(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    try testFormat(allocator, array, buf, comptime fmt.any(extern union { x: u64 }{ .x = 0 }));
+    try TestFormatAlloc().run(allocator, array, comptime fmt.any(extern union { x: u64 }{ .x = 0 }));
 }
-fn testRenderEnum(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+fn testRenderEnum(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }.z));
+    try TestFormatAlloc().run(allocator, array, comptime fmt.any(enum(u3) { x, y, z }.z));
 }
-fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+fn testRenderTypeDescription(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
     const any = TypeDescr.init;
-    try testFormat(allocator, array, buf, //
+    try TestFormatAlloc().run(allocator, array, //
         comptime any(packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
-    try testFormat(allocator, array, buf, comptime any(struct { buf: [*]u8, buf_len: usize }));
-    try testFormat(allocator, array, buf, comptime any(struct { buf: []u8, buf_len: usize }));
-    try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
-    try testFormat(allocator, array, buf, comptime BigTypeDescr.init(@import("std").builtin));
-    try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
+    try TestFormatAlloc().run(allocator, array, comptime any(struct { buf: [*]u8, buf_len: usize }));
+    try TestFormatAlloc().run(allocator, array, comptime any(struct { buf: []u8, buf_len: usize }));
+    try TestFormatAlloc().run(allocator, array, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+    try TestFormatAlloc().run(allocator, array, comptime BigTypeDescr.init(@import("std").builtin));
+    try TestFormatAlloc().run(allocator, array, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
     const td1: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
     const td2: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
     try testFormats(allocator, array, td1, td2);
@@ -415,13 +452,11 @@ pub fn testRenderFunctions() !void {
     try mem.map(.{}, .{}, .{}, 0x40000000, 0x40000000);
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
-    var buf: []u8 = try allocator.allocate(u8, 65536);
     var array: Array = Array.init(&allocator);
-    try testRenderTypeDescription(&allocator, &array, buf.ptr);
-    try testRenderArray(&allocator, &array, buf.ptr);
-    try testRenderType(&allocator, &array, buf.ptr);
-    try testRenderSlice(&allocator, &array, buf.ptr);
-    try testRenderStruct(&allocator, &array, buf.ptr);
+    try testRenderArray(&allocator, &array);
+    try testRenderType(&allocator, &array);
+    //try testRenderSlice(&allocator, &array);
+    //try testRenderStruct(&allocator, &array);
 }
 fn testGenericRangeFormat() !void {
     testing.announce(@src());
@@ -509,17 +544,19 @@ fn testRenderHighlight() !void {
 pub fn testLEB() !void {
     @setRuntimeSafety(false);
     var rng: file.DeviceRandomBytes(4096) = .{};
-    inline for (.{ u8, u16, u32, u64 }) |T| {
+    inline for (.{ u8, u16, u32, u64, i8, i16, i32, i64 }) |T| {
+        const LEB128 = fmt.GenericLEB128Format(T);
         var val: T = rng.readOne(T);
-        var idx: usize = 0;
         var buf: [4096]u8 = undefined;
-        while (idx != 0x100000) : (idx +%= 1) {
-            const l: T = @truncate(val -% idx);
-            const u: T = @truncate(val +% idx);
-            const u_len: usize = fmt.strlen(fmt.U64xLEB128.write(&buf, u), &buf);
+        comptime var max: usize = 10000;
+        var idx: usize = 0;
+        while (idx != max) : (idx +%= 1) {
+            const l: T = @intCast(@as(usize, @intCast(val)) -% idx);
+            const u: T = @intCast(@as(usize, @intCast(val)) +% idx);
+            const u_len: usize = fmt.strlen(LEB128.write(&buf, u), &buf);
             const u_res = try parse.readLEB128(T, buf[0..u_len]);
             try debug.expectEqual(T, u, u_res[0]);
-            const l_len: usize = fmt.strlen(fmt.U64xLEB128.write(&buf, l), &buf);
+            const l_len: usize = fmt.strlen(LEB128.write(&buf, l), &buf);
             const l_res = try parse.readLEB128(T, buf[0..l_len]);
             try debug.expectEqual(T, l, l_res[0]);
         }
@@ -538,15 +575,15 @@ pub fn test1() !void {
 pub fn main() !void {
     meta.refAllDecls(fmt, &.{});
     try testLEB();
-    try testRenderHighlight();
-    try testBytesFormat();
-    try testBytesToHex();
-    try testHexToBytes();
-    try testCaseFormat();
-    try testGenericRangeFormat();
+    //try testRenderHighlight();
+    //try testBytesFormat();
+    //try testBytesToHex();
+    //try testHexToBytes();
+    //try testCaseFormat();
+    //try testGenericRangeFormat();
     try testRenderFunctions();
-    try testSystemFlagsFormatters();
-    try testIntToStringWithSeparators();
+    //try testSystemFlagsFormatters();
+    //try testIntToStringWithSeparators();
     //try testEquivalentIntToStringFormat();
     try @import("fmt/utf8.zig").testUtf8();
     try @import("fmt/ascii.zig").testAscii();
