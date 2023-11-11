@@ -1525,11 +1525,15 @@ pub inline fn fieldTagName(comptime field_name: []const u8) []const u8 {
 pub inline fn fieldInitializer(comptime field_name: []const u8) []const u8 {
     comptime {
         var type_info: builtin.Type = @typeInfo(union {});
-        var field: builtin.Type.UnionField = .{ .type = void, .name = field_name, .alignment = 1 };
+        var field: builtin.Type.UnionField = .{
+            .type = void,
+            .name = field_name,
+            .alignment = 1,
+        };
         type_info.Union.fields = &.{field};
         const Union = @Type(type_info);
-        const ty_name = @typeName([:@unionInit(Union, field_name, {})]Union);
-        return ty_name[5 .. (ty_name.len -% @typeName(Union).len) -% 5];
+        const init: []const u8 = @typeName([:@unionInit(Union, field_name, {})]Union);
+        return init[5 .. (init.len -% @typeName(Union).len) -% 5];
     }
 }
 pub const FieldIdentifierFormat = struct {
