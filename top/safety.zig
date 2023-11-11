@@ -433,5 +433,22 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr[0..5].* = " bits".*;
             builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
+        pub fn shiftRhs(
+            type_name: []const u8,
+            bit_count: u16,
+            shift_amt: ShiftAmount,
+            st: ?*builtin.StackTrace,
+            ret_addr: usize,
+        ) void {
+            @setCold(true);
+            @setRuntimeSafety(false);
+            var buf: [256]u8 = undefined;
+            var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
+            ptr[0..30].* = " RHS of shift too big: ".*;
+            ptr = fmt.Xd(Number).write(ptr + 30, shift_amt);
+            ptr[0..4].* = " > ".*;
+            ptr = fmt.Xd(Number).write(ptr + 4, bit_count);
+            builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
+        }
     };
 }
