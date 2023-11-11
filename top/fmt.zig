@@ -3737,62 +3737,40 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const child: type = @typeInfo(Optional).Optional.child;
-        const type_name: []const u8 = typeName(Optional);
+        const type_name = @typeName(Optional);
         const max_len: ?comptime_int = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
-        pub fn formatWrite(format: anytype, array: anytype) void {
-            if (spec.forward) {
-                return array.define(@call(.always_inline, formatWriteBuf, .{
-                    format, array.referAllUndefined().ptr,
-                }));
-            }
-            if (!render_readable) {
-                array.writeCount(4, "@as(".*);
-                array.writeMany(type_name);
-                array.writeCount(2, ", ".*);
-            }
-            if (format.value) |optional| {
-                const sub_format: ChildFormat = .{ .value = optional };
-                writeFormat(array, sub_format);
-            } else {
-                array.writeCount(4, "null".*);
-            }
-            if (!render_readable) {
-                array.writeOne(')');
-            }
-        }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+
+        pub fn write(buf: [*]u8, value: Optional) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            var len: usize = 0;
+            var ptr: [*]u8 = buf;
             if (!render_readable) {
                 @as(*[4]u8, @ptrCast(buf)).* = "@as(".*;
-                len +%= 4;
-                @as(meta.TypeName(Optional), buf + len).* = @typeName(Optional).*;
-                len +%= @typeName(Optional).len;
-                @as(*[2]u8, @ptrCast(buf)).* = ", ".*;
-                len +%= 2;
+                ptr += 4;
+                ptr[0..type_name.len].* = type_name.*;
+                ptr += type_name.len;
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
             }
-            if (format.value) |optional| {
-                const sub_format: ChildFormat = .{ .value = optional };
-                len +%= sub_format.formatWriteBuf(buf);
+            if (value) |optional| {
+                ptr = ChildFormat.write(ptr, optional);
             } else {
-                @as(*[4]u8, @ptrCast(buf)).* = "null".*;
-                len +%= 4;
+                ptr[0..4].* = "null".*;
+                ptr += 4;
             }
             if (!render_readable) {
-                buf[len] = ')';
-                len +%= 1;
+                ptr[0] = ')';
+                ptr += 1;
             }
-            return len;
+            return ptr;
         }
-        pub fn formatLength(format: anytype) usize {
+        pub fn length(value: Optional) usize {
             var len: usize = 0;
             if (!render_readable) {
                 len +%= 4 +% type_name.len +% 2;
             }
-            if (format.value) |optional| {
-                const sub_format: ChildFormat = .{ .value = optional };
-                len +%= sub_format.formatLength();
+            if (value) |optional| {
+                len +%= ChildFormat.length(optional);
             } else {
                 len +%= 4;
             }
