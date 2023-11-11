@@ -1,13 +1,12 @@
 const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
 const version: enum { single, std } = .single;
-
 const safety = switch (version) {
     .single => @import("../top/safety.zig"),
     .std => @import("std").builtin.default,
 };
 const just_compile: bool = true;
-
+const fair_comparison: bool = false;
 pub const want_stack_traces: bool = false;
 var rng: zl.file.DeviceRandomBytes(4096) = .{};
 inline fn readOne(comptime T: type) T {
@@ -263,7 +262,7 @@ pub fn main() void {
         .{ .b = 4 },
     );
 
-    if (version == .std) {
+    if (version == .std or fair_comparison) {
         return;
     }
 
