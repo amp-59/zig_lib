@@ -418,19 +418,6 @@ pub fn stringLiteralChar(byte: u8) []const u8 {
 pub const StringLiteralFormat = struct {
     value: []const u8,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeOne('"');
-        for (format.value) |byte| {
-            array.writeMany(stringLiteralChar(byte));
-        }
-        array.writeOne('"');
-    }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        return strlen(write(buf, format.value), buf);
-    }
-    pub fn formatLength(format: Format) usize {
-        return length(format.value);
-    }
     pub fn write(buf: [*]u8, string: []const u8) [*]u8 {
         @setRuntimeSafety(false);
         buf[0] = '"';
@@ -449,6 +436,7 @@ pub const StringLiteralFormat = struct {
         }
         return len;
     }
+    pub usingnamespace Interface(Format);
 };
 pub const SideBarIndexFormat = struct {
     value: struct {
