@@ -364,10 +364,10 @@ pub const Elf64_Sym_Idx = packed struct {
     name: u32,
     info: STT,
     other: STV,
-    index: u32,
     shndx: u16,
     value: u64,
     size: u64,
+    index: u64,
 };
 pub const Elf32_Syminfo = extern struct {
     boundto: u16,
