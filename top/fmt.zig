@@ -2616,26 +2616,15 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
 pub const BoolFormat = packed struct {
     value: bool,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.value) {
-            array.writeCount(4, "true".*);
-        } else {
-            array.writeCount(5, "false".*);
-        }
+
+    pub fn write(buf: [*]u8, value: bool) [*]u8 {
+        if (value) buf[0..4].* = "true".* else buf[0..5].* = "false".*;
+        return buf + (@as(usize, 5) -% @intFromBool(value));
     }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        @setRuntimeSafety(builtin.is_safe);
-        if (format.value) {
-            buf[0..4].* = "true".*;
-            return 4;
-        } else {
-            buf[0..5].* = "false".*;
-            return 5;
-        }
+    pub fn length(value: bool) usize {
+        return (@as(usize, 5) -% @intFromBool(value));
     }
-    pub inline fn formatLength(format: Format) usize {
-        return if (format.value) 4 else 5;
-    }
+    pub usingnamespace Interface(Format);
 };
 pub fn TypeFormat(comptime spec: RenderSpec) type {
     const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
@@ -3583,7 +3572,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                     }
                 }
                 if (omit_trailing_comma) {
-                    ptr[neg4..neg2].* = " }".*;
+                    (ptr + neg2)[0..2].* = " }".*;
                 } else {
                     ptr[0] = '}';
                     ptr += 1;
