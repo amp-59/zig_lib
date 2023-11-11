@@ -1,6 +1,7 @@
 const fmt = @import("../../fmt.zig");
 const mem = @import("../../mem.zig");
 const bits = @import("../../bits.zig");
+const safety = @import("../../safety.zig");
 const types = @import("types.zig");
 const config = @import("config.zig");
 const context: types.Context = @import("root").context;
@@ -1963,6 +1964,34 @@ fn writeWriterFunctionExternSignature(array: *Array, attributes: types.Attribute
         else => {},
     }
     array.writeMany(" = @ptrFromInt(8),\n");
+}
+fn generatePanicCauseParameters() []const u8 {
+    const fields = @typeInfo(safety.RuntimeSafetyCheck).Struct.fields;
+    comptime var params: [fields.len]types.ParamSpec = undefined;
+    inline for (fields, 0..) |field, field_idx| {
+        comptime var descr: []const []const u8 = &.{"Enables panic causes:"};
+        inline for (comptime safety.RuntimeSafetyCheck.causes(@field(safety.RuntimeSafetyCheck.Tag, field.name))) |cause| {
+            descr = descr ++ [1][]const u8{"  " ++ @tagName(cause)};
+        }
+        const name: []const u8 = "panic_" ++ field.name;
+        comptime var string: [name.len]u8 = undefined;
+        comptime {
+            for (name, 0..) |byte, idx| {
+                if (byte == '_') {
+                    string[idx] = '-';
+                } else {
+                    string[idx] = byte;
+                }
+            }
+        }
+        params[field_idx] = types.ParamSpec{
+            .name = name,
+            .string = "-f" ++ string,
+            .and_no = .{ .string = "-fno-" ++ string },
+            .descr = descr,
+        };
+    }
+    return params;
 }
 fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var buf: [4096]u8 = undefined;

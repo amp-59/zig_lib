@@ -1,12 +1,15 @@
 const mem = @import("../../mem.zig");
 const gen = @import("../../gen.zig");
 const fmt = @import("../../fmt.zig");
+const meta = @import("../../meta.zig");
 const debug = @import("../../debug.zig");
 const attr = @import("attr.zig");
 const types = @import("types.zig");
 const config = @import("config.zig");
 const common = @import("common_impls.zig");
+const safety = @import("../../safety.zig");
 const testing = @import("../../testing.zig");
+
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
 const print_wip_llc: bool = true;
@@ -42,6 +45,7 @@ pub fn main() !void {
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
+
     if (config.commit) {
         try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
     } else {

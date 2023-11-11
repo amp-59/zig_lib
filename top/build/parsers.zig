@@ -371,6 +371,34 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             cmd.implicit_builtins = true;
         } else if (mem.testEqualString("-fno-builtin", arg)) {
             cmd.implicit_builtins = false;
+        } else if (mem.testEqualString("-fpanic-mismatched-arguments", arg)) {
+            cmd.panic_mismatched_arguments = true;
+        } else if (mem.testEqualString("-fno-panic-mismatched-arguments", arg)) {
+            cmd.panic_mismatched_arguments = false;
+        } else if (mem.testEqualString("-fpanic-reached-unreachable", arg)) {
+            cmd.panic_reached_unreachable = true;
+        } else if (mem.testEqualString("-fno-panic-reached-unreachable", arg)) {
+            cmd.panic_reached_unreachable = false;
+        } else if (mem.testEqualString("-fpanic-accessed-invalid-memory", arg)) {
+            cmd.panic_accessed_invalid_memory = true;
+        } else if (mem.testEqualString("-fno-panic-accessed-invalid-memory", arg)) {
+            cmd.panic_accessed_invalid_memory = false;
+        } else if (mem.testEqualString("-fpanic-mismatched-sentinel", arg)) {
+            cmd.panic_mismatched_sentinel = true;
+        } else if (mem.testEqualString("-fno-panic-mismatched-sentinel", arg)) {
+            cmd.panic_mismatched_sentinel = false;
+        } else if (mem.testEqualString("-fpanic-arith-lost-precision", arg)) {
+            cmd.panic_arith_lost_precision = true;
+        } else if (mem.testEqualString("-fno-panic-arith-lost-precision", arg)) {
+            cmd.panic_arith_lost_precision = false;
+        } else if (mem.testEqualString("-fpanic-arith-overflowed", arg)) {
+            cmd.panic_arith_overflowed = true;
+        } else if (mem.testEqualString("-fno-panic-arith-overflowed", arg)) {
+            cmd.panic_arith_overflowed = false;
+        } else if (mem.testEqualString("-fpanic-cast-from-invalid", arg)) {
+            cmd.panic_cast_from_invalid = true;
+        } else if (mem.testEqualString("-fno-panic-cast-from-invalid", arg)) {
+            cmd.panic_cast_from_invalid = false;
         } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
             cmd.omit_frame_pointer = true;
         } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
@@ -968,128 +996,162 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-const build_help: [:0]const u8 =
+const build_help: [:0]const u8 = 
     \\    build-
-    \\    -f[no-]emit-bin                 (default=yes) Output machine code
-    \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
-    \\    -f[no-]emit-llvm-ir             (default=no) Output optimized LLVM IR (.ll)
-    \\    -f[no-]emit-llvm-bc             (default=no) Output optimized LLVM BC (.bc)
-    \\    -f[no-]emit-h                   (default=no) Output a C header file (.h)
-    \\    -f[no-]emit-docs                (default=no) Output documentation (.html)
-    \\    -f[no-]emit-analysis            (default=no) Output analysis (.json)
-    \\    -f[no-]emit-implib              (default=yes) Output an import when building a Windows DLL (.lib)
-    \\    --cache-dir                     Override the local cache directory
-    \\    --global-cache-dir              Override the global cache directory
-    \\    --zig-lib-dir                   Override Zig installation lib directory
-    \\    --listen                        [MISSING]
-    \\    -target                         <arch><sub>-<os>-<abi> see the targets command
-    \\    -mcpu                           Specify target CPU and feature set
-    \\    -mcmodel                        Limit range of code and data virtual addresses
-    \\    -m[no-]red-zone                 Enable the "red-zone"
-    \\    -f[no-]builtin                  Enable implicit builtin knowledge of functions
-    \\    -f[no-]omit-frame-pointer       Omit the stack frame pointer
-    \\    -mexec-model                    (WASI) Execution model
-    \\    --name                          Override root name
-    \\    -f[no-]soname                   Override the default SONAME value
-    \\    -O                              Choose what to optimize for:
-    \\                                      Debug          Optimizations off, safety on
-    \\                                      ReleaseSafe    Optimizations on, safety on
-    \\                                      ReleaseFast    Optimizations on, safety off
-    \\                                      ReleaseSmall   Size optimizations on, safety off
-    \\    -fopt-bisect-limit              Only run [limit] first LLVM optimization passes
-    \\    --main-mod-path                 Set the directory of the root package
-    \\    -f[no-]PIC                      Enable Position Independent Code
-    \\    -f[no-]PIE                      Enable Position Independent Executable
-    \\    -f[no-]lto                      Enable Link Time Optimization
-    \\    -f[no-]stack-check              Enable stack probing in unsafe builds
-    \\    -f[no-]stack-protector          Enable stack protection in unsafe builds
-    \\    -f[no-]sanitize-c               Enable C undefined behaviour detection in unsafe builds
-    \\    -f[no-]valgrind                 Include valgrind client requests in release builds
-    \\    -f[no-]sanitize-thread          Enable thread sanitizer
-    \\    -f[no-]unwind-tables            Always produce unwind table entries for all functions
-    \\    -f[no-]reference-trace          How many lines of reference trace should be shown per compile error
-    \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
-    \\    -f[no-]single-threaded          Code assumes there is only one thread
-    \\    -f[no-]function-sections        Places each function in a separate section
-    \\    -f[no-]data-sections            Places data in separate sections
-    \\    -f[no-]strip                    Omit debug symbols
-    \\    -f[no-]formatted-panics         Enable formatted safety panics
-    \\    -ofmt                           Override target object format:
-    \\                                      elf                    Executable and Linking Format
-    \\                                      c                      C source code
-    \\                                      wasm                   WebAssembly
-    \\                                      coff                   Common Object File Format (Windows)
-    \\                                      macho                  macOS relocatables
-    \\                                      spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
-    \\                                      plan9                  Plan 9 from Bell Labs object format
-    \\                                      hex (planned feature)  Intel IHEX
-    \\                                      raw (planned feature)  Dump machine code directly
-    \\    -idirafter                      Add directory to AFTER include search path
-    \\    -isystem                        Add directory to SYSTEM include search path
-    \\    --libc                          Provide a file which specifies libc paths
-    \\    --library                       Link against system library (only if actually used)
-    \\    -I                              Add directories to include search path
-    \\    --needed-library                Link against system library (even if unused)
-    \\    --library-directory             Add a directory to the library search path
-    \\    --script                        Use a custom linker script
-    \\    --version-script                Provide a version .map file
-    \\    --dynamic-linker                Set the dynamic interpreter path
-    \\    --sysroot                       Set the system root directory
-    \\    -f[no-]entry[=]                 Override the default entry symbol name
-    \\    -f[no-]lld                      Use LLD as the linker
-    \\    -f[no-]llvm                     Use LLVM as the codegen backend
-    \\    -f[no-]compiler-rt              (default) Include compiler-rt symbols in output
-    \\    -rpath                          Add directory to the runtime library search path
-    \\    -f[no-]each-lib-rpath           Ensure adding rpath for each used dynamic library
-    \\    -f[no-]allow-shlib-undefined    Allow undefined symbols in shared libraries
-    \\    --build-id                      Help coordinate stripped binaries with debug symbols
-    \\    --eh-frame-hdr                  Enable C++ exception handling by passing --eh-frame-hdr to linker
-    \\    --emit-relocs                   Enable output of relocation sections for post build tools
-    \\    --[no-]gc-sections              Force removal of functions and data that are unreachable
-    \\                                    by the entry point or exported symbols
-    \\    --stack                         Override default stack size
-    \\    --image-base                    Set base address for executable image
-    \\    -D                              Define C macros available within the `@cImport` namespace
-    \\    --mod                           Define modules available as dependencies for the current target
-    \\    --deps                          Define module dependencies for the current target
-    \\    -cflags                         Set extra flags for the next position C source files
-    \\    -rcflags                        Set extra flags for the next positional .rc source files
-    \\    -lc                             Link libc
-    \\    -rdynamic                       Add all symbols to the dynamic symbol table
-    \\    -dynamic                        Force output to be dynamically linked
-    \\    -static                         Force output to be statically linked
-    \\    -Bsymbolic                      Bind global references locally
-    \\    -z                              Set linker extension flags:
-    \\                                      nodelete                   Indicate that the object cannot be deleted from a process
-    \\                                      notext                     Permit read-only relocations in read-only segments
-    \\                                      defs                       Force a fatal error if any undefined symbols remain
-    \\                                      undefs                     Reverse of -z defs
-    \\                                      origin                     Indicate that the object must have its origin processed
-    \\                                      nocopyreloc                Disable the creation of copy relocations
-    \\                                      now (default)              Force all relocations to be processed on load
-    \\                                      lazy                       Don't force all relocations to be processed on load
-    \\                                      relro (default)            Force all relocations to be read-only after processing
-    \\                                      norelro                    Don't force all relocations to be read-only after processing
-    \\                                      common-page-size=[bytes]   Set the common page size for ELF binaries
-    \\                                      max-page-size=[bytes]      Set the max page size for ELF binaries
-    \\    --color                         Enable or disable colored error messages
-    \\    --debug-incremental             Enable experimental feature: incremental compilation
-    \\    -ftime-report                   Print timing diagnostics
-    \\    -fstack-report                  Print stack size diagnostics
-    \\    --verbose-link                  Display linker invocations
-    \\    --verbose-cc                    Display C compiler invocations
-    \\    --verbose-air                   Enable compiler debug output for Zig AIR
-    \\    --verbose-mir                   Enable compiler debug output for Zig MIR
-    \\    --verbose-llvm-ir               Enable compiler debug output for LLVM IR
-    \\    --verbose-cimport               Enable compiler debug output for C imports
-    \\    --verbose-llvm-cpu-features     Enable compiler debug output for LLVM CPU features
-    \\    --debug-log                     Enable printing debug/info log messages for scope
-    \\    --debug-compile-errors          Crash with helpful diagnostics at the first compile error
-    \\    --debug-link-snapshot           Enable dumping of the linker's state in JSON
+    \\    -f[no-]emit-bin                         (default=yes) Output machine code
+    \\    -f[no-]emit-asm                         (default=no) Output assembly code (.s)
+    \\    -f[no-]emit-llvm-ir                     (default=no) Output optimized LLVM IR (.ll)
+    \\    -f[no-]emit-llvm-bc                     (default=no) Output optimized LLVM BC (.bc)
+    \\    -f[no-]emit-h                           (default=no) Output a C header file (.h)
+    \\    -f[no-]emit-docs                        (default=no) Output documentation (.html)
+    \\    -f[no-]emit-analysis                    (default=no) Output analysis (.json)
+    \\    -f[no-]emit-implib                      (default=yes) Output an import when building a Windows DLL (.lib)
+    \\    --cache-dir                             Override the local cache directory
+    \\    --global-cache-dir                      Override the global cache directory
+    \\    --zig-lib-dir                           Override Zig installation lib directory
+    \\    --listen                                [MISSING]
+    \\    -target                                 <arch><sub>-<os>-<abi> see the targets command
+    \\    -mcpu                                   Specify target CPU and feature set
+    \\    -mcmodel                                Limit range of code and data virtual addresses
+    \\    -m[no-]red-zone                         Enable the "red-zone"
+    \\    -f[no-]builtin                          Enable implicit builtin knowledge of functions
+    \\    -f[no-]panic-mismatched-arguments       Enables panic causes:
+    \\                                              memcpy_argument_aliasing
+    \\                                              memcpy_argument_lengths_mismatched
+    \\                                              for_loop_capture_lengths_mismatched
+    \\    -f[no-]panic-reached-unreachable        Enables panic causes:
+    \\                                              message
+    \\                                              discarded_error
+    \\                                              corrupt_switch
+    \\                                              returned_noreturn
+    \\                                              reached_unreachable
+    \\                                              accessed_null_value
+    \\    -f[no-]panic-accessed-invalid-memory    Enables panic causes:
+    \\                                              accessed_out_of_bounds
+    \\                                              accessed_out_of_order
+    \\                                              accessed_inactive_field
+    \\    -f[no-]panic-mismatched-sentinel        Enables panic causes:
+    \\                                              mismatched_sentinel
+    \\                                              mismatched_non_scalar_sentinel
+    \\    -f[no-]panic-arith-lost-precision       Enables panic causes:
+    \\                                              div_with_remainder
+    \\                                              shl_overflowed
+    \\                                              shr_overflowed
+    \\                                              shift_amt_overflowed
+    \\    -f[no-]panic-arith-overflowed           Enables panic causes:
+    \\                                              mul_overflowed
+    \\                                              add_overflowed
+    \\                                              sub_overflowed
+    \\    -f[no-]panic-cast-from-invalid          Enables panic causes:
+    \\                                              cast_to_int_from_invalid
+    \\                                              cast_truncated_data
+    \\                                              cast_to_unsigned_from_negative
+    \\                                              cast_to_pointer_from_invalid
+    \\                                              cast_to_enum_from_invalid
+    \\                                              cast_to_error_from_invalid
+    \\    -f[no-]omit-frame-pointer               Omit the stack frame pointer
+    \\    -mexec-model                            (WASI) Execution model
+    \\    --name                                  Override root name
+    \\    -f[no-]soname                           Override the default SONAME value
+    \\    -O                                      Choose what to optimize for:
+    \\                                              Debug          Optimizations off, safety on
+    \\                                              ReleaseSafe    Optimizations on, safety on
+    \\                                              ReleaseFast    Optimizations on, safety off
+    \\                                              ReleaseSmall   Size optimizations on, safety off
+    \\    -fopt-bisect-limit                      Only run [limit] first LLVM optimization passes
+    \\    --main-mod-path                         Set the directory of the root package
+    \\    -f[no-]PIC                              Enable Position Independent Code
+    \\    -f[no-]PIE                              Enable Position Independent Executable
+    \\    -f[no-]lto                              Enable Link Time Optimization
+    \\    -f[no-]stack-check                      Enable stack probing in unsafe builds
+    \\    -f[no-]stack-protector                  Enable stack protection in unsafe builds
+    \\    -f[no-]sanitize-c                       Enable C undefined behaviour detection in unsafe builds
+    \\    -f[no-]valgrind                         Include valgrind client requests in release builds
+    \\    -f[no-]sanitize-thread                  Enable thread sanitizer
+    \\    -f[no-]unwind-tables                    Always produce unwind table entries for all functions
+    \\    -f[no-]reference-trace                  How many lines of reference trace should be shown per compile error
+    \\    -f[no-]error-tracing                    Enable error tracing in `ReleaseFast` mode
+    \\    -f[no-]single-threaded                  Code assumes there is only one thread
+    \\    -f[no-]function-sections                Places each function in a separate section
+    \\    -f[no-]data-sections                    Places data in separate sections
+    \\    -f[no-]strip                            Omit debug symbols
+    \\    -f[no-]formatted-panics                 Enable formatted safety panics
+    \\    -ofmt                                   Override target object format:
+    \\                                              elf                    Executable and Linking Format
+    \\                                              c                      C source code
+    \\                                              wasm                   WebAssembly
+    \\                                              coff                   Common Object File Format (Windows)
+    \\                                              macho                  macOS relocatables
+    \\                                              spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    \\                                              plan9                  Plan 9 from Bell Labs object format
+    \\                                              hex (planned feature)  Intel IHEX
+    \\                                              raw (planned feature)  Dump machine code directly
+    \\    -idirafter                              Add directory to AFTER include search path
+    \\    -isystem                                Add directory to SYSTEM include search path
+    \\    --libc                                  Provide a file which specifies libc paths
+    \\    --library                               Link against system library (only if actually used)
+    \\    -I                                      Add directories to include search path
+    \\    --needed-library                        Link against system library (even if unused)
+    \\    --library-directory                     Add a directory to the library search path
+    \\    --script                                Use a custom linker script
+    \\    --version-script                        Provide a version .map file
+    \\    --dynamic-linker                        Set the dynamic interpreter path
+    \\    --sysroot                               Set the system root directory
+    \\    -f[no-]entry[=]                         Override the default entry symbol name
+    \\    -f[no-]lld                              Use LLD as the linker
+    \\    -f[no-]llvm                             Use LLVM as the codegen backend
+    \\    -f[no-]compiler-rt                      (default) Include compiler-rt symbols in output
+    \\    -rpath                                  Add directory to the runtime library search path
+    \\    -f[no-]each-lib-rpath                   Ensure adding rpath for each used dynamic library
+    \\    -f[no-]allow-shlib-undefined            Allow undefined symbols in shared libraries
+    \\    --build-id                              Help coordinate stripped binaries with debug symbols
+    \\    --eh-frame-hdr                          Enable C++ exception handling by passing --eh-frame-hdr to linker
+    \\    --emit-relocs                           Enable output of relocation sections for post build tools
+    \\    --[no-]gc-sections                      Force removal of functions and data that are unreachable
+    \\                                            by the entry point or exported symbols
+    \\    --stack                                 Override default stack size
+    \\    --image-base                            Set base address for executable image
+    \\    -D                                      Define C macros available within the `@cImport` namespace
+    \\    --mod                                   Define modules available as dependencies for the current target
+    \\    --deps                                  Define module dependencies for the current target
+    \\    -cflags                                 Set extra flags for the next position C source files
+    \\    -rcflags                                Set extra flags for the next positional .rc source files
+    \\    -lc                                     Link libc
+    \\    -rdynamic                               Add all symbols to the dynamic symbol table
+    \\    -dynamic                                Force output to be dynamically linked
+    \\    -static                                 Force output to be statically linked
+    \\    -Bsymbolic                              Bind global references locally
+    \\    -z                                      Set linker extension flags:
+    \\                                              nodelete                   Indicate that the object cannot be deleted from a process
+    \\                                              notext                     Permit read-only relocations in read-only segments
+    \\                                              defs                       Force a fatal error if any undefined symbols remain
+    \\                                              undefs                     Reverse of -z defs
+    \\                                              origin                     Indicate that the object must have its origin processed
+    \\                                              nocopyreloc                Disable the creation of copy relocations
+    \\                                              now (default)              Force all relocations to be processed on load
+    \\                                              lazy                       Don't force all relocations to be processed on load
+    \\                                              relro (default)            Force all relocations to be read-only after processing
+    \\                                              norelro                    Don't force all relocations to be read-only after processing
+    \\                                              common-page-size=[bytes]   Set the common page size for ELF binaries
+    \\                                              max-page-size=[bytes]      Set the max page size for ELF binaries
+    \\    --color                                 Enable or disable colored error messages
+    \\    --debug-incremental                     Enable experimental feature: incremental compilation
+    \\    -ftime-report                           Print timing diagnostics
+    \\    -fstack-report                          Print stack size diagnostics
+    \\    --verbose-link                          Display linker invocations
+    \\    --verbose-cc                            Display C compiler invocations
+    \\    --verbose-air                           Enable compiler debug output for Zig AIR
+    \\    --verbose-mir                           Enable compiler debug output for Zig MIR
+    \\    --verbose-llvm-ir                       Enable compiler debug output for LLVM IR
+    \\    --verbose-cimport                       Enable compiler debug output for C imports
+    \\    --verbose-llvm-cpu-features             Enable compiler debug output for LLVM CPU features
+    \\    --debug-log                             Enable printing debug/info log messages for scope
+    \\    --debug-compile-errors                  Crash with helpful diagnostics at the first compile error
+    \\    --debug-link-snapshot                   Enable dumping of the linker's state in JSON
     \\
     \\
 ;
-const archive_help: [:0]const u8 =
+const archive_help: [:0]const u8 = 
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -1108,7 +1170,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -1121,7 +1183,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout

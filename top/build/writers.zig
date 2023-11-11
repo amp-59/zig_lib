@@ -194,6 +194,55 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
             ptr = fmt.strcpyEqu(ptr, "-fno-builtin\x00");
         }
     }
+    if (cmd.panic_mismatched_arguments) |panic_mismatched_arguments| {
+        if (panic_mismatched_arguments) {
+            ptr = fmt.strcpyEqu(ptr, "-fpanic-mismatched-arguments\x00");
+        } else {
+            ptr = fmt.strcpyEqu(ptr, "-fno-panic-mismatched-arguments\x00");
+        }
+    }
+    if (cmd.panic_reached_unreachable) |panic_reached_unreachable| {
+        if (panic_reached_unreachable) {
+            ptr = fmt.strcpyEqu(ptr, "-fpanic-reached-unreachable\x00");
+        } else {
+            ptr = fmt.strcpyEqu(ptr, "-fno-panic-reached-unreachable\x00");
+        }
+    }
+    if (cmd.panic_accessed_invalid_memory) |panic_accessed_invalid_memory| {
+        if (panic_accessed_invalid_memory) {
+            ptr = fmt.strcpyEqu(ptr, "-fpanic-accessed-invalid-memory\x00");
+        } else {
+            ptr = fmt.strcpyEqu(ptr, "-fno-panic-accessed-invalid-memory\x00");
+        }
+    }
+    if (cmd.panic_mismatched_sentinel) |panic_mismatched_sentinel| {
+        if (panic_mismatched_sentinel) {
+            ptr = fmt.strcpyEqu(ptr, "-fpanic-mismatched-sentinel\x00");
+        } else {
+            ptr = fmt.strcpyEqu(ptr, "-fno-panic-mismatched-sentinel\x00");
+        }
+    }
+    if (cmd.panic_arith_lost_precision) |panic_arith_lost_precision| {
+        if (panic_arith_lost_precision) {
+            ptr = fmt.strcpyEqu(ptr, "-fpanic-arith-lost-precision\x00");
+        } else {
+            ptr = fmt.strcpyEqu(ptr, "-fno-panic-arith-lost-precision\x00");
+        }
+    }
+    if (cmd.panic_arith_overflowed) |panic_arith_overflowed| {
+        if (panic_arith_overflowed) {
+            ptr = fmt.strcpyEqu(ptr, "-fpanic-arith-overflowed\x00");
+        } else {
+            ptr = fmt.strcpyEqu(ptr, "-fno-panic-arith-overflowed\x00");
+        }
+    }
+    if (cmd.panic_cast_from_invalid) |panic_cast_from_invalid| {
+        if (panic_cast_from_invalid) {
+            ptr = fmt.strcpyEqu(ptr, "-fpanic-cast-from-invalid\x00");
+        } else {
+            ptr = fmt.strcpyEqu(ptr, "-fno-panic-cast-from-invalid\x00");
+        }
+    }
     if (cmd.omit_frame_pointer) |omit_frame_pointer| {
         if (omit_frame_pointer) {
             ptr = fmt.strcpyEqu(ptr, "-fomit-frame-pointer\x00");
@@ -782,6 +831,55 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
             len +%= 10;
         } else {
             len +%= 13;
+        }
+    }
+    if (cmd.panic_mismatched_arguments) |panic_mismatched_arguments| {
+        if (panic_mismatched_arguments) {
+            len +%= 29;
+        } else {
+            len +%= 32;
+        }
+    }
+    if (cmd.panic_reached_unreachable) |panic_reached_unreachable| {
+        if (panic_reached_unreachable) {
+            len +%= 28;
+        } else {
+            len +%= 31;
+        }
+    }
+    if (cmd.panic_accessed_invalid_memory) |panic_accessed_invalid_memory| {
+        if (panic_accessed_invalid_memory) {
+            len +%= 32;
+        } else {
+            len +%= 35;
+        }
+    }
+    if (cmd.panic_mismatched_sentinel) |panic_mismatched_sentinel| {
+        if (panic_mismatched_sentinel) {
+            len +%= 28;
+        } else {
+            len +%= 31;
+        }
+    }
+    if (cmd.panic_arith_lost_precision) |panic_arith_lost_precision| {
+        if (panic_arith_lost_precision) {
+            len +%= 29;
+        } else {
+            len +%= 32;
+        }
+    }
+    if (cmd.panic_arith_overflowed) |panic_arith_overflowed| {
+        if (panic_arith_overflowed) {
+            len +%= 25;
+        } else {
+            len +%= 28;
+        }
+    }
+    if (cmd.panic_cast_from_invalid) |panic_cast_from_invalid| {
+        if (panic_cast_from_invalid) {
+            len +%= 26;
+        } else {
+            len +%= 29;
         }
     }
     if (cmd.omit_frame_pointer) |omit_frame_pointer| {

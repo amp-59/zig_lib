@@ -246,6 +246,103 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Enable implicit builtin knowledge of functions"},
         },
         .{
+            .name = "panic_mismatched_arguments",
+            .and_no = .{
+                .string = "-fno-panic-mismatched-arguments",
+            },
+            .string = "-fpanic-mismatched-arguments",
+            .descr = &.{
+                "Enables panic causes:",
+                "  memcpy_argument_aliasing",
+                "  memcpy_argument_lengths_mismatched",
+                "  for_loop_capture_lengths_mismatched",
+            },
+        },
+        .{
+            .name = "panic_reached_unreachable",
+            .and_no = .{
+                .string = "-fno-panic-reached-unreachable",
+            },
+            .string = "-fpanic-reached-unreachable",
+            .descr = &.{
+                "Enables panic causes:",
+                "  message",
+                "  discarded_error",
+                "  corrupt_switch",
+                "  returned_noreturn",
+                "  reached_unreachable",
+                "  accessed_null_value",
+            },
+        },
+        .{
+            .name = "panic_accessed_invalid_memory",
+            .and_no = .{
+                .string = "-fno-panic-accessed-invalid-memory",
+            },
+            .string = "-fpanic-accessed-invalid-memory",
+            .descr = &.{
+                "Enables panic causes:",
+                "  accessed_out_of_bounds",
+                "  accessed_out_of_order",
+                "  accessed_inactive_field",
+            },
+        },
+        .{
+            .name = "panic_mismatched_sentinel",
+            .and_no = .{
+                .string = "-fno-panic-mismatched-sentinel",
+            },
+            .string = "-fpanic-mismatched-sentinel",
+            .descr = &.{
+                "Enables panic causes:",
+                "  mismatched_sentinel",
+                "  mismatched_non_scalar_sentinel",
+            },
+        },
+        .{
+            .name = "panic_arith_lost_precision",
+            .and_no = .{
+                .string = "-fno-panic-arith-lost-precision",
+            },
+            .string = "-fpanic-arith-lost-precision",
+            .descr = &.{
+                "Enables panic causes:",
+                "  div_with_remainder",
+                "  shl_overflowed",
+                "  shr_overflowed",
+                "  shift_amt_overflowed",
+            },
+        },
+        .{
+            .name = "panic_arith_overflowed",
+            .and_no = .{
+                .string = "-fno-panic-arith-overflowed",
+            },
+            .string = "-fpanic-arith-overflowed",
+            .descr = &.{
+                "Enables panic causes:",
+                "  mul_overflowed",
+                "  add_overflowed",
+                "  sub_overflowed",
+            },
+        },
+        .{
+            .name = "panic_cast_from_invalid",
+            .and_no = .{
+                .string = "-fno-panic-cast-from-invalid",
+            },
+            .string = "-fpanic-cast-from-invalid",
+            .descr = &.{
+                "Enables panic causes:",
+                "  cast_to_int_from_invalid",
+                "  cast_truncated_data",
+                "  cast_to_unsigned_from_negative",
+                "  cast_to_pointer_from_invalid",
+                "  cast_to_enum_from_invalid",
+                "  cast_to_error_from_invalid",
+            },
+        },
+        .{
             .name = "omit_frame_pointer",
             .string = "-fomit-frame-pointer",
             .and_no = .{ .string = "-fno-omit-frame-pointer" },
