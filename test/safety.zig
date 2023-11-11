@@ -183,6 +183,14 @@ fn causeShlWithOverflow(comptime T: type) void {
         .std => @compileError("unavailable"),
     }
 }
+fn causeRHSOfShiftTooBig(comptime T: type) void {
+    var x = readOne(T);
+    const y = shrWillShiftOutBits(T, &x);
+    switch (version) {
+        .single => safety.panic(.{ .shift_amt_overflowed = T }, .{ .bit_count = @bitSizeOf(T) + 1, .shift_amt = y }, @errorReturnTrace(), @returnAddress()),
+        .std => @compileError("unavailable"),
+    }
+}
 fn causeShrWithOverflow(comptime T: type) void {
     var x = readOne(T);
     const y = shrWillShiftOutBits(T, &x);
@@ -276,6 +284,7 @@ pub fn main() void {
     causeMulWithOverflow(u32);
     causeShlWithOverflow(u32);
     causeShrWithOverflow(u32);
+    causeRHSOfShiftTooBig(u32);
 
     causeCastToMisalignedPointer(i32);
     causeAddWithOverflow(i32);

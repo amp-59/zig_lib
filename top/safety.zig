@@ -19,6 +19,9 @@ pub const RuntimeSafetyCheck = struct {
     arith_lost_precision: ?bool = null,
     arith_overflowed: ?bool = null,
     cast_from_invalid: ?bool = null,
+
+    pub const Tag = meta.TagFromList(meta.fieldNames(RuntimeSafetyCheck));
+
     pub fn causes(comptime tag: Tag) []const PanicCause.Tag {
         switch (tag) {
             .reached_unreachable => return &.{
@@ -64,7 +67,6 @@ pub const RuntimeSafetyCheck = struct {
             },
         }
     }
-    pub const Tag = meta.TagFromList(meta.fieldNames(RuntimeSafetyCheck));
 };
 pub const PanicCause = union(enum) {
     /// -f[no-]panic-reached-unreachable
@@ -73,27 +75,33 @@ pub const PanicCause = union(enum) {
     discarded_error,
     returned_noreturn,
     reached_unreachable,
+
     /// -f[no-]panic-accessed-invalid-memory
     accessed_out_of_bounds,
     accessed_out_of_order,
     accessed_inactive_field,
     accessed_null_value,
+
     /// -f[no-]panic-mismatched-arguments
     memcpy_argument_aliasing,
     memcpy_argument_lengths_mismatched,
     for_loop_capture_lengths_mismatched,
+
     /// -f[no-]panic-mismatched-sentinel
     mismatched_sentinel: type,
     mismatched_non_scalar_sentinel: type,
+
     /// -f[no-]panic-arith-lost-precision
     shl_overflowed: type,
     shr_overflowed: type,
     shift_amt_overflowed: type,
     div_with_remainder: type,
+
     /// -f[no-]panic-arith-overflowed
     mul_overflowed: type,
     add_overflowed: type,
     sub_overflowed: type,
+
     /// -f[no-]panic-cast-from-invalid
     cast_truncated_data: struct {
         to: type,
@@ -270,7 +278,7 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
         .shr_overflowed => |int_type| @call(.never_inline, panicArithOverflow(meta.BestInt(int_type)).shr, .{
             @typeName(int_type), data.value, data.shift_amt, ~@abs(@as(int_type, 0)), st, ret_addr,
         }),
-        .shift_amt_overflowed => |int_type| @call(.never_inline, panicArithOverflow(meta.BestInt(int_type)).rhs, .{
+        .shift_amt_overflowed => |int_type| @call(.never_inline, panicArithOverflow(meta.BestInt(int_type)).shiftRhs, .{
             @typeName(int_type), data.bit_count, data.shift_amt, st, ret_addr,
         }),
         .div_with_remainder => |num_type| @call(.never_inline, panicExactDivisionWithRemainder, .{
@@ -290,22 +298,8 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
         }),
     }
 }
-pub fn writeAboveOrBelowLimit(
-    buf: [*]u8,
-    comptime To: type,
-    to_type_name: []const u8,
-    yn: bool,
-    limit: To,
-) [*]u8 {
-    @setRuntimeSafety(false);
-    buf[0..7].* = if (yn) " below ".* else " above ".*;
-    var ptr: [*]u8 = fmt.strcpyEqu(buf + 7, to_type_name);
-    ptr[0..10].* = if (yn) " minimum (".* else " maximum (".*;
-    ptr = fmt.Xd(To).write(ptr + 10, limit);
-    ptr[0] = ')';
-    return ptr + 1;
-}
-pub fn panicMismatchedMemcpyArgumentLengths(
+// Potential local implementation:
+fn panicMismatchedMemcpyArgumentLengths(
     dest_len: usize,
     src_len: usize,
     st: ?*builtin.StackTrace,
@@ -320,7 +314,7 @@ pub fn panicMismatchedMemcpyArgumentLengths(
     ptr = fmt.Udsize.write(ptr + 8, src_len);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicUnwrappedError(
+fn panicUnwrappedError(
     error_name: []const u8,
     st: ?*builtin.StackTrace,
     ret_addr: usize,
@@ -332,7 +326,7 @@ pub fn panicUnwrappedError(
     var ptr: [*]u8 = fmt.strcpyEqu(buf[17..], error_name);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicAccessOutOfBounds(
+fn panicAccessOutOfBounds(
     index: usize,
     length: usize,
     st: ?*builtin.StackTrace,
@@ -354,7 +348,7 @@ pub fn panicAccessOutOfBounds(
     }
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicAccessOutOfOrder(
+fn panicAccessOutOfOrder(
     start: usize,
     finish: usize,
     st: ?*builtin.StackTrace,
@@ -369,7 +363,7 @@ pub fn panicAccessOutOfOrder(
     ptr = fmt.Udsize.write(ptr + 26, finish);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicMemcpyArgumentsAlias(
+fn panicMemcpyArgumentsAlias(
     dest_start: usize,
     dest_len: usize,
     src_start: usize,
@@ -386,7 +380,7 @@ pub fn panicMemcpyArgumentsAlias(
     ptr = fmt.Uxsize.write(ptr + 5, @min(dest_start +% dest_len, src_start +% src_len));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicMismatchedForLoopCaptureLengths(
+fn panicMismatchedForLoopCaptureLengths(
     prev_len: usize,
     next_len: usize,
     st: ?*builtin.StackTrace,
@@ -401,7 +395,7 @@ pub fn panicMismatchedForLoopCaptureLengths(
     ptr = fmt.Udsize.write(ptr + 8, next_len);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicAccessInactiveField(
+fn panicAccessInactiveField(
     expected: []const u8,
     found: []const u8,
     st: ?*builtin.StackTrace,
@@ -417,7 +411,7 @@ pub fn panicAccessInactiveField(
     ptr = fmt.strcpyEqu(ptr, "' is active");
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicCastToPointerFromInvalid(
+fn panicCastToPointerFromInvalid(
     type_name: []const u8,
     address: usize,
     alignment: usize,
@@ -447,7 +441,7 @@ pub fn panicCastToPointerFromInvalid(
     }
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicCastToTagFromInvalid(
+fn panicCastToTagFromInvalid(
     comptime Integer: type,
     type_name: []const u8,
     value: Integer,
@@ -463,7 +457,7 @@ pub fn panicCastToTagFromInvalid(
     ptr = fmt.Udsize.write(ptr + 20, value);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicCastToIntFromInvalid(
+fn panicCastToIntFromInvalid(
     comptime Float: type,
     type_name: []const u8,
     _: Float,
@@ -478,7 +472,7 @@ pub fn panicCastToIntFromInvalid(
     ptr[0..20].* = " from invalid value ".*;
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicCastTruncatedData(
+fn panicCastTruncatedData(
     comptime To: type,
     to_type_name: []const u8,
     comptime From: type,
@@ -502,7 +496,7 @@ pub fn panicCastTruncatedData(
     ptr = writeAboveOrBelowLimit(ptr, To, to_type_name, yn, if (yn) extrema.min else extrema.max);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicCastToUnsignedFromNegative(
+fn panicCastToUnsignedFromNegative(
     comptime _: type,
     to_type_name: []const u8,
     comptime From: type,
@@ -524,7 +518,7 @@ pub fn panicCastToUnsignedFromNegative(
     ptr[0..16].* = " lost signedness".*;
     builtin.alarm(buf[0 .. @intFromPtr(ptr + 16) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicSentinelMismatch(
+fn panicSentinelMismatch(
     comptime Number: type,
     type_name: []const u8,
     expected: Number,
@@ -542,7 +536,7 @@ pub fn panicSentinelMismatch(
     ptr = fmt.Xd(Number).write(ptr + 8, found);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicNonScalarSentinelMismatch(
+fn panicNonScalarSentinelMismatch(
     comptime Child: type,
     expected: Child,
     found: Child,
@@ -564,7 +558,7 @@ pub fn panicNonScalarSentinelMismatch(
         builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
     }
 }
-pub fn panicExactDivisionWithRemainder(
+fn panicExactDivisionWithRemainder(
     comptime Number: type,
     type_name: []const u8,
     numerator: Number,
@@ -586,12 +580,27 @@ pub fn panicExactDivisionWithRemainder(
     ptr = fmt.Xd(Number).write(ptr + 1, @rem(numerator, denominator));
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
-pub fn panicArithOverflow(comptime Number: type) type {
+fn writeAboveOrBelowLimit(
+    buf: [*]u8,
+    comptime To: type,
+    to_type_name: []const u8,
+    yn: bool,
+    limit: To,
+) [*]u8 {
+    @setRuntimeSafety(false);
+    buf[0..7].* = if (yn) " below ".* else " above ".*;
+    var ptr: [*]u8 = fmt.strcpyEqu(buf + 7, to_type_name);
+    ptr[0..10].* = if (yn) " minimum (".* else " maximum (".*;
+    ptr = fmt.Xd(To).write(ptr + 10, limit);
+    ptr[0] = ')';
+    return ptr + 1;
+}
+fn panicArithOverflow(comptime Number: type) type {
     return struct {
         const Extrema = math.BestExtrema(Number);
         const Absolute = math.Absolute(Number);
         const ShiftAmount = builtin.ShiftAmount(Number);
-        pub fn add(
+        fn add(
             type_name: []const u8,
             extrema: Extrema,
             lhs: Number,
@@ -618,7 +627,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
             builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
-        pub fn sub(
+        fn sub(
             type_name: []const u8,
             extrema: Extrema,
             lhs: Number,
@@ -645,7 +654,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
             builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
-        pub fn mul(
+        fn mul(
             type_name: []const u8,
             extrema: Extrema,
             lhs: Number,
@@ -675,7 +684,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
             builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
-        pub fn shl(
+        fn shl(
             type_name: []const u8,
             value: Number,
             shift_amt: ShiftAmount,
@@ -697,7 +706,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr[0..5].* = " bits".*;
             builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
-        pub fn shr(
+        fn shr(
             type_name: []const u8,
             value: Number,
             shift_amt: ShiftAmount,
@@ -719,7 +728,7 @@ pub fn panicArithOverflow(comptime Number: type) type {
             ptr[0..5].* = " bits".*;
             builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
-        pub fn shiftRhs(
+        fn shiftRhs(
             type_name: []const u8,
             bit_count: u16,
             shift_amt: ShiftAmount,
@@ -730,11 +739,11 @@ pub fn panicArithOverflow(comptime Number: type) type {
             @setRuntimeSafety(false);
             var buf: [256]u8 = undefined;
             var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
-            ptr[0..30].* = " RHS of shift too big: ".*;
-            ptr = fmt.Xd(Number).write(ptr + 30, shift_amt);
-            ptr[0..4].* = " > ".*;
+            ptr[0..23].* = " RHS of shift too big: ".*;
+            ptr = fmt.Xd(Number).write(ptr + 23, shift_amt);
+            ptr[0..3].* = " > ".*;
             ptr = fmt.Xd(Number).write(ptr + 4, bit_count);
-            builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
+            builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
     };
 }
