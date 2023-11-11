@@ -2561,20 +2561,12 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         };
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
             var ptr: [*]u8 = buf;
+            ptr[0..type_name.len].* = type_name.*;
+            ptr += type_name.len;
             if (value.len == 0) {
-                if (spec.infer_type_names) {
-                    ptr[0] = '&';
-                    ptr += 1;
-                }
                 ptr[0..2].* = "{}".*;
                 ptr += 2;
             } else {
-                if (spec.infer_type_names) {
-                    ptr[0] = '&';
-                    ptr += 1;
-                }
-                ptr[0..type_name.len].* = type_name.*;
-                ptr += type_name.len;
                 ptr[0..2].* = "{ ".*;
                 ptr += 2;
                 if (builtin.requireComptime(child)) {
@@ -2591,7 +2583,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                     }
                 }
                 if (omit_trailing_comma) {
-                    ptr[neg4..neg2].* = " }".*;
+                    (ptr + neg2)[0..2].* = " }".*;
                 } else {
                     ptr[0] = '}';
                     ptr += 1;
@@ -2600,17 +2592,8 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             return ptr;
         }
         pub fn length(value: Array) usize {
-            var len: usize = 0;
-            if (value.len == 0) {
-                if (spec.infer_type_names) {
-                    len +%= 1;
-                }
-                len +%= type_name.len +% 2;
-            } else {
-                if (spec.infer_type_names) {
-                    len +%= 1;
-                }
-                len +%= type_name.len +% 2;
+            var len: usize = type_name.len +% 2;
+            if (value.len != 0) {
                 if (builtin.requireComptime(child)) {
                     inline for (value) |element| {
                         len +%= ChildFormat.length(element) +% 2;
