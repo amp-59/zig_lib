@@ -3,7 +3,7 @@ pub usingnamespace zl.start;
 const version: enum { single, std } = .single;
 
 const safety = switch (version) {
-    .single => @import("../top/safety2.zig"),
+    .single => @import("../top/safety.zig"),
     .std => @import("std").builtin.default,
 };
 const just_compile: bool = true;
