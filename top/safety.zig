@@ -12,15 +12,9 @@ pub fn writeAboveOrBelowLimit(
     limit: To,
 ) [*]u8 {
     @setRuntimeSafety(false);
-    buf[0..7].* = if (yn)
-        " below ".*
-    else
-        " above ".*;
+    buf[0..7].* = if (yn) " below ".* else " above ".*;
     var ptr: [*]u8 = fmt.strcpyEqu(buf + 7, to_type_name);
-    ptr[0..10].* = if (yn)
-        " minimum (".*
-    else
-        " maximum (".*;
+    ptr[0..10].* = if (yn) " minimum (".* else " maximum (".*;
     ptr = fmt.Xd(To).write(ptr + 10, limit);
     ptr[0] = ')';
     return ptr + 1;
