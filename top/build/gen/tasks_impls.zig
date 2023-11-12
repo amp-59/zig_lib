@@ -12,11 +12,11 @@ const testing = @import("../../testing.zig");
 
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
-const print_wip_llc: bool = true;
+const wip_llc: bool = true;
 pub const context = .Exe;
 
 fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
-    const len: usize = try gen.readFile(.{ .return_type = usize }, switch (language) {
+    var len: usize = try gen.readFile(.{ .return_type = usize }, switch (language) {
         .Zig => config.tasks_template_path,
         .C => config.tasks_c_template_path,
     }, array.referAllUndefined());
@@ -45,7 +45,34 @@ fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
     } else {
         debug.write(array.readAll());
     }
+    types.ProtoTypeDescr.scope = &.{};
     array.undefineAll();
+    if (wip_llc) {
+        len = try gen.readFile(.{ .return_type = usize }, switch (language) {
+            .Zig => config.tasks_template_path,
+            .C => config.tasks_c_template_path,
+        }, array.referAllUndefined());
+        array.define(len);
+        for (attr.scope) |decl| {
+            array.writeFormat(types.ProtoTypeDescr{ .type_decl = decl });
+        }
+        types.ProtoTypeDescr.scope = attr.scope;
+        common.writeOpenStruct(array, language, attr.llvm_llc_command_attributes);
+        common.writeFields(array, language, attr.llvm_llc_command_attributes);
+        common.writeDeclarations(array, language, attr.llvm_llc_command_attributes);
+        common.writeWriterFunctions(array, attr.llvm_llc_command_attributes);
+        common.writeParserFunction(array, language, attr.llvm_llc_command_attributes);
+        common.writeCloseContainer(array);
+        common.writeParserFunctionHelp(array, attr.llvm_llc_command_attributes);
+        if (config.commit) {
+            switch (language) {
+                .C => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_c_path, array.readAll()),
+                .Zig => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_path, array.readAll()),
+            }
+        } else {
+            debug.write(array.readAll());
+        }
+    }
 }
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};

@@ -23,6 +23,11 @@ pub const tasks_c_path: [:0]const u8 = primarySourceFile("tasks.c");
 pub const tasks_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/tasks-template.zig";
 pub const tasks_c_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/tasks-c-template.c";
 
+/// The LLC data structure is so huge it needs to be in a separate file or else
+/// slow compilation of commonly used functions.
+pub const llc_tasks_path: [:0]const u8 = primarySourceFile("llc_tasks.zig");
+pub const llc_tasks_c_path: [:0]const u8 = primarySourceFile("llc_tasks.c");
+
 pub const writers_path: [:0]const u8 = primarySourceFile("writers.zig");
 pub const writers_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/writers-template.zig";
 

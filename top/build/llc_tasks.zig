@@ -4,6 +4,15 @@ const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("types.zig");
+const tasks = @import("tasks.zig");
+pub const PathUnion = union(enum) {
+    yes: ?types.Path,
+    no,
+};
+pub const StringUnion = union(enum) {
+    yes: ?[]const u8,
+    no,
+};
 pub const LLCCommand = struct {
     /// Always modify dest registers regardless of color
     aarch64_a57_fp_load_balancing_force_all: bool = false,
@@ -76,9 +85,7 @@ pub const LLCCommand = struct {
     aarch64_enable_sve_intrinsic_opts: bool = false,
     /// Base cost of vector insert/extract element
     aarch64_insert_extract_base_cost: ?usize = null,
-    ///
     aarch64_load_store_renaming: bool = false,
-    ///
     aarch64_load_store_scan_limit: ?usize = null,
     /// Add .note.gnu.property with BTI to assembly files
     aarch64_mark_bti_property: bool = false,
@@ -109,7 +116,6 @@ pub const LLCCommand = struct {
     aarch64_sve_vector_bits_min: ?usize = null,
     /// Restrict range of TB[N]Z instructions (DEBUG)
     aarch64_tbz_offset_bits: ?usize = null,
-    ///
     aarch64_update_scan_limit: ?usize = null,
     /// Enable the use of AA during codegen.
     aarch64_use_aa: bool = false,
@@ -140,9 +146,7 @@ pub const LLCCommand = struct {
         Apple = 2,
         Dwarf = 3,
     } = null,
-    ///
     adce_remove_control_flow: bool = false,
-    ///
     adce_remove_loops: bool = false,
     /// Allow combining of BaseGV field in Address sinking.
     addr_sink_combine_base_gv: bool = false,
@@ -363,11 +367,9 @@ pub const LLCCommand = struct {
     annotate_sample_profile_inline_phase: bool = false,
     /// Maximum number of ptr states the optimizer keeps track of
     arc_opt_max_ptr_states: ?usize = null,
-    ///
     arm_add_build_attributes: bool = false,
     /// Adjust basic block layout to better use TB[BH]
     arm_adjust_jump_tables: bool = false,
-    ///
     arm_assume_itcm_bankconflict: bool = false,
     /// Be more conservative in ARM load/store opt
     arm_assume_misaligned_load_store: bool = false,
@@ -375,15 +377,12 @@ pub const LLCCommand = struct {
     arm_atomic_cfg_tidy: bool = false,
     /// The max number of iteration for converge
     arm_constant_island_max_iteration: ?usize = null,
-    ///
     arm_data_bank_mask: ?usize = null,
     /// Disable omitting 'dls lr, lr' instructions
     arm_disable_omit_dls: bool = false,
     /// Enable merging Loop End and Dec instructions.
     arm_enable_merge_loopenddec: bool = false,
-    ///
     arm_enable_subreg_liveness: bool = false,
-    ///
     arm_force_fast_isel: bool = false,
     /// Enable the global merge pass
     arm_global_merge: bool = false,
@@ -408,7 +407,6 @@ pub const LLCCommand = struct {
     } = null,
     /// Limit the number of loads analysed
     arm_parallel_dsp_load_limit: ?usize = null,
-    ///
     arm_prera_ldst_opt_reorder_limit: ?usize = null,
     /// Enable / disable promotion of unnamed_addr constants into constant pools
     arm_promote_constant: bool = false,
@@ -424,7 +422,6 @@ pub const LLCCommand = struct {
     arm_set_lr_predicate: bool = false,
     /// Use compressed jump tables in Thumb-1 by synthesizing an equivalent to the TBB/TBH instructions
     arm_synthesize_thumb_1_tbb: bool = false,
-    ///
     arm_use_mulops: bool = false,
     /// As secure log file name
     as_secure_log_file: ?[]const u8 = null,
@@ -591,9 +588,7 @@ pub const LLCCommand = struct {
     available_load_scan_limit: ?usize = null,
     /// MachineLICM should avoid speculation
     avoid_speculation: bool = false,
-    ///
     basic_aa_recphi: bool = false,
-    ///
     basic_aa_separate_storage: bool = false,
     /// The text prefix to use for cold basic block clusters
     bbsections_cold_text_prefix: ?[]const u8 = null,
@@ -655,9 +650,7 @@ pub const LLCCommand = struct {
     cfg_heat_colors: bool = false,
     /// Hide blocks with relative frequency below the given value
     cfg_hide_cold_paths: ?usize = null,
-    ///
     cfg_hide_deoptimize_paths: bool = false,
-    ///
     cfg_hide_unreachable_paths: bool = false,
     /// Use raw weights for labels. Use percentages as default.
     cfg_raw_weights: bool = false,
@@ -699,7 +692,6 @@ pub const LLCCommand = struct {
     } = null,
     /// Check if block frequency is queried for an unknown block for debugging missed BFI updates
     check_bfi_unknown_block_queries: bool = false,
-    ///
     check_early_avail: bool = false,
     /// CHR considers a branch bias greater than this ratio as biased
     chr_bias_threshold: ?usize = null,
@@ -753,11 +745,8 @@ pub const LLCCommand = struct {
     combiner_use_tbaa: bool = false,
     /// Enable merging extends and rounds into FCOPYSIGN on vector types
     combiner_vector_fcopysign_extend_round: bool = false,
-    ///
     commgep_const: bool = false,
-    ///
     commgep_inv: bool = false,
-    ///
     commgep_speculate: bool = false,
     /// Threshold (in bytes) to perform the transformation, if the runtime loop count (mem transfer size) is known at compile-time.
     compile_time_mem_idiom_threshold: ?usize = null,
@@ -850,7 +839,6 @@ pub const LLCCommand = struct {
     } = null,
     /// Suppress verbose debugify output
     debugify_quiet: bool = false,
-    ///
     default_gcov_version: ?[]const u8 = null,
     /// Use this to specify the default trip count of a loop
     default_trip_count: ?usize = null,
@@ -924,7 +912,6 @@ pub const LLCCommand = struct {
     disable_arm_parallel_dsp: bool = false,
     /// disable automatically generated 32byte paired vector stores
     disable_auto_paired_vec_st: bool = false,
-    ///
     disable_basic_aa: bool = false,
     /// Disable binop extract to shuffle transforms
     disable_binop_extract_shuffle: bool = false,
@@ -950,7 +937,6 @@ pub const LLCCommand = struct {
     disable_cgp_select2branch: bool = false,
     /// Disable store(extract) optimizations in CodeGenPrepare
     disable_cgp_store_extract: bool = false,
-    ///
     disable_check_noreturn_call: bool = false,
     /// Disable CHR for all functions
     disable_chr: bool = false,
@@ -1018,23 +1004,14 @@ pub const LLCCommand = struct {
     disable_i2p_p2i_opt: bool = false,
     /// Disable indirect call promotion
     disable_icp: bool = false,
-    ///
     disable_ifcvt_diamond: bool = false,
-    ///
     disable_ifcvt_forked_diamond: bool = false,
-    ///
     disable_ifcvt_simple: bool = false,
-    ///
     disable_ifcvt_simple_false: bool = false,
-    ///
     disable_ifcvt_triangle: bool = false,
-    ///
     disable_ifcvt_triangle_false: bool = false,
-    ///
     disable_ifcvt_triangle_false_rev: bool = false,
-    ///
     disable_ifcvt_triangle_rev: bool = false,
-    ///
     disable_inlined_alloca_merging: bool = false,
     /// Disable combining of interleaved loads
     disable_interleaved_load_combine: bool = false,
@@ -1220,7 +1197,6 @@ pub const LLCCommand = struct {
     do_comdat_renaming: bool = false,
     /// Do counter register promotion
     do_counter_promotion: bool = false,
-    ///
     dom_conditions_max_uses: ?usize = null,
     /// Max number of BBs to explore for reachability analysis
     dom_tree_reachability_max_bbs_to_explore: ?usize = null,
@@ -1340,7 +1316,6 @@ pub const LLCCommand = struct {
     enable_arm_maskedldst: bool = false,
     /// Collect probability-driven block placement stats
     enable_block_placement_stats: bool = false,
-    ///
     enable_bsb_sched: bool = false,
     /// Enable control height reduction optimization (CHR)
     enable_chr: bool = false,
@@ -1378,9 +1353,7 @@ pub const LLCCommand = struct {
     enable_epilogue_vectorization: bool = false,
     /// Enable machine block placement based on the ext-tsp model, optimizing I-cache utilization.
     enable_ext_tsp_block_placement: bool = false,
-    ///
     enable_falkor_hwpf_unroll_fix: bool = false,
-    ///
     enable_fixedwidth_autovec_in_streaming_mode: bool = false,
     /// Enable adding flow sensitive discriminators
     enable_fs_discriminator: bool = false,
@@ -1392,11 +1365,9 @@ pub const LLCCommand = struct {
     enable_global_merge: bool = false,
     /// Enable the GVN hoisting pass (default = off)
     enable_gvn_hoist: bool = false,
-    ///
     enable_gvn_memdep: bool = false,
     /// Enable the GVN sinking pass (default = off)
     enable_gvn_sink: bool = false,
-    ///
     enable_heap_to_stack_conversion: bool = false,
     /// Enable branch probability info
     enable_hexagon_br_prob: bool = false,
@@ -1420,15 +1391,12 @@ pub const LLCCommand = struct {
     enable_jmc_instrument: bool = false,
     /// enable preservation of attributes throughout code transformation
     enable_knowledge_retention: bool = false,
-    ///
     enable_legalize_types_checking: bool = false,
     /// Enable the IR outliner on linkonceodr functions
     enable_linkonceodr_ir_outlining: bool = false,
     /// Enable the machine outliner on linkonceodr functions
     enable_linkonceodr_outlining: bool = false,
-    ///
     enable_load_in_loop_pre: bool = false,
-    ///
     enable_load_pre: bool = false,
     /// Enable runtime interleaving until load/store ports are saturated
     enable_loadstore_runtime_interleave: bool = false,
@@ -1438,7 +1406,6 @@ pub const LLCCommand = struct {
     enable_loop_distribute: bool = false,
     /// Enable the LoopFlatten Pass
     enable_loop_flatten: bool = false,
-    ///
     enable_loop_simplifycfg_term_folding: bool = false,
     /// Enable the experimental LoopInterchange Pass
     enable_loopinterchange: bool = false,
@@ -1511,7 +1478,6 @@ pub const LLCCommand = struct {
     enable_partial_inlining: bool = false,
     /// Enable PatchPoint Liveness Analysis Pass
     enable_patchpoint_liveness: bool = false,
-    ///
     enable_phi_of_ops: bool = false,
     /// Enable Software Pipelining
     enable_pipeliner: bool = false,
@@ -1529,37 +1495,27 @@ pub const LLCCommand = struct {
     enable_ppc_gen_scalar_mass: bool = false,
     /// enable software prefetching on PPC
     enable_ppc_prefetching: bool = false,
-    ///
     enable_pre: bool = false,
     /// Enable long calls for save-restore stubs.
     enable_save_restore_long: bool = false,
-    ///
     enable_scalable_autovec_in_streaming_mode: bool = false,
-    ///
     enable_scc_inline_advisor_printing: bool = false,
-    ///
     enable_scoped_noalias: bool = false,
-    ///
     enable_selectiondag_sp: bool = false,
     /// enable the shrink-wrapping pass
     enable_shrink_wrap: bool = false,
     /// Force codegen to assume rounding mode can change dynamically
     enable_sign_dependent_rounding_fp_math: bool = false,
-    ///
     enable_split_backedge_in_load_pre: bool = false,
     /// Split out cold blocks from machine functions based on profile information.
     enable_split_machine_functions: bool = false,
     /// Enable runtime checks for stack overflow.
     enable_stackovf_sanitizer: bool = false,
-    ///
     enable_store_refinement: bool = false,
     /// Enable subregister liveness tracking.
     enable_subreg_liveness: bool = false,
-    ///
     enable_tail_merge: bool = false,
-    ///
     enable_tbaa: bool = false,
-    ///
     enable_tc_latency_sched: bool = false,
     /// Enable timing class latency
     enable_timing_class_latency: bool = false,
@@ -1567,7 +1523,6 @@ pub const LLCCommand = struct {
     enable_unroll_and_jam: bool = false,
     /// Enable optimizations that may decrease FP precision
     enable_unsafe_fp_math: bool = false,
-    ///
     enable_unsafe_globalsmodref_alias_results: bool = false,
     /// Enable unswitch cost multiplier that prohibits exponential explosion in nontrivial unswitch.
     enable_unswitch_cost_multiplier: bool = false,
@@ -1594,7 +1549,6 @@ pub const LLCCommand = struct {
     exec_on_ir_change: ?[]const u8 = null,
     /// Exhaustive Search for registers bypassing the depth and interference cutoffs of last chance recoloring
     exhaustive_register_search: bool = false,
-    ///
     expand_all_fp_mlx: bool = false,
     /// Max number of segment coalescings
     expand_condsets_coa_limit: ?usize = null,
@@ -1606,7 +1560,6 @@ pub const LLCCommand = struct {
     expand_div_rem_bits: ?usize = null,
     /// fp convert instructions on integers with more than <N> bits are expanded.
     expand_fp_convert_bits: ?usize = null,
-    ///
     expand_limit: ?usize = null,
     /// Options: <empty>|Legal|Discard|Convert. If non-empty, ignore TargetTransformInfo and always use this transformation for the %evl parameter (Used in testing).
     expandvp_override_evl_transform: ?[]const u8 = null,
@@ -1716,7 +1669,6 @@ pub const LLCCommand = struct {
     force_remove_attribute: ?[]const u8 = null,
     /// Force store splitting no matter what the target query says.
     force_split_store: bool = false,
-    ///
     force_streaming_compatible_sve: bool = false,
     /// Force all edges in the function summary to cold
     force_summary_edges_cold: ?enum(u2) {
@@ -1966,11 +1918,8 @@ pub const LLCCommand = struct {
     hexbit_extract: bool = false,
     /// Preserve subregisters in tied operands
     hexbit_keep_tied: bool = false,
-    ///
     hexbit_max_bitsplit: ?usize = null,
-    ///
     hexbit_max_extract: ?usize = null,
-    ///
     hexbit_registerset_limit: ?usize = null,
     /// Allow enabling loop hints to reorder FP operations during vectorization.
     hints_allow_reordering: bool = false,
@@ -1990,7 +1939,6 @@ pub const LLCCommand = struct {
     hot_callsite_threshold: ?usize = null,
     /// Enable hot-cold splitting pass
     hot_cold_split: bool = false,
-    ///
     hot_cold_static_analysis: bool = false,
     /// Name for the section containing cold functions extracted by hot-cold splitting.
     hotcoldsplit_cold_section_name: ?[]const u8 = null,
@@ -2084,15 +2032,10 @@ pub const LLCCommand = struct {
     icp_samplepgo: bool = false,
     /// The percentage threshold against total count for the promotion
     icp_total_percent_threshold: ?usize = null,
-    ///
     ifcvt_branch_fold: bool = false,
-    ///
     ifcvt_fn_start: ?usize = null,
-    ///
     ifcvt_fn_stop: ?usize = null,
-    ///
     ifcvt_limit: ?usize = null,
-    ///
     ignore_bb_reg_pressure: bool = false,
     /// Ignore TTI attributes compatibility check between callee/caller during inline cost calculation
     ignore_tti_inline_compatible: bool = false,
@@ -2182,13 +2125,10 @@ pub const LLCCommand = struct {
         basic = 0,
         verbose = 1,
     } = null,
-    ///
     insert_all0: bool = false,
-    ///
     insert_const: bool = false,
     /// Vreg distance cutoff for insert generation.
     insert_dist_cutoff: ?usize = null,
-    ///
     insert_has0: bool = false,
     /// Maximum size of IFMap
     insert_max_ifmap: ?usize = null,
@@ -2206,7 +2146,6 @@ pub const LLCCommand = struct {
     instcombine_guard_widening_window: ?usize = null,
     /// Number of instruction combining iterations considered an infinite loop
     instcombine_infinite_loop_threshold: ?usize = null,
-    ///
     instcombine_lower_dbg_declare: ?usize = null,
     /// Maximum users to visit in copy from constant transform
     instcombine_max_copied_from_constant_users: ?usize = null,
@@ -2240,17 +2179,11 @@ pub const LLCCommand = struct {
     ir_outliner: bool = false,
     /// If set to true, IRCE may eliminate wide range checks in loops with narrow latch condition.
     irce_allow_narrow_latch: bool = false,
-    ///
     irce_allow_unsigned_latch: bool = false,
-    ///
     irce_loop_size_cutoff: ?usize = null,
-    ///
     irce_min_runtime_iterations: ?usize = null,
-    ///
     irce_print_changed_loops: bool = false,
-    ///
     irce_print_range_checks: bool = false,
-    ///
     irce_skip_profitability_checks: bool = false,
     /// Rebalance address calculation trees to improve instruction selection
     isel_rebalance_addr: bool = false,
@@ -2280,7 +2213,6 @@ pub const LLCCommand = struct {
     jump_threading_phi_threshold: ?usize = null,
     /// Max block size to duplicate for jump threading
     jump_threading_threshold: ?usize = null,
-    ///
     keep_inline_advisor_for_printing: bool = false,
     /// Preserve canonical loop structure (default = true)
     keep_loops: bool = false,
@@ -2364,9 +2296,7 @@ pub const LLCCommand = struct {
     loop_interchange_threshold: ?usize = null,
     /// The maximum number of SCEV checks allowed for Loop Load Elimination
     loop_load_elimination_scev_check_threshold: ?usize = null,
-    ///
     loop_predication_enable_count_down_loop: bool = false,
-    ///
     loop_predication_enable_iv_truncation: bool = false,
     /// Whether or not we should insert assumes of conditions of predicated guards
     loop_predication_insert_assumes_of_predicated_guards_conditions: bool = false,
@@ -2374,7 +2304,6 @@ pub const LLCCommand = struct {
     loop_predication_latch_probability_scale: ?usize = null,
     /// Whether or not we should predicate guards expressed as widenable branches to deoptimize blocks
     loop_predication_predicate_widenable_branches_to_deopt: bool = false,
-    ///
     loop_predication_skip_profitability_checks: bool = false,
     /// Prefetch write addresses
     loop_prefetch_writes: bool = false,
@@ -2479,7 +2408,6 @@ pub const LLCCommand = struct {
         @"column-major" = 0,
         @"row-major" = 1,
     } = null,
-    ///
     matrix_print_after_transpose_opt: bool = false,
     /// Set the maximum number of outgoing blocks for using a boolean value to record the exiting block in CreateControlFlowHub.
     max_booleans_in_control_flow_hub: ?usize = null,
@@ -2495,7 +2423,6 @@ pub const LLCCommand = struct {
     max_dependences: ?usize = null,
     /// Maximum recursion depth when finding forked SCEVs (default = 5)
     max_forked_scev_depth: ?usize = null,
-    ///
     max_heap_to_stack_size: ?usize = null,
     /// Maximum number of split partitions
     max_hsdr: ?usize = null,
@@ -2549,7 +2476,6 @@ pub const LLCCommand = struct {
     mcfg_dot_filename_prefix: ?[]const u8 = null,
     /// The name of a function (or its substring) whose CFG is viewed/printed.
     mcfg_func_name: ?[]const u8 = null,
-    ///
     mcp_use_is_copy_instr: bool = false,
     /// Target a specific cpu type (-mcpu=help for details)
     mcpu: ?[]const u8 = null,
@@ -2560,7 +2486,6 @@ pub const LLCCommand = struct {
         @"5" = 2,
         gnu = 3,
     } = null,
-    ///
     mem_loc_frag_fill: bool = false,
     /// MIPS: Try to allocate variables in the following sections if possible: .rodata, .sdata, .data .
     membedded_data: bool = false,
@@ -2754,7 +2679,6 @@ pub const LLCCommand = struct {
     misched_regpressure: bool = false,
     /// Force top-down list scheduling
     misched_topdown: bool = false,
-    ///
     misched_verbose_level: ?usize = null,
     /// Prevents emiting diagnostics when profile counts are within N% of the threshold..
     misexpect_tolerance: ?usize = null,
@@ -2936,7 +2860,6 @@ pub const LLCCommand = struct {
     only_simple_regions: bool = false,
     /// Use opaque pointers
     opaque_pointers: bool = false,
-    ///
     openmp_deduce_icv_values: bool = false,
     /// [WIP] Tries to hide the latency of host to device memory transfers
     openmp_hide_memory_transfer_latency: bool = false,
@@ -2972,9 +2895,7 @@ pub const LLCCommand = struct {
     openmp_opt_shared_limit: ?usize = null,
     /// Enables more verbose remarks.
     openmp_opt_verbose_remarks: bool = false,
-    ///
     openmp_print_gpu_kernels: bool = false,
-    ///
     openmp_print_icv_values: bool = false,
     /// Maximum optimization to perform
     opt_bisect_limit: ?usize = null,
@@ -3108,7 +3029,6 @@ pub const LLCCommand = struct {
     pi_mark_coldcc: bool = false,
     /// Instead of emitting the pipelined code, annotate instructions with the generated schedule for feeding into the -modulo-schedule-test pass
     pipeliner_annotate_for_testing: bool = false,
-    ///
     pipeliner_dbg_res: bool = false,
     /// Use the experimental peeling code generator for software pipelining
     pipeliner_experimental_cg: bool = false,
@@ -3124,7 +3044,6 @@ pub const LLCCommand = struct {
     pipeliner_prune_deps: bool = false,
     /// Prune loop carried order dependences.
     pipeliner_prune_loop_carried: bool = false,
-    ///
     pipeliner_show_mask: bool = false,
     /// Check that returns are non-poison (for testing)
     poison_checking_function_local: bool = false,
@@ -3317,7 +3236,6 @@ pub const LLCCommand = struct {
     } = null,
     /// system dot used by change reporters
     print_changed_dot_path: ?[]const u8 = null,
-    ///
     print_debug_ata: bool = false,
     /// Print out debug counter info after all counters accumulated
     print_debug_counter: bool = false,
@@ -3395,11 +3313,8 @@ pub const LLCCommand = struct {
     protect_from_escaped_allocas: bool = false,
     /// Use StructurizeCFG IR pass
     r600_ir_structurize: bool = false,
-    ///
     rafast_ignore_missing_defs: bool = false,
-    ///
     rdf_dump: bool = false,
-    ///
     rdf_limit: ?usize = null,
     /// Maximum recursion level
     rdf_liveness_max_rec: ?usize = null,
@@ -3423,9 +3338,7 @@ pub const LLCCommand = struct {
         basic = 3,
         default = 4,
     } = null,
-    ///
     regalloc_cheap_remat_weight: ?usize = null,
-    ///
     regalloc_copy_weight: ?usize = null,
     /// Cost for first time use of callee-saved register.
     regalloc_csr_first_time_cost: ?usize = null,
@@ -3443,11 +3356,8 @@ pub const LLCCommand = struct {
     } = null,
     /// Number of interferences after which we declare an interference unevictable and bail out. This is a compilation cost-saving consideration. To disable, pass a very large number.
     regalloc_eviction_max_interference_cutoff: ?usize = null,
-    ///
     regalloc_expensive_remat_weight: ?usize = null,
-    ///
     regalloc_load_weight: ?usize = null,
-    ///
     regalloc_store_weight: ?usize = null,
     /// Run the Fast mode (default mapping)
     regbankselect_fast: bool = false,
@@ -3518,7 +3428,6 @@ pub const LLCCommand = struct {
     riscv_enable_global_merge: bool = false,
     /// Enable the machine combiner pass
     riscv_enable_machine_combiner: bool = false,
-    ///
     riscv_enable_subreg_liveness: bool = false,
     /// Enable strict assertion checking for the dataflow algorithm
     riscv_insert_vsetvl_strict_asserts: bool = false,
@@ -3548,11 +3457,8 @@ pub const LLCCommand = struct {
     rotation_max_header_size: ?usize = null,
     /// Run loop-rotation in the prepare-for-lto stage. This option should be used for testing only.
     rotation_prepare_for_lto: bool = false,
-    ///
     rs4gc_allow_statepoint_with_no_deopt_info: bool = false,
-    ///
     rs4gc_clobber_non_live: bool = false,
-    ///
     rs4gc_remat_derived_at_uses: bool = false,
     /// Run compiler only for specified passes (comma separated list)
     run_pass: ?[]const u8 = null,
@@ -3568,9 +3474,7 @@ pub const LLCCommand = struct {
     safe_stack_coloring: bool = false,
     /// enable safe stack layout
     safe_stack_layout: bool = false,
-    ///
     safepoint_ir_verifier_print_only: bool = false,
-    ///
     safestack_use_pointer_address: bool = false,
     /// Emit a warning if less than N% of records in the input profile are matched to the IR.
     sample_profile_check_record_coverage: ?usize = null,
@@ -3738,9 +3642,7 @@ pub const LLCCommand = struct {
     sched_avg_ipc: ?usize = null,
     /// Roughly estimate the number of cycles that 'long latency'instructions take for targets with no itinerary
     sched_high_latency_cycles: ?usize = null,
-    ///
     sched_preds_closer: bool = false,
-    ///
     sched_retval_optimization: bool = false,
     /// Use InstrItineraryData for latency lookup
     scheditins: bool = false,
@@ -3875,35 +3777,20 @@ pub const LLCCommand = struct {
         size = 1,
         speed = 2,
     } = null,
-    ///
     spp_all_backedges: bool = false,
-    ///
     spp_counted_loop_trip_width: ?usize = null,
-    ///
     spp_no_backedge: bool = false,
-    ///
     spp_no_call: bool = false,
-    ///
     spp_no_entry: bool = false,
-    ///
     spp_print_base_pointers: bool = false,
-    ///
     spp_print_liveset: bool = false,
-    ///
     spp_print_liveset_size: bool = false,
-    ///
     spp_rematerialization_threshold: ?usize = null,
-    ///
     spp_split_backedge: bool = false,
-    ///
     sroa_strict_inbounds: bool = false,
-    ///
     ssc_dce_limit: ?usize = null,
-    ///
     stack_safety_max_iterations: ?usize = null,
-    ///
     stack_safety_print: bool = false,
-    ///
     stack_safety_run: bool = false,
     /// Emit a section containing stack size metadata
     stack_size_section: bool = false,
@@ -3913,9 +3800,7 @@ pub const LLCCommand = struct {
     stack_tagging_first_slot_opt: bool = false,
     /// merge stack variable initializers with tagging when possible
     stack_tagging_merge_init: bool = false,
-    ///
     stack_tagging_merge_init_scan_limit: ?usize = null,
-    ///
     stack_tagging_merge_init_size_limit: ?usize = null,
     /// merge settag instruction in function epilog
     stack_tagging_merge_settag: bool = false,
@@ -3969,9 +3854,7 @@ pub const LLCCommand = struct {
     structurizecfg_skip_uniform_regions: bool = false,
     /// The summary file to use for function importing.
     summary_file: ?[]const u8 = null,
-    ///
     sve_gather_overhead: ?usize = null,
-    ///
     sve_scatter_overhead: ?usize = null,
     /// Control the use of vectorisation using tail-folding for SVE:
     sve_tail_folding: ?[]const u8 = null,
@@ -3989,15 +3872,11 @@ pub const LLCCommand = struct {
     switch_to_lookup: bool = false,
     /// Enable subregister liveness tracking for SystemZ (experimental)
     systemz_subreg_liveness: bool = false,
-    ///
     t2_reduce_limit: ?usize = null,
-    ///
     t2_reduce_limit2: ?usize = null,
-    ///
     t2_reduce_limit3: ?usize = null,
     /// Maximum instructions to consider tail duplicating blocks that end with indirect branches.
     tail_dup_indirect_size: ?usize = null,
-    ///
     tail_dup_limit: ?usize = null,
     /// Perform tail duplication during placement. Creates more fallthrough opportunites in outline branches.
     tail_dup_placement: bool = false,
@@ -4044,7 +3923,6 @@ pub const LLCCommand = struct {
         posix = 0,
         single = 1,
     } = null,
-    ///
     threads: ?usize = null,
     /// Repeat compilation N times for timing
     time_compilations: ?usize = null,
@@ -4078,7 +3956,6 @@ pub const LLCCommand = struct {
     treat_scalable_fixed_error_as_warning: bool = false,
     /// Number of triangle-shaped-CFG's that need to be in a row for the triangle tail duplication heuristic to kick in. 0 to disable.
     triangle_chain_count: ?usize = null,
-    ///
     trim_var_locs: bool = false,
     /// Emit special compound instrumentation for reads-before-writes
     tsan_compound_read_before_write: bool = false,
@@ -4196,7 +4073,6 @@ pub const LLCCommand = struct {
     use_lir_code_size_heurs: bool = false,
     /// use Machine Branch Probability Info
     use_mbpi: bool = false,
-    ///
     use_newer_candidate: bool = false,
     /// Use the llvm.experimental.noalias.scope.decl intrinsic during inlining.
     use_noalias_intrinsic_during_inlining: bool = false,
@@ -4250,7 +4126,6 @@ pub const LLCCommand = struct {
     verify_arm_pseudo_expand: bool = false,
     /// Enable verification of assumption cache
     verify_assumption_cache: bool = false,
-    ///
     verify_cfg_preserved: bool = false,
     /// Verify Call Frame Information instructions
     verify_cfiinstrs: bool = false,
@@ -4468,9 +4343,12 @@ pub const LLCCommand = struct {
     xcore_max_threads: ?usize = null,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *LLCCommand, buf: [*]u8) usize {
+    pub fn formatWriteBuf(cmd: *LLCCommand, llc_exe: []const u8, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
+        ptr = fmt.strcpyEqu(ptr, llc_exe);
+        ptr[0] = 0;
+        ptr += 1;
         if (cmd.aarch64_a57_fp_load_balancing_force_all) {
             ptr = fmt.strcpyEqu(ptr, "--aarch64-a57-fp-load-balancing-force-all\x00");
         }
@@ -12888,9 +12766,9 @@ pub const LLCCommand = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(cmd: *LLCCommand) usize {
+    pub fn formatLength(cmd: *LLCCommand, llc_exe: []const u8) usize {
         @setRuntimeSafety(false);
-        var len: usize = 0;
+        var len: usize = 1 +% llc_exe.len;
         if (cmd.aarch64_a57_fp_load_balancing_force_all) {
             len +%= 42;
         }
@@ -19018,8 +18896,10 @@ pub const LLCCommand = struct {
         }
         return len;
     }
-    pub fn formatWrite(cmd: *LLCCommand, array: anytype) void {
+    pub fn formatWrite(cmd: *LLCCommand, llc_exe: []const u8, array: anytype) void {
         @setRuntimeSafety(false);
+        array.writeMany(llc_exe);
+        array.writeOne(0);
         if (cmd.aarch64_a57_fp_load_balancing_force_all) {
             array.writeMany("--aarch64-a57-fp-load-balancing-force-all\x00");
         }
