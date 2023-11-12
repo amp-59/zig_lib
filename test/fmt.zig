@@ -400,59 +400,73 @@ fn testRenderSlice(allocator: *Allocator, array: *Array) !void {
         &.{ 'o', 'n', 'e', '\n', 't', 'w', 'o', '\n', 't', 'h', 'r', 'e', 'e', '\n' },
     );
 }
-fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
-    _ = buf;
+fn testRenderStruct(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    const tmp_max_len: usize = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c".len;
-    const tmp: [*]u8 = @constCast("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c");
-    try TestFormatAlloc().run(allocator, array, fmt.render(.{}, packed struct(u120) {
+    const tmp = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c";
+    const tmp_max_len: usize = tmp.len;
+
+    comptime var render: fmt.RenderSpec = .{};
+
+    try TestFormatAlloc(render, packed struct(u120) {
         x: u64 = 5,
         y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{},
         z: u8 = 255,
-    }{
-        .x = 25,
-        .y = .{ .a = 3, .b = 4 },
-        .z = 127,
-    }));
-    try TestFormatAlloc().run(allocator, array, fmt.render(.{
-        .views = .{ .extern_tagged_union = true },
-    }, struct {
+    }).run(
+        allocator,
+        array,
+        ".{ .x = 25, .y = .{ .a = 3, .b = 4 }, .z = 127 }",
+        .{
+            .x = 25,
+            .y = .{ .a = 3, .b = 4 },
+            .z = 127,
+        },
+    );
+    render.views.extern_tagged_union = true;
+    try TestFormatAlloc(render, struct {
         value_tag: enum { a, b },
         value: extern union { a: usize, b: usize },
-    }{
-        .value_tag = .a,
-        .value = .{ .a = 2342342 },
-    }));
-    try TestFormatAlloc().run(allocator, array, fmt.render(.{
-        .views = .{ .extern_resizeable = true },
-    }, struct { buf: [*]u8, buf_len: usize }{
-        .buf = tmp,
-        .buf_len = 16,
-    }));
-    try TestFormatAlloc().run(allocator, array, fmt.render(.{
-        .views = .{ .zig_resizeable = true },
-    }, struct { buf: []u8, buf_len: usize }{
-        .buf = tmp[16..tmp_max_len],
-        .buf_len = tmp_max_len - 16,
-    }));
-    try TestFormatAlloc().run(allocator, array, fmt.render(.{
-        .views = .{ .static_resizeable = true },
-    }, struct {
-        auto: [256]u8 = [1]u8{0xa} ** 256,
-        auto_len: usize = 16,
-    }{}));
-    if (return) {}
-    try TestFormatAlloc().run(allocator, array, fmt.render(.{
-        .views = .{
-            .extern_resizeable = true,
-            .extern_slice = true,
-            .extern_tagged_union = true,
-            .static_resizeable = true,
+    }).run(
+        allocator,
+        array,
+        ".{ .a = 2342342 }",
+        .{
+            .value_tag = .a,
+            .value = .{ .a = 2342342 },
         },
-    }, struct {
-        auto: [2]type = .{ u8, u16 },
-        auto_len: usize = 1,
-    }{}));
+    );
+    render.views.extern_slice = true;
+    try TestFormatAlloc(render, struct { buf: [*]u8, buf_len: usize }).run(
+        allocator,
+        array,
+        ".{ .buf = \"c7176a703d4dd84f\", .buf_len = 16 }",
+        .{ .buf = @constCast(tmp), .buf_len = 16 },
+    );
+
+    if (false) {
+        try TestFormatAlloc().run(allocator, array, fmt.render(.{
+            .views = .{ .zig_resizeable = true },
+        }, struct { buf: []u8, buf_len: usize }{
+            .buf = tmp[16..tmp_max_len],
+            .buf_len = tmp_max_len - 16,
+        }));
+        try TestFormatAlloc().run(allocator, array, fmt.render(.{
+            .views = .{ .static_resizeable = true },
+        }, struct {
+            auto: [256]u8 = [1]u8{0xa} ** 256,
+            auto_len: usize = 16,
+        }{}));
+        try TestFormatAlloc().run(allocator, array, fmt.render(.{
+            .views = .{
+                .extern_resizeable = true,
+                .extern_slice = true,
+                .extern_tagged_union = true,
+                .static_resizeable = true,
+            },
+        }, struct {
+            auto: [2]type = .{ u8, u16 },
+            auto_len: usize = 1,
+        }{}));
+    }
 }
 fn testRenderUnion(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
@@ -484,7 +498,7 @@ pub fn testRenderFunctions() !void {
     try testRenderArray(&allocator, &array);
     try testRenderType(&allocator, &array);
     try testRenderSlice(&allocator, &array);
-    //try testRenderStruct(&allocator, &array);
+    try testRenderStruct(&allocator, &array);
 }
 fn testGenericRangeFormat() !void {
     testing.announce(@src());
