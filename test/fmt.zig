@@ -612,14 +612,14 @@ pub fn test1() !void {
 pub fn main() !void {
     meta.refAllDecls(fmt, &.{});
     try testLEB();
-    //try testRenderHighlight();
-    //try testBytesFormat();
-    //try testBytesToHex();
-    //try testHexToBytes();
-    //try testCaseFormat();
-    //try testGenericRangeFormat();
+    try testRenderHighlight();
+    try testBytesFormat();
+    try testBytesToHex();
+    try testHexToBytes();
+    try testCaseFormat();
+    try testGenericRangeFormat();
     try testRenderFunctions();
-    //try testSystemFlagsFormatters();
+    try testSystemFlagsFormatters();
     //try testIntToStringWithSeparators();
     //try testEquivalentIntToStringFormat();
     try @import("fmt/utf8.zig").testUtf8();
