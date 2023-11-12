@@ -3906,40 +3906,23 @@ pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             tmp.omit_type_names = true;
             break :blk spec;
         };
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, value: Struct) [*]u8 {
             if (meta.GenericReturn(Struct.readAll)) |Values| {
                 const ValuesFormat = PointerSliceFormat(values_spec, Values);
-                const values_format: ValuesFormat = .{ .value = format.value.readAll() };
-                return values_format.formatWriteBuf(buf);
+                return ValuesFormat.write(buf, value.readAll());
             } else {
                 const ValuesFormat = PointerSliceFormat(values_spec, []const u8);
-                const values_format: ValuesFormat = .{ .value = format.value.readAll(u8) };
-                return values_format.formatWriteBuf(buf);
+                return ValuesFormat.write(buf, value.readAll());
             }
         }
-        pub fn formatWrite(format: Format, array: anytype) void {
+        pub fn length(value: Struct) usize {
             if (meta.GenericReturn(Struct.readAll)) |Values| {
                 const ValuesFormat = PointerSliceFormat(values_spec, Values);
-                const values_format: ValuesFormat = .{ .value = format.value.readAll() };
-                writeFormat(array, values_format);
+                return ValuesFormat.length(value.readAll());
             } else {
                 const ValuesFormat = PointerSliceFormat(values_spec, []const u8);
-                const values_format: ValuesFormat = .{ .value = format.value.readAll(u8) };
-                writeFormat(array, values_format);
+                return ValuesFormat.length(value.readAll());
             }
-        }
-        pub fn formatLength(format: Format) usize {
-            var len: usize = 0;
-            if (meta.GenericReturn(Struct.readAll)) |Values| {
-                const ValuesFormat = PointerSliceFormat(values_spec, Values);
-                const values_format: ValuesFormat = .{ .value = format.value.readAll() };
-                len +%= values_format.formatLength();
-            } else {
-                const ValuesFormat = PointerSliceFormat(values_spec, []const u8);
-                const values_format: ValuesFormat = .{ .value = format.value.readAll(u8) };
-                len +%= values_format.formatLength();
-            }
-            return len;
         }
     };
     return T;
@@ -3948,14 +3931,12 @@ pub fn FormatFormat(comptime Struct: type) type {
     const T = struct {
         value: Struct,
         const Format = @This();
-        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            return format.value.formatWriteBuf(buf);
+
+        pub inline fn write(buf: [*]u8, value: Struct) [*]u8 {
+            return buf + value.formatWriteBuf(buf);
         }
-        pub inline fn formatWrite(format: Format, array: anytype) void {
-            return writeFormat(array, format.value);
-        }
-        pub inline fn formatLength(format: Format) usize {
-            return format.value.formatLength();
+        pub inline fn formatLength(value: Struct) usize {
+            return value.formatLength();
         }
     };
     return T;
