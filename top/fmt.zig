@@ -2860,9 +2860,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         inline for (struct_info.fields) |field| {
                             if (spec.inline_field_types) {
                                 const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
-                                len +%= identifier(field.name).formatLength() +% 2 +% type_format.formatLength();
+                                len +%= IdentifierFormat.length(field.name) +% 2 +% type_format.formatLength();
                             } else {
-                                len +%= identifier(field.name).formatLength() +% 2 +% @typeName(field.type).len;
+                                len +%= IdentifierFormat.length(field.name) +% 2 +% @typeName(field.type).len;
                             }
                             if (evalDefaultValue(field.type, field.default_value)) |default_value| {
                                 len +%= default_value.len +% 3;
@@ -2886,13 +2886,13 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                     }
                     inline for (union_info.fields) |field| {
                         if (field.type == void) {
-                            len +%= identifier(field.name).formatLength() +% 2;
+                            len +%= IdentifierFormat.length(field.name) +% 2;
                         } else {
                             if (spec.inline_field_types) {
                                 const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
-                                len +%= identifier(field.name).formatLength() +% 4 +% type_format.formatLength();
+                                len +%= IdentifierFormat.length(field.name) +% 4 +% type_format.formatLength();
                             } else {
-                                len +%= identifier(field.name).formatLength() +% 4 +% @typeName(field.type).len;
+                                len +%= IdentifierFormat.length(field.name) +% 4 +% @typeName(field.type).len;
                             }
                         }
                     }
@@ -2911,7 +2911,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         return len;
                     }
                     inline for (enum_info.fields) |field| {
-                        len +%= comptime identifier(field.name).formatLength() +% 2;
+                        len +%= comptime IdentifierFormat.length(field.name) +% 2;
                     }
                     if (!spec.omit_container_decls) {
                         inline for (enum_info.decls) |decl| {
@@ -4190,7 +4190,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     if (type_decl.defn) |type_defn| {
                         len +%= decl_s.len;
                         if (spec.identifier_name) {
-                            len +%= identifier(type_name).formatLength();
+                            len +%= IdentifierFormat.length(type_name);
                         } else {
                             len +%= type_name.len;
                         }
@@ -4282,7 +4282,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             fn formatLengthInternal(format: Field, depth: usize) usize {
                 var len: usize = 0;
                 if (spec.identifier_name) {
-                    len +%= identifier(format.name).formatLength();
+                    len +%= IdentifierFormat.length(format.name);
                 } else {
                     len +%= format.name.len;
                 }
@@ -4299,7 +4299,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     },
                     .enumeration => {
                         len +%= equal_s.len;
-                        len +%= idsize(format.value.enumeration).formatLength();
+                        len +%= Idsize.length(format.value.enumeration);
                     },
                 }
                 len +%= spec.tokens.next.len;
@@ -4423,7 +4423,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (struct_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                     .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
@@ -4437,7 +4437,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (struct_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                     .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
@@ -4459,7 +4459,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (union_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                 }};
                             }
@@ -4472,7 +4472,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (union_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                 }};
                             }
@@ -4493,7 +4493,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
@@ -4506,7 +4506,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
@@ -4553,7 +4553,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (struct_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                     .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
@@ -4567,7 +4567,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (struct_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                     .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
@@ -4589,7 +4589,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (union_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                 }};
                             }
@@ -4602,7 +4602,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (union_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .type = init(field.type),
                                 }};
                             }
@@ -4623,7 +4623,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
@@ -4636,7 +4636,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_fields: []const Field = &.{};
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
-                                    .name = fieldIdentifier(field.name),
+                                    .name = field.name,
                                     .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
