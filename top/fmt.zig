@@ -3057,7 +3057,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
                         if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
                             const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(value, tag_field_name));
-                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
                             ptr += 2;
@@ -3070,7 +3070,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     if (field_type_info.Pointer.size == .Many) {
                         if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(value, len_field_name)];
-                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
                             ptr += 2;
@@ -3079,7 +3079,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                         if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(value, len_field_name)];
-                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
                             ptr += 2;
@@ -3090,7 +3090,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     if (field_type_info.Pointer.size == .Slice) {
                         if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(value, len_field_name)];
-                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
                             ptr += 2;
@@ -3102,7 +3102,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                     if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
                         const view = field_value[0..@field(value, len_field_name)];
-                        ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                        ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                         ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                         ptr[0..2].* = ", ".*;
                         ptr += 2;
@@ -3112,14 +3112,14 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 }
                 if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
                     if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                        ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                        ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                         ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
                         ptr[0..2].* = ", ".*;
                         ptr += 2;
                         fields_len +%= 1;
                     }
                 } else {
-                    ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                    ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                     ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
@@ -3296,7 +3296,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                         ptr += neg2;
                         ptr = strcpyEqu(ptr, fieldIdentifier(field.name));
                     } else {
-                        ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                        ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                         ptr = AnyFormat(spec, field.type).write(ptr, @field(value, field.name));
                     }
                 }
