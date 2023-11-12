@@ -4366,7 +4366,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             );
             return @as(*const GenericFormat(cast_spec), @ptrCast(type_descr)).*;
         }
-        inline fn defaultFieldValue(comptime field_type: type, comptime default_value_opt: ?*const anyopaque) ?spec.token {
+        inline fn fieldDefaultValue(comptime field_type: type, comptime default_value_opt: ?*const anyopaque) ?spec.token {
             if (default_value_opt) |default_value_ptr| {
                 switch (spec.default_field_values) {
                     .omit => return null,
@@ -4425,7 +4425,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = fieldIdentifier(field.name),
                                     .type = init(field.type),
-                                    .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
+                                    .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .name = name, .defn = .{
@@ -4439,7 +4439,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = fieldIdentifier(field.name),
                                     .type = init(field.type),
-                                    .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
+                                    .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .name = name, .defn = .{
@@ -4555,7 +4555,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = fieldIdentifier(field.name),
                                     .type = init(field.type),
-                                    .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
+                                    .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .defn = .{
@@ -4569,7 +4569,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = fieldIdentifier(field.name),
                                     .type = init(field.type),
-                                    .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
+                                    .value = .{ .default = fieldDefaultValue(field.type, field.default_value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .defn = .{
