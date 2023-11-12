@@ -19,7 +19,9 @@ pub const build_command_options_path: [:0]const u8 = auxiliaryDataFile("build_co
 pub const format_command_options_path: [:0]const u8 = auxiliaryDataFile("format_command_options");
 
 pub const tasks_path: [:0]const u8 = primarySourceFile("tasks.zig");
+pub const tasks_c_path: [:0]const u8 = primarySourceFile("tasks.c");
 pub const tasks_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/tasks-template.zig";
+pub const tasks_c_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/tasks-c-template.c";
 
 pub const writers_path: [:0]const u8 = primarySourceFile("writers.zig");
 pub const writers_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/writers-template.zig";

@@ -14,41 +14,42 @@ pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
 const print_wip_llc: bool = true;
 pub const context = .Exe;
-pub fn main() !void {
-    var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmapAll();
-    const array: *common.Array = allocator.create(common.Array);
-    const len: usize = try gen.readFile(.{ .return_type = usize }, config.tasks_template_path, array.referAllUndefined());
+
+fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
+    const len: usize = try gen.readFile(.{ .return_type = usize }, switch (language) {
+        .Zig => config.tasks_template_path,
+        .C => config.tasks_c_template_path,
+    }, array.referAllUndefined());
     array.define(len);
     for (attr.scope) |decl| {
         array.writeFormat(types.ProtoTypeDescr{ .type_decl = decl });
     }
     types.ProtoTypeDescr.scope = attr.scope;
     for (attr.all) |attributes| {
-        array.writeMany("pub const ");
-        array.writeMany(attributes.type_name);
-        array.writeMany("=struct{\n");
-        common.writeFields(array, attributes);
-        common.writeDeclarations(array, attributes);
+        common.writeOpenStruct(array, language, attributes);
+        common.writeFields(array, language, attributes);
+        common.writeDeclarations(array, language, attributes);
         common.writeWriterFunctions(array, attributes);
-        common.writeParserFunction(array, .Zig, attributes);
-        array.writeMany("};\n");
+        common.writeParserFunction(array, language, attributes);
+        common.writeCloseContainer(array);
     }
     for (attr.all) |attributes| {
         common.writeParserFunctionHelp(array, attributes);
     }
-    array.writeMany("pub const Command=struct{\n");
-    for (attr.all) |attributes| {
-        array.writeMany(attributes.fn_name);
-        array.writeMany(":*");
-        array.writeMany(attributes.type_name);
-        array.writeMany(",\n");
-    }
-    array.writeMany("};\n");
-
+    common.writeCommandStruct(array, language, attr.all);
     if (config.commit) {
-        try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
+        switch (language) {
+            .C => try gen.truncateFile(.{ .return_type = void }, config.tasks_c_path, array.readAll()),
+            .Zig => try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll()),
+        }
     } else {
         debug.write(array.readAll());
     }
+    array.undefineAll();
+}
+pub fn main() !void {
+    var allocator: mem.SimpleAllocator = .{};
+    defer allocator.unmapAll();
+    const array: *common.Array = allocator.create(common.Array);
+    try writeTasks(array, .Zig);
 }
