@@ -3031,71 +3031,48 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             var ptr: [*]u8 = buf + type_name.len;
             if (fields.len == 0) {
                 ptr[0..2].* = "{}".*;
-                ptr += 2;
-            } else {
-                var fields_len: usize = 0;
-                ptr[0..2].* = "{ ".*;
-                ptr += 2;
-                comptime var field_idx: usize = 0;
-                inline while (field_idx != fields.len) : (field_idx +%= 1) {
-                    const field: builtin.Type.StructField = fields[field_idx];
-                    if (spec.ignore_padding_fields) {
-                        if (comptime field.name.len > 1 and field.name[0] == 'z' and field.name[1] == 'b') {
+                return ptr + 2;
+            }
+            var fields_len: usize = 0;
+            ptr[0..2].* = "{ ".*;
+            ptr += 2;
+            comptime var field_idx: usize = 0;
+            inline while (field_idx != fields.len) : (field_idx +%= 1) {
+                const field: builtin.Type.StructField = fields[field_idx];
+                if (spec.ignore_padding_fields) {
+                    if (comptime field.name.len > 1 and field.name[0] == 'z' and field.name[1] == 'b') {
+                        continue;
+                    }
+                }
+                const field_value: field.type = @field(value, field.name);
+                const field_type_info: builtin.Type = @typeInfo(field.type);
+                const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
+                if (field_type_info == .Union) {
+                    if (field_type_info.Union.layout != .Auto) {
+                        comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
+                        if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
+                            const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(value, tag_field_name));
+                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
+                            ptr[0..2].* = ", ".*;
+                            ptr += 2;
+                            fields_len +%= 1;
                             continue;
                         }
                     }
-                    const field_value: field.type = @field(value, field.name);
-                    const field_type_info: builtin.Type = @typeInfo(field.type);
-                    const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
-                    if (field_type_info == .Union) {
-                        if (field_type_info.Union.layout != .Auto) {
-                            comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
-                            if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
-                                const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(value, tag_field_name));
-                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
-                                ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
-                                ptr[0..2].* = ", ".*;
-                                ptr += 2;
-                                fields_len +%= 1;
-                                continue;
-                            }
+                } else if (field_type_info == .Pointer) {
+                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
+                    if (field_type_info.Pointer.size == .Many) {
+                        if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
+                            const view = field_value[0..@field(value, len_field_name)];
+                            ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                            ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
+                            ptr[0..2].* = ", ".*;
+                            ptr += 2;
+                            fields_len +%= 1;
+                            continue;
                         }
-                    } else if (field_type_info == .Pointer) {
-                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
-                        if (field_type_info.Pointer.size == .Many) {
-                            if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(value, len_field_name)];
-                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
-                                ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
-                                ptr[0..2].* = ", ".*;
-                                ptr += 2;
-                                fields_len +%= 1;
-                                continue;
-                            }
-                            if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(value, len_field_name)];
-                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
-                                ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
-                                ptr[0..2].* = ", ".*;
-                                ptr += 2;
-                                fields_len +%= 1;
-                                continue;
-                            }
-                        }
-                        if (field_type_info.Pointer.size == .Slice) {
-                            if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
-                                const view = field_value[0..@field(value, len_field_name)];
-                                ptr = strcpyEqu(ptr, fieldInitializer(field.name));
-                                ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
-                                ptr[0..2].* = ", ".*;
-                                ptr += 2;
-                                fields_len +%= 1;
-                                continue;
-                            }
-                        }
-                    } else if (field_type_info == .Array) {
-                        comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
-                        if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
+                        if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(value, len_field_name)];
                             ptr = strcpyEqu(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
@@ -3105,25 +3082,46 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             continue;
                         }
                     }
-                    if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
-                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                    if (field_type_info.Pointer.size == .Slice) {
+                        if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
+                            const view = field_value[0..@field(value, len_field_name)];
                             ptr = strcpyEqu(ptr, fieldInitializer(field.name));
-                            ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
+                            ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
                             ptr += 2;
                             fields_len +%= 1;
+                            continue;
                         }
-                    } else {
+                    }
+                } else if (field_type_info == .Array) {
+                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
+                    if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
+                        const view = field_value[0..@field(value, len_field_name)];
+                        ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                        ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
+                        ptr[0..2].* = ", ".*;
+                        ptr += 2;
+                        fields_len +%= 1;
+                        continue;
+                    }
+                }
+                if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
+                    if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                         ptr = strcpyEqu(ptr, fieldInitializer(field.name));
                         ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
                         ptr[0..2].* = ", ".*;
                         ptr += 2;
                         fields_len +%= 1;
                     }
+                } else {
+                    ptr = strcpyEqu(ptr, fieldInitializer(field.name));
+                    ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
+                    ptr[0..2].* = ", ".*;
+                    ptr += 2;
+                    fields_len +%= 1;
                 }
-                ptr = writeTrailingCommaPtr(ptr + neg2, omit_trailing_comma, fields_len);
             }
-            return ptr;
+            return writeTrailingCommaPtr(ptr + neg2, omit_trailing_comma, fields_len);
         }
         pub fn length(value: anytype) usize {
             @setRuntimeSafety(builtin.is_safe);
