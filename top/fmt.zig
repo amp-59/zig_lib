@@ -3017,10 +3017,10 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             if (fields.len == 0) {
                 len +%= 1;
             } else {
-                inline for (fields) |field| {
+                for (fields) |field| {
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                     const FieldFormat = AnyFormat(field_spec, field.type);
-                    len +%= 1 +% fieldIdentifier(field.name).len +% 3;
+                    len +%= fieldInitializer(field.name).len;
                     if (FieldFormat.max_len) |field_max_len| {
                         len +%= field_max_len;
                     } else {
