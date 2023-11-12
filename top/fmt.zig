@@ -3578,27 +3578,27 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return len +% 1;
         }
-        pub fn writeMultiLineStringLiteral(format: anytype, buf: [*]u8) usize {
-            var len: usize = 3;
-            @as(*[3]u8, @ptrCast(buf)).* = "\n\\\\".*;
-            for (format.value) |byte| {
+        pub fn writeMultiLineStringLiteral(buf: [*]u8, value: anytype) [*]u8 {
+            buf[0..3].* = "\n\\\\".*;
+            var ptr: [*]u8 = buf + 3;
+            for (value) |byte| {
                 switch (byte) {
                     '\n' => {
-                        @as(*[3]u8, @ptrCast(buf + len)).* = "\n\\\\".*;
-                        len +%= 3;
+                        ptr[0..3].* = "\n\\\\".*;
+                        ptr += 3;
                     },
                     '\t' => {
-                        @as(*[2]u8, @ptrCast(buf + len)).* = "\\t".*;
-                        len +%= 2;
+                        ptr[0..2].* = "\\t".*;
+                        ptr += 2;
                     },
                     else => {
-                        buf[len] = byte;
-                        len +%= 1;
+                        ptr[0] = byte;
+                        ptr += 1;
                     },
                 }
             }
-            buf[len] = '\n';
-            return len +% 1;
+            ptr[0] = '\n';
+            return ptr + 1;
         }
         fn isMultiLine(values: []const u8) bool {
             for (values) |value| {
@@ -3886,18 +3886,14 @@ pub fn ErrorSetFormat(comptime ErrorSet: type) type {
     const T = struct {
         value: ErrorSet,
         const Format = @This();
-        pub fn formatWrite(format: Format, array: anytype) void {
-            array.writeMany("error.");
-            array.writeMany(@errorName(format.value));
-        }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        pub fn write(buf: [*]u8, value: ErrorSet) [*]u8 {
             buf[0..6].* = "error.".*;
-            @memcpy(buf + 6, @errorName(format.value));
-            return 6 +% @errorName(format.value).len;
+            return strcpyEqu(buf + 6, @errorName(value));
         }
-        pub fn formatLength(format: Format) usize {
-            return 6 +% @errorName(format.value).len;
+        pub fn length(value: ErrorSet) usize {
+            return 6 +% @errorName(value).len;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
