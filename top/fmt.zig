@@ -106,6 +106,11 @@ pub fn strcpyEqu(dest: [*]u8, src: []const u8) [*]u8 {
     @memcpy(dest, src);
     return dest + src.len;
 }
+pub fn strcpyEqu2(dest: [*]u8, comptime src: []const u8) [*]u8 {
+    @setRuntimeSafety(false);
+    dest[0..src.len].* = src[0..src.len].*;
+    return dest + src.len;
+}
 pub fn strsetEqu(dest: [*]u8, byte: u8, len: usize) [*]u8 {
     @setRuntimeSafety(false);
     @memset(dest[0..len], byte);
