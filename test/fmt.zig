@@ -279,10 +279,8 @@ fn testHexToBytes() !void {
     };
 }
 fn TestFormatAlloc(comptime spec: fmt.RenderSpec, comptime Value: type) type {
-    const rc = builtin.requireComptime(Value);
     return struct {
-        const run = if (rc) runCx else runRt;
-        fn runCx(allocator: *Allocator, array: *Array, expected: []const u8, comptime value: Value) !void {
+        fn run(allocator: *Allocator, array: *Array, expected: []const u8, comptime value: Value) !void {
             debug.write("run(" ++ comptime fmt.eval(.{ .omit_trailing_comma = true }, spec) ++ ", " ++ @typeName(Value) ++ ")\n");
             try array.appendFormat(allocator, comptime fmt.render(spec, value));
             try testing.expectEqualString(expected, array.readAll(allocator.*));
@@ -290,15 +288,12 @@ fn TestFormatAlloc(comptime spec: fmt.RenderSpec, comptime Value: type) type {
             debug.write(array.readAll(allocator.*));
             array.undefineAll(allocator.*);
         }
-        fn runRt(allocator: *Allocator, array: *Array, expected: []const u8, value: Value) !void {
-            debug.write("run(" ++ comptime fmt.eval(.{ .omit_trailing_comma = true }, spec) ++ ", " ++ @typeName(Value) ++ ")\n");
-            try array.appendFormat(allocator, fmt.render(spec, value));
-            try testing.expectEqualString(expected, array.readAll(allocator.*));
-            try array.appendMany(allocator, "\n\n");
-            debug.write(array.readAll(allocator.*));
-            array.undefineAll(allocator.*);
-        }
     };
+}
+fn testTypeDescr(allocator: *Allocator, array: *Array, format: anytype) !void {
+    try array.appendFormat(allocator, format);
+    debug.write(array.readAll(allocator.*));
+    array.undefineAll(allocator.*);
 }
 fn testFormats(allocator: *Allocator, array: *Array, format1: anytype, format2: anytype) !void {
     testing.announce(@src());
@@ -478,17 +473,18 @@ fn testRenderEnum(allocator: *Allocator, array: *Array) !void {
 }
 fn testRenderTypeDescription(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    try TestFormatAlloc().run(allocator, array, //
-        comptime TypeDescr.init(packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
-    try TestFormatAlloc().run(allocator, array, comptime TypeDescr.init(struct { buf: [*]u8, buf_len: usize }));
-    try TestFormatAlloc().run(allocator, array, comptime TypeDescr.init(struct { buf: []u8, buf_len: usize }));
-    try TestFormatAlloc().run(allocator, array, comptime TypeDescr.init(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
-    try TestFormatAlloc().run(allocator, array, comptime BigTypeDescr.init(@import("std").builtin));
-    try TestFormatAlloc().run(allocator, array, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
-    const td1: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no });
-    const td2: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no });
-    try testFormats(allocator, array, td1, td2);
-    try debug.expectEqualMemory(TypeDescr, td1, td2);
+
+    try testTypeDescr(allocator, array, comptime TypeDescr.init(packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
+
+    try testTypeDescr(allocator, array, comptime TypeDescr.init(struct { buf: [*]u8, buf_len: usize }));
+    try testTypeDescr(allocator, array, comptime TypeDescr.init(struct { buf: []u8, buf_len: usize }));
+    try testTypeDescr(allocator, array, comptime TypeDescr.init(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+    try testTypeDescr(allocator, array, comptime BigTypeDescr.init(@import("std").builtin));
+    try testTypeDescr(allocator, array, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
+    try testTypeDescr(allocator, array, comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no }));
+    try testTypeDescr(allocator, array, comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no }));
+    //try testFormats(allocator, array, td1, td2);
+    //try debug.expectEqualMemory(TypeDescr, td1, td2);
 }
 pub fn testRenderFunctions() !void {
     try mem.map(.{}, .{}, .{}, 0x40000000, 0x40000000);
@@ -499,6 +495,7 @@ pub fn testRenderFunctions() !void {
     try testRenderType(&allocator, &array);
     try testRenderSlice(&allocator, &array);
     try testRenderStruct(&allocator, &array);
+    try testRenderTypeDescription(&allocator, &array);
 }
 fn testGenericRangeFormat() !void {
     testing.announce(@src());

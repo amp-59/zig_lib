@@ -3358,15 +3358,13 @@ pub const EnumLiteralFormat = struct {
 pub const ComptimeIntFormat = struct {
     value: comptime_int,
     const Format = @This();
-    pub fn formatWrite(comptime format: Format, array: anytype) void {
-        array.writeMany(ci(format.value));
+    pub fn write(buf: [*]u8, comptime value: comptime_int) [*]u8 {
+        return strcpyEqu2(buf, ci(value));
     }
-    pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
-        return strcpy(buf, ci(format.value));
+    pub fn length(comptime value: comptime_int) comptime_int {
+        return ci(value).len;
     }
-    pub fn formatLength(comptime format: Format) usize {
-        return ci(format.value).len;
-    }
+    pub usingnamespace Interface(Format);
 };
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
     if (spec.render_smallest_int) {
