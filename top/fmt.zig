@@ -3270,7 +3270,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 return 12 +% type_name.len +% Ub(meta.LeastRealBitSize(Union)).length(meta.leastRealBitCast(value));
             }
         }
-        pub fn write(buf: [*]u8, value: Union) [*]u8 {
+        pub fn write(buf: [*]u8, value: anytype) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (tag_type == null) {
                 return writeUntagged(buf, value);
@@ -3297,7 +3297,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             ptr[0..2].* = " }".*;
             return ptr + 2;
         }
-        pub fn length(value: Union) usize {
+        pub fn length(value: anytype) usize {
             if (tag_type == null) {
                 return lengthUntagged(value);
             }
@@ -3329,12 +3329,12 @@ pub fn EnumFormat(comptime Enum: type) type {
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: ?comptime_int = null;
-        pub fn write(buf: [*]u8, value: Enum) [*]u8 {
+        pub fn write(buf: [*]u8, value: anytype) [*]u8 {
             return strcpyEqu(buf, switch (value) {
                 inline else => |tag| comptime fieldTagName(@tagName(tag)),
             });
         }
-        pub fn length(value: Enum) usize {
+        pub fn length(value: anytype) usize {
             return switch (value) {
                 inline else => |tag| comptime fieldTagName(@tagName(tag)).len,
             };
@@ -3500,7 +3500,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         value: Pointer,
         const Format = @This();
         const max_len: ?comptime_int = null;
-        pub fn writeAny(buf: [*]u8, value: Pointer) [*]u8 {
+        pub fn writeAny(buf: [*]u8, value: anytype) [*]u8 {
             var ptr: [*]u8 = buf;
             if (value.len == 0) {
                 if (spec.infer_type_names) {
@@ -3540,7 +3540,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return ptr;
         }
-        pub fn lengthAny(value: Pointer) usize {
+        pub fn lengthAny(value: anytype) usize {
             var len: usize = 0;
             if (value.len == 0) {
                 if (spec.infer_type_names) {
@@ -3606,7 +3606,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return false;
         }
-        pub inline fn write(buf: [*]u8, value: Pointer) [*]u8 {
+        pub inline fn write(buf: [*]u8, value: anytype) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
@@ -3626,7 +3626,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return writeAny(buf, value);
         }
-        pub inline fn length(value: Pointer) usize {
+        pub inline fn length(value: anytype) usize {
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
@@ -4287,10 +4287,12 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             }
         }
         inline fn defaultDeclareCriteria(comptime T: type, comptime decl: builtin.Type.Declaration) ?type {
-            const u = @field(T, decl.name);
-            const U = @TypeOf(u);
-            if (U == type and meta.isContainer(u) and u != T) {
-                return u;
+            if (@hasDecl(T, decl.name)) {
+                const u = @field(T, decl.name);
+                const U = @TypeOf(u);
+                if (U == type and meta.isContainer(u) and u != T) {
+                    return u;
+                }
             }
             return null;
         }
