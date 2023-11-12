@@ -3931,13 +3931,13 @@ pub fn FormatFormat(comptime Struct: type) type {
     const T = struct {
         value: Struct,
         const Format = @This();
-
         pub inline fn write(buf: [*]u8, value: Struct) [*]u8 {
             return buf + value.formatWriteBuf(buf);
         }
         pub inline fn formatLength(value: Struct) usize {
             return value.formatLength();
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
@@ -3999,7 +3999,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 var ptr: [*]u8 = buf;
                 if (spec.option_5) {
                     if (matchDeclaration(format)) |decl| {
-                        return Declaration.write(ptr, decl, depth);
+                        return Format.writeInternal(ptr, decl, depth);
                     }
                 }
                 ptr = strcpyEqu(ptr, format.spec);
@@ -4410,6 +4410,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
             }
         }
+
         pub fn init(comptime T: type) Format {
             comptime {
                 @setEvalBranchQuota(~@as(u32, 0));
