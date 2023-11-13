@@ -2050,33 +2050,89 @@ pub fn writeParserFunction(
     writeParserFunctionBody(array, calling_convention, attributes);
     writeParserFunctionSpec(array, attributes);
 }
+fn simplifyArgumentHelper(param_spec: types.ParamSpec) []const u8 {
+    switch (param_spec.tag) {
+        inline .field, .optional_field => |f| switch (f) {
+            .boolean => return "",
+            inline .tag, .string, .integer => |tag| if (isSquishable(param_spec.string))
+                return ("<" ++ @tagName(tag) ++ ">")
+            else
+                return ("=<" ++ @tagName(tag) ++ ">"),
+
+            else => if (isSquishable(param_spec.string))
+                return "<string>"
+            else
+                return "=<string>",
+        },
+        else => return "",
+    }
+}
 pub fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void {
     array.writeMany("const ");
     array.writeMany(attributes.fn_name);
     array.writeMany("_help:[:0]const u8=");
     var max_width: usize = 0;
     for (attributes.params) |param_spec| {
+        if (param_spec.tag == .param or
+            param_spec.tag == .literal or
+            param_spec.string.len == 0)
+        {
+            continue;
+        }
+        const helper: []const u8 = simplifyArgumentHelper(param_spec);
         if (param_spec.string.len != 0) {
             const start: usize = array.len();
             if (param_spec.and_no) |no_param_spec| {
-                writeFlagWithInverse(array, param_spec, no_param_spec);
+                if (param_spec.tag == .field and param_spec.tag.field == .boolean) {
+                    writeFlagWithInverse(array, param_spec, no_param_spec);
+                } else {
+                    array.writeMany(param_spec.string);
+                }
             } else {
                 array.writeMany(param_spec.string);
             }
             const finish: usize = array.len();
-            max_width = @max(max_width, bits.alignA64(4 +% (finish -% start), 4));
+            max_width = @max(max_width, bits.alignA64(4 +% (finish -% start) +% helper.len, 4));
             array.undefine(finish -% start);
         }
     }
     for (attributes.params) |param_spec| {
-        if (param_spec.string.len != 0) {
+        if (param_spec.tag == .param or
+            param_spec.tag == .literal or
+            param_spec.string.len == 0)
+        {
+            continue;
+        }
+        const helper: []const u8 = simplifyArgumentHelper(param_spec);
+        if (param_spec.tag == .field and
+            param_spec.tag.field == .boolean)
+        {
+            if (param_spec.string.len != 0) {
+                array.writeMany("\\\\    ");
+                const start: usize = array.len();
+                if (param_spec.and_no) |no_param_spec| {
+                    writeFlagWithInverse(array, param_spec, no_param_spec);
+                } else {
+                    array.writeMany(param_spec.string);
+                }
+                const finish: usize = array.len();
+                const string_len: usize = finish -% start;
+                if (param_spec.descr.len != 0) {
+                    for (0..max_width -% string_len) |_| array.writeOne(' ');
+                    array.writeMany(param_spec.descr[0]);
+                    for (param_spec.descr[1..]) |string| {
+                        array.writeMany("\n\\\\    ");
+                        for (0..max_width) |_| array.writeOne(' ');
+                        array.writeMany(string);
+                    }
+                }
+                array.writeMany("\n");
+            }
+        } else {
             array.writeMany("\\\\    ");
             const start: usize = array.len();
-            if (param_spec.and_no) |no_param_spec| {
-                writeFlagWithInverse(array, param_spec, no_param_spec);
-            } else {
-                array.writeMany(param_spec.string);
-            }
+            array.writeMany(param_spec.string);
+            array.writeMany(helper);
             const finish: usize = array.len();
             const string_len: usize = finish -% start;
             if (param_spec.descr.len != 0) {
@@ -2089,6 +2145,11 @@ pub fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void
                 }
             }
             array.writeMany("\n");
+            if (param_spec.and_no) |no_param_spec| {
+                array.writeMany("\\\\    ");
+                array.writeMany(no_param_spec.string);
+                array.writeMany("\n");
+            }
         }
     }
     array.writeMany("\\\\\n");

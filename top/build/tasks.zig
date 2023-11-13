@@ -291,8 +291,7 @@ pub const BuildCommand = struct {
     eh_frame_hdr: bool = false,
     /// Enable output of relocation sections for post build tools
     emit_relocs: bool = false,
-    /// Force removal of functions and data that are unreachable
-    /// by the entry point or exported symbols
+    /// Force removal of functions and data that are unreachable by the entry point or exported symbols
     gc_sections: ?bool = null,
     /// Override default stack size
     stack: ?usize = null,
@@ -3662,22 +3661,29 @@ pub const FormatCommand = struct {
     }
 };
 const build_help: [:0]const u8 = 
-    \\    build-
-    \\    -f[no-]emit-bin                         (default=yes) Output machine code
-    \\    -f[no-]emit-asm                         (default=no) Output assembly code (.s)
-    \\    -f[no-]emit-llvm-ir                     (default=no) Output optimized LLVM IR (.ll)
-    \\    -f[no-]emit-llvm-bc                     (default=no) Output optimized LLVM BC (.bc)
-    \\    -f[no-]emit-h                           (default=no) Output a C header file (.h)
-    \\    -f[no-]emit-docs                        (default=no) Output documentation (.html)
-    \\    -f[no-]emit-analysis                    (default=no) Output analysis (.json)
-    \\    -f[no-]emit-implib                      (default=yes) Output an import when building a Windows DLL (.lib)
-    \\    --cache-dir                             Override the local cache directory
-    \\    --global-cache-dir                      Override the global cache directory
-    \\    --zig-lib-dir                           Override Zig installation lib directory
-    \\    --listen                                [MISSING]
-    \\    -target                                 <arch><sub>-<os>-<abi> see the targets command
-    \\    -mcpu                                   Specify target CPU and feature set
-    \\    -mcmodel                                Limit range of code and data virtual addresses
+    \\    -femit-bin=<string>                     (default=yes) Output machine code
+    \\    -fno-emit-bin
+    \\    -femit-asm=<string>                     (default=no) Output assembly code (.s)
+    \\    -fno-emit-asm
+    \\    -femit-llvm-ir=<string>                 (default=no) Output optimized LLVM IR (.ll)
+    \\    -fno-emit-llvm-ir
+    \\    -femit-llvm-bc=<string>                 (default=no) Output optimized LLVM BC (.bc)
+    \\    -fno-emit-llvm-bc
+    \\    -femit-h=<string>                       (default=no) Output a C header file (.h)
+    \\    -fno-emit-h
+    \\    -femit-docs=<string>                    (default=no) Output documentation (.html)
+    \\    -fno-emit-docs
+    \\    -femit-analysis=<string>                (default=no) Output analysis (.json)
+    \\    -fno-emit-analysis
+    \\    -femit-implib=<string>                  (default=yes) Output an import when building a Windows DLL (.lib)
+    \\    -fno-emit-implib
+    \\    --cache-dir=<string>                    Override the local cache directory
+    \\    --global-cache-dir=<string>             Override the global cache directory
+    \\    --zig-lib-dir=<string>                  Override Zig installation lib directory
+    \\    --listen=<tag>                          [MISSING]
+    \\    -target=<string>                        <arch><sub>-<os>-<abi> see the targets command
+    \\    -mcpu=<tag>                             Specify target CPU and feature set
+    \\    -mcmodel=<tag>                          Limit range of code and data virtual addresses
     \\    -m[no-]red-zone                         Enable the "red-zone"
     \\    -f[no-]builtin                          Enable implicit builtin knowledge of functions
     \\    -f[no-]panic-mismatched-arguments       Enables panic causes:
@@ -3715,16 +3721,17 @@ const build_help: [:0]const u8 =
     \\                                              cast_to_enum_from_invalid
     \\                                              cast_to_error_from_invalid
     \\    -f[no-]omit-frame-pointer               Omit the stack frame pointer
-    \\    -mexec-model                            (WASI) Execution model
-    \\    --name                                  Override root name
-    \\    -f[no-]soname                           Override the default SONAME value
-    \\    -O                                      Choose what to optimize for:
+    \\    -mexec-model=<string>                   (WASI) Execution model
+    \\    --name=<string>                         Override root name
+    \\    -fsoname=<string>                       Override the default SONAME value
+    \\    -fno-soname
+    \\    -O<tag>                                 Choose what to optimize for:
     \\                                              Debug          Optimizations off, safety on
     \\                                              ReleaseSafe    Optimizations on, safety on
     \\                                              ReleaseFast    Optimizations on, safety off
     \\                                              ReleaseSmall   Size optimizations on, safety off
-    \\    -fopt-bisect-limit                      Only run [limit] first LLVM optimization passes
-    \\    --main-mod-path                         Set the directory of the root package
+    \\    -fopt-bisect-limit=<integer>            Only run [limit] first LLVM optimization passes
+    \\    --main-mod-path=<string>                Set the directory of the root package
     \\    -f[no-]PIC                              Enable Position Independent Code
     \\    -f[no-]PIE                              Enable Position Independent Executable
     \\    -f[no-]lto                              Enable Link Time Optimization
@@ -3741,7 +3748,7 @@ const build_help: [:0]const u8 =
     \\    -f[no-]data-sections                    Places data in separate sections
     \\    -f[no-]strip                            Omit debug symbols
     \\    -f[no-]formatted-panics                 Enable formatted safety panics
-    \\    -ofmt                                   Override target object format:
+    \\    -ofmt=<tag>                             Override target object format:
     \\                                              elf                    Executable and Linking Format
     \\                                              c                      C source code
     \\                                              wasm                   WebAssembly
@@ -3751,42 +3758,42 @@ const build_help: [:0]const u8 =
     \\                                              plan9                  Plan 9 from Bell Labs object format
     \\                                              hex (planned feature)  Intel IHEX
     \\                                              raw (planned feature)  Dump machine code directly
-    \\    -idirafter                              Add directory to AFTER include search path
-    \\    -isystem                                Add directory to SYSTEM include search path
-    \\    --libc                                  Provide a file which specifies libc paths
-    \\    --library                               Link against system library (only if actually used)
-    \\    -I                                      Add directories to include search path
-    \\    --needed-library                        Link against system library (even if unused)
-    \\    --library-directory                     Add a directory to the library search path
-    \\    --script                                Use a custom linker script
-    \\    --version-script                        Provide a version .map file
-    \\    --dynamic-linker                        Set the dynamic interpreter path
-    \\    --sysroot                               Set the system root directory
-    \\    -f[no-]entry[=]                         Override the default entry symbol name
+    \\    -idirafter=<string>                     Add directory to AFTER include search path
+    \\    -isystem=<string>                       Add directory to SYSTEM include search path
+    \\    --libc=<string>                         Provide a file which specifies libc paths
+    \\    --library=<string>                      Link against system library (only if actually used)
+    \\    -I<string>                              Add directories to include search path
+    \\    --needed-library=<string>               Link against system library (even if unused)
+    \\    --library-directory=<string>            Add a directory to the library search path
+    \\    --script=<string>                       Use a custom linker script
+    \\    --version-script=<string>               Provide a version .map file
+    \\    --dynamic-linker=<string>               Set the dynamic interpreter path
+    \\    --sysroot=<string>                      Set the system root directory
+    \\    -fentry=<string>                        Override the default entry symbol name
+    \\    -fno-entry
     \\    -f[no-]lld                              Use LLD as the linker
     \\    -f[no-]llvm                             Use LLVM as the codegen backend
     \\    -f[no-]compiler-rt                      (default) Include compiler-rt symbols in output
-    \\    -rpath                                  Add directory to the runtime library search path
+    \\    -rpath=<string>                         Add directory to the runtime library search path
     \\    -f[no-]each-lib-rpath                   Ensure adding rpath for each used dynamic library
     \\    -f[no-]allow-shlib-undefined            Allow undefined symbols in shared libraries
-    \\    --build-id                              Help coordinate stripped binaries with debug symbols
+    \\    --build-id=<tag>                        Help coordinate stripped binaries with debug symbols
     \\    --eh-frame-hdr                          Enable C++ exception handling by passing --eh-frame-hdr to linker
     \\    --emit-relocs                           Enable output of relocation sections for post build tools
-    \\    --[no-]gc-sections                      Force removal of functions and data that are unreachable
-    \\                                            by the entry point or exported symbols
-    \\    --stack                                 Override default stack size
-    \\    --image-base                            Set base address for executable image
-    \\    -D                                      Define C macros available within the `@cImport` namespace
-    \\    --mod                                   Define modules available as dependencies for the current target
-    \\    --deps                                  Define module dependencies for the current target
-    \\    -cflags                                 Set extra flags for the next position C source files
-    \\    -rcflags                                Set extra flags for the next positional .rc source files
+    \\    --[no-]gc-sections                      Force removal of functions and data that are unreachable by the entry point or exported symbols
+    \\    --stack=<integer>                       Override default stack size
+    \\    --image-base=<integer>                  Set base address for executable image
+    \\    -D<string>                              Define C macros available within the `@cImport` namespace
+    \\    --mod=<string>                          Define modules available as dependencies for the current target
+    \\    --deps=<string>                         Define module dependencies for the current target
+    \\    -cflags=<string>                        Set extra flags for the next position C source files
+    \\    -rcflags=<string>                       Set extra flags for the next positional .rc source files
     \\    -lc                                     Link libc
     \\    -rdynamic                               Add all symbols to the dynamic symbol table
     \\    -dynamic                                Force output to be dynamically linked
     \\    -static                                 Force output to be statically linked
     \\    -Bsymbolic                              Bind global references locally
-    \\    -z                                      Set linker extension flags:
+    \\    -z<string>                              Set linker extension flags:
     \\                                              nodelete                   Indicate that the object cannot be deleted from a process
     \\                                              notext                     Permit read-only relocations in read-only segments
     \\                                              defs                       Force a fatal error if any undefined symbols remain
@@ -3799,7 +3806,7 @@ const build_help: [:0]const u8 =
     \\                                              norelro                    Don't force all relocations to be read-only after processing
     \\                                              common-page-size=[bytes]   Set the common page size for ELF binaries
     \\                                              max-page-size=[bytes]      Set the max page size for ELF binaries
-    \\    --color                                 Enable or disable colored error messages
+    \\    --color=<tag>                           Enable or disable colored error messages
     \\    --debug-incremental                     Enable experimental feature: incremental compilation
     \\    -ftime-report                           Print timing diagnostics
     \\    -fstack-report                          Print stack size diagnostics
@@ -3810,51 +3817,48 @@ const build_help: [:0]const u8 =
     \\    --verbose-llvm-ir                       Enable compiler debug output for LLVM IR
     \\    --verbose-cimport                       Enable compiler debug output for C imports
     \\    --verbose-llvm-cpu-features             Enable compiler debug output for LLVM CPU features
-    \\    --debug-log                             Enable printing debug/info log messages for scope
+    \\    --debug-log=<string>                    Enable printing debug/info log messages for scope
     \\    --debug-compile-errors                  Crash with helpful diagnostics at the first compile error
     \\    --debug-link-snapshot                   Enable dumping of the linker's state in JSON
     \\
     \\
 ;
 const archive_help: [:0]const u8 = 
-    \\    ar
-    \\    --format    Archive format to create
-    \\    --plugin    Ignored for compatibility
-    \\    --output    Extraction target directory
-    \\    --thin      Create a thin archive
-    \\    a           Put [files] after [relpos]
-    \\    b           Put [files] before [relpos] (same as [i])
-    \\    c           Do not warn if archive had to be created
-    \\    D           Use zero for timestamps and uids/gids (default)
-    \\    U           Use actual timestamps and uids/gids
-    \\    L           Add archive's contents
-    \\    o           Preserve original dates
-    \\    s           Create an archive index (cf. ranlib)
-    \\    S           do not build a symbol table
-    \\    u           update only [files] newer than archive contents
+    \\    --format=<tag>          Archive format to create
+    \\    --plugin                Ignored for compatibility
+    \\    --output=<string>       Extraction target directory
+    \\    --thin                  Create a thin archive
+    \\    a                       Put [files] after [relpos]
+    \\    b                       Put [files] before [relpos] (same as [i])
+    \\    c                       Do not warn if archive had to be created
+    \\    D                       Use zero for timestamps and uids/gids (default)
+    \\    U                       Use actual timestamps and uids/gids
+    \\    L                       Add archive's contents
+    \\    o                       Preserve original dates
+    \\    s                       Create an archive index (cf. ranlib)
+    \\    S                       do not build a symbol table
+    \\    u                       update only [files] newer than archive contents
     \\
     \\
 ;
 const objcopy_help: [:0]const u8 = 
-    \\    objcopy
-    \\    --output-target
-    \\    --only-section
-    \\    --pad-to
+    \\    --output-target=<string>
+    \\    --only-section=<string>
+    \\    --pad-to=<integer>
     \\    --strip-debug
     \\    --strip-all
     \\    --only-keep-debug
-    \\    --add-gnu-debuglink
-    \\    --extract-to
+    \\    --add-gnu-debuglink=<string>
+    \\    --extract-to=<string>
     \\
     \\
 ;
 const format_help: [:0]const u8 = 
-    \\    fmt
-    \\    --color         Enable or disable colored error messages
-    \\    --stdin         Format code from stdin; output to stdout
-    \\    --check         List non-conforming files and exit with an error if the list is non-empty
-    \\    --ast-check     Run zig ast-check on every file
-    \\    --exclude       Exclude file or directory from formatting
+    \\    --color=<tag>           Enable or disable colored error messages
+    \\    --stdin                 Format code from stdin; output to stdout
+    \\    --check                 List non-conforming files and exit with an error if the list is non-empty
+    \\    --ast-check             Run zig ast-check on every file
+    \\    --exclude=<string>      Exclude file or directory from formatting
     \\
     \\
 ;

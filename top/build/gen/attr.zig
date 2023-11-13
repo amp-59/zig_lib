@@ -660,8 +660,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .string = "--gc-sections",
             .and_no = .{ .string = "--no-gc-sections" },
             .descr = &.{
-                "Force removal of functions and data that are unreachable",
-                "by the entry point or exported symbols",
+                "Force removal of functions and data that are unreachable by the entry point or exported symbols",
             },
         },
         .{
@@ -2014,19 +2013,21 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
         .{
             .name = "amdgpu_igrouplp_exact_solver_cost_heur",
             .string = "--amdgpu-igrouplp-exact-solver-cost-heur",
-            .descr = &.{"Whether to use the cost heuristic to make choices as we traverse the search space using the exact solver. Defaulted to on, and if turned off, we will use the node order -- attempting to put the later nodes in the later sched groups. Experimentally, results are mixed, so this should be set on a case-by-case basis."},
+            .descr = &.{"Whether to use the cost heuristic to make choices as we traverse the search space using the exact solver. Defaulted to on, and if turned off, we will use the node order. Attempting to put the later nodes in the later sched groups. Experimentally, results are mixed, so this should be set on a case-by-case basis."},
         },
         .{
             .name = "amdgpu_igrouplp_exact_solver_cutoff",
             .string = "--amdgpu-igrouplp-exact-solver-cutoff",
-            .descr = &.{"The maximum number of scheduling group conflicts which we attempt to solve with the exponential time exact solver. Problem sizes greater than this willbe solved by the less accurate greedy algorithm. Selecting solver by size is superseded by manually selecting the solver (e.g. by amdgpu-igrouplp-exact-solver"},
+            .descr = &.{
+                "The maximum number of scheduling group conflicts which we attempt to solve with the exponential time exact solver. Problem sizes greater than this willbe solved by the less accurate greedy algorithm. Selecting solver by size is superseded by manually selecting the solver (e.g. by amdgpu-igrouplp-exact-solver)",
+            },
             .tag = .{ .optional_field = .integer },
             .type = .{ .store = &types.ProtoTypeDescr.init(?usize) },
         },
         .{
             .name = "amdgpu_igrouplp_exact_solver_max_branches",
             .string = "--amdgpu-igrouplp-exact-solver-max-branches",
-            .descr = &.{"The amount of branches that we are willing to explore withthe exact algorithm before giving up."},
+            .descr = &.{"The amount of branches that we are willing to explore with the exact algorithm before giving up."},
             .tag = .{ .optional_field = .integer },
             .type = .{ .store = &types.ProtoTypeDescr.init(?usize) },
         },
@@ -2973,7 +2974,9 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
         .{
             .name = "bbsections_guided_section_prefix",
             .string = "--bbsections-guided-section-prefix",
-            .descr = &.{"Use the basic-block-sections profile to determine the text section prefix for hot functions. Functions with basic-block-sections profile will be placed in `.text.hot` regardless of their FDO profile info. Other functions won't be impacted, i.e., their prefixes will be decided by FDO/sampleFDO profiles."},
+            .descr = &.{
+                "Use the basic-block-sections profile to determine the text section prefix for hot functions. Functions with basic-block-sections profile will be placed in `.text.hot` regardless of their FDO profile info. Other functions won't be impacted, i.e., their prefixes will be decided by FDO/sampleFDO profiles.",
+            },
         },
         .{
             .name = "binutils_version",
