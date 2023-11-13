@@ -226,26 +226,6 @@ pub const BuilderSpec = struct {
         /// Basename of auxiliary output directory relative to output
         /// directory.
         aux_out_dir: [:0]const u8 = "aux",
-        /// Extension for Zig source files.
-        zig_ext: [:0]const u8 = ".zig",
-        /// Extension for C header source files.
-        h_ext: [:0]const u8 = ".h",
-        /// Extension for shared object files.
-        lib_ext: [:0]const u8 = ".so",
-        /// Extension for archives.
-        ar_ext: [:0]const u8 = ".a",
-        /// Extension for object files.
-        obj_ext: [:0]const u8 = ".o",
-        /// Extension for assembly source files.
-        asm_ext: [:0]const u8 = ".s",
-        /// Extension for LLVM bitcode files.
-        llvm_bc_ext: [:0]const u8 = ".bc",
-        /// Extension for LLVM intermediate representation files.
-        llvm_ir_ext: [:0]const u8 = ".ll",
-        /// Extension for JSON files.
-        analysis_ext: [:0]const u8 = ".json",
-        /// Extension for documentation files.
-        docs_ext: [:0]const u8 = ".html",
         /// Use library traces for compile error messages.
         trace_compile_errors: bool = true,
         /// (Devel.) Exclude `writeErrors` from dynamic extensions.
@@ -293,8 +273,6 @@ pub const BuilderSpec = struct {
         show_task_prep: bool = false,
         /// Include arena/thread index in task summaries and change of state notices.
         show_arena_index: bool = true,
-        /// Show the size of the declared tasks at startup.
-        show_base_memory_usage: bool = false,
         /// Show when tasks have been waiting for a while with a list of blockers.
         show_waiting_tasks: bool = false,
         /// Never list special nodes among or allow explicit building.
@@ -459,6 +437,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         .args_type = [][*:0]u8,
         .vars_type = [][*:0]u8,
     };
+    const ar_s = fmt.about("ar");
+    const fmt_s = fmt.about("fmt");
+
+    const init_s = fmt.about("init-0");
+    const main_s = fmt.about("main-1");
+    const cmdline_s = fmt.about("cmdline-2");
+    const exec_s = fmt.about("exec-3");
+    const regen_s = fmt.about("regen-4");
+
+    const waiting_s = fmt.about("waiting");
+    const cmd_args_s = fmt.about("cmd-args");
+    const run_args_s = fmt.about("run-args");
+    const build_run_s = fmt.about("build-run");
+    const build_exe_s = fmt.about("build-exe");
+    const build_obj_s = fmt.about("build-obj");
+    const build_lib_s = fmt.about("build-lib");
     const T = struct {
         /// Program arguments.
         args: [][*:0]u8,
@@ -1595,11 +1589,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             } else node.name;
             return concatenate(allocator, switch (tag) {
                 .output_exe => &[_][]const u8{ binary_prefix, name },
-                .output_ar => &[_][]const u8{ archive_prefix, name, builder_spec.options.ar_ext },
-                .output_obj => &[_][]const u8{ binary_prefix, name, builder_spec.options.obj_ext },
-                .output_lib => &[_][]const u8{ library_prefix, name, builder_spec.options.lib_ext },
-                .output_llvm_ir => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.llvm_ir_ext },
-                .output_llvm_bc => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.llvm_bc_ext },
+                .output_ar => &[_][]const u8{ archive_prefix, name, ".a" },
+                .output_obj => &[_][]const u8{ binary_prefix, name, ".o" },
+                .output_lib => &[_][]const u8{ library_prefix, name, ".so" },
+                .output_llvm_ir => &[_][]const u8{ auxiliary_prefix, name, ".ll" },
+                .output_llvm_bc => &[_][]const u8{ auxiliary_prefix, name, ".bc" },
                 else => proc.exitErrorFault(error.InvalidOutput, @tagName(tag), 2),
             });
         }
@@ -1726,14 +1720,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn classifySourceInputName(name: []const u8) types.File.Tag {
             @setRuntimeSafety(builtin.is_safe);
             for ([_]struct { [:0]const u8, types.File.Tag }{
-                .{ builder_spec.options.zig_ext, .input_zig },
-                .{ builder_spec.options.h_ext, .input_c },
-                .{ builder_spec.options.lib_ext, .input_lib },
-                .{ builder_spec.options.ar_ext, .input_ar },
-                .{ builder_spec.options.obj_ext, .input_obj },
-                .{ builder_spec.options.asm_ext, .input_asm },
-                .{ builder_spec.options.llvm_bc_ext, .input_llvm_bc },
-                .{ builder_spec.options.llvm_ir_ext, .input_llvm_ir },
+                .{ ".zig", .input_zig },
+                .{ ".h", .input_c },
+                .{ ".c", .input_c },
+                .{ ".so", .input_lib },
+                .{ ".a", .input_ar },
+                .{ ".o", .input_obj },
+                .{ ".s", .input_asm },
+                .{ ".bc", .input_llvm_bc },
+                .{ ".ll", .input_llvm_ir },
             }) |pair| {
                 if (mem.testEqualString(name[name.len -% pair[0].len ..], pair[0])) {
                     return pair[1];
@@ -2697,9 +2692,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         ) void {
             @setRuntimeSafety(builtin.is_safe);
             group.sh.mode = .Command;
-            if (builder_spec.logging.show_base_memory_usage) {
-                about.aboutBaseMemoryUsageNotice(allocator);
-            }
             const args: [][*:0]u8 = group.sh.args;
             var maybe_task: ?Task = null;
             var cmd_args_idx: usize = 5;
@@ -2850,8 +2842,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn writeWaitingOn(node: *Node, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
-                buf[0..tab.waiting_s.len].* = tab.waiting_s.*;
-                var ptr: [*]u8 = fmt.strcpyEqu(buf[tab.waiting_s.len..], node.name);
+                buf[0..waiting_s.len].* = waiting_s.*;
+                var ptr: [*]u8 = fmt.strcpyEqu(buf[waiting_s.len..], node.name);
                 if (builder_spec.logging.show_arena_index) {
                     ptr = about.writeArenaIndex(ptr, arena_index);
                 }
@@ -2927,14 +2919,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn lengthTask(allocator: *types.Allocator, node: *Node, task: Task, arena_index: AddressSpace.Index) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 const about_s: fmt.AboutSrc = switch (task) {
-                    else => if (node.tasks.tag == .build) tab.build_run_s else tab.exec_s,
-                    .archive => tab.ar_s,
-                    .format => tab.fmt_s,
+                    else => if (node.tasks.tag == .build) build_run_s else exec_s,
+                    .archive => ar_s,
+                    .format => fmt_s,
                     .build => if (node.flags.have_task_data) switch (node.tasks.cmd.build.kind) {
-                        .exe => tab.build_exe_s,
-                        .obj => tab.build_obj_s,
-                        .lib => tab.build_lib_s,
-                    } else tab.build_lib_s,
+                        .exe => build_exe_s,
+                        .obj => build_obj_s,
+                        .lib => build_lib_s,
+                    } else build_lib_s,
                 };
                 const width: usize = fmt.aboutCentre(about_s);
                 const signal: sys.SignalCode = @enumFromInt(node.extra.execve_res.signal);
@@ -3052,14 +3044,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
                 const about_s: fmt.AboutSrc = switch (task) {
-                    else => if (node.tasks.tag == .build) tab.build_run_s else tab.exec_s,
-                    .archive => tab.ar_s,
-                    .format => tab.fmt_s,
+                    else => if (node.tasks.tag == .build) build_run_s else exec_s,
+                    .archive => ar_s,
+                    .format => fmt_s,
                     .build => if (node.flags.have_task_data) switch (node.tasks.cmd.build.kind) {
-                        .exe => tab.build_exe_s,
-                        .obj => tab.build_obj_s,
-                        .lib => tab.build_lib_s,
-                    } else tab.build_lib_s,
+                        .exe => build_exe_s,
+                        .obj => build_obj_s,
+                        .lib => build_lib_s,
+                    } else build_lib_s,
                 };
                 const width: usize = fmt.aboutCentre(about_s);
                 const signal: sys.SignalCode = @enumFromInt(node.extra.execve_res.signal);
@@ -3274,16 +3266,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ptr;
             }
-            pub fn aboutBaseMemoryUsageNotice(allocator: *types.Allocator) void {
-                @setRuntimeSafety(builtin.is_safe);
-                var buf: [4096]u8 = undefined;
-                var ptr: [*]u8 = &buf;
-                ptr[0..tab.mem_s.len].* = tab.mem_s.*;
-                ptr += tab.mem_s.len;
-                ptr += fmt.ud64(allocator.next -% allocator.start).formatWriteBuf(ptr);
-                ptr[0..7].* = " bytes\n".*;
-                debug.write(buf[0 .. @intFromPtr(ptr + 7) -% @intFromPtr(&buf)]);
-            }
             pub fn commandLineNotice(node: *Node) void {
                 @setRuntimeSafety(builtin.is_safe);
                 if (!node.flags.is_group) {
@@ -3293,16 +3275,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var ptr: [*]u8 = &buf;
                 const cmd_args: [][*:0]u8 = node.lists.cmd_args;
                 if (cmd_args.len != 0) {
-                    ptr[0..tab.cmd_args_s.len].* = tab.cmd_args_s.*;
-                    ptr += tab.cmd_args_s.len;
+                    ptr[0..cmd_args_s.len].* = cmd_args_s.*;
+                    ptr += cmd_args_s.len;
                     ptr = file.about.writeArgs(ptr, &.{}, cmd_args);
                     ptr[0] = '\n';
                     ptr += 1;
                 }
                 const run_args: [][*:0]u8 = node.lists.run_args;
                 if (run_args.len != 0) {
-                    ptr[0..tab.run_args_s.len].* = tab.run_args_s.*;
-                    ptr += tab.run_args_s.len;
+                    ptr[0..run_args_s.len].* = run_args_s.*;
+                    ptr += run_args_s.len;
                     ptr = file.about.writeArgs(ptr, &.{}, run_args);
                     ptr[0] = '\n';
                     ptr += 1;
@@ -3459,11 +3441,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn aboutPhase(node: *Node) fmt.AboutSrc {
                 @setRuntimeSafety(builtin.is_safe);
                 switch (node.sh.mode) {
-                    .Init => return tab.init_s,
-                    .Main => return tab.main_s,
-                    .Command => return tab.cmdline_s,
-                    .Exec => return tab.exec_s,
-                    .Regen => return tab.regen_s,
+                    .Init => return init_s,
+                    .Main => return main_s,
+                    .Command => return cmdline_s,
+                    .Exec => return exec_s,
+                    .Regen => return regen_s,
                 }
             }
             const SpecTag = meta.TagFromList(meta.fieldNames(BuilderSpec.Options));
@@ -3484,11 +3466,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn aboutNode(node: *Node, by_spec: ?SpecTag, by_flag: ?FlagTag, event: About) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const about_s: fmt.AboutSrc = switch (node.sh.mode) {
-                    .Init => tab.init_s,
-                    .Main => tab.main_s,
-                    .Command => tab.cmdline_s,
-                    .Exec => tab.exec_s,
-                    .Regen => tab.regen_s,
+                    .Init => init_s,
+                    .Main => main_s,
+                    .Command => cmdline_s,
+                    .Exec => exec_s,
+                    .Regen => regen_s,
                 };
                 var buf: [4096]u8 = undefined;
                 buf[0..about_s.len].* = about_s.*;
@@ -3668,11 +3650,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn writeExchangeTask(buf: [*]u8, node: *Node, task: Task) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const about_s: fmt.AboutSrc = switch (node.sh.mode) {
-                    .Init => tab.init_s,
-                    .Main => tab.main_s,
-                    .Command => tab.cmdline_s,
-                    .Exec => tab.exec_s,
-                    .Regen => tab.regen_s,
+                    .Init => init_s,
+                    .Main => main_s,
+                    .Command => cmdline_s,
+                    .Exec => exec_s,
+                    .Regen => regen_s,
                 };
                 buf[0..about_s.len].* = about_s.*;
                 var ptr: [*]u8 = fmt.strcpyEqu(buf + about_s.len, node.name);
@@ -3790,29 +3772,6 @@ pub const format_lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null
 pub const fetch_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .null, .null, .ready } };
 pub const archive_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .ready, .null, .null } };
 pub const objcopy_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .null, .ready, .null } };
-const tab = .{
-    .ar_s = fmt.about("ar"),
-    .add_s = fmt.about("add"),
-    .mem_s = fmt.about("mem"),
-    .fmt_s = fmt.about("fmt"),
-    .perf_s = fmt.about("perf"),
-    .size_s = fmt.about("size"),
-    .state_s = fmt.about("state"),
-    .init_s = fmt.about("init-0"),
-    .main_s = fmt.about("main-1"),
-    .cmdline_s = fmt.about("cmdline-2"),
-    .exec_s = fmt.about("exec-3"),
-    .regen_s = fmt.about("regen-4"),
-    .unknown_s = fmt.about("unknown"),
-    .waiting_s = fmt.about("waiting"),
-    .cmd_args_s = fmt.about("cmd-args"),
-    .run_args_s = fmt.about("run-args"),
-    .build_run_s = fmt.about("build-run"),
-    .build_exe_s = fmt.about("build-exe"),
-    .build_obj_s = fmt.about("build-obj"),
-    .build_lib_s = fmt.about("build-lib"),
-    .state_1_s = fmt.about("state-fault"),
-};
 pub const spec = struct {
     pub const default = .{
         .errors = spec.errors.noexcept,
@@ -3911,7 +3870,6 @@ pub const spec = struct {
             tmp.show_user_input = true;
             tmp.show_task_prep = true;
             tmp.show_arena_index = true;
-            tmp.show_base_memory_usage = true;
             tmp.show_waiting_tasks = true;
             break :blk tmp;
         };
