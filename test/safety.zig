@@ -7,6 +7,13 @@ const safety = switch (version) {
 };
 const just_compile: bool = true;
 const fair_comparison: bool = false;
+pub const signal_handlers = .{
+    .IllegalInstruction = false,
+    .BusError = false,
+    .FloatingPointError = false,
+    .Trap = false,
+    .SegmentationFault = false,
+};
 pub const want_stack_traces: bool = false;
 var rng: zl.file.DeviceRandomBytes(4096) = .{};
 inline fn readOne(comptime T: type) T {
@@ -244,7 +251,7 @@ fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
         .std => @compileError("unavailable"),
     }
 }
-pub fn main() void {
+pub fn main() !void {
     causeAccessInactiveField();
     causeAccessOutOfBounds();
     causeAccessOutOfOrder();
