@@ -188,8 +188,6 @@ noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: 
         zl.file.write(write_spec, 1, many);
         array.stream(many.len);
     }
-    show(status.*);
-    @fence(.SeqCst);
     status.flag = 0;
     zl.proc.futexWake(.{ .errors = .{} }, @volatileCast(&status.flag), 1);
 }
@@ -341,11 +339,13 @@ pub fn main(args: [][*:0]u8) !void {
             };
             status.flag = 255;
             zl.proc.futexWait(.{ .errors = .{} }, &status.flag, 255, &.{ .sec = 86400 });
+            zl.debug.write(array.readManyAt(allocator_1, array.index(allocator_1)));
+            show(status);
         } else {
             writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
                 status.errors +%= 1;
             };
-            zl.debug.write(array.readAll(allocator_1));
+            zl.debug.write(array.readManyAt(allocator_1, array.index(allocator_1)));
             show(status);
         }
     }
