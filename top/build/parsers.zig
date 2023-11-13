@@ -996,7 +996,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-const build_help: [:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    -femit-bin=<string>                     (default=yes) Output machine code
     \\    -fno-emit-bin
     \\    -femit-asm=<string>                     (default=no) Output assembly code (.s)
@@ -1159,7 +1159,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    --format=<tag>          Archive format to create
     \\    --plugin                Ignored for compatibility
     \\    --output=<string>       Extraction target directory
@@ -1177,7 +1177,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    --output-target=<string>
     \\    --only-section=<string>
     \\    --pad-to=<integer>
@@ -1189,7 +1189,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    --color=<tag>           Enable or disable colored error messages
     \\    --stdin                 Format code from stdin; output to stdout
     \\    --check                 List non-conforming files and exit with an error if the list is non-empty

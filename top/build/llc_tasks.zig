@@ -33860,7 +33860,7 @@ pub const LLCCommand = struct {
         }
     }
 };
-const llc_help: [:0]const u8 = 
+const llc_help: [:0]const u8 =
     \\    --aarch64-a57-fp-load-balancing-force-all                               Always modify dest registers regardless of color
     \\    --aarch64-a57-fp-load-balancing-override=<integer>                      Ignore balance information, always return (1: Even, 2: Odd).
     \\    --aarch64-bcc-offset-bits=<integer>                                     Restrict range of Bcc instructions (DEBUG)
