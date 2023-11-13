@@ -1855,7 +1855,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                                 const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1) orelse {
                                     continue;
                                 };
-                                if (mat1.isAnonymous()) {
+                                if (!loader_spec.logging.show_anonymous_symbols and
+                                    mat1.isAnonymous())
+                                {
                                     continue;
                                 }
                                 var diff: usize = ~@as(usize, 0);
@@ -1897,7 +1899,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                                     if (mat2.tag == .unmatched and mat2.isMangled()) {
                                         mat2.tag = .addition;
                                     }
-                                    if (mat2.isAnonymous()) {
+                                    if (!loader_spec.logging.show_anonymous_symbols and
+                                        mat2.isAnonymous())
+                                    {
                                         continue;
                                     }
                                     cmp.sizes[shndx2].sizes_r1.additions +%= sym2.size;
@@ -2028,7 +2032,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         }
                         for (cmp.mats2[shndx].mats, cmp.syms2.?[shndx]) |*mat2, *sym2| {
                             const name2: [:0]u8 = symbolName(ei, symtab_shdr2, sym2, mat2).?;
-                            if (mat2.isAnonymous()) {
+                            if (!loader_spec.logging.show_anonymous_symbols and
+                                mat2.isAnonymous())
+                            {
                                 mat2.flags.is_hidden = true;
                                 continue;
                             }
@@ -2658,7 +2664,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = fmt.BloatDiff.write(ptr + 5, sym1.size, sym2.size);
                 ptr[0..2].* = ", ".*;
                 ptr = writePercentage(ptr + 2, sym2, mat2, sizes);
-                ptr = writeCompoundName(ptr, mat1, name1, mat2, name2);
+                ptr[0..5].* = "name=".*;
+                ptr = writeCompoundName(ptr + 5, mat1, name1, mat2, name2);
                 ptr[0] = '\n';
                 ptr += 1;
                 if (loader_spec.options.verify_lengths) {
