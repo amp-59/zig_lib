@@ -724,7 +724,7 @@ pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), 
 pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.have_stack_traces) {
+    if (builtin.want_stack_traces) {
         printStackTrace(&builtin.trace, ret_addr orelse @returnAddress(), 0);
     }
     @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
