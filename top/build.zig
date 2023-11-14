@@ -157,8 +157,8 @@ pub const BuilderSpec = struct {
         max_cmdline_len: ?usize = 65536,
         /// Assert no command line exceeds this number of individual arguments.
         max_cmdline_args: ?usize = 1024,
-        /// Time slept in nanoseconds between dependency scans.
-        sleep_nanoseconds: usize = 5000000,
+        /// Maximum time between dependency scans.
+        timeout: time.TimeSpec = .{ .sec = 0, .nsec = 50_000_000 },
         /// Time in milliseconds allowed per build node.
         timeout_milliseconds: usize = 1000 * 60 * 60 * 24,
         /// Add run task for all executable build outputs.
@@ -273,8 +273,6 @@ pub const BuilderSpec = struct {
         show_task_prep: bool = false,
         /// Include arena/thread index in task summaries and change of state notices.
         show_arena_index: bool = true,
-        /// Show when tasks have been waiting for a while with a list of blockers.
-        show_waiting_tasks: bool = false,
         /// Never list special nodes among or allow explicit building.
         show_special: bool = false,
         /// Show output paths in task summary.
@@ -324,6 +322,8 @@ pub const BuilderSpec = struct {
         unlink: debug.Logging.SuccessError = .{},
         /// Report `getcwd` Success and Error.
         getcwd: debug.Logging.SuccessError = .{},
+        /// Report `futex` Attempt and Success and Error.
+        futex: debug.Logging.AttemptSuccessAcquireReleaseError = .{},
         /// Report `perf_event_open` Success and Error.
         perf_event_open: debug.Logging.SuccessError = .{},
     };
@@ -374,6 +374,8 @@ pub const BuilderSpec = struct {
         unlink: sys.ErrorPolicy = .{},
         /// Error values for `getcwd` system function.
         getcwd: sys.ErrorPolicy = .{},
+        /// Error values for `fork` system function.
+        futex: sys.ErrorPolicy = .{ .throw = &.{.TIMEDOUT} },
         /// Error values for `perf_event_open` system function.
         perf_event_open: sys.ErrorPolicy = .{},
     };
@@ -439,14 +441,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     };
     const ar_s = fmt.about("ar");
     const fmt_s = fmt.about("fmt");
-
     const init_s = fmt.about("init-0");
     const main_s = fmt.about("main-1");
     const cmdline_s = fmt.about("cmdline-2");
     const exec_s = fmt.about("exec-3");
     const regen_s = fmt.about("regen-4");
-
-    const waiting_s = fmt.about("waiting");
     const cmd_args_s = fmt.about("cmd-args");
     const run_args_s = fmt.about("run-args");
     const build_run_s = fmt.about("build-run");
@@ -472,6 +471,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         dl: *DynamicLoader,
         /// Function pointers for JIT compiled functions.
         fp: *FunctionPointers,
+        /// Task state futex.
+        st: *u32,
+        /// Thread space futex.
+        ts: packed union { futex: *u32, lock: *ThreadSpace },
+        /// Address space futex.
+        as: packed union { futex: *u32, lock: *AddressSpace },
         /// Number of errors since processing user command line.
         errors: usize,
         /// Number of tasks finished.
@@ -710,6 +715,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             lock: Lock,
             /// (Internal)
             lists: Lists,
+            /// Pointer to dependent node.
+            slave: ?*Node,
             /// Pointer to the shared state. May consider storing allocators
             /// and address spaces here to make UX more convenient. It also
             /// saves a number of parameters in many functions.
@@ -914,6 +921,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         if (itr.node == node or node.flags.is_hidden) {
                             continue;
                         }
+                        if (node.slave) |slave| {
+                            if (slave != itr.node) continue;
+                        }
                         if (!builder_spec.logging.show_special and
                             node.flags.is_special)
                         {
@@ -927,10 +937,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             };
             pub const Extra = struct {
                 time: time.TimeSpec,
-
                 dir_fds: ?*DirFds = null,
-                wait: ?*Wait = null,
-
                 execve_res: ExecveResults,
                 perf_events: *PerfEvents,
                 binary_analysis: *BinaryAnalysis,
@@ -1150,7 +1157,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     path.addName(allocator).* = duplicate(allocator, name);
                 }
                 if (builder_spec.logging.show_task_update) {
-                    about.aboutNode(node, null, about.flagTagFromFile(tag), .add_file);
+                    about.aboutNode(node, null, null, .add_file);
                 }
                 return path;
             }
@@ -1182,12 +1189,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn init(allocator: *types.Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                const sh: *Shared = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
                 const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
-                sh.top = node;
-                sh.args = args;
-                sh.vars = vars;
-                node.sh = sh;
+                node.sh = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
+                node.sh.st = @ptrFromInt(allocator.allocateRaw(@sizeOf(usize), @sizeOf(usize)));
+                node.sh.ts.lock = @ptrFromInt(allocator.allocateRaw(@sizeOf(ThreadSpace), @alignOf(ThreadSpace)));
+                node.sh.as.lock = @ptrFromInt(allocator.allocateRaw(@sizeOf(AddressSpace), @alignOf(AddressSpace)));
+                node.sh.top = node;
+                node.sh.args = args;
+                node.sh.vars = vars;
                 node.flags = .{ .is_top = true, .is_group = true };
                 node.addNode(allocator).* = node;
                 node.addPath(allocator, .zig_compiler_exe).addName(allocator).* = mem.terminate(args[1], 0);
@@ -1197,7 +1206,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.name = basename(node.buildRoot());
                 initializeGroup(allocator, node);
                 initializeExtensions(allocator, node);
-                sh.mode = .Main;
+                node.sh.mode = .Main;
                 return node;
             }
             fn basename(pathname: [:0]u8) [:0]u8 {
@@ -1606,7 +1615,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             else
                 builder_spec.options.compiler_cache_hit_status;
         }
-
         inline fn validateUserPath(pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
             var dot_dot: bool = false;
@@ -2106,27 +2114,32 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             arena_index: AddressSpace.Index,
         ) void {
             @setRuntimeSafety(builtin.is_safe);
-            const nodes: []*Node = node.lists.nodes;
-            if (node.flags.is_group) {
-                for (nodes[1..]) |sub_node| {
-                    if (sub_node == node and sub_node.tasks.tag == task) {
-                        continue;
-                    }
-                    if (!keepGoing(node)) return;
-                    if (exchange(sub_node, task, .ready, .blocking, arena_index)) {
-                        tryAcquireThread(address_space, thread_space, allocator, sub_node, task, arena_index);
-                    }
-                }
-            } else {
+            if (node.flags.is_top or !node.flags.is_group) {
                 for (node.lists.depns) |dep| {
-                    if (nodes[dep.node] == node and
+                    if (node.lists.nodes[dep.node] == node and
                         dep.on_task == task or dep.task != task)
                     {
                         continue;
                     }
                     if (!keepGoing(node)) return;
-                    if (exchange(nodes[dep.node], dep.on_task, .ready, .blocking, arena_index)) {
-                        tryAcquireThread(address_space, thread_space, allocator, nodes[dep.node], dep.on_task, arena_index);
+                    if (exchange(node.lists.nodes[dep.node], dep.on_task, .ready, .blocking, arena_index)) {
+                        if (node.lists.nodes[dep.node].slave == null) {
+                            node.lists.nodes[dep.node].slave = node;
+                        }
+                        tryAcquireThread(address_space, thread_space, allocator, node.lists.nodes[dep.node], dep.on_task, arena_index);
+                    }
+                }
+            } else {
+                for (node.lists.nodes[1..]) |sub_node| {
+                    if (sub_node == node and sub_node.tasks.tag == task) {
+                        continue;
+                    }
+                    if (!keepGoing(node)) return;
+                    if (exchange(sub_node, task, .ready, .blocking, arena_index)) {
+                        if (sub_node.slave == null) {
+                            sub_node.slave = node;
+                        }
+                        tryAcquireThread(address_space, thread_space, allocator, sub_node, task, arena_index);
                     }
                 }
             }
@@ -2177,12 +2190,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.flags.do_prepare = false;
             } else {
                 return false;
-            }
-            if (builder_spec.logging.show_waiting_tasks) {
-                node.extra.wait = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node.Wait), 8));
-                if (builder_spec.logging.show_task_update) {
-                    about.aboutNode(node, null, null, .{ .allocate = .wait });
-                }
             }
             if (node.flags.is_group) {
                 return true;
@@ -2306,8 +2313,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builtin.is_safe);
             var allocator: types.Allocator = types.Allocator.fromArena(AddressSpace.arena(arena_index));
             executeCommandDependencies(address_space, thread_space, &allocator, node, task, arena_index);
-            while (keepGoing(node) and waitForNode(node, task, arena_index)) {
-                time.sleep(sleep, .{ .nsec = builder_spec.options.sleep_nanoseconds });
+            while (waitForNode(node, task, arena_index)) {
+                time.sleep(sleep, builder_spec.options.timeout_timespec);
             }
             if (node.lock.get(task) == .working) {
                 if (executeCommand(&allocator, node, task, arena_index)) {
@@ -2333,8 +2340,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builtin.is_safe);
             executeCommandDependencies(address_space, thread_space, allocator, node, task, arena_index);
             const save: usize = allocator.next;
-            while (keepGoing(node) and waitForNode(node, task, arena_index)) {
-                time.sleep(sleep, .{ .nsec = builder_spec.options.sleep_nanoseconds });
+            while (waitForNode(node, task, arena_index)) {
+                time.sleep(sleep, builder_spec.options.timeout_timespec);
             }
             if (node.lock.get(task) == .working) {
                 if (executeCommand(allocator, node, task, arena_index)) {
@@ -2359,9 +2366,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (exchange(node, task, .ready, .blocking, max_thread_count)) {
                 tryAcquireThread(address_space, thread_space, allocator, node, task, max_thread_count);
             }
-            if (max_thread_count != 0) {
+            if (builder_spec.options.max_thread_count != 0) {
                 while (thread_space.count() != 0) {
-                    time.sleep(sleep, .{ .nsec = builder_spec.options.sleep_nanoseconds });
+                    time.sleep(sleep, builder_spec.options.timeout_timespec);
                 }
             }
             return node.lock.get(task) == .finished;
@@ -2541,34 +2548,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         /// periodic scans with sleeping, because the task lock is not a perfect
         /// fit with futexes (u32). Extensions to `ThreadSafeSet` would permit.
         fn waitForNode(node: *Node, task: Task, arena_index: AddressSpace.Index) bool {
-            if (max_thread_count == 0) {
-                return false;
-            }
             @setRuntimeSafety(builtin.is_safe);
-            if (builder_spec.logging.show_waiting_tasks) {
-                if (node.extra.wait) |wait| {
-                    if (wait.total >> 28 > wait.tick) {
-                        about.writeWaitingOn(node, arena_index);
-                        wait.tick +%= 1;
-                    } else {
-                        wait.total +%= builder_spec.options.sleep_nanoseconds;
-                    }
-                }
-            }
             if (node.lock.get(task) == .blocking) {
-                if (testDeps(node, task, .failed) or
-                    testDeps(node, task, .cancelled))
-                {
-                    if (exchange(node, task, .blocking, .failed, arena_index)) {
-                        exchangeDeps(node, task, .ready, .cancelled, arena_index);
-                        exchangeDeps(node, task, .blocking, .cancelled, arena_index);
+                if (node.lists.depns.len != 0) {
+                    if (testDeps(node, task, .failed) or
+                        testDeps(node, task, .cancelled))
+                    {
+                        if (exchange(node, task, .blocking, .failed, arena_index)) {
+                            exchangeDeps(node, task, .ready, .cancelled, arena_index);
+                            exchangeDeps(node, task, .blocking, .cancelled, arena_index);
+                        }
+                        return false;
                     }
-                    return true;
-                }
-                if (testDeps(node, task, .working) or
-                    testDeps(node, task, .blocking))
-                {
-                    return true;
+                    if (testDeps(node, task, .working) or
+                        testDeps(node, task, .blocking))
+                    {
+                        return true;
+                    }
                 }
                 if (keepGoing(node)) {
                     if (!node.flags.is_group) {
@@ -2607,7 +2603,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (old_state == new_state) {
                 return;
             }
-            if (node.lock.atomicExchange(task, old_state, new_state)) {
+            const ret: bool = node.lock.atomicExchange(task, old_state, new_state);
+            if (ret) {
                 if (builder_spec.logging.show_high_level_summary) {
                     if (new_state == .finished) {
                         node.sh.finished +%= 1;
@@ -2621,24 +2618,24 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (builder_spec.logging.show_task_update) {
                     about.noExchangeNotice(node, task, old_state, new_state, arena_index);
                 }
+            }
+            if (!ret) {
                 proc.exitError(error.NoExchange, 2);
             }
         }
         fn testDeps(node: *const Node, task: Task, state: State) bool {
             @setRuntimeSafety(builtin.is_safe);
-            const deps: []Node.Depn = node.lists.depns;
-            const nodes: []*Node = node.lists.nodes;
             if (!node.flags.is_group) {
-                for (deps) |*dep| {
-                    if (nodes[dep.node] == node and dep.on_task == task) {
+                for (node.lists.depns) |*dep| {
+                    if (node.lists.nodes[dep.node] == node and dep.on_task == task) {
                         continue;
                     }
-                    if (nodes[dep.node].lock.get(dep.on_task) == state) {
+                    if (node.lists.nodes[dep.node].lock.get(dep.on_task) == state) {
                         return true;
                     }
                 }
             } else {
-                for (nodes[1..]) |sub_node| {
+                for (node.lists.nodes[1..]) |sub_node| {
                     if (sub_node == node and sub_node.tasks.tag == task) {
                         continue;
                     }
@@ -2811,6 +2808,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (builder_spec.logging.show_high_level_summary) {
                         about.writeErrorsAndFinished(group);
                     }
+                    about.writeAndWalk(allocator, node, .full);
                     break;
                 } else {
                     break;
@@ -2837,30 +2835,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr = fmt.Ud64.write(ptr, group.sh.errors);
                 ptr[0] = '\n';
                 ptr += 1;
-                debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
-            }
-            fn writeWaitingOn(node: *Node, arena_index: AddressSpace.Index) void {
-                @setRuntimeSafety(builtin.is_safe);
-                var buf: [4096]u8 = undefined;
-                buf[0..waiting_s.len].* = waiting_s.*;
-                var ptr: [*]u8 = fmt.strcpyEqu(buf[waiting_s.len..], node.name);
-                if (builder_spec.logging.show_arena_index) {
-                    ptr = about.writeArenaIndex(ptr, arena_index);
-                }
-                ptr[0] = '\n';
-                ptr += 1;
-                for (node.lists.depns) |dep| {
-                    ptr = writeNoExchangeTask(
-                        ptr,
-                        node.lists.nodes[dep.node],
-                        dep.on_task,
-                        node.lists.nodes[dep.node].lock.get(dep.on_task),
-                        dep.on_state,
-                        arena_index,
-                    );
-                    ptr[0] = '\n';
-                    ptr += 1;
-                }
                 debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
             }
             fn exchangeNotice(node: *Node, task: Task, old: State, new: State, arena_index: AddressSpace.Index) void {
@@ -3461,7 +3435,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 disable_flag,
                 simple: []const u8,
                 implicit_depn: *Node,
-                allocate: enum { wait, binary_analysis, perf_events },
+                allocate: enum { binary_analysis, perf_events },
             };
             fn aboutNode(node: *Node, by_spec: ?SpecTag, by_flag: ?FlagTag, event: About) void {
                 @setRuntimeSafety(builtin.is_safe);
@@ -3541,7 +3515,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     },
                     .allocate => |field| {
                         const addr: usize = switch (field) {
-                            .wait => @intFromPtr(node.extra.wait.?),
                             .binary_analysis => @intFromPtr(node.extra.binary_analysis),
                             .perf_events => @intFromPtr(node.extra.perf_events),
                         };
@@ -3814,6 +3787,7 @@ pub const spec = struct {
                 .dup3 = .{ .abort = file.spec.dup.errors.all },
                 .pipe = .{ .abort = file.spec.pipe.errors.all },
                 .fork = .{ .abort = file.spec.fork.errors.all },
+                .futex = .{ .abort = proc.spec.futex.errors.all_timeout },
                 .execve = .{ .abort = file.spec.execve.errors.all },
                 .waitpid = .{ .abort = proc.spec.wait.errors.all },
                 .path = .{ .abort = file.spec.open.errors.all },
@@ -3842,6 +3816,7 @@ pub const spec = struct {
                 .dup3 = .{ .throw = file.spec.dup.errors.all },
                 .pipe = .{ .throw = file.spec.pipe.errors.all },
                 .fork = .{ .throw = file.spec.fork.errors.all },
+                .futex = .{ .throw = proc.spec.futex.errors.all_timeout },
                 .execve = .{ .throw = file.spec.execve.errors.all },
                 .waitpid = .{ .throw = proc.spec.wait.errors.all },
                 .path = .{ .throw = file.spec.open.errors.all },
@@ -3870,7 +3845,6 @@ pub const spec = struct {
             tmp.show_user_input = true;
             tmp.show_task_prep = true;
             tmp.show_arena_index = true;
-            tmp.show_waiting_tasks = true;
             break :blk tmp;
         };
         pub const default: BuilderSpec.Logging = .{
@@ -3879,6 +3853,7 @@ pub const spec = struct {
             .mknod = .{},
             .dup3 = .{},
             .pipe = .{},
+            .futex = .{},
             .fork = .{},
             .execve = .{},
             .waitpid = .{},
