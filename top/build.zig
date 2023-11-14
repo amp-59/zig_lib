@@ -1192,8 +1192,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
                 node.sh = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
                 node.sh.st = @ptrFromInt(allocator.allocateRaw(@sizeOf(usize), @sizeOf(usize)));
-                node.sh.ts.lock = @ptrFromInt(allocator.allocateRaw(@sizeOf(ThreadSpace), @alignOf(ThreadSpace)));
-                node.sh.as.lock = @ptrFromInt(allocator.allocateRaw(@sizeOf(AddressSpace), @alignOf(AddressSpace)));
                 node.sh.top = node;
                 node.sh.args = args;
                 node.sh.vars = vars;
@@ -2314,7 +2312,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var allocator: types.Allocator = types.Allocator.fromArena(AddressSpace.arena(arena_index));
             executeCommandDependencies(address_space, thread_space, &allocator, node, task, arena_index);
             while (waitForNode(node, task, arena_index)) {
-                time.sleep(sleep, builder_spec.options.timeout_timespec);
+                time.sleep(sleep, builder_spec.options.timeout);
             }
             if (node.lock.get(task) == .working) {
                 if (executeCommand(&allocator, node, task, arena_index)) {
@@ -2341,7 +2339,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             executeCommandDependencies(address_space, thread_space, allocator, node, task, arena_index);
             const save: usize = allocator.next;
             while (waitForNode(node, task, arena_index)) {
-                time.sleep(sleep, builder_spec.options.timeout_timespec);
+                time.sleep(sleep, builder_spec.options.timeout);
             }
             if (node.lock.get(task) == .working) {
                 if (executeCommand(allocator, node, task, arena_index)) {
@@ -2368,7 +2366,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             if (builder_spec.options.max_thread_count != 0) {
                 while (thread_space.count() != 0) {
-                    time.sleep(sleep, builder_spec.options.timeout_timespec);
+                    time.sleep(sleep, builder_spec.options.timeout);
                 }
             }
             return node.lock.get(task) == .finished;
