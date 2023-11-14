@@ -1566,6 +1566,10 @@ pub const spec = struct {
                 .ACCES, .AGAIN, .DEADLK, .FAULT, .INTR, .INVAL,    .NFILE,
                 .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH, .TIMEDOUT,
             };
+            pub const all_timeout = &.{
+                .ACCES, .AGAIN, .DEADLK, .FAULT, .INTR, .INVAL, .NFILE,
+                .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH,
+            };
         };
     };
 };
