@@ -8,7 +8,7 @@ _uninstall ()
     local support_dir="$(dirname "$script_realpath")";
     local zig_exe="$(hash -t zig)";
     local zig_real_exe="$(realpath "$zig_exe")";
-    local zig_install_lib_dir="$(dirname "$zig_real_exe")/lib";
+    local zig_install_lib_dir=$(realpath "${1:-"$(dirname "$zig_real_exe")/lib"}");
     local zig_lib_dir="$(dirname "$support_dir")";
     local zig_lib_dir_link="$zig_install_lib_dir/zig_lib";
     local std_build_runner="$zig_install_lib_dir/build_runner.zig";
@@ -42,4 +42,4 @@ _uninstall ()
         return 0;
     fi
 }
-_uninstall;
+_uninstall "$@";

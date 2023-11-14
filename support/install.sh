@@ -8,13 +8,13 @@ _install ()
     local support_dir="$(dirname "$script_realpath")";
     local zig_exe="$(hash -t zig)";
     local zig_real_exe="$(realpath "$zig_exe")";
-    local zig_install_lib_dir="$(dirname "$zig_real_exe")/lib";
+    local zig_install_lib_dir=$(realpath "${1:-"$(dirname "$zig_real_exe")/lib"}");
     local zig_lib_dir="$(dirname "$support_dir")";
     local zig_lib_dir_link="$zig_install_lib_dir/zig_lib";
     local std_build_runner="$zig_install_lib_dir/build_runner.zig";
     local std_build_runner_to="$zig_install_lib_dir/std_build_runner.zig";
     if test -L "$zig_lib_dir_link"; then
-        if test "$zig_lib_dir" -ef $(realpath "$zig_lib_dir_link"); then
+        if test "$zig_lib_dir" -ef "$(realpath "$zig_lib_dir_link")"; then
             if test -f "$std_build_runner_to"; then
                 echo "install:";
                 echo "zl:  ${zig_lib_dir/#$HOME/'~'}";
@@ -23,7 +23,7 @@ _install ()
             fi;
         else
             if test -x "$zig_lib_dir_link/support/uninstall.sh"; then
-                if ! bash "$zig_lib_dir_link/support/uninstall.sh"; then
+                if ! bash "$zig_lib_dir_link/support/uninstall.sh" "$zig_install_lib_dir"; then
                     return 2;
                 fi;
             else
@@ -82,5 +82,5 @@ _install ()
         fi;
     fi
 }
-_install;
+_install "$@";
 
