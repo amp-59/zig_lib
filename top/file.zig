@@ -1641,11 +1641,11 @@ pub fn statusExtended(
         fd, @intFromPtr(pathname.ptr), @bitCast(at), @bitCast(mask), @intFromPtr(st),
     }))) {
         if (logging.Success) {
-            about.aboutDirFdNameStatusExtendedNotice(about.stat_s, fd, pathname, mask, @ptrCast(st));
+            about.aboutDirFdNameStatusExtendedNotice(about.statx_s, fd, pathname, mask, @ptrCast(st));
         }
     } else |stat_error| {
         if (logging.Error) {
-            about.aboutFdError(about.stat_s, @errorName(stat_error), fd);
+            about.aboutFdError(about.statx_s, @errorName(stat_error), fd);
         }
         return stat_error;
     }
@@ -2536,6 +2536,7 @@ pub const about = struct {
     const seek_s: fmt.AboutSrc = fmt.about("seek");
     const sync_s: fmt.AboutSrc = fmt.about("sync");
     const link_s: fmt.AboutSrc = fmt.about("link");
+    const statx_s: fmt.AboutSrc = fmt.about("statx");
     const close_s: fmt.AboutSrc = fmt.about("close");
     const mkdir_s: fmt.AboutSrc = fmt.about("mkdir");
     const mknod_s: fmt.AboutSrc = fmt.about("mknod");
