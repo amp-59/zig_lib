@@ -3548,14 +3548,11 @@ pub const about = struct {
             ptr[0..7].* = ", size=".*;
             ptr = fmt.Bytes.write(ptr + 7, st.size);
         }
-        if (mask.mode) {
-            if (ptr != buf) {
-                ptr[0..2].* = ", ".*;
-                ptr += 2;
-            }
-            ptr = writeMode(ptr, st.mode);
+        if (ptr != buf) {
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
         }
-        return ptr;
+        return writeMode(ptr, st.mode);
     }
     pub fn writeStatus(buf: [*]u8, st: *const Status) [*]u8 {
         @setRuntimeSafety(false);
