@@ -1178,62 +1178,6 @@ pub const STV = enum(u8) {
     HIDDEN = 2,
     PROTECTED = 3,
 };
-pub const LoaderSpec = struct {
-    options: Options = .{},
-    logging: Logging = .{},
-    errors: Errors = .{},
-    AddressSpace: type,
-    pub const Options = struct {
-        /// (.Devel) Commit final writes. Might disable to prefer viewing summary.
-        write_symbols: bool = true,
-        /// (.Devel) Debug output all matches.
-        print_final_summary: bool = false,
-        /// (.Devel) Debug output all matches (version 2).
-        print_final_summary2: bool = false,
-        /// (.Devel) Test whether formatter expected length matches actual
-        /// written length.
-        verify_lengths: bool = false,
-        /// Determines if and how symbols should be sorted.
-        sort: bool = true,
-        const SortingPolicy = enum {
-            /// Only sort symbol table entries if the symbol table entry size
-            /// matches the symbol size. This allows sorting using a generic
-            /// algorithm, and avoids operating over the entire table.
-            ideal,
-            /// Sort symbol table regardless of symbol table entry size.
-            /// This requires a potentially slower algorithm.
-            always,
-            /// Never sort symbol table entries.
-            never,
-        };
-    };
-    pub const Logging = packed struct {
-        show_elf_header: bool = false,
-        show_relocations: bool = false,
-        show_mangled_symbols: bool = true,
-        show_anonymous_symbols: bool = false,
-        show_unchanged_symbols: bool = false,
-        show_insignificant: bool = false,
-        show_insignificant_increases: bool = true,
-        show_insignificant_decreases: bool = true,
-        show_insignificant_additions: bool = true,
-        show_insignificant_deletions: bool = true,
-        open: debug.Logging.AttemptAcquireError = .{},
-        seek: debug.Logging.SuccessError = .{},
-        stat: debug.Logging.SuccessErrorFault = .{},
-        read: debug.Logging.SuccessError = .{},
-        map: debug.Logging.AcquireError = .{},
-        unmap: debug.Logging.ReleaseError = .{},
-        close: debug.Logging.ReleaseError = .{},
-    };
-    pub const Errors = struct {
-        open: sys.ErrorPolicy = .{ .throw = file.spec.open.errors.all },
-        stat: sys.ErrorPolicy = .{ .throw = file.spec.stat.errors.all },
-        map: sys.ErrorPolicy = .{ .throw = mem.spec.mmap.errors.all },
-        unmap: sys.ErrorPolicy = .{ .abort = mem.spec.munmap.errors.all },
-        close: sys.ErrorPolicy = .{ .abort = file.spec.close.errors.all },
-    };
-};
 const Section = enum(u16) {
     @".dynamic" = 0,
     @".symtab" = 1,
@@ -1291,6 +1235,62 @@ const Section = enum(u16) {
             @compileError("incomplete section tag list");
         }
     }
+};
+pub const LoaderSpec = struct {
+    options: Options = .{},
+    logging: Logging = .{},
+    errors: Errors = .{},
+    AddressSpace: type,
+    pub const Options = struct {
+        /// (.Devel) Commit final writes. Might disable to prefer viewing summary.
+        write_symbols: bool = true,
+        /// (.Devel) Debug output all matches.
+        print_final_summary: bool = false,
+        /// (.Devel) Debug output all matches (version 2).
+        print_final_summary2: bool = false,
+        /// (.Devel) Test whether formatter expected length matches actual
+        /// written length.
+        verify_lengths: bool = false,
+        /// Determines if and how symbols should be sorted.
+        sort: bool = true,
+        const SortingPolicy = enum {
+            /// Only sort symbol table entries if the symbol table entry size
+            /// matches the symbol size. This allows sorting using a generic
+            /// algorithm, and avoids operating over the entire table.
+            ideal,
+            /// Sort symbol table regardless of symbol table entry size.
+            /// This requires a potentially slower algorithm.
+            always,
+            /// Never sort symbol table entries.
+            never,
+        };
+    };
+    pub const Logging = packed struct {
+        show_elf_header: bool = false,
+        show_relocations: bool = false,
+        show_mangled_symbols: bool = true,
+        show_anonymous_symbols: bool = false,
+        show_unchanged_symbols: bool = false,
+        show_insignificant: bool = false,
+        show_insignificant_increases: bool = true,
+        show_insignificant_decreases: bool = true,
+        show_insignificant_additions: bool = true,
+        show_insignificant_deletions: bool = true,
+        open: debug.Logging.AttemptAcquireError = .{},
+        seek: debug.Logging.SuccessError = .{},
+        stat: debug.Logging.SuccessErrorFault = .{},
+        read: debug.Logging.SuccessError = .{},
+        map: debug.Logging.AcquireError = .{},
+        unmap: debug.Logging.ReleaseError = .{},
+        close: debug.Logging.ReleaseError = .{},
+    };
+    pub const Errors = struct {
+        open: sys.ErrorPolicy = .{ .throw = file.spec.open.errors.all },
+        stat: sys.ErrorPolicy = .{ .throw = file.spec.stat.errors.all },
+        map: sys.ErrorPolicy = .{ .throw = mem.spec.mmap.errors.all },
+        unmap: sys.ErrorPolicy = .{ .abort = mem.spec.munmap.errors.all },
+        close: sys.ErrorPolicy = .{ .abort = file.spec.close.errors.all },
+    };
 };
 pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
     const map = .{ .logging = loader_spec.logging.map, .errors = loader_spec.errors.map };
