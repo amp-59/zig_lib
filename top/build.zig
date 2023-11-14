@@ -2808,7 +2808,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (builder_spec.logging.show_high_level_summary) {
                         about.writeErrorsAndFinished(group);
                     }
-                    about.writeAndWalk(allocator, node, .full);
                     break;
                 } else {
                     break;
