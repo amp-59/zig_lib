@@ -2210,7 +2210,7 @@ pub const CompoundPath = extern struct {
         const size_of: comptime_int = @sizeOf([:0]const u8);
         const addr_buf: *u64 = @ptrCast(&cp.names);
         const ret: *[:0]const u8 = @ptrFromInt(allocator.addGeneric(size_of, //
-            2, 8, addr_buf, &cp.names_max_len, cp.names_len));
+            8, 2, addr_buf, &cp.names_max_len, cp.names_len));
         cp.names_len +%= 1;
         return ret;
     }
