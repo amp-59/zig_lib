@@ -443,7 +443,7 @@ pub fn resize(comptime resize_spec: RemapSpec, old_addr: usize, old_len: usize, 
 pub fn unmap(comptime unmap_spec: UnmapSpec, addr: usize, len: usize) sys.ErrorUnion(unmap_spec.errors, unmap_spec.return_type) {
     @setRuntimeSafety(builtin.is_safe);
     const logging: debug.Logging.ReleaseError = comptime unmap_spec.logging.override();
-    const ret: isize = asm volatile ("syscall # mmap"
+    const ret: isize = asm volatile ("syscall # munmap"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (@intFromEnum(sys.Fn.munmap)),
           [_] "{rdi}" (addr),
@@ -453,7 +453,7 @@ pub fn unmap(comptime unmap_spec: UnmapSpec, addr: usize, len: usize) sys.ErrorU
     if (unmap_spec.errors.throw.len != 0) {
         builtin.throw(sys.ErrorCode, unmap_spec.errors.throw, ret) catch |munmap_error| {
             if (logging.Error) {
-                about.aboutAddrLenError(about.map_s, @errorName(munmap_error), addr, len);
+                about.aboutAddrLenError(about.unmap_s, @errorName(munmap_error), addr, len);
             }
             return munmap_error;
         };
@@ -461,13 +461,13 @@ pub fn unmap(comptime unmap_spec: UnmapSpec, addr: usize, len: usize) sys.ErrorU
     if (unmap_spec.errors.abort.len != 0) {
         builtin.throw(sys.ErrorCode, unmap_spec.errors.abort, ret) catch |munmap_error| {
             if (logging.Error) {
-                about.aboutAddrLenError(about.map_s, @errorName(munmap_error), addr, len);
+                about.aboutAddrLenError(about.unmap_s, @errorName(munmap_error), addr, len);
             }
             proc.exitError(munmap_error, 2);
         };
     }
     if (logging.Release) {
-        about.aboutAddrLenNotice(about.map_s, addr, len);
+        about.aboutAddrLenNotice(about.unmap_s, addr, len);
     }
     if (unmap_spec.return_type != void) {
         return @intCast(ret);
