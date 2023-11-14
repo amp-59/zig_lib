@@ -48,15 +48,17 @@ pub const signal_handlers = .{
     .SegmentationFault = enable_debugging,
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    var address_space: Builder.AddressSpace = .{};
-    var thread_space: Builder.ThreadSpace = .{};
-    var allocator: zl.build.types.Allocator = zl.build.types.Allocator.fromArena(
-        Builder.AddressSpace.arena(Builder.specification.options.max_thread_count),
-    );
     if (args.len < 5) {
         zl.proc.exitError(error.MissingEnvironmentPaths, 2);
     }
+    var allocator: zl.build.types.Allocator = zl.build.types.Allocator.fromArena(
+        Builder.AddressSpace.arena(Builder.specification.options.max_thread_count),
+    );
+    var address_space: Builder.AddressSpace = .{};
+    var thread_space: Builder.ThreadSpace = .{};
     const top: *Builder.Node = Builder.Node.init(&allocator, args, vars);
+    top.sh.as.lock = &address_space;
+    top.sh.ts.lock = &thread_space;
     try zl.meta.wrap(root.buildMain(&allocator, top));
     try zl.meta.wrap(Builder.processCommands(&address_space, &thread_space, &allocator, top));
     allocator.unmapAll();
