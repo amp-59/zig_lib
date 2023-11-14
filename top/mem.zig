@@ -1592,6 +1592,21 @@ pub const SimpleAllocator = struct {
         }
         return ptr.* +% (size *% len);
     }
+    pub fn allocateAtomic(
+        allocator: *Allocator,
+        size_of: usize,
+        align_of: usize,
+    ) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        const ret: usize = @atomicRmw(usize, &allocator.next, .Add, size_of +% align_of, .SeqCst);
+        if (allocator.next > allocator.finish) {
+            const len: usize = allocator.finish -% allocator.start;
+            const finish: usize = bits.alignA64(allocator.next, @max(4096, len));
+            map(map_spec, .{}, .{}, allocator.finish, finish -% allocator.finish);
+            allocator.finish = finish;
+        }
+        return bits.alignA64(ret, align_of);
+    }
     pub fn allocateRaw(
         allocator: *Allocator,
         size_of: usize,

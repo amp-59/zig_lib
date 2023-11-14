@@ -2208,9 +2208,7 @@ pub const CompoundPath = extern struct {
     pub fn addName(cp: *CompoundPath, allocator: anytype) *[:0]const u8 {
         @setRuntimeSafety(builtin.is_safe);
         const size_of: comptime_int = @sizeOf([:0]const u8);
-        const addr_buf: *u64 = @ptrCast(&cp.names);
-        const ret: *[:0]const u8 = @ptrFromInt(allocator.addGeneric(size_of, //
-            8, 2, addr_buf, &cp.names_max_len, cp.names_len));
+        const ret: *[:0]const u8 = @ptrFromInt(allocator.addGeneric(size_of, 8, 2, @ptrCast(&cp.names), &cp.names_max_len, cp.names_len));
         cp.names_len +%= 1;
         return ret;
     }
