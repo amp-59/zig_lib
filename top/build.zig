@@ -10,6 +10,7 @@ const proc = @import("proc.zig");
 const time = @import("time.zig");
 const trace = @import("trace.zig");
 const debug = @import("debug.zig");
+const cache = @import("cache.zig");
 const builtin = @import("builtin.zig");
 const testing = @import("testing.zig");
 pub const tasks = @import("build/tasks.zig");
@@ -138,6 +139,10 @@ pub const BuilderSpec = struct {
         max_arena_aligned_bytes: usize = 8 * 1024 * 1024 * 1024,
         /// Bytes allowed per thread stack (default=8MiB)
         max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
+        /// Bytes allowed for shallow cache check file buffers (default=1MiB).
+        max_cache_path_aligned_bytes: usize = 1024 * 1024,
+        /// Bytes allowed for shallow cache check file buffers (default=1GiB).
+        max_cache_file_aligned_bytes: usize = 1024 * 1024 * 1024,
         /// Bytes allowed for dynamic metadata sections (default=1TiB)
         max_load_meta_aligned_bytes: usize = 1024 * 1024 * 1024 * 1024,
         /// Bytes allowed for dynamic libraries program segments (default=1TiB)
@@ -282,8 +287,6 @@ pub const BuilderSpec = struct {
         show_high_level_summary: bool = true,
         /// Report `open` Acquire and Error.
         open: debug.Logging.AttemptAcquireError = .{},
-        /// Report `seek` Acquire and Error.
-        seek: debug.Logging.SuccessError = .{},
         /// Report `close` Release and Error.
         close: debug.Logging.ReleaseError = .{},
         /// Report `create` Acquire and Error.
@@ -330,8 +333,6 @@ pub const BuilderSpec = struct {
     pub const Errors = struct {
         /// Error values for `open` system function.
         open: sys.ErrorPolicy = .{},
-        /// Error values for `seek` system function.
-        seek: sys.ErrorPolicy = .{},
         /// Error values for `close` system function.
         close: sys.ErrorPolicy = .{},
         /// Error values for `create` system function.
@@ -469,6 +470,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         extns: *Extensions,
         /// Our dynamic loader.
         dl: *DynamicLoader,
+        /// Our shallow cache.
+        mc: *MirrorCache,
         /// Function pointers for JIT compiled functions.
         fp: *FunctionPointers,
         /// Task state futex.
@@ -557,10 +560,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .{ .lb_addr = load_prog_lb_addr, .up_addr = load_prog_up_addr },
             },
         });
+        pub const CacheSpace = mem.GenericDiscreteAddressSpace(.{
+            .index_type = usize,
+            .label = "$",
+            .list = &[2]mem.Arena{
+                .{ .lb_addr = cache_file_lb_addr, .up_addr = cache_file_up_addr },
+                .{ .lb_addr = cache_path_lb_addr, .up_addr = cache_path_up_addr },
+            },
+        });
         pub const DynamicLoader = elf.GenericDynamicLoader(.{
             .logging = dyn_loader_logging,
             .errors = dyn_loader_errors,
             .AddressSpace = LoaderSpace,
+        });
+        pub const MirrorCache = cache.GenericMirrorCache(.{
+            .logging = cache_logging,
+            .errors = cache_errors,
+            .AddressSpace = CacheSpace,
         });
         pub const PerfEvents = perf.GenericPerfEvents(.{
             .logging = perf_events_logging,
@@ -581,7 +597,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const load_meta_up_addr: comptime_int = load_meta_lb_addr + builder_spec.options.max_load_meta_aligned_bytes;
         const load_prog_lb_addr: comptime_int = bits.alignA64(load_meta_up_addr, 0x100000000000);
         const load_prog_up_addr: comptime_int = load_prog_lb_addr + builder_spec.options.max_load_prog_aligned_bytes;
-        const stack_lb_addr: comptime_int = bits.alignA64(load_prog_up_addr, 0x100000000000);
+        const cache_file_lb_addr: comptime_int = load_prog_up_addr;
+        const cache_file_up_addr: comptime_int = cache_path_lb_addr + builder_spec.options.max_cache_path_aligned_bytes;
+        const cache_path_lb_addr: comptime_int = bits.alignA64(cache_path_up_addr, 0x100000000000);
+        const cache_path_up_addr: comptime_int = cache_file_lb_addr + builder_spec.options.max_cache_file_aligned_bytes;
+        const stack_lb_addr: comptime_int = bits.alignA64(cache_path_up_addr, 0x100000000000);
         const stack_up_addr: comptime_int = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
         const arena_lb_addr: comptime_int = bits.alignA64(stack_up_addr, 0x100000000000);
         const arena_up_addr: comptime_int = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
@@ -637,7 +657,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         };
         const dyn_loader_logging = .{
             .open = builder_spec.logging.open,
-            .seek = builder_spec.logging.seek,
+            .stat = builder_spec.logging.stat,
+            .read = builder_spec.logging.read,
+            .close = builder_spec.logging.close,
+            .map = builder_spec.logging.map,
+            .unmap = builder_spec.logging.unmap,
+        };
+        const cache_errors = .{
+            .open = builder_spec.errors.open,
+            .stat = builder_spec.errors.stat,
+            .close = builder_spec.errors.close,
+            .map = builder_spec.errors.map,
+            .unmap = builder_spec.errors.unmap,
+        };
+        const cache_logging = .{
+            .open = builder_spec.logging.open,
             .stat = builder_spec.logging.stat,
             .read = builder_spec.logging.read,
             .close = builder_spec.logging.close,
@@ -1604,14 +1638,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 else => proc.exitErrorFault(error.InvalidOutput, @tagName(tag), 2),
             });
         }
-        inline fn shallowCacheCheck(file_stats: *Node.FileStats, dest_pathname: [:0]const u8, root_pathname: [:0]const u8) u8 {
-            @setRuntimeSafety(builtin.is_safe);
-            file.statusAt(stat, .{}, file.cwd, dest_pathname, &file_stats.input);
-            file.statusAt(stat, .{}, file.cwd, root_pathname, &file_stats.output);
-            return if (file_stats.input.mtime.sec > file_stats.output.mtime.sec)
-                builder_spec.options.compiler_expected_status
-            else
-                builder_spec.options.compiler_cache_hit_status;
+        inline fn shallowCacheCheck(node: *Node, root_pathname: [:0]const u8) bool {
+            return node.sh.mc.scan(node.buildRoot(), node.buildRootFd(), node.cacheRoot(), root_pathname) catch false;
         }
         inline fn validateUserPath(pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
@@ -1663,6 +1691,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @alignOf(DynamicLoader),
             ));
             top.sh.dl.* = .{};
+            top.sh.mc = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(MirrorCache),
+                @alignOf(MirrorCache),
+            ));
+            top.sh.mc.* = .{};
             top.sh.fp = @ptrFromInt(allocator.allocateRaw(
                 @sizeOf(FunctionPointers),
                 @alignOf(FunctionPointers),
@@ -3771,7 +3804,6 @@ pub const spec = struct {
                 .stat = .{},
                 .unlink = .{},
                 .link = .{},
-                .seek = .{},
                 .getcwd = .{},
                 .perf_event_open = .{},
             };
@@ -3800,7 +3832,6 @@ pub const spec = struct {
                 .close = .{ .abort = file.spec.close.errors.all },
                 .unlink = .{ .abort = file.spec.unlink.errors.all_noent },
                 .link = .{ .abort = file.spec.link.errors.all },
-                .seek = .{ .abort = file.spec.seek.errors.all },
                 .getcwd = .{ .abort = file.spec.getcwd.errors.all },
                 .perf_event_open = .{ .abort = perf.spec.perf_event_open.errors.all },
             };
@@ -3826,7 +3857,6 @@ pub const spec = struct {
                 .mkdir = .{ .throw = file.spec.mkdir.errors.noexcl },
                 .poll = .{ .throw = file.spec.poll.errors.all },
                 .open = .{ .throw = file.spec.open.errors.all },
-                .seek = .{ .throw = file.spec.seek.errors.all },
                 .close = .{ .throw = file.spec.close.errors.all },
                 .getcwd = .{ .throw = file.spec.getcwd.errors.all },
                 .unlink = .{ .throw = file.spec.unlink.errors.all },
