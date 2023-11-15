@@ -163,7 +163,7 @@ pub const BuilderSpec = struct {
         /// Assert no command line exceeds this number of individual arguments.
         max_cmdline_args: ?usize = 1024,
         /// Maximum time between dependency scans.
-        timeout: time.TimeSpec = .{ .sec = 0, .nsec = 50_000_000 },
+        timeout: time.TimeSpec = .{ .sec = 0, .nsec = 5_000_000 },
         /// Time in milliseconds allowed per build node.
         timeout_milliseconds: usize = 1000 * 60 * 60 * 24,
         /// Add run task for all executable build outputs.
@@ -407,7 +407,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const link = .{ .errors = builder_spec.errors.link, .logging = builder_spec.logging.link };
     const pipe = .{ .errors = builder_spec.errors.pipe, .logging = builder_spec.logging.pipe };
     const open = .{ .errors = builder_spec.errors.open, .logging = builder_spec.logging.open };
-    const read = .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
+    const read = .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = usize };
     const dup3 = .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
     const poll = .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
     const clock = .{ .errors = builder_spec.errors.clock };
