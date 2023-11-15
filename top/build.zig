@@ -447,6 +447,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const cmdline_s = fmt.about("cmdline-2");
     const exec_s = fmt.about("exec-3");
     const regen_s = fmt.about("regen-4");
+    const errors_s = fmt.about("errors");
+    const finished_s = fmt.about("finished");
     const cmd_args_s = fmt.about("cmd-args");
     const run_args_s = fmt.about("run-args");
     const build_run_s = fmt.about("build-run");
