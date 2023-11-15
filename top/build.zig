@@ -1640,9 +1640,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 else => proc.exitErrorFault(error.InvalidOutput, @tagName(tag), 2),
             });
         }
-        inline fn shallowCacheCheck(node: *Node, root_pathname: [:0]const u8) bool {
-            return node.sh.mc.scan(node.buildRoot(), node.buildRootFd(), node.cacheRoot(), root_pathname) catch false;
-        }
         inline fn validateUserPath(pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
             var dot_dot: bool = false;
