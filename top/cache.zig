@@ -125,9 +125,7 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
         futex: u32 = 0,
         const MirrorCache = @This();
         pub const lb_path_addr: comptime_int = cache_spec.AddressSpace.arena(0).lb_addr;
-        pub const up_path_addr: comptime_int = cache_spec.AddressSpace.arena(0).up_addr;
         pub const lb_file_addr: comptime_int = cache_spec.AddressSpace.arena(1).lb_addr;
-        pub const up_file_addr: comptime_int = cache_spec.AddressSpace.arena(1).up_addr;
         fn allocatePath(
             cache: *MirrorCache,
             dirname: []const u8,
@@ -239,12 +237,6 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
             cache_root: [:0]const u8,
             root_pathname: [:0]const u8,
         ) !bool {
-            testing.printBufN(4096, .{
-                .build_root = build_root,
-                .build_root_fd = build_root_fd,
-                .cache_root = cache_root,
-                .root_pathname = root_pathname,
-            });
             while (@cmpxchgWeak(u32, &mirror.futex, 0, 1, .SeqCst, .SeqCst)) |val| {
                 proc.futexWait(futex, &mirror.futex, val, &.{ .sec = 10 });
             }
