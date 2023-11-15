@@ -420,6 +420,22 @@ pub fn stringLiteralChar(byte: u8) []const u8 {
         0...8, 11...12, 14...31, 127...255 => 4,
     }];
 }
+pub fn writeStringLiteralChar(ptr: [*]u8, byte: u8) [*]u8 {
+    switch (byte) {
+        32...33, 35...91, 93...126 => {
+            ptr[0..1].* = lit_char[byte][0..1].*;
+            return ptr + 1;
+        },
+        9...10, 13, 34, 92 => {
+            ptr[0..2].* = lit_char[byte][0..2].*;
+            return ptr + 2;
+        },
+        0...8, 11...12, 14...31, 127...255 => {
+            ptr[0..4].* = lit_char[byte][0..4].*;
+            return ptr + 4;
+        },
+    }
+}
 pub const StringLiteralFormat = struct {
     value: []const u8,
     const Format = @This();
@@ -428,7 +444,7 @@ pub const StringLiteralFormat = struct {
         buf[0] = '"';
         var ptr: [*]u8 = buf + 1;
         for (string) |byte| {
-            ptr = strcpyEqu(ptr, stringLiteralChar(byte));
+            ptr = writeStringLiteralChar(ptr, byte);
         }
         ptr[0] = '"';
         return ptr + 1;
