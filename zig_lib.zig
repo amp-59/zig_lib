@@ -17,6 +17,7 @@ pub const time = @import("top/time.zig");
 pub const parse = @import("top/parse.zig");
 pub const start = @import("top/start.zig");
 pub const debug = @import("top/debug.zig");
+pub const cache = @import("top/cache.zig");
 pub const build = @import("top/build.zig");
 pub const trace = @import("top/trace.zig");
 pub const dwarf = @import("top/dwarf.zig");
