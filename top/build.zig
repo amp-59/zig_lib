@@ -3160,6 +3160,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ptr;
             }
+            pub fn checkCache(node: *Node, root_pathname: [:0]const u8) bool {
+                @setRuntimeSafety(builtin.is_safe);
+                if (have_lazy and builtin.output_mode == .Exe) {
+                    if (defined(node.sh.fp.cache.checkCache)) {
+                        return node.sh.fp.cache.checkCache(node, root_pathname);
+                    }
+                    return false;
+                }
+                if (!have_lazy) {
+                    return false;
+                }
+                const build_root: [:0]const u8 = node.buildRoot();
+                return node.sh.mc.scan(node.buildRoot(), node.buildRootFd(), node.cacheRoot(), root_pathname[build_root.len +% 1 ..]) catch false;
+            }
             pub fn aboutTask(allocator: *types.Allocator, node: *Node, task: Task, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builtin.is_safe);
                 if (have_lazy and builtin.output_mode == .Exe) {
