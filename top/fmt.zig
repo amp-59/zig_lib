@@ -413,29 +413,6 @@ const lit_char: [256][*:0]const u8 = .{
     "\\xf0", "\\xf1", "\\xf2", "\\xf3", "\\xf4", "\\xf5", "\\xf6", "\\xf7",
     "\\xf8", "\\xf9", "\\xfa", "\\xfb", "\\xfc", "\\xfd", "\\xfe", "\\xff",
 };
-pub fn stringLiteralChar(byte: u8) []const u8 {
-    return lit_char[byte][0..switch (byte) {
-        32...33, 35...91, 93...126 => 1,
-        9...10, 13, 34, 92 => 2,
-        0...8, 11...12, 14...31, 127...255 => 4,
-    }];
-}
-pub fn writeStringLiteralChar(ptr: [*]u8, byte: u8) [*]u8 {
-    switch (byte) {
-        32...33, 35...91, 93...126 => {
-            ptr[0..1].* = lit_char[byte][0..1].*;
-            return ptr + 1;
-        },
-        9...10, 13, 34, 92 => {
-            ptr[0..2].* = lit_char[byte][0..2].*;
-            return ptr + 2;
-        },
-        0...8, 11...12, 14...31, 127...255 => {
-            ptr[0..4].* = lit_char[byte][0..4].*;
-            return ptr + 4;
-        },
-    }
-}
 pub const StringLiteralFormat = struct {
     value: []const u8,
     const Format = @This();
@@ -444,7 +421,7 @@ pub const StringLiteralFormat = struct {
         buf[0] = '"';
         var ptr: [*]u8 = buf + 1;
         for (string) |byte| {
-            ptr = writeStringLiteralChar(ptr, byte);
+            ptr = writeChar(ptr, byte);
         }
         ptr[0] = '"';
         return ptr + 1;
@@ -453,10 +430,42 @@ pub const StringLiteralFormat = struct {
         @setRuntimeSafety(false);
         var len: usize = 2;
         for (string) |byte| {
-            len +%= stringLiteralChar(byte).len;
+            len +%= lengthChar(byte);
         }
         return len;
     }
+    pub fn writeChar(ptr: [*]u8, byte: u8) [*]u8 {
+        @setRuntimeSafety(false);
+        switch (byte) {
+            32...33, 35...91, 93...126 => {
+                ptr[0..1].* = lit_char[byte][0..1].*;
+                return ptr + 1;
+            },
+            9...10, 13, 34, 92 => {
+                ptr[0..2].* = lit_char[byte][0..2].*;
+                return ptr + 2;
+            },
+            0...8, 11...12, 14...31, 127...255 => {
+                ptr[0..4].* = lit_char[byte][0..4].*;
+                return ptr + 4;
+            },
+        }
+    }
+    pub fn lengthChar(byte: u8) usize {
+        @setRuntimeSafety(false);
+        switch (byte) {
+            32...33, 35...91, 93...126 => {
+                return 1;
+            },
+            9...10, 13, 34, 92 => {
+                return 2;
+            },
+            0...8, 11...12, 14...31, 127...255 => {
+                return 4;
+            },
+        }
+    }
+
     pub usingnamespace Interface(Format);
 };
 pub const SideBarIndexFormat = struct {
@@ -776,13 +785,13 @@ pub fn PathFormat(comptime Path: type) type {
             var ptr: [*]u8 = buf + 1;
             if (path.names_len != 0) {
                 for (path.names[0]) |byte| {
-                    ptr = strcpyEqu(ptr, stringLiteralChar(byte));
+                    ptr = StringLiteralFormat.writeChar(ptr, byte);
                 }
                 for (path.names[1..path.names_len]) |name| {
                     ptr[0] = '/';
                     ptr += 1;
                     for (name) |byte| {
-                        ptr = strcpyEqu(ptr, stringLiteralChar(byte));
+                        ptr = StringLiteralFormat.writeChar(ptr, byte);
                     }
                 }
             }
@@ -794,12 +803,12 @@ pub fn PathFormat(comptime Path: type) type {
             var len: usize = 2;
             if (path.names_len != 0) {
                 for (path.names[0]) |byte| {
-                    len +%= stringLiteralChar(byte).len;
+                    len +%= StringLiteralFormat.lengthChar(byte);
                 }
                 for (path.names[1..path.names_len]) |name| {
                     len +%= 1;
                     for (name) |byte| {
-                        len +%= stringLiteralChar(byte).len;
+                        len +%= StringLiteralFormat.lengthChar(byte);
                     }
                 }
             }
@@ -2020,7 +2029,7 @@ pub inline fn toStringLiteral(comptime str: []const u8) []const u8 {
     comptime {
         var ret: []const u8 = &.{};
         for (str) |byte| {
-            ret = ret ++ stringLiteralChar(byte);
+            ret = ret ++ lit_char[byte];
         }
         return ret;
     }
