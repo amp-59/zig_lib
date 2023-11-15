@@ -2937,8 +2937,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 };
                 const width: usize = fmt.aboutCentre(about_s);
                 const signal: sys.SignalCode = @enumFromInt(node.extra.execve_res.signal);
-                var len: usize = about_s.len;
-                len +%= node.formatLengthNameFull();
+                var len: usize = about_s.len +% 8 +% node.formatLengthNameFull();
                 if (task == .build) {
                     if (builder_spec.logging.show_output_destination and
                         node.extra.execve_res.server ==
@@ -2946,66 +2945,37 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         node.extra.execve_res.server ==
                         builder_spec.options.compiler_expected_status)
                     {
-                        len +%= 4;
-                        len +%= node.lists.paths[0].lengthDisplay();
+                        len +%= 4 +% node.lists.paths[0].lengthDisplay();
                     }
                     if (node.flags.have_task_data) {
-                        len +%= 2;
-                        switch (node.tasks.cmd.build.mode orelse .Debug) {
-                            .Debug => {
-                                len +%= 7;
-                            },
-                            .ReleaseSmall => {
-                                len +%= 14;
-                            },
-                            .ReleaseFast => {
-                                len +%= 13;
-                            },
-                            .ReleaseSafe => {
-                                len +%= 13;
-                            },
+                        len +%= switch (node.tasks.cmd.build.mode orelse .Debug) {
+                            .Debug => 17,
+                            .ReleaseSmall => 24,
+                            .ReleaseFast => 23,
+                            .ReleaseSafe => 23,
+                        };
+                        if (node.hasDebugInfo()) {
+                            len +%= 2;
                         }
-                        if (node.hasDebugInfo()) len +%= 2;
-                        len +%= 8;
                     }
                 }
-                len +%= 7;
                 if (task == .build) {
-                    switch (node.extra.execve_res.server) {
-                        builder_spec.options.compiler_expected_status => {
-                            if (node.flags.is_special) {
-                                len +%= 17;
-                            } else {
-                                len +%= 8;
-                            }
-                        },
-                        builder_spec.options.compiler_cache_hit_status => {
-                            if (node.flags.is_special) {
-                                return 0;
-                            }
-                            len +%= 7;
-                        },
-                        builder_spec.options.compiler_error_status => {
-                            len +%= 7;
-                        },
-                        else => {
-                            len +%= 8;
-                        },
-                    }
+                    len +%= switch (node.extra.execve_res.server) {
+                        builder_spec.options.compiler_expected_status => if (node.flags.is_special) 17 else 8,
+                        builder_spec.options.compiler_cache_hit_status => if (node.flags.is_special) return 0 else 7,
+                        builder_spec.options.compiler_error_status => 7,
+                        else => 8,
+                    };
                     if (node.extra.execve_res.status != 0) {
                         len +%= 1 +% fmt.Ud64.length(node.extra.execve_res.status);
                     }
                     if (node.extra.execve_res.signal != builder_spec.options.system_expected_status) {
-                        len +%= 4;
-                        len +%= @tagName(signal).len;
+                        len +%= 4 +% @tagName(signal).len;
                     }
                     len +%= 1;
                 } else {
                     if (node.extra.execve_res.signal != 0) {
-                        len +%= 1;
-                        len +%= fmt.Ud64.length(node.extra.execve_res.status);
-                        len +%= 4;
-                        len +%= 1;
+                        len +%= 6 +% fmt.Ud64.length(node.extra.execve_res.status);
                     } else {
                         len +%= fmt.Ud64.length(node.extra.execve_res.status);
                     }
@@ -3019,20 +2989,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     {
                         if (node.getFile(.{ .tag = .output_generic })) |output| {
                             if (node.getFile(.{ .tag = .cached_generic })) |cached| {
-                                len +%= 2;
-                                len +%= fmt.BloatDiff.length(output.st.size, cached.st.size);
+                                len +%= 2 +% fmt.BloatDiff.length(output.st.size, cached.st.size);
                             }
                         }
                     }
                 }
                 if (!node.flags.want_perf_events) {
-                    len +%= 2;
-                    len +%= lengthWallTime(node.extra.time.sec);
+                    len +%= 2 +% lengthWallTime(node.extra.time.sec);
                 }
                 if (builder_spec.logging.show_arena_index) {
                     len +%= lengthArenaIndex(arena_index);
                 }
-                len +%= 1;
                 if (have_size and task == .build and
                     node.flags.want_binary_analysis and
                     node.flags.is_primary)
