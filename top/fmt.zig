@@ -509,11 +509,11 @@ fn sigFigMaxLen(comptime T: type, comptime radix: u7) comptime_int {
     var value: if (@bitSizeOf(T) < 8) u8 else @TypeOf(@abs(@as(T, 0))) = 0;
     var len: u16 = 0;
     if (radix != 10) {
-        len += 2;
+        len +%= 2;
     }
     value -%= 1;
     while (value != 0) : (value /= radix) {
-        len += 1;
+        len +%= 1;
     }
     return len;
 }
@@ -542,14 +542,10 @@ pub fn toSymbol(comptime T: type, value: T, comptime radix: u7) u8 {
         return toSymbol(u8, value, radix);
     }
     const result: u8 = @truncate(@rem(value, radix));
-    const dx = .{
-        .d = @as(u8, '9' -% 9),
-        .x = @as(u8, 'f' -% 15),
-    };
     if (radix > 10) {
-        return result +% if (result < 10) dx.d else dx.x;
+        return result +% if (result < 10) @as(u8, '9' -% 9) else @as(u8, 'f' -% 15);
     } else {
-        return result +% dx.d;
+        return result +% @as(u8, '9' -% 9);
     }
 }
 pub const FormatBuf = struct {
