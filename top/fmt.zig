@@ -669,6 +669,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
         }
         pub fn length(value: Int) usize {
+            @setRuntimeSafety(false);
             const abs: Abs = @abs(value);
             var len: usize = 0;
             if (fmt_spec.prefix) |prefix| {
