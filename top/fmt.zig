@@ -465,7 +465,6 @@ pub const StringLiteralFormat = struct {
             },
         }
     }
-
     pub usingnamespace Interface(Format);
 };
 pub const SideBarIndexFormat = struct {
@@ -500,11 +499,9 @@ pub const SideBarSubHeadingFormat = struct {
     }
     pub fn write(buf: [*]u8, width: usize, heading: []const u8) [*]u8 {
         @setRuntimeSafety(false);
-        const rem: usize = builtin.message_indent -% (width +% 1);
-        var ptr: [*]u8 = strsetEqu(buf, ' ', width -| heading.len);
-        ptr = strcpyEqu(ptr, heading);
+        var ptr: [*]u8 = strcpyEqu(strsetEqu(buf, ' ', width -| heading.len), heading);
         ptr[0] = ':';
-        return strsetEqu(ptr + 1, ' ', rem);
+        return strsetEqu(ptr + 1, ' ', builtin.message_indent -% (width +% 1));
     }
 };
 fn sigFigMaxLen(comptime T: type, comptime radix: u7) comptime_int {
