@@ -233,13 +233,13 @@ fn causeMemcpyArgumentsAlias() void {
         .std => @compileError("unavailable"),
     }
 }
-fn causeCastToEnumFromInvalid(comptime Enum: type) void {
+fn causeCastToEnumFromInvalid() void {
     switch (version) {
         .single => safety.panic(.{ .cast_to_enum_from_invalid = Enum }, 16384, @errorReturnTrace(), @returnAddress()),
         .std => @compileError("unavailable"),
     }
 }
-fn causeCastToErrorFromInvalid(comptime Error: type) void {
+fn causeCastToErrorFromInvalid() void {
     switch (version) {
         .single => safety.panic(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress()),
         .std => @compileError("unavailable"),
@@ -251,39 +251,33 @@ fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
         .std => @compileError("unavailable"),
     }
 }
+
+const NonScalar = struct {
+    a: u64,
+    b: u32,
+};
+const Error = error{ A, B, C, D, E };
+const Enum = enum(u16) { A, B, C, D, E = 32768 };
+const ns1 = .{ .a = 1, .b = 2 };
+const ns2 = .{ .a = 3, .b = 4 };
+
 pub fn main() !void {
     causeAccessInactiveField();
     causeAccessOutOfBounds();
     causeAccessOutOfOrder();
     causeSentinelMismatch(u32);
-    causeSentinelMismatch(i32);
+    causeNonScalarSentinelMismatch(NonScalar, ns1, ns2);
 
-    causeNonScalarSentinelMismatch(
-        struct { a: u64, b: u32 },
-        .{ .a = 1, .b = 2 },
-        .{ .a = 3, .b = 4 },
-    );
-    causeNonScalarSentinelMismatch(
-        union(enum) { a: u64, b: u32 },
-        .{ .a = 1 },
-        .{ .b = 4 },
-    );
-
-    if (version == .std or fair_comparison) {
-        return;
-    }
+    if (version == .std or fair_comparison) return;
 
     causeMemcpyArgumentsAlias();
     causeMempcyLengthMismatch();
     causeForLoopLengthMismatch();
-
     causeCastTruncatedBits(u8, u3);
     causeCastToUnsignedFromNegative(i32, u32);
     causeCastToIntFromInvalid(f16, u16);
-
-    causeCastToErrorFromInvalid(error{ A, B, C, D, E });
-    causeCastToEnumFromInvalid(enum(u16) { A, B, C, D, E = 32768 });
-
+    causeCastToErrorFromInvalid();
+    causeCastToEnumFromInvalid();
     causeCastToMisalignedPointer(u32);
     causeAddWithOverflow(u32);
     causeSubWithOverflow(u32);
@@ -291,7 +285,6 @@ pub fn main() !void {
     causeShlWithOverflow(u32);
     causeShrWithOverflow(u32);
     causeRHSOfShiftTooBig(u32);
-
     causeCastToMisalignedPointer(i32);
     causeAddWithOverflow(i32);
     causeSubWithOverflow(i32);
