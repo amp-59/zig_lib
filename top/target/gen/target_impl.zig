@@ -52,7 +52,7 @@ pub fn main() !void {
     inline for (config.arch_names) |pair| {
         array.writeMany("pub const ");
         array.writeFormat(fmt.IdentifierFormat{ .value = pair[0] });
-        array.writeMany("=@import(\"./target/" ++ pair[1][config.primary_dir.len +% 1 ..] ++ "\");\n");
+        array.writeMany("=@import(\"target/" ++ pair[1][config.primary_dir.len +% 1 ..] ++ "\");\n");
     }
     array.writeMany("};\n");
     try gen.truncateFile(.{}, config.toplevel_source_path, array.readAll());
