@@ -109,8 +109,8 @@ pub fn main() void {
             ptr[0] = ',';
             ptr += 1;
         }
-        ptr[0..9].* = ") void {\n".*;
-        ptr += 9;
+        ptr[0..7].* = ")void{\n".*;
+        ptr += 7;
         zl.fmt.print(ptr, &buf);
     }
 }

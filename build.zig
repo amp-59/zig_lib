@@ -85,8 +85,10 @@ pub fn sysgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     sysgen_format_cmd.ast_check = false;
     var impls_build_cmd: zl.build.BuildCommand = build_cmd;
     const flags: *Builder.Node = group.addBuild(allocator, impls_build_cmd, "flags", "top/sys/gen/flags.zig");
+    const fns: *Builder.Node = group.addBuild(allocator, impls_build_cmd, "fns", "top/sys/gen/fns.zig");
     const format: *Builder.Node = group.addFormat(allocator, sysgen_format_cmd, "format", "top/sys");
     flags.descr = "Generate system function option bit field struct definitions";
+    fns.descr = "Generate system function wrapper functions";
     format.addDepn(allocator, .format, flags, .run);
 }
 pub fn buildgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
