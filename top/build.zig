@@ -38,7 +38,7 @@ pub const ExecPhase = enum(u8) {
     /// b) Enable node flags by flag name.
     ///    Examples:
     ///     ;; Request `elfcmp` for new output binaries against existing.
-    ///     `zig build --binary-analysis`
+    ///     `zig build --size`
     ///
     ///     ;; Request `perf` performance counters for task operation.
     ///     `zig build --perf`
