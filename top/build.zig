@@ -64,7 +64,7 @@ pub const ExecPhase = enum(u8) {
     ///     `zig build main --no-gc-sections`
     ///
     ///     ;; Override format task command parameter `ast_check` with `true`.
-    ///     `zig build src
+    ///     `zig build src --ast-check`
     ///
     /// e) Default is `++`. Command line argument used to split command and run
     ///    arguments. (`--` is already taken by `-cflags` to stop parsing commands).
