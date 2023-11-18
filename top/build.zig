@@ -43,7 +43,11 @@ pub const ExecPhase = enum(u8) {
     ///     ;; Request `perf` performance counters for task operation.
     ///     `zig build --perf`
     ///
-    /// c) Set primary command by node name.
+    /// c) Set primary command by node name. If no primary command is given,
+    ///    the builder will list commands for the most specific group resolved.
+    ///     ;; No match on task name, so fall back to listing `g1`.
+    ///     `zig build g1.jkhkhlkhkhlk`
+    ///
     ///     ;; Set the primary command to `main`.
     ///     `zig build main`
     ///
