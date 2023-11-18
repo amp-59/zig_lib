@@ -248,28 +248,6 @@ pub const BuilderSpec = struct {
         init_load_ok: bool = false,
     };
     pub const Logging = packed struct {
-        /// Report exchanges on task lock state:
-        ///     Attempt => When resulting in no change of state.
-        ///     Success => When resulting in change of state.
-        ///     Fault   => When the change of state results in any abort.
-        show_state: debug.Logging.AttemptSuccessFault = .{},
-        /// Report completion of tasks with summary of results:
-        ///     Attempt => When the task was unable to complete due to a
-        ///                dependency.
-        ///     Success => When the task completes without any errors.
-        ///     Error   => When the task completes with errors.
-        show_stats: debug.Logging.SuccessError = .{},
-        ///
-        /// P0: Builder Init.
-        /// P1: Build Main -> Task Init.
-        /// P1: Build Main -> Task Init.
-        /// ...
-        /// P2: User Input
-        /// P3: Task Prep.
-        /// P4: Task Exec.
-        ///
-        /// Provide overview of task node creation.
-        show_task_creation: bool = false,
         /// Enables transcript of task update phase.
         show_task_update: bool = false,
         /// Enables transcript of user input.
@@ -3851,7 +3829,6 @@ pub const spec = struct {
     pub const logging = struct {
         pub const transcript_only = blk: {
             var tmp = spec.logging.silent;
-            tmp.show_task_creation = true;
             tmp.show_task_update = true;
             tmp.show_user_input = true;
             tmp.show_task_prep = true;
