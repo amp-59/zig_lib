@@ -599,7 +599,7 @@ pub fn testLEB() !void {
         }
     }
 }
-pub fn test1() !void {
+fn test1() !void {
     const X = struct {
         x: [25]u8 = .{'a'} ** 25,
         x_len: usize = 0,
@@ -609,7 +609,7 @@ pub fn test1() !void {
     const end: [*]u8 = fmt.AnyFormat(.{}, X).write(&buf, x);
     debug.write(fmt.slice(end, &buf));
 }
-pub fn testChangedBytesFormat() !void {
+fn testChangedBytesFormat() !void {
     var buf: [4096]u8 = undefined;
     comptime var Format = fmt.GenericChangedBytesFormat(.{
         .dec_style = "",
