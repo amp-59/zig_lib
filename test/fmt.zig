@@ -473,16 +473,14 @@ fn testRenderEnum(allocator: *Allocator, array: *Array) !void {
 }
 fn testRenderTypeDescription(allocator: *Allocator, array: *Array) !void {
     testing.announce(@src());
-    try testTypeDescr(allocator, array, comptime TypeDescr.init(packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
+    try testTypeDescr(allocator, array, comptime TypeDescr.init( //
+        packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
     try testTypeDescr(allocator, array, comptime TypeDescr.init(struct { buf: [*]u8, buf_len: usize }));
     try testTypeDescr(allocator, array, comptime TypeDescr.init(struct { buf: []u8, buf_len: usize }));
     try testTypeDescr(allocator, array, comptime TypeDescr.init(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
-    //try testTypeDescr(allocator, array, comptime BigTypeDescr.init(zl));
-    try testTypeDescr(allocator, array, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
     try testTypeDescr(allocator, array, comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no }));
     try testTypeDescr(allocator, array, comptime TypeDescr.init(?union(enum) { yes: ?zl.file.CompoundPath, no }));
-    //try testFormats(allocator, array, td1, td2);
-    //try debug.expectEqualMemory(TypeDescr, td1, td2);
+    try testTypeDescr(allocator, array, comptime BigTypeDescr.init(zl.builtin.Type));
 }
 pub fn testRenderFunctions() !void {
     try mem.map(.{}, .{}, .{}, 0x40000000, 0x40000000);
@@ -638,7 +636,7 @@ pub fn main() !void {
     try testRenderFunctions();
     try testSystemFlagsFormatters();
     try testChangedBytesFormat();
-    //try testIntToStringWithSeparators();
+    try testIntToStringWithSeparators();
     //try testEquivalentIntToStringFormat();
     try @import("fmt/utf8.zig").testUtf8();
     try @import("fmt/ascii.zig").testAscii();
