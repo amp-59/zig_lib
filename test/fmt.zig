@@ -609,6 +609,23 @@ pub fn test1() !void {
     const end: [*]u8 = fmt.AnyFormat(.{}, X).write(&buf, x);
     debug.write(fmt.slice(end, &buf));
 }
+pub fn testChangedBytesFormat() !void {
+    var buf: [4096]u8 = undefined;
+    comptime var Format = fmt.GenericChangedBytesFormat(.{
+        .dec_style = "",
+        .inc_style = "",
+        .no_style = "",
+    });
+    var end: [*]u8 = Format.write(&buf, 2, 3);
+    try testing.expectEqualString("2B(1B) => 3B", fmt.slice(end, &buf));
+    Format = fmt.GenericChangedBytesFormat(.{
+        .dec_style = "-\x1b[92m",
+        .inc_style = "+\x1b[91m",
+        .no_style = "\x1b[0m",
+    });
+    end = Format.write(&buf, 25, 16);
+    try testing.expectEqualString("25B(-\x1b[92m9B\x1b[0m) => 16B", fmt.slice(end, &buf));
+}
 pub fn main() !void {
     meta.refAllDecls(fmt, &.{});
     try testLEB();
@@ -620,6 +637,7 @@ pub fn main() !void {
     try testGenericRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
+    try testChangedBytesFormat();
     //try testIntToStringWithSeparators();
     //try testEquivalentIntToStringFormat();
     try @import("fmt/utf8.zig").testUtf8();
