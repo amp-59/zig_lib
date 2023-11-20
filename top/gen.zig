@@ -111,7 +111,7 @@ pub fn StructEditor(comptime render_spec: fmt.RenderSpec, comptime Value: type) 
                     ptr += field.name.len;
                     ptr[0] = '=';
                     ptr += 1;
-                    ptr += fmt.render(render_spec, @field(t_val, field.name)).formatWriteBuf(ptr);
+                    ptr = fmt.AnyFormat(render_spec, field.type).write(ptr, @field(t_val, field.name));
                     ptr[0..2].* = ";\n".*;
                     ptr += 2;
                     if (commit) {
