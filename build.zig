@@ -132,7 +132,7 @@ pub fn generators(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
     targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
 }
-pub fn userGroup(allocator: *zl.build.Allocator, group: *Node) void {
+pub fn userGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     var user_build_cmd: zl.build.BuildCommand = build_cmd;
     user_build_cmd.modules = &.{};
     user_build_cmd.dependencies = &.{};
@@ -150,35 +150,18 @@ pub fn userGroup(allocator: *zl.build.Allocator, group: *Node) void {
     std_lib_cfg_pkg.descr = "Standard builtin, with build configuration, library package";
     std_lib_pkg.descr = "Standard builtin, without build configuration, with library package";
 }
-pub fn exampleGroup(allocator: *zl.build.Allocator, group: *Node) void {
-    var example_build_cmd: zl.build.BuildCommand = build_cmd;
-    example_build_cmd.mode = .ReleaseSmall;
-    const cp: *Node = group.addBuild(allocator, example_build_cmd, "cp", "examples/cp.zig");
-    const readdir: *Node = group.addBuild(allocator, example_build_cmd, "readdir", "examples/dir_iterator.zig");
-    const dynamic: *Node = group.addBuild(allocator, example_build_cmd, "dynamic", "examples/dynamic_alloc.zig");
-    const @"addrspace": *Node = group.addBuild(allocator, example_build_cmd, "addrspace", "examples/addrspace.zig");
-    const allocators: *Node = group.addBuild(allocator, example_build_cmd, "allocators", "examples/allocators.zig");
-    const mca: *Node = group.addBuild(allocator, example_build_cmd, "mca", "examples/mca.zig");
-    const itos: *Node = group.addBuild(allocator, example_build_cmd, "itos", "examples/itos.zig");
-    const perf: *Node = group.addBuild(allocator, example_build_cmd, "perf", "examples/perf_events.zig");
-    const pathsplit: *Node = group.addBuild(allocator, example_build_cmd, "pathsplit", "examples/pathsplit.zig");
-    const declprint: *Node = group.addBuild(allocator, example_build_cmd, "declprint", "examples/declprint.zig");
-    const buildgen: *Node = group.addBuild(allocator, example_build_cmd, "buildgen", "examples/buildgen.zig");
-    example_build_cmd.mode = .Debug;
-    example_build_cmd.strip = false;
-    cp.descr = "Shows copying from one file system path to another";
-    readdir.descr = "Shows how to iterate directory entries";
-    dynamic.descr = "Shows how to allocate dynamic memory";
-    @"addrspace".descr = "Shows a complex custom address space";
-    allocators.descr = "Shows how to use many allocators";
-    mca.descr = "Example program useful for extracting section from assembly for machine code analysis";
-    buildgen.descr = "Example WIP program for generating builder statements";
-    itos.descr = "Example program useful for converting between a variety of integer formats and bases";
-    perf.descr = "Integrated performance";
-    pathsplit.descr = "Useful for splitting paths into dirnames and basename";
-    declprint.descr = "Useful for printing declarations";
+pub fn exampleGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
+    const imports: *Node = group.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
+    const itos: *Node = group.addBuild(allocator, build_cmd, "itos", "examples/itos.zig");
+    const treez: *Node = group.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
+    const elfcmp: *Node = group.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
+    imports.addToplevelArgs(allocator);
+    treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
+    elfcmp.descr = "Wrapper for ELF size comparison";
+    itos.descr = "Example program for integer base conversion";
+    imports.descr = "List files imported from root";
 }
-pub fn buildRunnerTestGroup(allocator: *zl.build.Allocator, group: *Node) void {
+pub fn buildRunnerTestGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     var test_build_cmd: zl.build.BuildCommand = build_cmd;
     test_build_cmd.strip = false;
     const dynamic_extensions: *Node = group.addBuild(allocator, test_build_cmd, "dynamic_extensions", "test/build/dynamic_extensions.zig");
@@ -232,7 +215,7 @@ pub fn buildRunnerTestGroup(allocator: *zl.build.Allocator, group: *Node) void {
         node.flags.want_builder_decl = true;
     }
 }
-fn regenGroup(allocator: *zl.build.Allocator, group: *Node) void {
+fn regenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     const regen: *Node = group.addBuild(allocator, build_cmd, "rebuild", "top/build/gen/rebuild_impls.zig");
     regen.tasks.cmd.build.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     regen.tasks.cmd.build.dependencies = &.{.{ .name = "@build" }};
@@ -278,15 +261,7 @@ pub fn buildMain(allocator: *zl.build.types.Allocator, toplevel: *Node) void {
     safety.tasks.cmd.build.strip = false;
     traceGroup(allocator, toplevel.addGroupWithTask(allocator, "trace", .build));
     topGroup(allocator, toplevel.addGroupWithTask(allocator, "top", .build));
-    const treez: *Node = toplevel.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
-    const elfcmp: *Node = toplevel.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
-    const itos: *Node = toplevel.addBuild(allocator, build_cmd, "itos", "examples/itos.zig");
-    treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
-    elfcmp.descr = "Wrapper for ELF size comparison";
-    itos.descr = "Example program for integer base conversion";
-    const imports: *Node = toplevel.addBuild(allocator, build_cmd, "imports", "examples/imports.zig");
-    imports.addToplevelArgs(allocator);
-    imports.descr = "List files imported from root";
+    exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "examples", .build));
 }
 pub fn install(b: *@import("std").Build.Builder) void {
     const run_install = b.addSystemCommand(&.{ "bash", zl.builtin.lib_root ++ "/support/install.sh" });
