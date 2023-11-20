@@ -163,6 +163,7 @@ pub fn exampleGroup(allocator: *zl.build.Allocator, group: *Node) void {
     const perf: *Node = group.addBuild(allocator, example_build_cmd, "perf", "examples/perf_events.zig");
     const pathsplit: *Node = group.addBuild(allocator, example_build_cmd, "pathsplit", "examples/pathsplit.zig");
     const declprint: *Node = group.addBuild(allocator, example_build_cmd, "declprint", "examples/declprint.zig");
+    const buildgen: *Node = group.addBuild(allocator, example_build_cmd, "buildgen", "examples/buildgen.zig");
     example_build_cmd.mode = .Debug;
     example_build_cmd.strip = false;
     cp.descr = "Shows copying from one file system path to another";
@@ -171,6 +172,7 @@ pub fn exampleGroup(allocator: *zl.build.Allocator, group: *Node) void {
     @"addrspace".descr = "Shows a complex custom address space";
     allocators.descr = "Shows how to use many allocators";
     mca.descr = "Example program useful for extracting section from assembly for machine code analysis";
+    buildgen.descr = "Example WIP program for generating builder statements";
     itos.descr = "Example program useful for converting between a variety of integer formats and bases";
     perf.descr = "Integrated performance";
     pathsplit.descr = "Useful for splitting paths into dirnames and basename";
