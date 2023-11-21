@@ -49,7 +49,7 @@ pub fn aboutGroupInternal(node: *Builder.Node, cmds: zl.build.tasks.Command) voi
                 switch (sub_node.tasks.tag) {
                     .build => {
                         var cmd_ptr: [*]u8 = &cmd_buf;
-                        BuildComamnd.writeFieldEditDistance(&cmd_buf, "build_cmd", cmds.build, sub_node.tasks.cmd.build, true);
+                        cmd_ptr += BuildComamnd.writeFieldEditDistance(&cmd_buf, "build_cmd", cmds.build, sub_node.tasks.cmd.build, true);
                         cmd_ptr[0..6].* = "const ".*;
                         cmd_ptr += 6;
                         cmd_ptr += sub_node.formatWriteNameFull('_', cmd_ptr);
@@ -79,25 +79,19 @@ pub fn aboutGroupInternal(node: *Builder.Node, cmds: zl.build.tasks.Command) voi
                         }
                     },
                     .format => {
-                        if (sub_node.sh.fp.format.writeFieldEditDistance) |writeFieldEditDistance| {
-                            const name_ptr: [*]u8 = zl.fmt.strcpyMultiEqu(&name_buf, &.{ node.name, "_format_cmd" });
-                            const len: usize = writeFieldEditDistance(&cmd_buf, zl.fmt.slice(name_ptr, &name_buf), cmds.format, sub_node.tasks.cmd.format, true);
-                            zl.debug.write(cmd_buf[0..len]);
-                        }
+                        const name_ptr: [*]u8 = zl.fmt.strcpyMultiEqu(&name_buf, &.{ node.name, "_format_cmd" });
+                        const len: usize = FormatComamnd.writeFieldEditDistance(&cmd_buf, zl.fmt.slice(name_ptr, &name_buf), cmds.format, sub_node.tasks.cmd.format, true);
+                        zl.debug.write(cmd_buf[0..len]);
                     },
                     .objcopy => {
-                        if (sub_node.sh.fp.objcopy.writeFieldEditDistance) |writeFieldEditDistance| {
-                            const name_ptr: [*]u8 = zl.fmt.strcpyMultiEqu(&name_buf, &.{ node.name, "_objcopy_cmd" });
-                            const len: usize = writeFieldEditDistance(&cmd_buf, zl.fmt.slice(name_ptr, &name_buf), cmds.objcopy, sub_node.tasks.cmd.objcopy, true);
-                            zl.debug.write(cmd_buf[0..len]);
-                        }
+                        const name_ptr: [*]u8 = zl.fmt.strcpyMultiEqu(&name_buf, &.{ node.name, "_objcopy_cmd" });
+                        const len: usize = ObjcopyComamnd.writeFieldEditDistance(&cmd_buf, zl.fmt.slice(name_ptr, &name_buf), cmds.objcopy, sub_node.tasks.cmd.objcopy, true);
+                        zl.debug.write(cmd_buf[0..len]);
                     },
                     .archive => {
-                        if (sub_node.sh.fp.archive.writeFieldEditDistance) |writeFieldEditDistance| {
-                            const name_ptr: [*]u8 = zl.fmt.strcpyMultiEqu(&name_buf, &.{ node.name, "_archive_cmd" });
-                            const len: usize = writeFieldEditDistance(&cmd_buf, zl.fmt.slice(name_ptr, &name_buf), cmds.archive, sub_node.tasks.cmd.archive, true);
-                            zl.debug.write(cmd_buf[0..len]);
-                        }
+                        const name_ptr: [*]u8 = zl.fmt.strcpyMultiEqu(&name_buf, &.{ node.name, "_archive_cmd" });
+                        const len: usize = ArchiveComamnd.writeFieldEditDistance(&cmd_buf, zl.fmt.slice(name_ptr, &name_buf), cmds.archive, sub_node.tasks.cmd.archive, true);
+                        zl.debug.write(cmd_buf[0..len]);
                     },
                     else => {},
                 }
