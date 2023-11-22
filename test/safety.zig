@@ -123,94 +123,58 @@ fn causeAccessOutOfOrder() void {
     }
 }
 fn causeMempcyLengthMismatch() void {
-    switch (version) {
-        .single => safety.panic(.memcpy_argument_lengths_mismatched, .{ .src_len = 16384, .dest_len = 32768 }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.memcpy_argument_lengths_mismatched, .{ .src_len = 16384, .dest_len = 32768 }, @errorReturnTrace(), @returnAddress());
 }
 fn causeForLoopLengthMismatch() void {
-    switch (version) {
-        .single => safety.panic(.for_loop_capture_lengths_mismatched, .{ .prev_index = 2, .prev_len = 32768, .next_len = 16384 }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.for_loop_capture_lengths_mismatched, .{ .prev_index = 2, .prev_len = 32768, .next_len = 16384 }, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToMisalignedPointer(comptime T: type) void {
     const alignment: usize = @as(usize, 1) << @max(2, readOne(u4));
     const address: usize = intWillBeMisaligned(usize, alignment);
-    switch (version) {
-        .single => safety.panic(.{ .cast_to_pointer_from_invalid = T }, address, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .cast_to_pointer_from_invalid = T }, address, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastTruncatedBits(comptime From: type, comptime To: type) void {
     const x = zl.math.extrema(From);
-    switch (version) {
-        .single => safety.panic(.{ .cast_truncated_data = .{ .from = From, .to = To } }, x.max, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .cast_truncated_data = .{ .from = From, .to = To } }, x.max, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToUnsignedFromNegative(comptime From: type, comptime To: type) void {
     const x = zl.math.extrema(From);
-    switch (version) {
-        .single => safety.panic(.{ .cast_to_unsigned_from_negative = .{ .from = From, .to = To } }, x.min, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .cast_to_unsigned_from_negative = .{ .from = From, .to = To } }, x.min, @errorReturnTrace(), @returnAddress());
 }
 fn causeAddWithOverflow(comptime T: type) void {
     var a: T = readOne(T);
     const b: T = intAddWillOverflow(T, &a);
-    switch (version) {
-        .single => safety.panic(.{ .add_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .add_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
 }
 fn causeSubWithOverflow(comptime T: type) void {
     var a: T = readOne(T);
     const b: T = intSubWillOverflow(T, &a);
-    switch (version) {
-        .single => safety.panic(.{ .sub_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .sub_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
 }
 fn causeMulWithOverflow(comptime T: type) void {
     var a: T = readOne(T);
     const b: T = intMulWillOverflow(T, &a);
-    switch (version) {
-        .single => safety.panic(.{ .mul_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .mul_overflowed = T }, .{ .lhs = a, .rhs = b }, @errorReturnTrace(), @returnAddress());
 }
 fn causeShlWithOverflow(comptime T: type) void {
     var x = readOne(T);
     const y = shlWillShiftOutBits(T, &x);
-    switch (version) {
-        .single => safety.panic(.{ .shl_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .shl_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
 }
 fn causeRHSOfShiftTooBig(comptime T: type) void {
     var x = readOne(T);
     const y = shrWillShiftOutBits(T, &x);
-    switch (version) {
-        .single => safety.panic(.{ .shift_amt_overflowed = T }, .{ .bit_count = @bitSizeOf(T) + 1, .shift_amt = y }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .shift_amt_overflowed = T }, .{ .bit_count = @bitSizeOf(T) + 1, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
 }
 fn causeShrWithOverflow(comptime T: type) void {
     var x = readOne(T);
     const y = shrWillShiftOutBits(T, &x);
-    switch (version) {
-        .single => safety.panic(.{ .shr_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .shr_overflowed = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
 }
 fn causeDivWithRemainder(comptime T: type) void {
     var x = zl.math.extrema(T);
     const y = divWillBeInexact(T, &x);
-    switch (version) {
-        .single => safety.panic(.{ .div_with_remainder = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .div_with_remainder = T }, .{ .value = x, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
 }
 fn causeSentinelMismatch(comptime T: type) void {
     const expected: T = readOne(T);
@@ -227,28 +191,16 @@ fn causeNonScalarSentinelMismatch(comptime T: type, expected: T, found: T) void 
 }
 fn causeMemcpyArgumentsAlias() void {
     const data = .{ .dest_start = 0x40000000, .dest_len = 0x1000000, .src_start = 0x40500000, .src_len = 0x500000 };
-    switch (version) {
-        .single => safety.panic(.memcpy_argument_aliasing, data, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.memcpy_argument_aliasing, data, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToEnumFromInvalid() void {
-    switch (version) {
-        .single => safety.panic(.{ .cast_to_enum_from_invalid = Enum }, 16384, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .cast_to_enum_from_invalid = Enum }, 16384, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToErrorFromInvalid() void {
-    switch (version) {
-        .single => safety.panic(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
-    switch (version) {
-        .single => safety.panic(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 10.0, @errorReturnTrace(), @returnAddress()),
-        .std => @compileError("unavailable"),
-    }
+    safety.panic(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 10.0, @errorReturnTrace(), @returnAddress());
 }
 
 const NonScalar = struct {
@@ -256,7 +208,7 @@ const NonScalar = struct {
     b: u32,
 };
 const Error = error{ A, B, C, D, E };
-const Enum = enum(u16) { A, B, C, D, E = 32768 };
+const Enum = enum(u16) { a, b, c, d, e = 32768 };
 const ns1 = .{ .a = 1, .b = 2 };
 const ns2 = .{ .a = 3, .b = 4 };
 
