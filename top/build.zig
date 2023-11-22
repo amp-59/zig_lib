@@ -375,15 +375,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     // Enables `objcopy` tasks
     comptime var have_objcopy: bool = false;
     // Enables lazy features.
-    comptime var have_lazy: bool = builder_spec.options.extensions_policy == .emergency;
+    const have_lazy: bool = builder_spec.options.extensions_policy == .emergency;
     // Enables --list command line option.
-    comptime var have_list: bool = builder_spec.options.list_command != null;
+    const have_list: bool = builder_spec.options.list_command != null;
     // Enables --perf command line option.
-    comptime var have_perf: bool = builder_spec.options.perf_command != null;
+    const have_perf: bool = builder_spec.options.perf_command != null;
     // Enables --size command line option.
-    comptime var have_size: bool = builder_spec.options.size_command != null;
+    const have_size: bool = builder_spec.options.size_command != null;
     // Enables --trace command line option.
-    comptime var have_trace: bool = builder_spec.options.trace_command != null;
+    const have_trace: bool = builder_spec.options.trace_command != null;
     const map = .{ .errors = builder_spec.errors.map, .logging = builder_spec.logging.map };
     const stat = .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
     const link = .{ .errors = builder_spec.errors.link, .logging = builder_spec.logging.link };
