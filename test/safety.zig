@@ -97,10 +97,9 @@ fn shlWillShiftOutBits(comptime T: type, val: *T) zl.builtin.ShiftAmount(T) {
     return @intCast(min_shift_amt +% (@bitSizeOf(T) -| min_shift_amt) / 2);
 }
 fn causeAccessInactiveField() void {
-    const E = enum { a, b };
     switch (version) {
         .single => safety.panic(.accessed_inactive_field, .{ .expected = "a", .found = "b" }, @errorReturnTrace(), @returnAddress()),
-        .std => safety.panicInactiveUnionField(E.a, E.b),
+        .std => safety.panicInactiveUnionField(Enum.a, Enum.b),
     }
 }
 fn causeAccessOutOfBounds() void {
