@@ -241,6 +241,7 @@ fn topGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     group.addBuild(allocator, build_cmd, "mem2", "test/mem2.zig").descr = "Test version 2 memory implementation";
     group.addBuild(allocator, build_cmd, "x86", "test/x86.zig").descr = "Test x86 assembler and disassembler";
     group.addBuild(allocator, build_cmd, "rng", "test/rng.zig").descr = "Test crytpo-RNG";
+    group.addBuild(allocator, build_cmd, "crypto", "test/crypto.zig").descr = "Test crypto namespace (refAllDecls)";
     group.addBuild(allocator, build_cmd, "ecdsa", "test/crypto/ecdsa.zig").descr = "Test ECDSA";
     group.addBuild(allocator, build_cmd, "aead", "test/crypto/aead.zig").descr = "Test authenticated encryption functions and types";
     group.addBuild(allocator, build_cmd, "auth", "test/crypto/auth.zig").descr = "Test authentication";
