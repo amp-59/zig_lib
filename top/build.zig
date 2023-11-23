@@ -237,6 +237,8 @@ pub const BuilderSpec = struct {
         aux_out_dir: [:0]const u8 = "aux",
         /// Use library traces for compile error messages.
         trace_compile_errors: bool = true,
+        /// (Devel.) Enable shallow cache, using `GenericMirrorCache`
+        enable_builder_cache: bool = false,
         /// (Devel.) Exclude `writeErrors` from dynamic extensions.
         eager_compile_errors: bool = false,
         /// (Devel.) Start dependencies in new threads regardless of
@@ -452,6 +454,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         lib: *Node,
         /// Builder dynamic extensions.
         extns: *Extensions,
+        // The intentional obscurity of the field names is weakened by the
+        // documentation comments.
         /// Our dynamic loader.
         dl: *DynamicLoader,
         /// Our shallow cache.
@@ -3144,6 +3148,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn checkCache(node: *Node, root_pathname: [:0]const u8) bool {
                 @setRuntimeSafety(builtin.is_safe);
+                if (!builder_spec.options.enable_builder_cache) {
+                    return false;
+                }
                 if (have_lazy and builtin.output_mode == .Exe) {
                     if (defined(node.sh.fp.cache.checkCache)) {
                         return node.sh.fp.cache.checkCache(node, root_pathname);
