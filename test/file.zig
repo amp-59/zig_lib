@@ -394,8 +394,7 @@ fn testReadWrite2() !void {
     const len: usize = try file.read2(read2_spec, .{ .high_priority = true }, fd, @ptrCast(&buf), 0);
     try debug.expectEqual(usize, 5, len);
 }
-pub fn main(args: [][*:0]u8) !void {
-    _ = args;
+pub fn main() !void {
     meta.refAllDecls(zl.file, &.{});
     try meta.wrap(testPreClean());
     try meta.wrap(testBasicDirectoryIterator());
