@@ -156,14 +156,17 @@ pub fn exampleGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     const treez: *Node = group.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
     const elfcmp: *Node = group.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
     const buildgen: *Node = group.addBuild(allocator, build_cmd, "buildgen", "examples/buildgen.zig");
+    const declprint: *Node = group.addBuild(allocator, build_cmd, "declprint", "examples/declprint.zig");
 
     imports.addToplevelArgs(allocator);
     buildgen.addToplevelArgs(allocator);
+
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     elfcmp.descr = "Wrapper for ELF size comparison";
     itos.descr = "Example program for integer base conversion";
     imports.descr = "List files imported from root";
     buildgen.descr = "Example WIP program for generating builder statements";
+    declprint.descr = "Print declarations (large)";
 }
 pub fn buildRunnerTestGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     var test_build_cmd: zl.build.BuildCommand = build_cmd;
