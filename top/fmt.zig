@@ -1387,9 +1387,8 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
                 ptr = UpperChangedIntFormat.writeDelta(ptr, old_upper, new_upper);
             }
             ptr[0] = '}';
-            ptr += 1;
-            ptr[0..4].* = " => ".*;
-            ptr += 4;
+            ptr[1..5].* = " => ".*;
+            ptr += 5;
             idx = 0;
             while (idx != nl_len) : (idx +%= 1) {
                 if (nu_buf[idx] != nl_buf[idx]) {
@@ -1400,11 +1399,9 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             ptr[0] = '{';
             ptr += 1;
             @memset(ptr[0 .. nu_len -% nl_len], '0');
-            ptr += nu_len -% nl_len;
-            ptr = strcpyEqu(ptr, nl_buf[idx..nl_len]);
+            ptr = strcpyEqu(ptr + (nu_len -% nl_len), nl_buf[idx..nl_len]);
             ptr[0..2].* = "..".*;
-            ptr += 2;
-            ptr = strcpyEqu(ptr, nu_buf[idx..nu_len]);
+            ptr = strcpyEqu(ptr + 2, nu_buf[idx..nu_len]);
             ptr[0] = '}';
             return ptr + 1;
         }
@@ -1427,7 +1424,7 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             const ou_len: usize = strlen(ou_end, &ou_buf);
             const nl_len: usize = strlen(nl_end, &nl_buf);
             const nu_len: usize = strlen(nu_end, &nu_buf);
-            var idx: usize = 0;
+            var idx: usize = 3;
             while (idx != ol_len) : (idx +%= 1) {
                 if (ou_buf[idx] != ol_buf[idx]) {
                     break;
@@ -1439,24 +1436,21 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             if (old_lower != new_lower) {
                 len +%= LowerChangedIntFormat.lengthDelta(old_lower, new_lower);
             }
-            len +%= 2;
             len +%= ou_len -% idx;
             if (old_upper != new_upper) {
                 len +%= UpperChangedIntFormat.lengthDelta(old_upper, new_upper);
             }
-            len +%= 5;
+            len +%= 7;
             idx = 0;
             while (idx != ol_len) : (idx +%= 1) {
                 if (nu_buf[idx] != nl_buf[idx]) {
                     break;
                 }
             }
-            len +%= idx +% 1;
-            len +%= nu_len -% nl_len;
-            len +%= nl_len -% idx;
-            len +%= 2;
-            len +%= nu_len -% idx;
-            len +%= 1;
+            len +%= idx;
+            len +%= (nu_len -% nl_len);
+            len +%= (nl_len -% idx);
+            len +%= (nu_len -% idx);
             return len;
         }
         pub fn init(
@@ -3348,11 +3342,13 @@ pub fn EnumFormat(comptime Enum: type) type {
         const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: ?comptime_int = null;
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
+            if (type_info.Enum.is_exhaustive) {}
             return strcpyEqu(buf, switch (value) {
                 inline else => |tag| comptime fieldTagName(@tagName(tag)),
             });
         }
         pub fn length(value: anytype) usize {
+            if (type_info.Enum.is_exhaustive) {}
             return switch (value) {
                 inline else => |tag| comptime fieldTagName(@tagName(tag)).len,
             };
