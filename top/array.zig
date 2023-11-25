@@ -635,6 +635,11 @@ pub const reinterpret = opaque {
         if (child != u8) {
             @compileError("invalid destination type for format write: " ++ @typeName(child));
         }
+        if (@typeInfo(Format) == .Pointer and
+            @typeInfo(Format).Pointer.size == .One)
+        {
+            return writeFormat(child, memory, format.*);
+        }
         if (@hasDecl(Format, "readAll") and
             @hasDecl(Format, "len"))
         {
@@ -668,7 +673,7 @@ pub const reinterpret = opaque {
             format.formatWrite(memory);
         }
     }
-    fn formatLengthFault(format_type_name: []const u8, operator_symbol: anytype, s_len: u64, t_len: u64) noreturn {
+    fn formatLengthFault(format_type_name: []const u8, operator_symbol: anytype, s_len: usize, t_len: usize) noreturn {
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
         var ud64: fmt.Ud64 = .{ .value = t_len };
@@ -695,7 +700,7 @@ pub const reinterpret = opaque {
         const src_type: type = @TypeOf(any);
         const dst_type_info: builtin.Type = @typeInfo(dst_type);
         const src_type_info: builtin.Type = @typeInfo(src_type);
-        if (comptime write_spec.integral.over_size) {
+        if (write_spec.integral.over_size) {
             if (dst_type_info == .Int and
                 src_type_info == .Int and src_type_info.Int.bits > dst_type_info.Int.bits)
             {
@@ -707,7 +712,7 @@ pub const reinterpret = opaque {
                 return 1;
             }
         }
-        if (comptime write_spec.integral.under_size) {
+        if (write_spec.integral.under_size) {
             if (dst_type_info == .Int and
                 src_type_info == .Int and src_type_info.Int.bits < dst_type_info.Int.bits or
                 dst_type_info == .Float and
@@ -716,61 +721,61 @@ pub const reinterpret = opaque {
                 return 1;
             }
         }
-        if (comptime write_spec.integral.comptime_int) {
+        if (write_spec.integral.comptime_int) {
             if (dst_type_info == .Int and
                 src_type_info == .ComptimeInt)
             {
                 return 1;
             }
         }
-        if (comptime write_spec.integral.comptime_float) {
+        if (write_spec.integral.comptime_float) {
             if (dst_type_info == .Float and
                 src_type_info == .ComptimeFloat)
             {
                 return 1;
             }
         }
-        if (comptime write_spec.integral.float) {
+        if (write_spec.integral.float) {
             if (dst_type_info == .Int and
                 src_type_info == .Float)
             {
                 return 1;
             }
         }
-        if (comptime write_spec.integral.int) {
+        if (write_spec.integral.int) {
             if (dst_type_info == .Float and
                 src_type_info == .Int)
             {
                 return 1;
             }
         }
-        if (comptime dst_type == src_type or
+        if (dst_type == src_type or
             isEquivalent(child, write_spec, dst_type, src_type))
         {
             return 1;
         }
-        if (comptime write_spec.composite.map) |map| {
+        if (write_spec.composite.map) |map| {
             inline for (map) |kv| {
                 if (comptime src_type == kv.in) {
                     return lengthAny(child, write_spec, kv.out{ .value = any });
                 }
             }
         }
-        if (comptime write_spec.reference.coerce.many) {
+        if (write_spec.reference.coerce.many) {
             if (src_type_info == .Pointer and
                 src_type_info.Pointer.size == .Many)
             {
                 return lengthAny(child, write_spec, meta.manyToSlice(any));
             }
         }
-        if (comptime write_spec.reference.dereference) |write_spec_ptr| {
+        if (write_spec.reference.dereference) |write_spec_ptr| {
             if (src_type_info == .Pointer and
                 src_type_info.Pointer.size == .Slice)
             {
                 if (comptime isEquivalent(child, write_spec, dst_type, src_type_info.Pointer.child)) {
                     return any.len;
                 }
-                var len: u64 = 0;
+                var len: usize = 0;
                 for (any) |value| {
                     len += lengthAny(child, write_spec_ptr.*, value);
                 }
@@ -782,19 +787,19 @@ pub const reinterpret = opaque {
                 return lengthAny(child, write_spec_ptr.*, any.*);
             }
         }
-        if (comptime write_spec.aggregate.copy) {
+        if (write_spec.aggregate.copy) {
             if (src_type_info == .Array) {
                 if (comptime isEquivalent(child, write_spec, dst_type, src_type_info.Array.child)) {
                     return any.len;
                 }
-                var len: u64 = 0;
+                var len: usize = 0;
                 for (any) |value| {
                     len += lengthAny(child, write_spec, value);
                 }
                 return len;
             }
         }
-        if (comptime write_spec.composite.iterate) {
+        if (write_spec.composite.iterate) {
             if (src_type_info == .Struct and src_type_info.Struct.is_tuple) {
                 return lengthArgs(child, write_spec, any);
             }
@@ -802,31 +807,31 @@ pub const reinterpret = opaque {
                 return lengthFields(child, write_spec, any);
             }
         }
-        if (comptime write_spec.composite.format) {
+        if (write_spec.composite.format) {
             if (src_type_info == .Struct and !src_type_info.Struct.is_tuple) {
                 return lengthFormat(child, any);
             }
         }
-        if (comptime write_spec.symbol.type_name) {
+        if (write_spec.symbol.type_name) {
             if (src_type_info == .Type and dst_type == u8) {
                 return @typeName(any).len;
             }
         }
-        if (comptime write_spec.symbol.tag_name) {
+        if (write_spec.symbol.tag_name) {
             if (src_type_info == .EnumLiteral and dst_type == u8) {
                 return @tagName(any).len;
             }
             if (src_type_info == .Enum and dst_type == u8) {
-                var len: u64 = 0;
+                var len: usize = 0;
                 inline for (src_type_info.Enum.fields) |field| {
                     len = @max(len, field.name.len);
                 }
                 return len;
             }
         }
-        if (comptime write_spec.symbol.error_name) {
+        if (write_spec.symbol.error_name) {
             if (src_type_info == .ErrorSet and dst_type == u8) {
-                var len: u64 = 0;
+                var len: usize = 0;
                 inline for (src_type_info.ErrorSet.?) |e| {
                     len = @max(len, e.name.len);
                 }
@@ -855,22 +860,22 @@ pub const reinterpret = opaque {
         }
         return format.formatLength();
     }
-    pub fn lengthFields(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) u64 {
-        var len: u64 = 0;
+    pub fn lengthFields(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) usize {
+        var len: usize = 0;
         inline for (@typeInfo(@TypeOf(args)).Struct.fields) |field| {
             len += lengthAny(child, write_spec, @field(args, field.name));
         }
         return len;
     }
-    pub fn lengthArgs(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) u64 {
-        var len: u64 = 0;
+    pub fn lengthArgs(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) usize {
+        var len: usize = 0;
         inline for (args) |arg| {
             len += lengthAny(child, write_spec, arg);
         }
         return len;
     }
 };
-fn highAlignment(comptime Specification: type, comptime specification: Specification) u64 {
+fn highAlignment(comptime Specification: type, comptime specification: Specification) usize {
     _ = specification;
     if (@hasField(Specification, "high_alignment")) {
         return spec.high_alignment;
@@ -885,7 +890,7 @@ fn highAlignment(comptime Specification: type, comptime specification: Specifica
         ": no high address alignment, child size, or low " ++
         "addess alignment defined in container parameters");
 }
-fn lowAlignment(comptime Specification: type, comptime specification: Specification) u64 {
+fn lowAlignment(comptime Specification: type, comptime specification: Specification) usize {
     _ = specification;
     if (spec.low_alignment) |low_alignment| {
         return low_alignment;
@@ -900,7 +905,7 @@ fn lowAlignment(comptime Specification: type, comptime specification: Specificat
         ": no low address alignment, child size, or high " ++
         "addess alignment defined in container parameters");
 }
-fn unitAlignment(comptime Specification: type, comptime specification: Specification) u64 {
+fn unitAlignment(comptime Specification: type, comptime specification: Specification) usize {
     _ = specification;
     if (@hasDecl(spec.Allocator, "allocator_spec")) {
         const AllocatorSpec: type = @TypeOf(spec.Allocator.specification);
@@ -919,7 +924,7 @@ fn unitAlignment(comptime Specification: type, comptime specification: Specifica
         ": no unit aligment defined in Allocator declarations, " ++
         "specification, or specification options");
 }
-fn arenaIndex(comptime Specification: type, comptime specification: Specification) ?u64 {
+fn arenaIndex(comptime Specification: type, comptime specification: Specification) ?usize {
     _ = specification;
     const Parameters = @TypeOf(spec);
     if (@hasField(Parameters, "Allocator")) {
@@ -940,7 +945,7 @@ fn arenaIndex(comptime Specification: type, comptime specification: Specificatio
 }
 fn GenericParameters(comptime Parameters: type) type {
     return struct {
-        pub fn highAlignment(comptime params: Parameters) u64 {
+        pub fn highAlignment(comptime params: Parameters) usize {
             if (@hasField(Parameters, "high_alignment")) {
                 return params.high_alignment;
             }
@@ -954,7 +959,7 @@ fn GenericParameters(comptime Parameters: type) type {
                 ": no high address alignment, child size, or low " ++
                 "addess alignment defined in container parameters");
         }
-        pub fn lowAlignment(comptime params: Parameters) u64 {
+        pub fn lowAlignment(comptime params: Parameters) usize {
             if (params.low_alignment) |low_alignment| {
                 return low_alignment;
             }
@@ -968,7 +973,7 @@ fn GenericParameters(comptime Parameters: type) type {
                 ": no low address alignment, child size, or high " ++
                 "addess alignment defined in container parameters");
         }
-        pub fn unitAlignment(comptime params: Parameters) u64 {
+        pub fn unitAlignment(comptime params: Parameters) usize {
             if (@hasDecl(params.Allocator, "allocator_spec")) {
                 const AllocatorSpec: type = @TypeOf(params.Allocator.specification);
                 if (@hasField(AllocatorSpec, "unit_alignment")) {
@@ -986,7 +991,7 @@ fn GenericParameters(comptime Parameters: type) type {
                 ": no unit aligment defined in Allocator declarations, " ++
                 "specification, or specification options");
         }
-        pub fn arenaIndex(comptime params: Parameters) ?u64 {
+        pub fn arenaIndex(comptime params: Parameters) ?usize {
             if (params.Allocator == void) {
                 return null;
             }
