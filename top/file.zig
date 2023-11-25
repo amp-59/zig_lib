@@ -2175,29 +2175,6 @@ fn setTerminalAttributes() void {}
 pub fn readRandom(buf: []u8) !void {
     return sys.call(.getrandom, .{ .throw = spec.getrandom.errors.all }, void, .{ @intFromPtr(buf.ptr), buf.len, sys.GRND.RANDOM });
 }
-pub const DirStreamSpec = struct {
-    Allocator: type,
-    errors: Errors = .{},
-    options: Options = .{},
-    logging: Logging = .{},
-    pub const Options = struct {
-        initial_size: u64 = 1024,
-        init_read_all: bool = true,
-        shrink_after_read: bool = true,
-        make_list: bool = true,
-        close_on_deinit: bool = true,
-    };
-    pub const Errors = struct {
-        open: sys.ErrorPolicy = .{ .throw = spec.open.errors.all },
-        close: sys.ErrorPolicy = .{ .abort = spec.close.errors.all },
-        getdents: sys.ErrorPolicy = .{ .throw = spec.getdents.errors.all },
-    };
-    pub const Logging = packed struct {
-        open: debug.Logging.AttemptAcquireError = .{},
-        close: debug.Logging.ReleaseError = .{},
-        getdents: debug.Logging.SuccessError = .{},
-    };
-};
 pub const SimplePath = struct {
     name: [:0]const u8,
 };
@@ -2230,6 +2207,29 @@ pub const CompoundPath = extern struct {
         return buf[0..len :0];
     }
     pub usingnamespace fmt.PathFormat(CompoundPath);
+};
+pub const DirStreamSpec = struct {
+    Allocator: type,
+    errors: Errors = .{},
+    options: Options = .{},
+    logging: Logging = .{},
+    pub const Options = struct {
+        initial_size: u64 = 1024,
+        init_read_all: bool = true,
+        shrink_after_read: bool = true,
+        make_list: bool = true,
+        close_on_deinit: bool = true,
+    };
+    pub const Errors = struct {
+        open: sys.ErrorPolicy = .{ .throw = spec.open.errors.all },
+        close: sys.ErrorPolicy = .{ .abort = spec.close.errors.all },
+        getdents: sys.ErrorPolicy = .{ .throw = spec.getdents.errors.all },
+    };
+    pub const Logging = packed struct {
+        open: debug.Logging.AttemptAcquireError = .{},
+        close: debug.Logging.ReleaseError = .{},
+        getdents: debug.Logging.SuccessError = .{},
+    };
 };
 pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
     return (struct {
