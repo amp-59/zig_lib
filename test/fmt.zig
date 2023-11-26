@@ -525,7 +525,7 @@ fn testSystemFlagsFormatters() !void {
     len = (zl.sys.flags.MemFd{ .allow_sealing = true, .close_on_exec = true }).formatWriteBuf(&buf);
     try zl.testing.expectEqualString("flags=close_on_exec,allow_sealing", buf[0..len]);
     len = (zl.sys.flags.Clone{ .clear_child_thread_id = true, .detached = false, .fs = true, .files = true }).formatWriteBuf(&buf);
-    try zl.testing.expectEqualString("flags=vm,fs,zl.files,signal_handlers,thread,zl.sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
+    try zl.testing.expectEqualString("flags=vm,fs,files,signal_handlers,thread,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
 }
 fn testStringLitChar() void {
     var lens: [5][256]u8 = .{.{255}} ** 5;
