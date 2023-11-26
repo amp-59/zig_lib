@@ -62,7 +62,7 @@ pub fn memgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     memgen_format_cmd.ast_check = false;
     const impls = group.addGroupWithTask(allocator, "impls", .format);
     impls.flags.is_hidden = true;
-    var impls_build_cmd: zl.build.BuildCommand = build_cmd;
+    const impls_build_cmd: zl.build.BuildCommand = build_cmd;
     const impls_specs: *Node = impls.addBuild(allocator, impls_build_cmd, "specs", "top/mem/gen/specs.zig");
     const impls_ptr: *Node = impls.addBuild(allocator, impls_build_cmd, "ptr", "top/mem/gen/ptr_impls.zig");
     const impls_ctn: *Node = impls.addBuild(allocator, impls_build_cmd, "ctn", "top/mem/gen/ctn_impls.zig");
@@ -83,7 +83,7 @@ pub fn sysgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     @setRuntimeSafety(false);
     var sysgen_format_cmd: zl.build.FormatCommand = format_cmd;
     sysgen_format_cmd.ast_check = false;
-    var impls_build_cmd: zl.build.BuildCommand = build_cmd;
+    const impls_build_cmd: zl.build.BuildCommand = build_cmd;
     const flags: *Builder.Node = group.addBuild(allocator, impls_build_cmd, "flags", "top/sys/gen/flags.zig");
     const fns: *Builder.Node = group.addBuild(allocator, impls_build_cmd, "fns", "top/sys/gen/fns.zig");
     const format: *Builder.Node = group.addFormat(allocator, sysgen_format_cmd, "format", "top/sys");
@@ -93,10 +93,10 @@ pub fn sysgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
 }
 pub fn buildgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     @setRuntimeSafety(false);
-    var buildgen_format_cmd: zl.build.FormatCommand = format_cmd;
+    const buildgen_format_cmd: zl.build.FormatCommand = format_cmd;
     const impls = group.addGroupWithTask(allocator, "impls", .run);
     impls.flags.is_hidden = false;
-    var impls_build_cmd: zl.build.BuildCommand = build_cmd;
+    const impls_build_cmd: zl.build.BuildCommand = build_cmd;
     const impls_tasks: *Node = impls.addBuild(allocator, impls_build_cmd, "tasks", "top/build/gen/tasks_impls.zig");
     const impls_parsers: *Node = impls.addBuild(allocator, impls_build_cmd, "parsers", "top/build/gen/parsers_impls.zig");
     const impls_writers: *Node = impls.addBuild(allocator, impls_build_cmd, "writers", "top/build/gen/writers_impls.zig");
@@ -114,10 +114,10 @@ pub fn buildgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
 }
 pub fn targetgenGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     @setRuntimeSafety(false);
-    var targetgen_format_cmd: zl.build.FormatCommand = format_cmd;
+    const targetgen_format_cmd: zl.build.FormatCommand = format_cmd;
     const impls = group.addGroupWithTask(allocator, "impls", .run);
     impls.flags.is_hidden = true;
-    var impls_build_cmd: zl.build.BuildCommand = build_cmd;
+    const impls_build_cmd: zl.build.BuildCommand = build_cmd;
     const impls_arch: *Node = impls.addBuild(allocator, impls_build_cmd, "arch", "top/target/gen/arch_impls.zig");
     const impls_target: *Node = impls.addBuild(allocator, impls_build_cmd, "target", "top/target/gen/target_impl.zig");
     const format: *Node = group.addFormat(allocator, targetgen_format_cmd, "format", "top/target");
@@ -157,6 +157,7 @@ pub fn exampleGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     const elfcmp: *Node = group.addBuild(allocator, build_cmd, "elfcmp", "examples/elfcmp.zig");
     const buildgen: *Node = group.addBuild(allocator, build_cmd, "buildgen", "examples/buildgen.zig");
     const declprint: *Node = group.addBuild(allocator, build_cmd, "declprint", "examples/declprint.zig");
+    const display: *Node = group.addBuild(allocator, build_cmd, "display", "examples/display.zig");
 
     imports.addToplevelArgs(allocator);
     buildgen.addToplevelArgs(allocator);
@@ -167,6 +168,7 @@ pub fn exampleGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     imports.descr = "List files imported from root";
     buildgen.descr = "Example WIP program for generating builder statements";
     declprint.descr = "Print declarations (large)";
+    display.descr = "Example usage of ioctl (and other system calls without a wrapper)";
 }
 pub fn buildRunnerTestGroup(allocator: *zl.build.types.Allocator, group: *Node) void {
     var test_build_cmd: zl.build.BuildCommand = build_cmd;
