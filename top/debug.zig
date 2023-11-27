@@ -20,6 +20,7 @@ pub const Unexpected = error{
     UnexpectedValue,
     UnexpectedLength,
 };
+pub const AlarmFn = @TypeOf(alarm);
 pub const PanicFn = @TypeOf(panic);
 pub const PanicExtraFn = @TypeOf(panic_extra.panicSignal);
 pub const PanicOutOfBoundsFn = @TypeOf(panic_extra.panicOutOfBounds);
@@ -27,7 +28,6 @@ pub const PanicSentinelMismatchFn = @TypeOf(panic_extra.panicSentinelMismatch);
 pub const PanicStartGreaterThanEndFn = @TypeOf(panic_extra.panicStartGreaterThanEnd);
 pub const PanicInactiveUnionFieldFn = @TypeOf(panic_extra.panicInactiveUnionField);
 pub const PanicUnwrapErrorFn = @TypeOf(panic_extra.panicUnwrapError);
-pub const AlarmFn = @TypeOf(alarm);
 pub const SignalHandlers = packed struct {
     /// Report receipt of signal 11 SIGSEGV.
     SegmentationFault: bool,
@@ -70,7 +70,7 @@ pub const Trace = struct {
         write_sidebar: bool = true,
         /// Write extra line to indicate column.
         write_caret: bool = true,
-        /// Writer full source location context for reference trace entries
+        /// Write full source location context for reference trace entries
         /// (Compile errors only)
         write_full_ref_trace: bool = false,
         /// Define composition of stack trace text.
@@ -545,15 +545,10 @@ pub fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
     builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
-pub fn comparisonFailedErrorValue(comptime T: type, error_name: []const u8, arg2: T) Unexpected {
-    _ = arg2;
-    _ = error_name;
+pub fn comparisonFailedErrorValue(comptime T: type, _: []const u8, _: T) Unexpected {
     return error.UnexpectedValue;
 }
-pub fn comparisonFailedErrorError(type_name: []const u8, error_name1: []const u8, error_name2: []const u8) Unexpected {
-    _ = type_name;
-    _ = error_name2;
-    _ = error_name1;
+pub fn comparisonFailedErrorError(_: []const u8, _: []const u8, _: []const u8) Unexpected {
     return error.UnexpectedValue;
 }
 pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: ?usize) Unexpected {
@@ -576,9 +571,9 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
 pub fn sampleAllReports() void {
     if (false) {
         inline for (.{ u16, u32, u64, usize, i16, i32, i64, isize }) |T| {
-            comptime var arg1: comptime_int = ~@as(T, 0);
-            comptime var arg2: comptime_int = ~@as(T, 0);
-            var result: T = 2;
+            const arg1: comptime_int = ~@as(T, 0);
+            const arg2: comptime_int = ~@as(T, 0);
+            const result: T = 2;
             const remainder: T = 2;
             if (arg2 < arg1)
                 expectEqual(T, arg1, arg2) catch {};
@@ -596,14 +591,14 @@ pub fn sampleAllReports() void {
             }
         }
     }
-    var _u8: u8 = 128;
-    var _u16: u16 = 32768;
-    var _u32: u32 = 2147483648;
-    var _u64: u64 = ~@as(i64, 0) +% 1;
-    var _i8: i8 = -128;
-    var _i16: i16 = -32768;
-    var _i32: i32 = -2147483648;
-    var _i64: i64 = ~@as(i64, 0);
+    const _u8: u8 = 128;
+    const _u16: u16 = 32768;
+    const _u32: u32 = 2147483648;
+    const _u64: u64 = ~@as(i64, 0) +% 1;
+    const _i8: i8 = -128;
+    const _i16: i16 = -32768;
+    const _i32: i32 = -2147483648;
+    const _i64: i64 = ~@as(i64, 0);
     _ = expectCast(i3, _u8) catch {};
     _ = expectCast(u3, _i8) catch {};
     _ = expectCast(i8, _u16) catch {};
@@ -856,7 +851,7 @@ pub const panic_extra = struct {
             const ret_addr: usize = @returnAddress();
             var buf: [1024]u8 = undefined;
             buf[0..20].* = "error is discarded: ".*;
-            var ptr: [*]u8 = fmt.strcpyEqu(buf[20..], @errorName(err));
+            const ptr: [*]u8 = fmt.strcpyEqu(buf[20..], @errorName(err));
             builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
         @compileError("error is discarded");
