@@ -649,50 +649,27 @@ pub const reinterpret = opaque {
             @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
         if (builtin.runtime_assertions) {
-            const what: []const u8 = @typeName(Format) ++ ".length(), ";
-            if (builtin.is_fast or builtin.is_small) {
-                const s_len: usize = format.formatLength();
-                const addr_0: usize = memory.impl.undefined_byte_address();
-                format.formatWrite(memory);
-                const addr_1: usize = memory.impl.undefined_byte_address();
-                const t_len: usize = addr_1 -% addr_0;
-                if (s_len < t_len) {
-                    formatLengthFault(what, " > ", s_len, t_len);
-                }
-            } else {
-                const s_len: usize = format.formatLength();
-                const addr_0: usize = memory.impl.undefined_byte_address();
-                format.formatWrite(memory);
-                const addr_1: usize = memory.impl.undefined_byte_address();
-                const t_len: usize = addr_1 -% addr_0;
-                if (s_len != t_len) {
-                    formatLengthFault(what, " == ", s_len, t_len);
-                }
+            const s_len: usize = format.formatLength();
+            const addr_0: usize = memory.impl.undefined_byte_address();
+            format.formatWrite(memory);
+            const addr_1: usize = memory.impl.undefined_byte_address();
+            const t_len: usize = addr_1 -% addr_0;
+            if (((builtin.is_fast or builtin.is_small) and s_len < t_len) or
+                s_len != t_len)
+            {
+                formatLengthFault(@typeName(Format), s_len, t_len);
             }
         } else {
             format.formatWrite(memory);
         }
     }
-    fn formatLengthFault(format_type_name: []const u8, operator_symbol: anytype, s_len: usize, t_len: usize) noreturn {
+    fn formatLengthFault(format_type_name: []const u8, expected: usize, found: usize) noreturn {
         var buf: [32768]u8 = undefined;
-        var ptr: [*]u8 = &buf;
-        var ud64: fmt.Ud64 = .{ .value = t_len };
-        ptr = fmt.strcpyEqu(ptr, format_type_name);
-        ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..operator_symbol.len].* = operator_symbol.*;
-        ptr += operator_symbol.len;
-        ud64.value = s_len;
-        ptr += ud64.formatWriteBuf(ptr);
-        if (t_len > 99_999) {
-            ptr[0..7].* = ", i.e. ".*;
-            ptr += 7;
-            ptr[0] = '0';
-            ptr += 1;
-            ptr[0..operator_symbol.len].* = operator_symbol.*;
-            ptr += operator_symbol.len;
-            ud64.value = t_len -% s_len;
-            ptr += ud64.formatWriteBuf(ptr);
-        }
+        var ptr: [*]u8 = fmt.strcpyEqu(&buf, format_type_name);
+        ptr[0..19].* = ".length() expected ".*;
+        ptr = fmt.Udsize.write(ptr + 19, expected);
+        ptr[0..8].* = ", found ".*;
+        ptr = fmt.Udsize.write(ptr + 8, found);
         @panic(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
     }
     pub fn lengthAny(comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) u64 {
