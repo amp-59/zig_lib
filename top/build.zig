@@ -1693,8 +1693,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             mem.zero(Extensions, top.sh.extns);
             top.sh.extns.stack_traces = zero.addBuild(allocator, trace_build_cmd, "stack_traces", "top/trace.zig");
             if (have_lazy) {
-                var ptr: *[24][*:0]u8 = @ptrFromInt(allocator.allocateRaw(24 *% 8, 8));
-                var tmp = [24][*:0]const u8{
+                const ptr: *[24][*:0]u8 = @ptrFromInt(allocator.allocateRaw(24 *% 8, 8));
+                const tmp = [24][*:0]const u8{
                     top.zigExe(),         "build-lib",
                     "--cache-dir",        zero.cacheRoot(),
                     "--global-cache-dir", zero.globalCacheRoot(),
@@ -2421,8 +2421,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             const save: usize = allocator.next;
             var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(4097, 1));
-            var len: usize = node.lists.paths[fs.path_idx].formatWriteBuf(buf) -% 1;
-            node.sh.dl.load(buf[0..len :0])(node.sh.fp);
+            node.sh.dl.load(buf[0 .. node.lists.paths[fs.path_idx].formatWriteBuf(buf) -% 1 :0])(node.sh.fp);
             allocator.next = save;
             if (builder_spec.options.init_load_ok) {
                 assertExchange(node, .build, .ready, .finished, max_thread_count);
@@ -2720,7 +2719,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var want_size: bool = false;
             var want_trace: bool = false;
             lo: while (cmd_args_idx != args.len) : (cmd_args_idx +%= 1) {
-                var name: [:0]const u8 = mem.terminate(args[cmd_args_idx], 0);
+                const name: [:0]const u8 = mem.terminate(args[cmd_args_idx], 0);
                 for ([5]Task{ .format, .build, .run, .archive, .objcopy }) |task| {
                     if (mem.testEqualString(name, @tagName(task))) {
                         maybe_task = task;
