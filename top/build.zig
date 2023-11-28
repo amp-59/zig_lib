@@ -1271,7 +1271,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addFetch(group: *Node, allocator: *types.Allocator, format_cmd: tasks.FormatCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                have_format = true;
+                have_fetch = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .fetch, fetch_lock);
                 node.tasks.cmd.format = @ptrFromInt(allocator.allocateRaw(tasks.FormatCommand.size_of, tasks.FormatCommand.align_of));
                 node.tasks.cmd.format.* = format_cmd;
