@@ -508,6 +508,32 @@ fn testGenericRangeFormat() !void {
     new_range_fmt.lower = @as(u32, @truncate(rng.readOne(u64)));
     new_range_fmt.upper = range_fmt.lower +% (range_fmt.lower >> @intCast(@popCount(range_fmt.lower)));
 }
+fn testGenericChangedRangeFormat() !void {
+    zl.testing.announce(@src());
+
+    const int_fmt: zl.fmt.PolynomialFormatSpec = .{
+        .bits = 64,
+        .signedness = .unsigned,
+        .radix = 16,
+        .width = .min,
+    };
+    const Range = zl.fmt.GenericChangedRangeFormat(.{
+        .old_fmt_spec = int_fmt,
+        .new_fmt_spec = int_fmt,
+        .del_fmt_spec = int_fmt,
+    });
+    for (0..3) |_| {
+        const range_fmt: Range = .{
+            .old_lower = rng.readOne(u64),
+            .old_upper = rng.readOne(u64),
+            .new_lower = rng.readOne(u64),
+            .new_upper = rng.readOne(u64),
+        };
+        var array: PrintArray = undefined;
+        array.undefineAll();
+        array.writeFormat(range_fmt);
+    }
+}
 fn testIntToStringWithSeparators() !void {
     var buf: [4096]u8 = undefined;
     const len: usize = zl.fmt.udh(10_000_000).formatWriteBuf(&buf);
@@ -638,6 +664,7 @@ pub fn main() !void {
     try testHexToBytes();
     try testCaseFormat();
     try testGenericRangeFormat();
+    try testGenericChangedRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
     try testChangedBytesFormat();
