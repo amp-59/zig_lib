@@ -1033,10 +1033,14 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             @setRuntimeSafety(builtin.is_safe);
             buf[0] = '(';
             var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
-            ptr = Bytes.write(ptr, count);
+            ptr = DeltaIntFormat.write(ptr, count);
             ptr = strcpyEqu(ptr, fmt_spec.no_style);
             ptr[0] = ')';
             return ptr + 1;
+        }
+        fn lengthStyledChange(count: usize, style_s: []const u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            return 1 +% style_s.len +% DeltaIntFormat.length(count) +% fmt_spec.no_style.len +% 1;
         }
         fn writeDelta(buf: [*]u8, old_value: Old, new_value: New) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -1052,14 +1056,13 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             return ptr;
         }
         fn lengthDelta(old_value: Old, new_value: New) usize {
+            @setRuntimeSafety(builtin.is_safe);
             if (old_value == new_value) {
                 return 4;
             } else if (new_value > old_value) {
-                return 2 +% fmt_spec.no_style.len +% fmt_spec.inc_style.len +%
-                    DeltaIntFormat.length(new_value -% old_value);
+                return lengthStyledChange(new_value -% old_value, fmt_spec.inc_style);
             } else {
-                return 2 +% fmt_spec.dec_style.len +% fmt_spec.no_style.len +%
-                    DeltaIntFormat.length(old_value -% new_value);
+                return lengthStyledChange(old_value -% new_value, fmt_spec.dec_style);
             }
         }
         pub fn formatWrite(format: Format, array: anytype) void {
