@@ -1385,7 +1385,7 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             }
             ptr[0..2].* = "..".*;
             ptr += 2;
-            ptr = strcpyEqu(ptr, ou_buf[idx..ol_len]);
+            ptr = strcpyEqu(ptr, ou_buf[idx..ou_len]);
             if (old_upper != new_upper) {
                 ptr = UpperChangedIntFormat.writeDelta(ptr, old_upper, new_upper);
             }
@@ -1414,7 +1414,6 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             new_lower: NewIntFormat.Int,
             new_upper: NewIntFormat.Int,
         ) usize {
-            var len: usize = 0;
             var ol_buf: [OldIntFormat.max_len.?]u8 = undefined;
             var ou_buf: [OldIntFormat.max_len.?]u8 = undefined;
             var nl_buf: [NewIntFormat.max_len.?]u8 = undefined;
@@ -1427,34 +1426,28 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             const ou_len: usize = strlen(ou_end, &ou_buf);
             const nl_len: usize = strlen(nl_end, &nl_buf);
             const nu_len: usize = strlen(nu_end, &nu_buf);
-            var idx: usize = 3;
+            var idx: usize = 0;
             while (idx != ol_len) : (idx +%= 1) {
                 if (ou_buf[idx] != ol_buf[idx]) {
                     break;
                 }
             }
-            len +%= idx +% 1;
-            len +%= ou_len -% ol_len;
-            len +%= ol_len -% idx;
+            var len: usize = 12;
+            len +%= idx +% (ou_len -% ol_len) +% ol_buf[idx..ol_len].len;
             if (old_lower != new_lower) {
                 len +%= LowerChangedIntFormat.lengthDelta(old_lower, new_lower);
             }
-            len +%= ou_len -% idx;
+            len +%= ou_buf[idx..ou_len].len;
             if (old_upper != new_upper) {
                 len +%= UpperChangedIntFormat.lengthDelta(old_upper, new_upper);
             }
-            len +%= 7;
             idx = 0;
-            while (idx != ol_len) : (idx +%= 1) {
+            while (idx != nl_len) : (idx +%= 1) {
                 if (nu_buf[idx] != nl_buf[idx]) {
                     break;
                 }
             }
-            len +%= idx;
-            len +%= (nu_len -% nl_len);
-            len +%= (nl_len -% idx);
-            len +%= (nu_len -% idx);
-            return len;
+            return len +% (2 *% nu_len) -% idx;
         }
         pub fn init(
             old_lower: OldIntFormat.Int,
