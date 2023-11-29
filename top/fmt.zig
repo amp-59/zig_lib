@@ -634,7 +634,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                     .fixed => |fixed| fixed,
                 };
                 count +%= (count -% 1) / separator.digits;
-                var ret: [*]u8 = ptr + count;
+                const ret: [*]u8 = ptr + count;
                 var pos: usize = 0;
                 while (count != pos) : (abs /= fmt_spec.radix) {
                     pos +%= 1;
