@@ -1539,7 +1539,7 @@ pub inline fn fieldTagName(comptime field_name: []const u8) []const u8 {
 pub inline fn fieldInitializer(comptime field_name: []const u8) []const u8 {
     comptime {
         var type_info: builtin.Type = @typeInfo(union {});
-        var field: builtin.Type.UnionField = .{
+        const field: builtin.Type.UnionField = .{
             .type = void,
             .name = field_name,
             .alignment = 1,
@@ -3062,17 +3062,15 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                 if (field_type_info == .Union) {
                     if (field_type_info.Union.layout != .Auto) {
-                        comptime var tag_field_name = field.name ++ spec.names.tag_field_suffix;
-                        if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
-                            const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(value, tag_field_name));
+                        if (spec.views.extern_tagged_union and @hasField(Struct, field.name ++ spec.names.tag_field_suffix)) {
+                            const view = meta.tagUnion(field.type, meta.Field(Struct, field.name ++ spec.names.tag_field_suffix), field_value, @field(value, field.name ++ spec.names.tag_field_suffix));
                             return AnyFormat(field_spec, @TypeOf(view)).write(buf, view);
                         }
                     }
                 } else if (field_type_info == .Pointer) {
-                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                     if (field_type_info.Pointer.size == .Many) {
-                        if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(value, len_field_name)];
+                        if (spec.views.extern_slice and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                            const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                             ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
@@ -3080,8 +3078,8 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             fields_len +%= 1;
                             continue;
                         }
-                        if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(value, len_field_name)];
+                        if (spec.views.extern_resizeable and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                            const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                             ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
@@ -3091,8 +3089,8 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                     if (field_type_info.Pointer.size == .Slice) {
-                        if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(value, len_field_name)];
+                        if (spec.views.zig_resizeable and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                            const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                             ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
@@ -3102,9 +3100,8 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                 } else if (field_type_info == .Array) {
-                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
-                    if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
-                        const view = field_value[0..@field(value, len_field_name)];
+                    if (spec.views.static_resizeable and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                        const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                         ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
                         ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                         ptr[0..2].* = ", ".*;
@@ -3155,33 +3152,31 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         }
                     }
                 } else if (field_type_info == .Pointer) {
-                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
                     if (field_type_info.Pointer.size == .Many) {
-                        if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(value, len_field_name)];
+                        if (spec.views.extern_slice and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                            const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                             len +%= fieldInitializer(field.name).len +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
                         }
-                        if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(value, len_field_name)];
+                        if (spec.views.extern_resizeable and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                            const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                             len +%= fieldInitializer(field.name).len +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
                         }
                     }
                     if (field_type_info.Pointer.size == .Slice) {
-                        if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
-                            const view = field_value[0..@field(value, len_field_name)];
+                        if (spec.views.zig_resizeable and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                            const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                             len +%= fieldInitializer(field.name).len +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
                         }
                     }
                 } else if (field_type_info == .Array) {
-                    comptime var len_field_name = field.name ++ spec.names.len_field_suffix;
-                    if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
-                        const view = field_value[0..@field(value, len_field_name)];
+                    if (spec.views.static_resizeable and @hasField(Struct, field.name ++ spec.names.len_field_suffix)) {
+                        const view = field_value[0..@field(value, field.name ++ spec.names.len_field_suffix)];
                         len +%= fieldInitializer(field.name).len +% render(field_spec, view).formatLength() +% 2;
                         fields_len +%= 1;
                         continue;
