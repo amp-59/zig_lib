@@ -153,7 +153,7 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
         ) ![*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var buf: [*]u8 = @ptrFromInt(cache.file.allocateAtomic(file_st.size +% 1, 8));
-            var cache_file_fd: usize = file.openAt(.{ .errors = .{} }, .{}, root_fd, name);
+            const cache_file_fd: usize = file.openAt(.{ .errors = .{} }, .{}, root_fd, name);
             try file.read(.{ .return_type = void }, cache_file_fd, buf[0..file_st.size]);
             try file.close(.{}, cache_file_fd);
             buf[file_st.size] = 0;
