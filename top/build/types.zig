@@ -353,7 +353,7 @@ pub const Module = struct {
         if (idx +% 1 == arg.len) {
             @panic(arg);
         }
-        var ret: Module = .{ .name = arg[0..len], .path = arg[idx +% 1 ..] };
+        const ret: Module = .{ .name = arg[0..len], .path = arg[idx +% 1 ..] };
         if (idx != len +% 1) {
             idx = len +% 1;
             len = 1;
