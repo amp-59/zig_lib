@@ -371,7 +371,7 @@ pub fn AlignBitSizeBelow(comptime T: type) type {
     return @Type(.{ .Int = int_type_info });
 }
 pub fn AlignBitSizeAbove(comptime T: type) type {
-    var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
+    const int_type_info: builtin.Type.Int = @typeInfo(T).Int;
     return @Type(.{ .Int = .{
         .bits = alignRealBitSizeAbove(int_type_info.bits),
         .signedness = int_type_info.signedness,
@@ -1540,7 +1540,6 @@ pub fn refAllDeclsInternal(comptime T: type, comptime types: []const type, compt
 pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) void {
     @setEvalBranchQuota(~@as(u32, 0));
     comptime {
-        var types: []const type = &.{};
         if (@typeInfo(T) == .Struct or
             @typeInfo(T) == .Union or
             @typeInfo(T) == .Enum or
@@ -1556,7 +1555,7 @@ pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) v
                 }
                 if (@hasDecl(T, decl.name)) {
                     if (@TypeOf(@field(T, decl.name)) == type) {
-                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)}, black_list);
+                        refAllDeclsInternal(@field(T, decl.name), &[1]type{@field(T, decl.name)}, black_list);
                     }
                 } else if (@typeInfo(@TypeOf(@field(T, decl.name))) == .Fn) {
                     _ = &@field(T, decl.name);
@@ -1635,15 +1634,15 @@ const about = opaque {
                 unexpectedTypeTypesError(type_info, &[_]builtin.TypeId{ .Enum, .Struct, .Union });
             },
         };
-        var last: u64 = 0;
-        var i: u64 = 0;
+        var last: usize = 0;
+        const idx: usize = 0;
         inline for (container_info.fields) |field| {
             last = buf.len;
             buf = buf ++ ", '" ++ field.name ++ "'";
         }
-        return terminateAndList(buf, i, last);
+        return terminateAndList(buf, idx, last);
     }
-    fn terminateAndList(comptime buf: []const u8, n: u64, len: u64) []const u8 {
+    fn terminateAndList(comptime buf: []const u8, n: usize, len: usize) []const u8 {
         if (buf.len > 2) {
             return if (n >= 3 and n < 150)
                 buf[2 .. len + 1] ++ " and " ++ buf[len + 2 ..]
