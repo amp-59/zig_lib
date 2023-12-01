@@ -391,7 +391,7 @@ pub const MAdvise = packed struct(usize) {
     zb7: u57 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -740,7 +740,7 @@ pub const Id = packed struct(usize) {
     zb2: u62 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -1051,7 +1051,7 @@ pub const IPPROTO = packed struct(usize) {
     zb9: u55 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -1230,7 +1230,7 @@ pub const Signal = packed struct(usize) {
     zb5: u59 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -1298,7 +1298,7 @@ pub const TIOC = packed struct(usize) {
     zb15: u49 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -1779,7 +1779,7 @@ pub const SI = packed struct(usize) {
     zb32: u32 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -1851,7 +1851,7 @@ pub const RWH_WRITE_LIFE = packed struct(usize) {
     zb3: u61 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -1877,7 +1877,7 @@ pub const POSIX_FADV = packed struct(usize) {
     zb3: u61 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        const tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
