@@ -780,7 +780,7 @@ pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry
 pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
     @setRuntimeSafety(false);
     for (vars) |key_value| {
-        var idx: usize = blk: {
+        const idx: usize = blk: {
             var idx: usize = 0;
             while (key_value[idx] != '=') idx +%= 1;
             break :blk idx;

@@ -162,7 +162,7 @@ pub const DateTime = packed struct {
             remyears -%= 1;
         }
         remdays -%= remyears *% days_per_year;
-        var leap: isize = @intFromBool(!(remyears != 0) and ((q_cycles != 0) or !(c_cycles != 0)));
+        const leap: isize = @intFromBool(!(remyears != 0) and ((q_cycles != 0) or !(c_cycles != 0)));
         var yday: isize = remdays +% 59 +% leap;
         if (yday >= days_per_year +% leap) {
             yday -%= days_per_year +% leap;
