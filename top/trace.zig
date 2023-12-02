@@ -349,9 +349,9 @@ fn writeCompileErrorCaretTrace(buf: [*]u8, trace: *const debug.Trace, width: u64
 }
 fn writeReferenceTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: usize) [*]u8 {
     @setRuntimeSafety(false);
+    const refs: [*]CompileReferenceTrace = @ptrCast(extra + start + CompileSourceLocation.len);
     buf[0..30].* = "\x1b[38;5;247mreferenced by:\n\x1b[0m".*;
     var ptr: [*]u8 = buf + 30;
-    var refs: [*]CompileReferenceTrace = @ptrCast(extra + start + CompileSourceLocation.len);
     var idx: usize = 0;
     while (idx != ref_len) : (idx +%= 1) {
         if (refs[idx].src_loc != 0) {
@@ -379,7 +379,7 @@ fn writeReferenceTraceExtended(
     width: usize,
 ) [*]u8 {
     @setRuntimeSafety(false);
-    var refs: [*]CompileReferenceTrace = @ptrCast(extra + start + CompileSourceLocation.len);
+    const refs: [*]CompileReferenceTrace = @ptrCast(extra + start + CompileSourceLocation.len);
     var ptr: [*]u8 = buf;
     var idx: usize = 0;
     while (idx != ref_len) : (idx +%= 1) {
