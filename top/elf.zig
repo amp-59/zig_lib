@@ -1358,7 +1358,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             ei.ehdr = @ptrFromInt(addr);
             var phndx: usize = 1;
             while (phndx != ei.ehdr.phnum) : (phndx +%= 1) {
-                var phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
+                const phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
                 if (phdr.type == .LOAD and phdr.memsz != 0) {
                     ei.prog.len +%= bits.alignA4096(phdr.vaddr +% phdr.memsz);
                 }
@@ -1367,7 +1367,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             ei.prog.addr = bits.alignA4096(@atomicRmw(usize, &loader.prog.up_addr, .Add, ei.prog.len, .SeqCst));
             while (phndx != ei.ehdr.phnum) : (phndx +%= 1) {
-                var phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
+                const phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
                 if (phdr.type == .LOAD and phdr.memsz != 0) {
                     const prot: sys.flags.FileProt = .{ .read = phdr.flags.R, .write = phdr.flags.W, .exec = phdr.flags.X };
                     const vaddr: usize = bits.alignB4096(phdr.vaddr);
@@ -2702,7 +2702,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn writeName(buf: [*]u8, style: []const u8, name: []const u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const pos: usize = mem.indexOfLastEqualOne(u8, '.', name) orelse 0;
-                var to: usize = nameFromPosition(name, pos);
+                const to: usize = nameFromPosition(name, pos);
                 var ptr: [*]u8 = fmt.strcpyEqu(buf, style);
                 ptr = fmt.strcpyEqu(ptr, name[0..to]);
                 if (to != pos and name[to] == '(' and name[pos -% 1] == ')') {
@@ -2882,9 +2882,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             inline fn verify(ptr: [*]u8, buf: [*]u8, lengthFn: anytype, args: anytype) void {
                 const expected: usize = @call(.auto, lengthFn, args);
                 const found: usize = fmt.strlen(ptr, buf);
-                var name: []const u8 = fmt.cx(lengthFn);
                 if (found != expected) {
-                    testing.printBufN(4096, .{ .fn_name = name, .expected = expected, .found = found });
+                    testing.printBufN(4096, .{ .fn_name = fmt.cx(lengthFn), .expected = expected, .found = found });
                 }
             }
         };

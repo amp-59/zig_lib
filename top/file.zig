@@ -1202,7 +1202,7 @@ pub fn canonicalisePathVolatile(pathname: [:0]const u8, buf: []u8) [:0]const u8 
     if (change_dir) {
         changeCwd(.{ .logging = .{ .Success = false, .Error = false }, .errors = .{} }, tmp2[0..parent.len :0]);
     }
-    var ret: [:0]u8 = getCwd(.{ .logging = .{ .Success = false, .Error = false }, .errors = .{} }, buf);
+    const ret: [:0]u8 = getCwd(.{ .logging = .{ .Success = false, .Error = false }, .errors = .{} }, buf);
     var ptr: [*]u8 = ret.ptr + ret.len;
     ptr[0] = '/';
     ptr = fmt.strcpyEqu(ptr + 1, basename(pathname));
@@ -3395,7 +3395,7 @@ pub const about = struct {
     }
     fn pathMustNotBeFault(pathname: [:0]const u8, kind: Kind) void {
         @setRuntimeSafety(false);
-        var descr_s: []const u8 = describeKind(kind);
+        const descr_s: []const u8 = describeKind(kind);
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
         var ptr: [*]u8 = buf[debug.about.fault_p0_s.len..].ptr;
@@ -3424,7 +3424,7 @@ pub const about = struct {
     }
     fn fdNotKindFault(fd: usize, kind: Kind) void {
         @setRuntimeSafety(false);
-        var descr_s: []const u8 = describeKind(kind);
+        const descr_s: []const u8 = describeKind(kind);
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
         var ptr: [*]u8 = buf[debug.about.fault_p0_s.len..];
@@ -3660,7 +3660,7 @@ pub const about = struct {
         var pollfds: [3]PollFd = .{pollfd} ** 3;
         const addr: usize = 0x40000000;
         const len: usize = 0x10000;
-        var timeout: u64 = 86400;
+        const timeout: u64 = 86400;
         var off1: usize = 256;
         var off2: usize = 256;
         aboutFdNotice(about_s, fd1);
