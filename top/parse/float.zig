@@ -880,8 +880,8 @@ fn parsePartialNumberBase(comptime T: type, stream: *FloatStream, negative: bool
     const Mantissa = math.float.Mantissa(T);
     var mantissa: Mantissa = 0;
     tryParseDigits(Mantissa, stream, &mantissa, info.base);
-    var int_end = stream.offsetTrue();
-    var n_digits = @as(isize, @intCast(stream.offsetTrue()));
+    const int_end: usize = stream.offsetTrue();
+    var n_digits: isize = @intCast(stream.offsetTrue());
     if (info.base == 16) n_digits -= 2;
     var exponent: i64 = 0;
     if (stream.firstIs('.')) {
@@ -940,7 +940,7 @@ fn parsePartialNumberBase(comptime T: type, stream: *FloatStream, negative: bool
                 break :blk @as(i64, @intCast(int_end)) -% @as(i64, @intCast(stream.offsetTrue()));
             } else {
                 stream.advance(1);
-                var marker = stream.offsetTrue();
+                const marker: usize = stream.offsetTrue();
                 tryParseNDigits(Mantissa, stream, &mantissa, info.base, info.max_mantissa_digits);
                 break :blk @as(i64, @intCast(marker)) -% @as(i64, @intCast(stream.offsetTrue()));
             }
