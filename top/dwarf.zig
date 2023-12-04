@@ -827,7 +827,7 @@ pub const DwarfInfo = extern struct {
         const offset: comptime_int = @divExact(@offsetOf(DwarfInfo, "impl"), 8);
         var ret: [qwords]u64 = .{0} ** qwords;
         var shdr: *elf.Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.shoff +% (ehdr.shstrndx *% ehdr.shentsize));
-        var strtab_addr: u64 = ehdr_addr +% shdr.offset;
+        const strtab_addr: u64 = ehdr_addr +% shdr.offset;
         var addr: u64 = ehdr_addr +% ehdr.shoff;
         var shdr_idx: u64 = 0;
         while (shdr_idx != ehdr.shnum) : (shdr_idx +%= 1) {
