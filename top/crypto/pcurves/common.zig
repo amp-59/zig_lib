@@ -52,7 +52,7 @@ pub fn Field(comptime params: FieldParams) type {
         }
         /// Unpack a field element.
         pub fn fromBytes(s_: [encoded_len]u8, endian: builtin.Endian) !Fe {
-            var s = if (endian == .little) s_ else orderSwap(s_);
+            const s = if (endian == .little) s_ else orderSwap(s_);
             try rejectNonCanonical(s, .little);
             var limbs_z: params.fiat.NonMontgomeryDomainFieldElement = undefined;
             params.fiat.fromBytes(&limbs_z, s);

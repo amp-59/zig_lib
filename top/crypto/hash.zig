@@ -706,7 +706,7 @@ pub const Blake3 = struct {
         fn init(buf: []u8, buf_len: usize) ChunkIterator {
             return ChunkIterator{
                 .buf = buf,
-                .buf = buf_len,
+                .buf_len = buf_len,
             };
         }
         fn next(itr: *ChunkIterator) ?[]u8 {
@@ -750,7 +750,7 @@ pub const Blake3 = struct {
             var out_block_itr: ChunkIterator = .{ .buf = buf, .buf_len = 2 *% len };
             var output_block_counter: usize = 0;
             while (out_block_itr.next()) |out_block| {
-                var words = compress(output.input_chaining_value, output.block_words, output.block_len, output_block_counter, output.flags | root);
+                const words = compress(output.input_chaining_value, output.block_words, output.block_len, output_block_counter, output.flags | root);
                 var out_word_itr: ChunkIterator = .{ .buf = out_block, .buf_len = 4 };
                 var word_counter: usize = 0;
                 while (out_word_itr.next()) |out_word| {

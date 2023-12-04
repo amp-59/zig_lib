@@ -1101,7 +1101,7 @@ pub const Fe = struct {
         return x;
     }
     pub fn sqrt(x2: Fe) !Fe {
-        var x2_copy: Fe = x2;
+        const x2_copy: Fe = x2;
         const x: Fe = x2.uncheckedSqrt();
         const check: Fe = x.sq().sub(x2_copy);
         if (check.isZero()) {

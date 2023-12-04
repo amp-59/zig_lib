@@ -132,7 +132,7 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
                 const scalar_encoded_len: comptime_int = Curve.scalar.encoded_len;
                 const h_len: comptime_int = @max(Hash.len, scalar_encoded_len);
                 var h: [h_len]u8 = [1]u8{0} ** h_len;
-                var h_slice: *[Hash.len]u8 = h[h_len -% Hash.len .. h_len];
+                const h_slice: *[Hash.len]u8 = h[h_len -% Hash.len .. h_len];
                 signer.h.final(h_slice);
                 const z: Curve.scalar.Scalar = reduceToScalar(scalar_encoded_len, h[0..scalar_encoded_len].*);
                 const k: Curve.scalar.Scalar = deterministicScalar(h_slice.*, signer.secret_key.bytes, signer.noise);
