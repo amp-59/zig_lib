@@ -316,8 +316,7 @@ fn testParseReusableIntExhaustive() !void {
             try zl.debug.expectEqual(usize, extrema.max, parse.noexcept.unsigned(bin_max_s));
             if (@bitSizeOf(T) > 8) {
                 var leb128_u64: zl.fmt.U64xLEB128 = .{ .value = random };
-                var len: usize = leb128_u64.formatWriteBuf(&buf);
-                try zl.debug.expectEqual(T, @intCast(parse.noexcept.unsignedLEB128(buf[0..len].ptr)[0]), random);
+                try zl.debug.expectEqual(T, @intCast(parse.noexcept.unsignedLEB128(buf[0..leb128_u64.formatWriteBuf(&buf)].ptr)[0]), random);
             }
         }
     }
