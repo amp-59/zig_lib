@@ -675,7 +675,7 @@ fn GenericShakeLike(comptime security_level: u11, comptime delim: u8, comptime r
         }
         pub fn final(shake: *ShakeLike, dest: []u8) void {
             shake.squeeze(dest);
-            shake.st.st.clear(0, State.rate);
+            shake.st.clear(0, State.rate);
         }
         fn write(shake: *ShakeLike, bytes: []const u8) usize {
             shake.update(bytes);
