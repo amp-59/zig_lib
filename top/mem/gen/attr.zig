@@ -60,8 +60,7 @@ pub const ctn_details: []const types.Container = blk: {
 pub const ctn_groups: []const []const types.AbstractSpecification = blk: {
     @setEvalBranchQuota(4000);
     var buf: [abstract_specs.len][]const types.AbstractSpecification = .{&.{}} ** abstract_specs.len;
-    var len: u64 = 0;
-    var idx: u64 = 0;
+    var len: usize = 0;
     var taken: [abstract_specs.len]bool = [1]bool{false} ** abstract_specs.len;
     for (@as([]const meta.Child(types.Container), @ptrCast(ctn_details))) |ctn_detail| {
         for (abstract_specs, 0..) |abstract_spec, spec_index| {
@@ -70,10 +69,10 @@ pub const ctn_groups: []const []const types.AbstractSpecification = blk: {
             }
             if (ctn_detail == meta.leastBitCast(types.Container.init(abstract_spec))) {
                 taken[spec_index] = true;
-                buf[idx] = buf[idx] ++ .{abstract_spec};
+                buf[len] = buf[len] ++ .{abstract_spec};
             }
         }
-        if (buf[idx].len != 0) {
+        if (buf[len].len != 0) {
             len +%= 1;
         }
     }

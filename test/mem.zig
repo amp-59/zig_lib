@@ -37,9 +37,9 @@ fn arenaToBits(arena: mem.Arena) u64 {
     return bits.shl64(bits.shl64(1, arena.up_addr - arena.lb_addr) - 1, arena.lb_addr);
 }
 fn testArenaIntersection() !void {
-    var a: mem.Arena = arenaFromBits(0b000000000111111111110000000000000);
-    var b: mem.Arena = arenaFromBits(0b000000000000000111111111110000000);
-    var x: mem.Intersection(mem.Arena) = mem.intersection2(mem.Arena, a, b).?;
+    const a: mem.Arena = arenaFromBits(0b000000000111111111110000000000000);
+    const b: mem.Arena = arenaFromBits(0b000000000000000111111111110000000);
+    const x: mem.Intersection(mem.Arena) = mem.intersection2(mem.Arena, a, b).?;
     try debug.expectEqual(u64, arenaToBits(x.l), 0b0000000000000000000000000000000000000000000000000001111110000000);
     try debug.expectEqual(u64, arenaToBits(x.x), 0b0000000000000000000000000000000000000000000000111110000000000000);
     try debug.expectEqual(u64, arenaToBits(x.h), 0b0000000000000000000000000000000000000000111111000000000000000000);
@@ -154,9 +154,9 @@ fn testImplementations() !void {
 }
 fn testProtect() !void {
     testing.announce(@src());
-    var addr: u64 = 0x7000000;
+    const addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
-    var len: u64 = end -% addr;
+    const len: u64 = end -% addr;
     try meta.wrap(mem.map(.{}, .{}, .{}, addr, len));
     try meta.wrap(mem.protect(.{}, .{ .read = true }, addr, 4096));
     try meta.wrap(mem.unmap(.{}, addr, len));
@@ -179,8 +179,8 @@ fn testLowSystemMemoryOperations() !void {
 fn testMapGenericOverhead() !void {
     testing.announce(@src());
     var addr: u64 = 0x7000000;
-    var len: u64 = 0x3000000;
-    var end: u64 = addr +% len;
+    const len: u64 = 0x3000000;
+    const end: u64 = addr +% len;
     try meta.wrap(mem.map(.{}, .{}, .{ .populate = true }, addr, len));
     try meta.wrap(mem.unmap(.{}, addr, len));
     addr = end;
@@ -418,8 +418,7 @@ fn testLallocator() !void {
 fn testSimpleAllocator() void {
     testing.announce(@src());
     var allocator: mem.SimpleAllocator = .{};
-    var buf: []u8 = allocator.allocate(u8, 256);
-    allocator.deallocate(u8, buf);
+    allocator.deallocate(u8, allocator.allocate(u8, 256));
     allocator.unmapAll();
 }
 fn testSampleAllReports() !void {
