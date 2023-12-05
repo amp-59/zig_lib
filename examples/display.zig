@@ -24,7 +24,7 @@ const Ioc = packed struct(u32) {
 pub fn main() !void {
     var array: zl.mem.array.StaticString(4096) = undefined;
     array.undefineAll();
-    var fd = try zl.file.open(.{}, .{ .read_write = true }, "/dev/dri/card0");
+    const fd = try zl.file.open(.{}, .{ .read_write = true }, "/dev/dri/card0");
     defer zl.file.close(.{ .errors = .{} }, fd);
     var res: ModeRes = undefined;
     zl.mem.zero(ModeRes, &res);
