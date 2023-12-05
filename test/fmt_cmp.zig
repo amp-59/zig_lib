@@ -268,9 +268,9 @@ fn zigLibOptimisedMessage4(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
 pub fn main() void {
     var futex0: u32 = 0xf0;
     var futex1: u32 = 0xf1;
-    var count1: u32 = 1;
-    var count2: u32 = 0;
-    var ret: u64 = 2;
+    const count1: u32 = 1;
+    const count2: u32 = 0;
+    const ret: u64 = 2;
     //standardLibFormatter(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerFormatter(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerWriteSlices(&futex0, &futex1, count1, count2, ret);
