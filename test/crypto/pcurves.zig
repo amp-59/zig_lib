@@ -370,7 +370,7 @@ fn testSecp256k1ScalarInverse() !void {
     try testing.expectEqualMany(u8, &out, &inverse.toBytes(.big));
 }
 pub fn pcurveTestMain() !void {
-    comptime var do_test = .{
+    const do_test = .{
         .p256_ecdh_key_exchange = true, // 267512
         // This test WAS failing, so perhaps worthy of concern that it is now passing without any deliberate attempt to fix.
         .p256_point_from_affine_coordinates = true,
