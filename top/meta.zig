@@ -1140,6 +1140,11 @@ pub fn tagUnion(comptime Union: type, comptime tag_type: type, value: Union, tag
         ),
     }
 }
+pub fn ExhaustEnum(comptime Enum: type) type {
+    var enum_info: builtin.Type = @typeInfo(Enum);
+    enum_info.Enum.is_exhaustive = true;
+    return @Type(enum_info);
+}
 pub fn TaggedUnion(comptime Union: type) type {
     var tag_type_fields: []const builtin.Type.EnumField = empty;
     for (@typeInfo(Union).Union.fields, 0..) |field, value| {
