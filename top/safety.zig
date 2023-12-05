@@ -323,7 +323,7 @@ fn panicUnwrappedError(
     @setRuntimeSafety(false);
     var buf: [256]u8 = undefined;
     buf[0..17].* = "unwrapped error: ".*;
-    var ptr: [*]u8 = fmt.strcpyEqu(buf[17..], error_name);
+    const ptr: [*]u8 = fmt.strcpyEqu(buf[17..], error_name);
     builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicAccessOutOfBounds(
@@ -664,7 +664,7 @@ fn panicArithOverflow(comptime Number: type) type {
         ) void {
             @setCold(true);
             @setRuntimeSafety(false);
-            var yn: bool = @bitCast(
+            const yn: bool = @bitCast(
                 (@intFromBool(rhs < 0) & @intFromBool(lhs > 0)) |
                     (@intFromBool(lhs < 0) & @intFromBool(rhs > 0)),
             );

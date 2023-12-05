@@ -103,7 +103,7 @@ fn causeAccessInactiveField() void {
     }
 }
 fn causeAccessOutOfBounds() void {
-    var index: usize = readOne(usize);
+    const index: usize = readOne(usize);
     const length: usize = readOne(usize);
     switch (version) {
         .single => safety.panic(.accessed_out_of_bounds, .{ .index = index, .length = length }, @errorReturnTrace(), @returnAddress()),
