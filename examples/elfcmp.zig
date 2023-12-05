@@ -62,9 +62,9 @@ fn findPath(allocator: *mem.SimpleAllocator, vars: [][*:0]u8, name: [:0]u8) ![:0
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmapAll();
-    var ei1: *DynamicLoader.ElfInfo = allocator.create(DynamicLoader.ElfInfo);
-    var ei2: *DynamicLoader.ElfInfo = allocator.create(DynamicLoader.ElfInfo);
-    var cmp: *DynamicLoader.compare.Cmp = allocator.create(DynamicLoader.compare.Cmp);
+    const ei1: *DynamicLoader.ElfInfo = allocator.create(DynamicLoader.ElfInfo);
+    const ei2: *DynamicLoader.ElfInfo = allocator.create(DynamicLoader.ElfInfo);
+    const cmp: *DynamicLoader.compare.Cmp = allocator.create(DynamicLoader.compare.Cmp);
     var ld: DynamicLoader = .{};
     defer ld.unmapAll();
     if (args.len == 1) {
@@ -82,7 +82,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     } else for (args[2..]) |arg| {
         const name: [:0]u8 = mem.terminate(arg, 0);
         ei2.* = try ld.load(try findPath(&allocator, vars, name));
-        var len: usize = DynamicLoader.compare.compareElfInfo(cmp, &allocator, ei1, ei2, 2);
+        const len: usize = DynamicLoader.compare.compareElfInfo(cmp, &allocator, ei1, ei2, 2);
         const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len, 1));
         fmt.print(DynamicLoader.compare.writeElfDifferences(cmp, buf, ei1, ei2, 2), buf);
     }
