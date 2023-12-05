@@ -3333,16 +3333,22 @@ pub fn EnumFormat(comptime Enum: type) type {
         const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: ?comptime_int = null;
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
-            if (type_info.Enum.is_exhaustive) {}
-            return strcpyEqu(buf, switch (value) {
-                inline else => |tag| comptime fieldTagName(@tagName(tag)),
-            });
+            if (type_info.Enum.is_exhaustive) {
+                return strcpyEqu(buf, switch (value) {
+                    inline else => |tag| comptime fieldTagName(@tagName(tag)),
+                });
+            }
+            const ExhaustiveEnum = meta.ExhaustEnum(Enum);
+            return EnumFormat(ExhaustiveEnum).write(buf, @as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
         }
         pub fn length(value: anytype) usize {
-            if (type_info.Enum.is_exhaustive) {}
-            return switch (value) {
-                inline else => |tag| comptime fieldTagName(@tagName(tag)).len,
-            };
+            if (type_info.Enum.is_exhaustive) {
+                return switch (value) {
+                    inline else => |tag| comptime fieldTagName(@tagName(tag)).len,
+                };
+            }
+            const ExhaustiveEnum = meta.ExhaustEnum(Enum);
+            return EnumFormat(ExhaustiveEnum).length(@as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
         }
         pub usingnamespace Interface(Format);
     };
