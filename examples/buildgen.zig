@@ -111,7 +111,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     const top: *Builder.Node = Builder.Node.init(&allocator, args, vars);
     top.sh.as.lock = &address_space;
     top.sh.ts.lock = &thread_space;
-    var cmds: zl.build.tasks.Command = .{
+    const cmds: zl.build.tasks.Command = .{
         .build = &build_cmd,
         .format = &format_cmd,
         .archive = &archive_cmd,
