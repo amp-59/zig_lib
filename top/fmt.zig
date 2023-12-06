@@ -3447,22 +3447,35 @@ pub fn EnumFormat(comptime Enum: type) type {
         const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: ?comptime_int = null;
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
+            @setRuntimeSafety(builtin.is_safe);
             if (type_info.Enum.is_exhaustive) {
                 return strcpyEqu(buf, switch (value) {
                     inline else => |tag| comptime fieldTagName(@tagName(tag)),
                 });
             }
             const ExhaustiveEnum = meta.ExhaustEnum(Enum);
-            return EnumFormat(ExhaustiveEnum).write(buf, @as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
+            for (meta.enumValues(ExhaustiveEnum)) |tag_val| {
+                if (@intFromEnum(value) == tag_val) {
+                    return EnumFormat(ExhaustiveEnum).write(buf, @as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
+                }
+            }
+            buf[0] = '_';
+            return buf + 1;
         }
         pub fn length(value: anytype) usize {
+            @setRuntimeSafety(builtin.is_safe);
             if (type_info.Enum.is_exhaustive) {
                 return switch (value) {
                     inline else => |tag| comptime fieldTagName(@tagName(tag)).len,
                 };
             }
             const ExhaustiveEnum = meta.ExhaustEnum(Enum);
-            return EnumFormat(ExhaustiveEnum).length(@as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
+            for (meta.enumValues(ExhaustiveEnum)) |tag_val| {
+                if (@intFromEnum(value) == tag_val) {
+                    return EnumFormat(ExhaustiveEnum).length(@as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
+                }
+            }
+            return 1;
         }
         pub usingnamespace Interface(Format);
     };
