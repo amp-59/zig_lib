@@ -1143,6 +1143,7 @@ pub fn tagUnion(comptime Union: type, comptime tag_type: type, value: Union, tag
 pub fn ExhaustEnum(comptime Enum: type) type {
     var enum_info: builtin.Type = @typeInfo(Enum);
     enum_info.Enum.is_exhaustive = true;
+    enum_info.Enum.decls = &.{};
     return @Type(enum_info);
 }
 pub fn TaggedUnion(comptime Union: type) type {
@@ -1163,6 +1164,22 @@ pub fn unionFields(comptime Union: type) []const builtin.Type.UnionField {
 }
 pub fn enumFields(comptime Enum: type) []const builtin.Type.EnumField {
     return @typeInfo(Enum).Enum.fields;
+}
+pub inline fn enumValues(comptime Enum: type) []const @typeInfo(Enum).Enum.tag_type {
+    comptime {
+        var ret: []const @typeInfo(Enum).Enum.tag_type = &.{};
+        for (@typeInfo(Enum).Enum.fields) |field| {
+            ret = ret ++ .{field.value};
+        }
+        return ret;
+    }
+}
+pub fn maxEnumValue(comptime Enum: type) comptime_int {
+    var ret: comptime_int = 0;
+    for (@typeInfo(Enum).Enum.fields) |field| {
+        ret = @max(ret, field.value);
+    }
+    return ret;
 }
 pub fn structFields(comptime Struct: type) []const builtin.Type.StructField {
     return @typeInfo(Struct).Struct.fields;
