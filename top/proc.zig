@@ -340,7 +340,7 @@ pub const FutexSpec = struct {
     return_type: type = void,
     logging: debug.Logging.AttemptSuccessAcquireReleaseError = .{},
 };
-pub const Status = if (builtin.is_debug) struct {
+pub const Status = if (builtin.is_debug and builtin.zig_backend == .stage2_llvm) struct {
     pub extern fn ifSignaled(wstatus: u32) bool;
     pub extern fn ifExited(wstatus: u32) bool;
     pub extern fn ifStopped(wstatus: u32) bool;
