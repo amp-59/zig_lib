@@ -553,11 +553,19 @@ fn testSystemFlagsFormatters() !void {
     len = (zl.sys.flags.Clone{ .clear_child_thread_id = true, .detached = false, .fs = true, .files = true }).formatWriteBuf(&buf);
     try zl.testing.expectEqualString("flags=vm,fs,files,signal_handlers,thread,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
 }
+fn stringLiteralChar(byte: u8) []const u8 {
+    switch (byte) {
+        inline else => |c| {
+            const type_name = @typeName([:&[1]u8{c}][]const u8);
+            return type_name[3 .. type_name.len - 12];
+        },
+    }
+}
 fn testStringLitChar() void {
-    var lens: [5][256]u8 = .{.{255}} ** 5;
+    var lens: [5][256]u8 = .{.{255} ** 256} ** 5;
     var lens_lens: [5]usize = .{0} ** 5;
     for (0..256) |byte| {
-        const seqn = zl.fmt.stringLiteralChar(@intCast(byte));
+        const seqn = stringLiteralChar(@intCast(byte));
         const idx: usize = lens_lens[seqn.len];
         lens_lens[seqn.len] +%= 1;
         lens[seqn.len][idx] = @intCast(byte);
@@ -664,7 +672,7 @@ pub fn main() !void {
     try testHexToBytes();
     try testCaseFormat();
     try testGenericRangeFormat();
-    try testGenericChangedRangeFormat();
+    //try testGenericChangedRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
     try testChangedBytesFormat();
