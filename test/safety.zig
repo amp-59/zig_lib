@@ -183,12 +183,6 @@ fn causeSentinelMismatch(comptime T: type) void {
         .std => safety.panicSentinelMismatch(expected, readOne(T)),
     }
 }
-fn causeNonScalarSentinelMismatch(comptime T: type, expected: T, found: T) void {
-    switch (version) {
-        .single => safety.panic(.{ .mismatched_non_scalar_sentinel = T }, .{ .expected = expected, .found = found }, @errorReturnTrace(), @returnAddress()),
-        .std => safety.checkNonScalarSentinel(expected, found),
-    }
-}
 fn causeMemcpyArgumentsAlias() void {
     const data = .{ .dest_start = 0x40000000, .dest_len = 0x1000000, .src_start = 0x40500000, .src_len = 0x500000 };
     safety.panic(.memcpy_argument_aliasing, data, @errorReturnTrace(), @returnAddress());
@@ -217,7 +211,6 @@ pub fn main() !void {
     causeAccessOutOfBounds();
     causeAccessOutOfOrder();
     causeSentinelMismatch(u32);
-    causeNonScalarSentinelMismatch(NonScalar, ns1, ns2);
 
     if (version == .std or fair_comparison) return;
 
