@@ -12,8 +12,8 @@ const builtin = @import("builtin.zig");
 ///     compile commands may be changed.
 ///
 pub const RuntimeSafetyCheck = struct {
-    mismatched_arguments: ?bool = null,
     reached_unreachable: ?bool = null,
+    mismatched_arguments: ?bool = null,
     accessed_invalid_memory: ?bool = null,
     mismatched_sentinel: ?bool = null,
     arith_lost_precision: ?bool = null,
@@ -68,6 +68,7 @@ pub const RuntimeSafetyCheck = struct {
         }
     }
 };
+pub const PanicId = @typeInfo(PanicCause).Union.tag_type.?;
 pub const PanicCause = union(enum) {
     /// -f[no-]panic-reached-unreachable
     message,
@@ -89,7 +90,6 @@ pub const PanicCause = union(enum) {
 
     /// -f[no-]panic-mismatched-sentinel
     mismatched_sentinel: type,
-    mismatched_non_scalar_sentinel: type,
 
     /// -f[no-]panic-arith-lost-precision
     shl_overflowed: type,
@@ -118,7 +118,6 @@ pub const PanicCause = union(enum) {
         to: type,
         from: type,
     },
-    pub const Tag = @typeInfo(@This()).Union.tag_type.?;
 };
 pub fn PanicData(comptime panic_extra_cause: PanicCause) type {
     switch (panic_extra_cause) {
