@@ -2498,6 +2498,7 @@ pub const RenderSpec = struct {
     omit_trailing_comma: ?bool = null,
     omit_type_names: bool = false,
     enum_to_int: bool = false,
+    enum_out_of_range_to_int: bool = true,
     ignore_padding_fields: bool = true,
     infer_type_names: bool = true,
     infer_type_names_recursively: bool = false,
@@ -2580,7 +2581,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime T: type) type {
         .Type => return TypeFormat(spec),
         .Struct => return StructFormat(spec, T),
         .Union => return UnionFormat(spec, T),
-        .Enum => return EnumFormat(T),
+        .Enum => return EnumFormat(spec, T),
         .EnumLiteral => return EnumLiteralFormat,
         .ComptimeInt => return ComptimeIntFormat,
         .Int => return IntFormat(spec, T),
@@ -3440,7 +3441,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     };
     return T;
 }
-pub fn EnumFormat(comptime Enum: type) type {
+pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
     const T = struct {
         value: Enum,
         const Format = @This();
@@ -3456,8 +3457,11 @@ pub fn EnumFormat(comptime Enum: type) type {
             const ExhaustiveEnum = meta.ExhaustEnum(Enum);
             for (meta.enumValues(ExhaustiveEnum)) |tag_val| {
                 if (@intFromEnum(value) == tag_val) {
-                    return EnumFormat(ExhaustiveEnum).write(buf, @as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
+                    return EnumFormat(spec, ExhaustiveEnum).write(buf, @as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
                 }
+            }
+            if (spec.enum_out_of_range_to_int) {
+                return IntFormat(spec, @typeInfo(ExhaustiveEnum).Enum.tag_type).write(buf, @intFromEnum(value));
             }
             buf[0] = '_';
             return buf + 1;
@@ -3472,8 +3476,11 @@ pub fn EnumFormat(comptime Enum: type) type {
             const ExhaustiveEnum = meta.ExhaustEnum(Enum);
             for (meta.enumValues(ExhaustiveEnum)) |tag_val| {
                 if (@intFromEnum(value) == tag_val) {
-                    return EnumFormat(ExhaustiveEnum).length(@as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
+                    return EnumFormat(spec, ExhaustiveEnum).length(@as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
                 }
+            }
+            if (spec.enum_out_of_range_to_int) {
+                return IntFormat(spec, @typeInfo(ExhaustiveEnum).Enum.tag_type).length(@intFromEnum(value));
             }
             return 1;
         }
