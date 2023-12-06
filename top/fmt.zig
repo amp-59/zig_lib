@@ -482,14 +482,14 @@ const lit_char_dwords: []const u32 = &.{
 pub const StringLiteralFormat = struct {
     value: []const u8,
     const Format = @This();
-    const use_dwords: bool = false;
+    const use_dwords: bool = true;
     pub fn write(buf: [*]u8, string: []const u8) [*]u8 {
         @setRuntimeSafety(false);
         buf[0] = '"';
         var ptr: [*]u8 = buf + 1;
         for (string) |byte| {
             if (use_dwords) {
-                @as(*u32, @alignCast(@ptrCast(ptr))).* = lit_char_dwords[byte];
+                ptr[0..4].* = @bitCast(lit_char_dwords[byte]);
                 ptr += (4 -% (@clz(lit_char_dwords[byte]) >> 3));
             } else {
                 ptr = writeChar(ptr, byte);
