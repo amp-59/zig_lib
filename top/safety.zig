@@ -44,7 +44,6 @@ pub const RuntimeSafetyCheck = struct {
             },
             .mismatched_sentinel => return &.{
                 .mismatched_sentinel,
-                .mismatched_non_scalar_sentinel,
             },
             .arith_lost_precision => return &.{
                 .div_with_remainder,
@@ -155,9 +154,7 @@ pub fn PanicData(comptime panic_extra_cause: PanicCause) type {
             return struct { prev_index: usize, prev_len: usize, next_len: usize };
         },
         // mismatched_sentinel
-        .mismatched_sentinel,
-        .mismatched_non_scalar_sentinel,
-        => |child| {
+        .mismatched_sentinel => |child| {
             return struct { expected: child, found: child };
         },
         // arith_overflowed
@@ -206,22 +203,22 @@ pub fn PanicData(comptime panic_extra_cause: PanicCause) type {
         },
     }
 }
-pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*builtin.StackTrace, ret_addr: usize) void {
+pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*builtin.StackTrace, ret_addr: usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
     switch (cause) {
-        .message => |message| builtin.alarm(message, st, ret_addr),
+        .message => |message| builtin.panic(message, st, ret_addr),
         .returned_noreturn => {
-            builtin.alarm("function declared 'noreturn' returned", st, ret_addr);
+            builtin.panic("function declared 'noreturn' returned", st, ret_addr);
         },
         .reached_unreachable => {
-            builtin.alarm("reached unreachable code", st, ret_addr);
+            builtin.panic("reached unreachable code", st, ret_addr);
         },
         .corrupt_switch => {
-            builtin.alarm("switch on corrupt value", st, ret_addr);
+            builtin.panic("switch on corrupt value", st, ret_addr);
         },
         .accessed_null_value => {
-            builtin.alarm("attempt to use null value", st, ret_addr);
+            builtin.panic("attempt to use null value", st, ret_addr);
         },
         .accessed_out_of_order => @call(.never_inline, panicAccessOutOfOrder, .{
             data.start, data.finish, st, ret_addr,
@@ -259,9 +256,6 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
         .cast_to_error_from_invalid => |error_type| @call(.never_inline, panicCastToTagFromInvalid, .{
             meta.BestInt(error_type), @typeName(error_type), data, st, ret_addr,
         }),
-        .mismatched_non_scalar_sentinel => |child_type| @call(.never_inline, panicNonScalarSentinelMismatch, .{
-            child_type, data.expected, data.found, st, ret_addr,
-        }),
         .mul_overflowed => |int_type| @call(.never_inline, panicArithOverflow(meta.BestInt(int_type)).mul, .{
             @typeName(int_type), math.bestExtrema(int_type), data.lhs, data.rhs, st, ret_addr,
         }),
@@ -296,6 +290,7 @@ pub inline fn panic(comptime cause: PanicCause, data: PanicData(cause), st: ?*bu
             st,                             ret_addr,
         }),
     }
+    unreachable;
 }
 // Potential local implementation:
 fn panicMismatchedMemcpyArgumentLengths(
@@ -311,7 +306,7 @@ fn panicMismatchedMemcpyArgumentLengths(
     var ptr: [*]u8 = fmt.Udsize.write(buf[65..], dest_len);
     ptr[0..8].* = ", found ".*;
     ptr = fmt.Udsize.write(ptr + 8, src_len);
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicUnwrappedError(
     error_name: []const u8,
@@ -323,7 +318,7 @@ fn panicUnwrappedError(
     var buf: [256]u8 = undefined;
     buf[0..17].* = "unwrapped error: ".*;
     const ptr: [*]u8 = fmt.strcpyEqu(buf[17..], error_name);
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicAccessOutOfBounds(
     index: usize,
@@ -345,7 +340,7 @@ fn panicAccessOutOfBounds(
         ptr[0..15].* = " above maximum ".*;
         ptr = fmt.Udsize.write(ptr + 15, length -% 1);
     }
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicAccessOutOfOrder(
     start: usize,
@@ -360,7 +355,7 @@ fn panicAccessOutOfOrder(
     var ptr: [*]u8 = fmt.Udsize.write(buf[12..], start);
     ptr[0..26].* = " is larger than end index ".*;
     ptr = fmt.Udsize.write(ptr + 26, finish);
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicMemcpyArgumentsAlias(
     dest_start: usize,
@@ -377,7 +372,7 @@ fn panicMemcpyArgumentsAlias(
     var ptr: [*]u8 = fmt.Uxsize.write(buf[32..], @max(dest_start, src_start));
     ptr[0..5].* = " and ".*;
     ptr = fmt.Uxsize.write(ptr + 5, @min(dest_start +% dest_len, src_start +% src_len));
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicMismatchedForLoopCaptureLengths(
     prev_len: usize,
@@ -392,7 +387,7 @@ fn panicMismatchedForLoopCaptureLengths(
     var ptr: [*]u8 = fmt.Udsize.write(buf[58..], prev_len);
     ptr[0..8].* = ", found ".*;
     ptr = fmt.Udsize.write(ptr + 8, next_len);
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicAccessInactiveField(
     expected: []const u8,
@@ -408,7 +403,7 @@ fn panicAccessInactiveField(
     ptr[0..15].* = "' while field '".*;
     ptr = fmt.strcpyEqu(ptr + 15, expected);
     ptr = fmt.strcpyEqu(ptr, "' is active");
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicCastToPointerFromInvalid(
     type_name: []const u8,
@@ -438,7 +433,7 @@ fn panicCastToPointerFromInvalid(
         ptr[0] = '+';
         ptr = fmt.Uxsize.write(ptr + 1, address & (alignment -% 1));
     }
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicCastToTagFromInvalid(
     comptime Integer: type,
@@ -454,7 +449,7 @@ fn panicCastToTagFromInvalid(
     var ptr: [*]u8 = fmt.strcpyEqu(buf[8..], type_name);
     ptr[0..20].* = " from invalid value ".*;
     ptr = fmt.Udsize.write(ptr + 20, value);
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicCastToIntFromInvalid(
     comptime Float: type,
@@ -469,7 +464,7 @@ fn panicCastToIntFromInvalid(
     buf[0..8].* = "cast to ".*;
     var ptr: [*]u8 = fmt.strcpyEqu(buf[8..], type_name);
     ptr[0..20].* = " from invalid value ".*;
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicCastTruncatedData(
     comptime To: type,
@@ -493,7 +488,7 @@ fn panicCastTruncatedData(
     ptr[0..17].* = " truncated bits: ".*;
     ptr = fmt.Xd(From).write(ptr + 17, value);
     ptr = writeAboveOrBelowLimit(ptr, To, to_type_name, yn, if (yn) extrema.min else extrema.max);
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicCastToUnsignedFromNegative(
     comptime _: type,
@@ -515,7 +510,7 @@ fn panicCastToUnsignedFromNegative(
     ptr[0..5].* = ") to ".*;
     ptr = fmt.strcpyEqu(ptr + 5, to_type_name);
     ptr[0..16].* = " lost signedness".*;
-    builtin.alarm(buf[0 .. @intFromPtr(ptr + 16) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr + 16) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicSentinelMismatch(
     comptime Number: type,
@@ -533,7 +528,7 @@ fn panicSentinelMismatch(
     ptr = fmt.Xd(Number).write(ptr + 29, expected);
     ptr[0..8].* = ", found ".*;
     ptr = fmt.Xd(Number).write(ptr + 8, found);
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn panicNonScalarSentinelMismatch(
     comptime Child: type,
@@ -554,7 +549,7 @@ fn panicNonScalarSentinelMismatch(
         ptr = Format.write(ptr + 29, expected);
         ptr[0..8].* = ", found ".*;
         ptr = Format.write(ptr + 8, found);
-        builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
     }
 }
 fn panicExactDivisionWithRemainder(
@@ -577,7 +572,7 @@ fn panicExactDivisionWithRemainder(
     ptr = fmt.Xd(Number).write(ptr + 4, @divTrunc(numerator, denominator));
     ptr[0] = 'r';
     ptr = fmt.Xd(Number).write(ptr + 1, @rem(numerator, denominator));
-    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
 }
 fn writeAboveOrBelowLimit(
     buf: [*]u8,
@@ -624,7 +619,7 @@ fn panicArithOverflow(comptime Number: type) type {
                 ptr += 1;
             }
             ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
-            builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+            builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
         fn sub(
             type_name: []const u8,
@@ -651,7 +646,7 @@ fn panicArithOverflow(comptime Number: type) type {
                 ptr += 1;
             }
             ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
-            builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+            builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
         fn mul(
             type_name: []const u8,
@@ -681,7 +676,7 @@ fn panicArithOverflow(comptime Number: type) type {
                 ptr += 1;
             }
             ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
-            builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+            builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
         fn shl(
             type_name: []const u8,
@@ -703,7 +698,7 @@ fn panicArithOverflow(comptime Number: type) type {
             ptr[0..13].* = " shifted out ".*;
             ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute & mask) -% @popCount((absolute << shift_amt) & mask));
             ptr[0..5].* = " bits".*;
-            builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
+            builtin.panic(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
         fn shr(
             type_name: []const u8,
@@ -725,7 +720,7 @@ fn panicArithOverflow(comptime Number: type) type {
             ptr[0..13].* = " shifted out ".*;
             ptr = fmt.Xd(Number).write(ptr + 13, @popCount(absolute & mask) -% @popCount((absolute << shift_amt) & mask));
             ptr[0..5].* = " bits".*;
-            builtin.alarm(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
+            builtin.panic(buf[0 .. @intFromPtr(ptr + 5) -% @intFromPtr(&buf)], st, ret_addr);
         }
         fn shiftRhs(
             type_name: []const u8,
@@ -742,7 +737,7 @@ fn panicArithOverflow(comptime Number: type) type {
             ptr = fmt.Xd(Number).write(ptr + 23, shift_amt);
             ptr[0..3].* = " > ".*;
             ptr = fmt.Xd(Number).write(ptr + 3, bit_count);
-            builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
+            builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], st, ret_addr);
         }
     };
 }
