@@ -2225,42 +2225,61 @@ pub usingnamespace builtin;
 pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T) T {
     return if (@hasDecl(root, symbol)) @field(root, symbol) else default;
 }
-pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
-pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
-pub extern fn memmove(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
-pub extern fn addrcpy(dest: usize, src: usize, len: usize) callconv(.C) void;
-pub extern fn addrset(dest: usize, value: u8, len: usize) callconv(.C) void;
-extern fn __zig_probe_stack() callconv(.C) void;
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\memmove:
-        \\  mov     rcx, rdx
-        \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
-        \\  ret
-    );
-}
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\addrset:
-        \\memset:
-        \\  mov     eax, esi
-        \\  mov     rcx, rdx
-        \\  rep     stosb byte ptr es:[rdi], al
-        \\  ret
-    );
-}
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\addrcpy:
-        \\memcpy:
-        \\  mov     rcx, rdx
-        \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
-        \\  ret
-    );
-}
+pub usingnamespace if (builtin.zig_backend == .stage2_llvm) struct {
+    pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
+    pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
+    pub extern fn memmove(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
+    pub extern fn addrcpy(dest: usize, src: usize, len: usize) callconv(.C) void;
+    pub extern fn addrset(dest: usize, value: u8, len: usize) callconv(.C) void;
+    extern fn __zig_probe_stack() callconv(.C) void;
+    comptime {
+        asm (
+            \\.intel_syntax noprefix
+            \\memmove:
+            \\  mov     rcx, rdx
+            \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+            \\  ret
+        );
+    }
+    comptime {
+        asm (
+            \\.intel_syntax noprefix
+            \\addrset:
+            \\memset:
+            \\  mov     eax, esi
+            \\  mov     rcx, rdx
+            \\  rep     stosb byte ptr es:[rdi], al
+            \\  ret
+        );
+    }
+    comptime {
+        asm (
+            \\.intel_syntax noprefix
+            \\addrcpy:
+            \\memcpy:
+            \\  mov     rcx, rdx
+            \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+            \\  ret
+        );
+    }
+} else struct {
+    pub fn memcpy(noalias dest_bytes: [*]u8, noalias src_bytes: [*]const u8, len: u64) void {
+        for (dest_bytes[0..len], src_bytes[0..len]) |*ptr, val| {
+            ptr.* = val;
+        }
+    }
+    pub fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void {
+        for (dest[0..count]) |*ptr| {
+            ptr.* = value;
+        }
+    }
+    pub fn addrcpy(dest: usize, src: usize, len: usize) void {
+        memcpy(@ptrFromInt(dest), @ptrFromInt(src), len);
+    }
+    pub fn addrset(dest: usize, value: u8, count: usize) void {
+        memset(@ptrFromInt(dest), value, count);
+    }
+};
 comptime {
     asm (
         \\__zig_probe_stack:
