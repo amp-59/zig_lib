@@ -3599,13 +3599,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             node.lists.nodes[dep.node].tasks.cmd.build.kind == out)
                         {
                             ptr[0..4].* = ".{.@".*;
-                            ptr += 4;
-                            ptr += fmt.stringLiteral(node.lists.nodes[dep.node].name).formatWriteBuf(ptr);
-                            ptr[0..2].* = ",\"".*;
-                            ptr += 2;
-                            ptr += node.lists.nodes[dep.node].lists.paths[0].formatWriteBufLiteral(ptr);
-                            ptr[0..4].* = "\"},\n".*;
-                            ptr += 4;
+                            ptr = fmt.StringLiteralFormat.write(ptr + 4, node.lists.nodes[dep.node].name);
+                            ptr[0] = ',';
+                            ptr = file.CompoundPath.writeLiteral(ptr + 1, node.lists.nodes[dep.node].lists.paths[0]);
+                            ptr[0..3].* = "},\n".*;
+                            ptr += 3;
                         }
                     }
                 }
