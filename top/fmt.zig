@@ -2584,6 +2584,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime T: type) type {
         .EnumLiteral => return EnumLiteralFormat,
         .ComptimeInt => return ComptimeIntFormat,
         .Int => return IntFormat(spec, T),
+        .Float => return FloatFormat(spec, T),
         .Pointer => |pointer_info| switch (pointer_info.size) {
             .One => return PointerOneFormat(spec, T),
             .Many => return PointerManyFormat(spec, T),
@@ -3528,6 +3529,36 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
             else => @compileError("invalid render radix"),
         }
     }
+}
+pub fn FloatFormat(comptime spec: RenderSpec, comptime Float: type) type {
+    comptime var dec_fmt_spec = Udsize.specification;
+    dec_fmt_spec.width = .{ .fixed = spec.render_float_places };
+    const T = struct {
+        value: Float,
+        const Format = @This();
+        const Decimal = GenericPolynomialFormat(dec_fmt_spec);
+        const fixed_mul: comptime_int = math.sigFigList(usize, 10).?[spec.render_float_places] +% 1;
+        pub fn write(buf: [*]u8, value: Float) [*]u8 {
+            const abs: Float = @abs(value);
+            var ptr: [*]u8 = buf;
+            ptr[0] = '-';
+            const int: Float = @trunc(abs);
+            ptr = Udsize.write(ptr + @intFromBool(value < 0), @intFromFloat(int));
+            ptr[0] = '.';
+            return Decimal.write(ptr + 1, @intFromFloat((abs * fixed_mul - int * fixed_mul)));
+        }
+        pub fn length(value: Float) usize {
+            const abs: Float = @abs(value);
+            var len: usize = @intFromBool(value < 0);
+            const int: Float = @trunc(abs);
+            len +%= Udsize.length(@intFromFloat(int));
+            len +%= 1;
+            len +%= Decimal.length(@intFromFloat(abs * fixed_mul - int * fixed_mul));
+            return len;
+        }
+        pub usingnamespace Interface(Format);
+    };
+    return T;
 }
 const AddressFormat = struct {
     value: usize,
