@@ -603,11 +603,7 @@ fn sigFigMaxLen(comptime T: type, comptime radix: u7) comptime_int {
     }
     return len;
 }
-pub fn sigFigLen(
-    comptime U: type,
-    abs_value: if (@bitSizeOf(U) < 8) u8 else U,
-    comptime radix: u7,
-) usize {
+pub fn sigFigLen(comptime U: type, abs_value: meta.BestInt(U), comptime radix: u7) usize {
     @setRuntimeSafety(false);
     if (@inComptime() and builtin.isUndefined(abs_value)) {
         return 9;
@@ -616,7 +612,7 @@ pub fn sigFigLen(
         return 1;
     }
     var value: @TypeOf(abs_value) = abs_value;
-    var count: u64 = 0;
+    var count: usize = 0;
     while (value != 0) : (value /= radix) {
         count +%= 1;
     }
