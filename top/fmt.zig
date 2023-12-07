@@ -2489,6 +2489,7 @@ pub fn uxd(old_int: anytype, new_int: anytype) blk: {
 pub const RenderSpec = struct {
     radix: u7 = 10,
     render_smallest_int: bool = false,
+    render_float_places: u8 = 3,
     string_literal: ?bool = true,
     multi_line_string_literal: ?bool = false,
     omit_default_fields: bool = true,
