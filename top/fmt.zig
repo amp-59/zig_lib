@@ -70,23 +70,25 @@ pub const AboutDest = @TypeOf(@constCast(about_blank_s));
 pub const about_exit_s: AboutSrc = about("exit");
 pub const about_err_len: comptime_int = about_blank_s.len + debug.about.error_s.len;
 pub inline fn ci(comptime value: comptime_int) []const u8 {
-    if (value < 0) {
-        const s: []const u8 = @typeName([-value]void);
-        return "-" ++ s[1 .. s.len -% 5];
-    } else {
-        const s: []const u8 = @typeName([value]void);
-        return s[1 .. s.len -% 5];
+    comptime {
+        if (value < 0) {
+            const s: []const u8 = @typeName([-value]void);
+            return "-" ++ s[1 .. s.len -% 5];
+        } else {
+            const s: []const u8 = @typeName([value]void);
+            return s[1 .. s.len -% 5];
+        }
     }
 }
-pub inline fn cx(comptime value: anytype) []const u8 {
-    const S: type = @TypeOf(value);
-    if (@typeInfo(S) == .Fn) {
-        return cx(&value);
+pub inline fn cx(comptime value: anytype) *const [@typeName(@TypeOf(.{ ._ = value })).len -% @typeName(@TypeOf(value)).len -% 23]u8 {
+    comptime {
+        const Value = @TypeOf(value);
+        if (@typeInfo(Value) == .Fn) {
+            return cx(&value);
+        }
+        const type_name: []const u8 = @typeName(@TypeOf(.{ ._ = value }));
+        return type_name[22 +% @typeName(Value).len .. type_name.len -% 1];
     }
-    const T = [:value]S;
-    const s_type_name: []const u8 = @typeName(S);
-    const t_type_name: []const u8 = @typeName(T);
-    return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
 }
 pub fn aboutEqu(dest: [*]u8, src: AboutSrc) [*]u8 {
     @setRuntimeSafety(false);
@@ -1622,16 +1624,11 @@ pub inline fn fieldTagName(comptime field_name: []const u8) []const u8 {
 }
 pub inline fn fieldInitializer(comptime field_name: []const u8) []const u8 {
     comptime {
-        var type_info: builtin.Type = @typeInfo(union {});
-        const field: builtin.Type.UnionField = .{
-            .type = void,
-            .name = field_name,
-            .alignment = 1,
-        };
-        type_info.Union.fields = &.{field};
+        var type_info = @typeInfo(union {});
+        type_info.Union.fields = &.{.{ .type = void, .name = field_name, .alignment = 1 }};
         const Union = @Type(type_info);
-        const init: []const u8 = @typeName([:@unionInit(Union, field_name, {})]Union);
-        return init[5 .. (init.len -% @typeName(Union).len) -% 5];
+        const type_name: []const u8 = @typeName(@TypeOf(.{ ._ = @unionInit(Union, field_name, {}) }));
+        return type_name[25 +% @typeName(Union).len .. type_name.len -% 5];
     }
 }
 pub const FieldIdentifierFormat = struct {
