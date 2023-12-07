@@ -155,22 +155,22 @@ pub inline fn mulAddEqu8(arg1: *u8, arg2: u8, arg3: u8) void {
     arg1.* = add8(mul8(arg1.*, arg2), arg3);
 }
 pub inline fn sigFigList(comptime T: type, comptime radix: u7) ?[]const T {
-    switch (T) {
-        u8 => switch (radix) {
+    switch (@bitSizeOf(T)) {
+        8 => switch (radix) {
             2 => return &.{ 0, 1, 3, 7, 15, 31, 63, 127, 255 },
             8 => return &.{ 0, 7, 63 },
             10 => return &.{ 0, 9, 99 },
             16 => return &.{ 0, 15, 255 },
             else => return null,
         },
-        u16 => switch (radix) {
+        16 => switch (radix) {
             2 => return &.{ 0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535 },
             8 => return &.{ 0, 7, 63, 511, 4095, 32767 },
             10 => return &.{ 0, 9, 99, 999, 9999 },
             16 => return &.{ 0, 15, 255, 4095, 65535 },
             else => return null,
         },
-        u32 => switch (radix) {
+        32 => switch (radix) {
             2 => return &.{
                 0,          1,         3,          7,
                 15,         31,        63,         127,
@@ -187,7 +187,7 @@ pub inline fn sigFigList(comptime T: type, comptime radix: u7) ?[]const T {
             16 => return &.{ 0, 15, 255, 4095, 65535, 1048575, 16777215, 268435455, 4294967295 },
             else => return null,
         },
-        u64 => switch (radix) {
+        64 => switch (radix) {
             2 => return &.{
                 0,                    1,                   3,                   7,
                 15,                   31,                  63,                  127,
