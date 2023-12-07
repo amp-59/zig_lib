@@ -970,10 +970,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 cache_root: [:0]const u8,
                 global_cache_root: [:0]const u8,
             };
-            pub const Wait = struct {
-                total: usize = 0,
-                tick: usize = 0,
-            };
             pub const ExecveResults = struct {
                 server: u8,
                 status: u8,
