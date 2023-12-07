@@ -8,6 +8,7 @@ const parse = @import("parse.zig");
 const builtin = @import("builtin.zig");
 pub const utf8 = @import("fmt/utf8.zig");
 pub const ascii = @import("fmt/ascii.zig");
+const fmt_is_safe: bool = false;
 pub fn Interface(comptime Format: type) type {
     return struct {
         pub inline fn formatWrite(format: anytype, array: anytype) void {
@@ -48,7 +49,7 @@ pub fn about(comptime s: [:0]const u8) AboutSrc {
 }
 /// Returns the apparent length of the first colon in the about string.
 pub fn aboutCentre(about_s: AboutSrc) usize {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(fmt_is_safe);
     var og: []const u8 = about_s;
     if (builtin.message_style) |style_s| {
         og = og[style_s.len..];
@@ -791,7 +792,7 @@ pub fn PathFormat(comptime Path: type) type {
     const T = struct {
         const Format = Path;
         pub fn formatWrite(format: Format, array: anytype) void {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (format.names_len != 0) {
                 array.writeMany(format.names[0]);
                 for (format.names[1..format.names_len]) |name| {
@@ -814,7 +815,7 @@ pub fn PathFormat(comptime Path: type) type {
             return strlen(writeDisplay(buf, format), buf);
         }
         fn writeDisplay(buf: [*]u8, path: Path) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             const end: [*]u8 = Format.write(buf, path) - 1;
             const len: usize = @intFromPtr(end) -% @intFromPtr(buf);
             if (builtin.AbsoluteState != void) {
@@ -857,7 +858,7 @@ pub fn PathFormat(comptime Path: type) type {
             return lengthDisplay(Format{ .names = @constCast(@ptrCast(&pathname)), .names_len = 1, .names_max_len = 1 });
         }
         pub fn writeLiteral(buf: [*]u8, path: Path) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             buf[0] = '"';
             var ptr: [*]u8 = buf + 1;
             if (path.names_len != 0) {
@@ -876,7 +877,7 @@ pub fn PathFormat(comptime Path: type) type {
             return ptr + 1;
         }
         pub fn lengthLiteral(path: Path) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var len: usize = 2;
             if (path.names_len != 0) {
                 for (path.names[0]) |byte| {
@@ -892,14 +893,14 @@ pub fn PathFormat(comptime Path: type) type {
             return len;
         }
         pub fn formatWriteBufDisplayLiteral(format: Format, buf: [*]u8) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var tmp: [4096]u8 = undefined;
             var len: usize = format.formatWriteBufDisplay(&tmp);
             len -%= 1;
             return stringLiteral(tmp[0..len]).formatWriteBuf(buf);
         }
         pub fn write(buf: [*]u8, path: Path) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = buf;
             if (path.names_len != 0) {
                 ptr = strcpyEqu(ptr, path.names[0]);
@@ -924,7 +925,7 @@ pub fn PathFormat(comptime Path: type) type {
             return len;
         }
         pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]u8) Format {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             const names: [*][:0]u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
             names[0] = arg;
             return .{ .names = names, .names_len = 1, .names_max_len = 1 };
@@ -1113,7 +1114,7 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             NewIntFormat.max_len.? +%
             @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len);
         fn writeStyledChange(buf: [*]u8, count: usize, style_s: []const u8) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             buf[0] = '(';
             var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
             ptr = DeltaIntFormat.write(ptr, count);
@@ -1122,11 +1123,11 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             return ptr + 1;
         }
         fn lengthStyledChange(count: usize, style_s: []const u8) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             return 1 +% style_s.len +% DeltaIntFormat.length(count) +% fmt_spec.no_style.len +% 1;
         }
         fn writeDelta(buf: [*]u8, old_value: Old, new_value: New) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = buf;
             if (old_value == new_value) {
                 ptr[0..4].* = "(+0)".*;
@@ -1139,7 +1140,7 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             return ptr;
         }
         fn lengthDelta(old_value: Old, new_value: New) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (old_value == new_value) {
                 return 4;
             } else if (new_value > old_value) {
@@ -1152,7 +1153,7 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
         pub fn write(buf: [*]u8, old_value: Old, new_value: New) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = OldIntFormat.write(buf, old_value);
             ptr = writeDelta(ptr, old_value, new_value);
             ptr[0..fmt_spec.arrow_style.len].* = fmt_spec.arrow_style[0..fmt_spec.arrow_style.len].*;
@@ -1191,7 +1192,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             return length(format.old_value, format.new_value);
         }
         fn writeFull(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = Bytes.write(buf, old_count);
             if (old_count != new_count) {
                 if (new_count > old_count) {
@@ -1217,7 +1218,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             return len;
         }
         fn writeStyledChange(buf: [*]u8, count: usize, style_s: []const u8) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             buf[0] = '(';
             var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
             ptr = Bytes.write(ptr, count);
@@ -1229,7 +1230,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             return 1 +% style_s.len +% Bytes.length(count) +% no_s.len +% 1;
         }
         pub fn write(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (fmt_spec.to_from_zero) {
                 return writeFull(buf, old_count, new_count);
             } else {
@@ -1243,7 +1244,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             }
         }
         pub fn length(old_count: usize, new_count: usize) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (fmt_spec.to_from_zero) {
                 return lengthFull(old_count, new_count);
             } else {
@@ -1664,7 +1665,7 @@ pub const IdentifierFormat = struct {
     pub usingnamespace Interface(Format);
 };
 pub fn isValidId(name: []const u8) bool {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(fmt_is_safe);
     if (name.len == 0) {
         return false;
     }
@@ -2753,7 +2754,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return comptime eval(default_value_spec, @as(*const field_type, @ptrCast(@alignCast(default_value))).*);
         }
         pub fn write(buf: [*]u8, comptime value: type) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(false);
             const type_info: builtin.Type = @typeInfo(value);
             var ptr: [*]u8 = buf;
             switch (type_info) {
@@ -2847,7 +2848,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return ptr;
         }
         fn writeDeclBuf(buf: [*]u8, decl_name: []const u8, decl_value: anytype) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             const decl_type: type = @TypeOf(decl_value);
             var len: usize = 0;
             if (@typeInfo(decl_type) != .Fn) {
@@ -2870,7 +2871,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         fn writeStructFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type, default_field: ?[]const u8) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             const field_name_format: IdentifierFormat = .{ .value = field_name };
             var len: usize = 0;
             if (spec.inline_field_types) {
@@ -2896,7 +2897,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         fn writeUnionFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             const field_name_format: IdentifierFormat = .{ .value = field_name };
             var len: usize = 0;
             if (field_type == void) {
@@ -2923,7 +2924,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         fn writeEnumFieldBuf(buf: [*]u8, field_name: []const u8) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             const field_name_format: IdentifierFormat = .{ .value = field_name };
             var len: usize = 0;
             len +%= field_name_format.formatWriteBuf(buf);
@@ -3064,7 +3065,7 @@ fn writeTrailingCommaBuf(buf: [*]u8, omit_trailing_comma: bool, fields_len: usiz
     return len;
 }
 fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: IdentifierFormat, field_format: anytype) usize {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(fmt_is_safe);
     var len: usize = 0;
     buf[0] = '.';
     len +%= 1;
@@ -3123,7 +3124,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             break :blk len;
         };
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             buf[0..type_name.len].* = type_name.*;
             var ptr: [*]u8 = buf + type_name.len;
             if (fields.len == 0) {
@@ -3228,7 +3229,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             return writeTrailingCommaPtr(ptr + neg2, omit_trailing_comma, fields_len);
         }
         pub fn length(value: anytype) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var len: usize = type_name.len +% 2;
             var fields_len: usize = 0;
             comptime var field_idx: usize = 0;
@@ -3389,7 +3390,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
         }
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (tag_type == null) {
                 return writeUntagged(buf, value);
             }
@@ -3448,7 +3449,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: ?comptime_int = null;
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (type_info.Enum.is_exhaustive) {
                 return strcpyEqu(buf, switch (value) {
                     inline else => |tag| comptime fieldTagName(@tagName(tag)),
@@ -3467,7 +3468,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
             return buf + 1;
         }
         pub fn length(value: anytype) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (type_info.Enum.is_exhaustive) {
                 return switch (value) {
                     inline else => |tag| comptime fieldTagName(@tagName(tag)).len,
@@ -3540,7 +3541,7 @@ const AddressFormat = struct {
         array.writeMany(")");
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(fmt_is_safe);
         var len: usize = 0;
         const addr_format = uxsize(format.value);
         @as(*[2]u8, @ptrCast(buf)).* = "@(".*;
@@ -3573,7 +3574,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
             }
         };
         pub fn write(buf: [*]u8, value: Pointer) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (@typeInfo(child) == .Array and
                 @typeInfo(child).Array.child == u8)
             {
@@ -3752,7 +3753,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             return false;
         }
         pub inline fn write(buf: [*]u8, value: anytype) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
@@ -3803,7 +3804,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         const child: type = type_info.Pointer.child;
         const max_len: ?comptime_int = null;
         pub fn write(buf: [*]u8, value: Pointer) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = buf;
             if (type_info.Pointer.sentinel) |sentinel_ptr| {
                 const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
@@ -3817,7 +3818,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
             }
         }
         pub fn length(value: Pointer) usize {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             if (type_info.Pointer.sentinel) |sentinel_ptr| {
                 const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
                 var idx: usize = 0;
@@ -3842,10 +3843,10 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const max_len: ?comptime_int = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
         pub fn write(buf: [*]u8, value: Optional) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = buf;
             if (!render_readable) {
-                @as(*[4]u8, @ptrCast(buf)).* = "@as(".*;
+                ptr[0..4].* = "@as(".*;
                 ptr += 4;
                 ptr[0..type_name.len].* = type_name.*;
                 ptr += type_name.len;
@@ -4140,7 +4141,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 return null;
             }
             fn write(buf: [*]u8, format: Container, depth: usize) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
+                @setRuntimeSafety(fmt_is_safe);
                 if (spec.option_5) {
                     if (matchDeclaration(format)) |decl| {
                         return Format.writeInternal(buf, decl, depth);
@@ -4191,7 +4192,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             name: ?spec.token = null,
             defn: ?Container = null,
             fn write(buf: [*]u8, type_decl: Declaration, depth: usize) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
+                @setRuntimeSafety(fmt_is_safe);
                 var ptr: [*]u8 = buf;
                 if (spec.depth != 0 and spec.depth != depth) {
                     ptr = writeIndent(ptr, depth);
@@ -4252,7 +4253,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 enumeration: isize,
             };
             fn write(buf: [*]u8, format: Field, depth: usize) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
+                @setRuntimeSafety(fmt_is_safe);
                 var ptr: [*]u8 = buf;
                 if (spec.identifier_name) {
                     ptr = IdentifierFormat.write(ptr, format.name);
@@ -4302,7 +4303,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             }
         };
         fn writeInternal(buf: [*]u8, type_descr: Format, depth: usize) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(fmt_is_safe);
             switch (type_descr) {
                 .type_ref => |type_ref| {
                     return writeInternal(strcpyEqu(buf, type_ref.spec), type_ref.type.*, depth);
