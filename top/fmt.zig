@@ -3879,6 +3879,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
             }
             return len;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
