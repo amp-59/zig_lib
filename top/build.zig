@@ -651,21 +651,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .map = builder_spec.logging.map,
             .unmap = builder_spec.logging.unmap,
         };
-        const cache_errors = .{
-            .open = builder_spec.errors.open,
-            .stat = builder_spec.errors.stat,
-            .close = builder_spec.errors.close,
-            .map = builder_spec.errors.map,
-            .unmap = builder_spec.errors.unmap,
-        };
-        const cache_logging = .{
-            .open = builder_spec.logging.open,
-            .stat = builder_spec.logging.stat,
-            .read = builder_spec.logging.read,
-            .close = builder_spec.logging.close,
-            .map = builder_spec.logging.map,
-            .unmap = builder_spec.logging.unmap,
-        };
         const perf_events_errors = .{
             .open = builder_spec.errors.perf_event_open,
             .read = builder_spec.errors.read,
@@ -675,6 +660,29 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .open = builder_spec.logging.perf_event_open,
             .read = builder_spec.logging.read,
             .close = builder_spec.logging.close,
+        };
+        const cache_logging = .{
+            .open = builder_spec.logging.open,
+            .close = builder_spec.logging.close,
+            .create = builder_spec.logging.create,
+            .mkdir = builder_spec.logging.mkdir,
+            .path = builder_spec.logging.path,
+            .read = builder_spec.logging.read,
+            .write = builder_spec.logging.write,
+            .stat = builder_spec.logging.stat,
+            .getcwd = builder_spec.logging.getcwd,
+            .futex = builder_spec.logging.futex,
+        };
+        const cache_errors = .{
+            .open = builder_spec.errors.open,
+            .close = builder_spec.errors.close,
+            .create = builder_spec.errors.create,
+            .mkdir = builder_spec.errors.mkdir,
+            .path = builder_spec.errors.path,
+            .read = builder_spec.errors.read,
+            .write = builder_spec.errors.write,
+            .stat = builder_spec.errors.stat,
+            .futex = builder_spec.errors.futex,
         };
         const trace_build_cmd = .{
             .kind = .obj,
@@ -1672,11 +1680,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @alignOf(DynamicLoader),
             ));
             top.sh.dl.* = .{};
-            top.sh.mc = @ptrFromInt(allocator.allocateRaw(
-                @sizeOf(MirrorCache),
-                @alignOf(MirrorCache),
-            ));
-            top.sh.mc.* = .{};
+            if (builder_spec.options.enable_builder_cache) {
+                top.sh.mc = @ptrFromInt(allocator.allocateRaw(
+                    @sizeOf(MirrorCache),
+                    @alignOf(MirrorCache),
+                ));
+                mem.zero(MirrorCache, top.sh.mc);
+            }
             top.sh.fp = @ptrFromInt(allocator.allocateRaw(
                 @sizeOf(FunctionPointers),
                 @alignOf(FunctionPointers),
