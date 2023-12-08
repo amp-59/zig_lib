@@ -1511,7 +1511,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 const SizeDiff = struct {
                     /// Total
                     sizes_r1: Sizes = .{},
-                    /// Ommitted
+                    /// Omitted
                     sizes_r2: Sizes = .{},
                 };
             };
@@ -2292,19 +2292,15 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn lengthPercentage(sym: *const Elf64_Sym_Idx, mat: compare.Match, sizes: *const compare.Sizes) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                var len: usize = 0;
                 if (sym.size * 200 < (sizes.new +% sizes.old) or
                     mat.flags.is_insignificant)
                 {
-                    return len;
+                    return 0;
                 }
-                const result: usize = (sym.size *% 100000) / switch (mat.tag) {
-                    .deletion, .decrease => @max(sizes.old, 1),
-                    .addition, .increase => @max(sizes.new, 1),
-                    else => @max(sizes.new, 1),
-                };
-                len += fmt.Ud64.length(((result / 1000) *% 1000) / 1000) +% 7;
-                return len;
+                const sym_size: f64 = @floatFromInt(sym.size);
+                const mem_size: f64 = @floatFromInt(@max(1, if (@intFromEnum(mat.tag) >
+                    @intFromEnum(compare.Match.Tag.identical)) sizes.old else sizes.new));
+                return fmt.Udsize.length(@intFromFloat(100 * sym_size / mem_size)) +% 7;
             }
             fn writePercentage(buf: [*]u8, sym: *const Elf64_Sym_Idx, mat: compare.Match, sizes: *const compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2313,27 +2309,19 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 {
                     return buf;
                 }
-                const result: usize = (sym.size *% 100000) / switch (mat.tag) {
-                    .deletion, .decrease => @max(sizes.old, 1),
-                    .addition, .increase => @max(sizes.new, 1),
-                    else => @max(sizes.new, 1),
-                };
-                const sig: usize = (result / 1000) *% 1000;
-                const exp: usize = result - sig;
-                var ptr: [*]u8 = fmt.Ud64.write(buf, sig / 1000);
+                const sym_size: f64 = @floatFromInt(sym.size);
+                const mem_size: f64 = @floatFromInt(@max(1, if (@intFromEnum(mat.tag) >
+                    @intFromEnum(compare.Match.Tag.identical)) sizes.old else sizes.new));
+                const res: f64 = 100 * sym_size / mem_size;
+                const dec: u64 = @intFromFloat(res * 1000 - @trunc(res) * 1000);
+                var ptr: [*]u8 = fmt.Udsize.write(buf, @intFromFloat(res));
                 ptr[0..4].* = ".000".*;
-                ptr += 1;
-                const figs: usize = fmt.sigFigLen(usize, exp, 10);
-                ptr += 3 -% figs;
-                _ = fmt.Ud64.write(ptr, exp);
-                ptr += (figs -% 3);
-                ptr += 3;
+                ptr = fmt.Udsize.write(ptr + 4 - fmt.sigFigLen(usize, dec, 10), dec);
                 ptr[0..3].* = "%, ".*;
-                ptr += 3;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr, buf, lengthPercentage, .{ sym, mat, sizes });
+                    verify(ptr + 3, buf, lengthPercentage, .{ sym, mat, sizes });
                 }
-                return ptr;
+                return ptr + 3;
             }
             fn writeSection2(
                 buf: [*]u8,
@@ -2352,7 +2340,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0] = '\n';
                 ptr += 1;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr, buf, lengthSection, .{ ei, shdr.addr, shdr.size, shndx, width });
+                    verify(ptr, buf, lengthSection, .{ ei, shdr.addr, shdr.offset, shdr.size, shndx, width });
                 }
                 return ptr;
             }
@@ -2396,7 +2384,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = writeSizeCmp(ptr, 0, shdr2.size);
                 ptr[0] = '\n';
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 1, buf, lengthSection2, .{ ei2, shdr2.addr, 0, shdr2.size, shndx2, width });
+                    verify(ptr + 1, buf, lengthSection2, .{ ei2, shdr2.addr, shdr2.offset, 0, shdr2.size, shndx2, width });
                 }
                 return ptr + 1;
             }
@@ -2415,7 +2403,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = writeSizeCmp(ptr, shdr1.size, 0);
                 ptr[0] = '\n';
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 1, buf, lengthSection2, .{ ei1, shdr1.addr, shdr1.size, 0, shndx1, width });
+                    verify(ptr + 1, buf, lengthSection2, .{ ei1, shdr1.addr, shdr1.offset, shdr1.size, 0, shndx1, width });
                 }
                 return ptr + 1;
             }
@@ -2435,7 +2423,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = writeSizeCmp(ptr, shdr1.size, shdr2.size);
                 ptr[0] = '\n';
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 1, buf, lengthSection2, .{ ei2, shdr2.addr, shdr1.size, shdr2.size, shndx2, width });
+                    verify(ptr + 1, buf, lengthSection2, .{ ei2, shdr2.addr, shdr2.offset, shdr1.size, shdr2.size, shndx2, width });
                 }
                 return ptr + 1;
             }
