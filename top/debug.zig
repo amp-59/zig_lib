@@ -622,7 +622,6 @@ pub fn sampleAllReports() void {
     about.errorRcNotice(@errorName(error.Error), 1);
     about.errorFaultRcNotice(@errorName(error.Error), "message", 2);
 }
-pub var write_fd: usize = 2;
 pub fn write(buf: []const u8) void {
     if (@inComptime()) {
         @compileError(buf);
@@ -631,7 +630,7 @@ pub fn write(buf: []const u8) void {
             \\syscall # write
             :
             : [_] "{rax}" (1), // linux sys_write
-              [_] "{rdi}" (write_fd), // stderr
+              [_] "{rdi}" (2), // stderr
               [_] "{rsi}" (buf.ptr),
               [_] "{rdx}" (buf.len),
             : "rcx", "r11", "memory", "rax"
