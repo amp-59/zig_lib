@@ -204,13 +204,9 @@ pub const retry: [32]u8 = .{
     0xC2, 0xA2, 0x11, 0x16, 0x7A, 0xBB, 0x8C, 0x5E,
     0x07, 0x9E, 0x09, 0xE2, 0xC8, 0xA8, 0x33, 0x9C,
 };
-pub fn init(host: anytype, buf: [*]u8) !void {
+pub fn initOld(host: anytype, seed: *[192]u8, buf: [*]u8) !void {
     @setRuntimeSafety(false);
-    var seed: [192]u8 = undefined;
-    if (false) {
-        utils.bytes(&seed);
-    }
-    const host_len: u16 = @as(u16, @intCast(host.len));
+    const host_len: u16 = @intCast(host.len);
     const hello_rand: [32]u8 = seed[0..32].*;
     const legacy_session_id: [32]u8 = seed[32..64].*;
     const x25519_kp_seed: [32]u8 = seed[64..96].*;
@@ -361,4 +357,153 @@ pub fn init(host: anytype, buf: [*]u8) !void {
     pos +%= 1;
     @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len);
     pos +%= 2;
+}
+pub fn init(host: anytype, seed: *[192]u8, buf: [*]u8) !void {
+    @setRuntimeSafety(false);
+    const host_len: u16 = @intCast(host.len);
+    const hello_rand: *[32]u8 = seed[0..32];
+    const legacy_session_id: *[32]u8 = seed[32..64];
+    const x25519_kp_seed: *[32]u8 = seed[64..96];
+    const secp256r1_kp_seed: *[32]u8 = seed[96..128];
+    const kyber768_kp_seed: *[64]u8 = seed[128..192];
+    const x25519_kp: dh.X25519.KeyPair =
+        dh.X25519.KeyPair.create(x25519_kp_seed.*) catch |err| switch (err) {
+        error.IdentityElement => {
+            return error.InsufficientEntropy;
+        },
+    };
+    const secp256r1_kp: ecdsa.EcdsaP256Sha256.KeyPair =
+        ecdsa.EcdsaP256Sha256.KeyPair.create(secp256r1_kp_seed.*) catch |err| switch (err) {
+        error.IdentityElement => {
+            return error.InsufficientEntropy;
+        },
+    };
+    const kyber768_kp: kyber.Kyber768.KeyPair =
+        kyber.Kyber768.KeyPair.create(kyber768_kp_seed.*) catch |err| switch (err) {
+        error.IdentityElement => {
+            return error.InsufficientEntropy;
+        },
+    };
+
+    var ptr: [*]u8 = buf;
+
+    ptr = write8(ptr, @intFromEnum(ContentType.handshake));
+    ptr = write8(ptr, 0x03);
+    ptr = write8(ptr, 0x01);
+
+    ptr = write16(ptr, 1472 +% host_len);
+    ptr = write8(ptr, @intFromEnum(HandshakeType.client_hello));
+
+    ptr = write24(ptr, 1468 +% host_len);
+
+    ptr = write16(ptr, @intFromEnum(ProtocolVersion.tls_1_2));
+    ptr[0..32].* = hello_rand.*;
+    ptr += 32;
+
+    ptr = write8(ptr, 32);
+    ptr[0..32].* = legacy_session_id.*;
+    ptr += 32;
+
+    // Cipher suite:
+    ptr = write16(ptr, 10);
+    {
+        ptr = write16(ptr, @intFromEnum(CipherSuite.AEGIS_128L_SHA256));
+        ptr = write16(ptr, @intFromEnum(CipherSuite.AEGIS_256_SHA384));
+        ptr = write16(ptr, @intFromEnum(CipherSuite.AES_128_GCM_SHA256));
+        ptr = write16(ptr, @intFromEnum(CipherSuite.AES_256_GCM_SHA384));
+        ptr = write16(ptr, @intFromEnum(CipherSuite.CHACHA20_POLY1305_SHA256));
+    }
+
+    // Compression:
+    ptr = write16(ptr, 0x100);
+    ptr = write16(ptr, 1385 +% host_len);
+
+    // Versions:
+    ptr = write16(ptr, @intFromEnum(ExtensionType.supported_versions));
+    ptr = write16(ptr, 3);
+    {
+        ptr = write8(ptr, 0x02);
+        ptr = write8(ptr, 0x03);
+        ptr = write8(ptr, 0x04);
+    }
+
+    // Algorithms:
+    ptr = write16(ptr, @intFromEnum(ExtensionType.signature_algorithms));
+    ptr = write16(ptr, 22);
+    {
+        ptr = write16(ptr, 20);
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.ecdsa_secp256r1_sha256));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.ecdsa_secp384r1_sha384));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.ecdsa_secp521r1_sha512));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pss_rsae_sha256));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pss_rsae_sha384));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pss_rsae_sha512));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pkcs1_sha256));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pkcs1_sha384));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pkcs1_sha512));
+        ptr = write16(ptr, @intFromEnum(SignatureScheme.ed25519));
+    }
+
+    // Groups:
+    ptr = write16(ptr, @intFromEnum(ExtensionType.supported_groups));
+    ptr = write16(ptr, 8);
+    {
+        ptr = write16(ptr, 6);
+        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519_kyber768d00));
+        ptr = write16(ptr, @intFromEnum(NamedGroup.secp256r1));
+        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519));
+    }
+
+    // Key share extension:
+    ptr = write16(ptr, @intFromEnum(ExtensionType.key_share));
+    ptr = write16(ptr, 1466 -% len(ptr, buf));
+
+    // Key share payload
+    ptr = write16(ptr, 1325);
+    {
+        // x25519:
+        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519));
+        ptr = write16(ptr, 32);
+        ptr[0..32].* = x25519_kp.public_key;
+        ptr += 32;
+
+        // secp256r1:
+        ptr = write16(ptr, @intFromEnum(NamedGroup.secp256r1));
+        ptr = write16(ptr, 65);
+        ptr[0..65].* = secp256r1_kp.public_key.toUncompressedSec1();
+        ptr += 65;
+
+        // x25519_kyber768d00:
+        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519_kyber768d00));
+        ptr = write16(ptr, 32 + 1184);
+        ptr[0..32].* = x25519_kp.public_key;
+        ptr += 32;
+        ptr[0..1184].* = kyber768_kp.public_key.toBytes();
+        ptr += 1184;
+    }
+
+    // Server name:
+    ptr = write16(ptr, @intFromEnum(ExtensionType.server_name));
+    ptr = write16(ptr, host_len +% 5);
+    {
+        ptr = write16(ptr, host_len +% 3);
+        ptr = write8(ptr, 0);
+        ptr = write16(ptr, host_len);
+    }
+}
+
+fn write8(ptr: [*]u8, data: u8) [*]u8 {
+    ptr[0] = data;
+    return ptr + 1;
+}
+fn write16(ptr: [*]u8, data: u16) [*]u8 {
+    ptr[0..2].* = @bitCast(@byteSwap(data));
+    return ptr + 2;
+}
+fn write24(ptr: [*]u8, data: u24) [*]u8 {
+    ptr[0..3].* = @bitCast(@byteSwap(data));
+    return ptr + 3;
+}
+fn len(ptr: [*]u8, buf: [*]u8) u16 {
+    return @truncate(@intFromPtr(ptr) -% @intFromPtr(buf));
 }
