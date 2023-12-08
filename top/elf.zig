@@ -1630,7 +1630,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     return strtab[0..mat.name.len :0];
                 }
             };
-
             const Sort = struct {
                 fn sortSymbolShIndex(sym1: Elf64_Sym, sym2: Elf64_Sym) bool {
                     return sym1.shndx > sym2.shndx;
@@ -2236,6 +2235,16 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var buf: [4096]u8 = undefined;
                 buf[0..24].* = "unknown section header: ".*;
                 proc.exitFault(buf[0 .. @intFromPtr(fmt.strcpyEqu(buf[24..], name)) -% @intFromPtr(&buf)], 2);
+            }
+            fn failedToCondenseArena(expected: usize, found: usize) void {
+                @setRuntimeSafety(builtin.is_safe);
+                var buf: [4096]u8 = undefined;
+                buf[0..load_s.len].* = load_s.*;
+                var ptr: [*]u8 = buf[load_s.len..];
+                ptr[0..49].* = "changed mapping upper bound prevented step-back: ".*;
+                ptr = fmt.AddrDiff.write(ptr + 49, expected, found);
+                ptr[0] = '\n';
+                debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
             fn unsupportedRelocationFault(tag_name: [:0]const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
