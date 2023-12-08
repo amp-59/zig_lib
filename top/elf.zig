@@ -2515,33 +2515,30 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 width1: usize,
                 width2: usize,
             ) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
-                @memset(buf[0..width1], ' ');
-                var ptr: [*]u8 = fmt.strcpyEqu(buf + width1, eventString(event));
-                @memset(ptr[0 .. builtin.message_indent +% width2], ' ');
-                ptr += builtin.message_indent +% width2;
+                var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', width1);
+                ptr = fmt.strcpyEqu(ptr, eventString(event));
+                ptr = fmt.strsetEqu(ptr, ' ', builtin.message_indent +% width2);
                 ptr -= width1 +% fmt.sigFigLen(usize, value, 10) +% 1;
                 ptr[0..4].* = tab.fx.style.faint;
                 ptr = fmt.Ud64.write(ptr + 4, value);
                 ptr[0..4].* = tab.fx.none;
                 ptr[4..6].* = ": ".*;
-                ptr += 6;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr, buf, lengthSymbolIntro, .{ value, event, width2 });
+                    verify(ptr + 6, buf, lengthSymbolIntro, .{ value, event, width2 });
                 }
-                return ptr;
+                return ptr + 6;
             }
             fn lengthExcludedElement(styles_s: []const u8, bytes: usize, total: *usize) usize {
-                var len: usize = 0;
-                if (bytes != 0) {
-                    if (total.* != 0) {
-                        len +%= 2;
-                    }
-                    len +%= styles_s.len;
-                    len +%= fmt.Bytes.length(bytes);
-                    total.* +%= bytes;
+                if (bytes == 0) {
+                    return 0;
                 }
-                return len;
+                var len: usize = 0;
+                if (total.* != 0) {
+                    len +%= 2;
+                }
+                total.* +%= bytes;
+                len +%= styles_s.len;
+                return len +% fmt.Bytes.length(bytes);
             }
             fn writeExcludedElement(buf: [*]u8, styles_s: []const u8, bytes: usize, total: *usize) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2562,15 +2559,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var len: usize = lengthSymbolGeneric(&tab.fx.color.fg.magenta, width2);
                 len +%= tab.fx.style.faint.len;
                 var total: usize = 0;
-                len +%= lengthExcludedElement(eventString(.addition), sizes_r2.additions, &total);
-                len +%= lengthExcludedElement(eventString(.increase), sizes_r2.increases, &total);
-                len +%= lengthExcludedElement(eventString(.deletion), sizes_r2.deletions, &total);
-                len +%= lengthExcludedElement(eventString(.decrease), sizes_r2.decreases, &total);
+                len +%= lengthExcludedElement(eventString(.addition), sizes_r2.additions, &total) +%
+                    lengthExcludedElement(eventString(.increase), sizes_r2.increases, &total) +%
+                    lengthExcludedElement(eventString(.deletion), sizes_r2.deletions, &total) +%
+                    lengthExcludedElement(eventString(.decrease), sizes_r2.decreases, &total);
                 if (total == 0) {
                     return 0;
                 }
-                len +%= tab.fx.none.len +% 1;
-                return len;
+                return len +% tab.fx.none.len +% 1;
             }
             fn writeExcluded(buf: [*]u8, width1: usize, width2: usize, sizes_r2: *const compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2585,13 +2581,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     return buf;
                 }
                 ptr[0..4].* = tab.fx.none;
-                ptr += 4;
-                ptr[0] = '\n';
-                ptr += 1;
+                ptr[4] = '\n';
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr, buf, lengthExcluded, .{ width2, sizes_r2 });
+                    verify(ptr + 5, buf, lengthExcluded, .{ width2, sizes_r2 });
                 }
-                return ptr;
+                return ptr + 5;
             }
             fn lengthSymbol(sym: *const Elf64_Sym_Idx, mat: compare.Match, name: [:0]u8, sizes_r1: *const compare.Sizes) usize {
                 return lengthAddressOrOffset(sym.value, 0) +% 13 +%
