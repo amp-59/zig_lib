@@ -1534,24 +1534,55 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 idx: u32 = no_idx,
                 tag: Tag = .unknown,
                 flags: Flags = .{},
-                name: NameIndices = .{},
-                const no_idx: u16 = ~@as(u16, 0);
+                name: Name = .{},
+                const no_idx: u32 = ~@as(u32, 0);
                 const Tag = enum(u8) {
                     unknown = 0,
                     increase = 1,
-                    decrease = 2,
+                    addition = 2,
                     matched = 3,
                     identical = 4,
-                    addition = 5,
+                    decrease = 5,
                     deletion = 6,
                     unmatched = 7,
                 };
-                const Flags = struct {
+                const Flags = packed struct(u8) {
                     /// Whether changes to this symbol should be ignored by
                     /// options `show_insignificant_*`.
                     is_insignificant: bool = false,
                     /// Whether the symbol will be ignored by any option.
                     is_hidden: bool = false,
+                    zb: u6 = 0,
+                };
+                const Name = packed struct(usize) {
+                    /// Null-terminator position.
+                    len: u16 = 0,
+                    /// Mangled name start position.
+                    mangle_idx: u16 = 0,
+                    /// Short name start position.
+                    short_idx: u16 = 0,
+                    /// Generic end position.
+                    cparen_idx: u16 = 0,
+                    fn space(name_idx: Name, name: [:0]u8) []const u8 {
+                        @setRuntimeSafety(builtin.is_safe);
+                        return name[0..name_idx.short_idx];
+                    }
+                    fn mangler(name_idx: Name, name: [:0]u8) []const u8 {
+                        @setRuntimeSafety(builtin.is_safe);
+                        var end: usize = name_idx.mangle_idx;
+                        while (fmt.ascii.isWord(name[end])) {
+                            end +%= 1;
+                        }
+                        return name[name_idx.mangle_idx..end];
+                    }
+                    fn short(name_idx: Name, name: [:0]u8) []const u8 {
+                        @setRuntimeSafety(builtin.is_safe);
+                        if (name_idx.mangle_idx > name_idx.short_idx) {
+                            return name[name_idx.short_idx +% @intFromBool(name_idx.short_idx != 0) .. name_idx.mangle_idx];
+                        } else {
+                            return name[name_idx.short_idx +% @intFromBool(name_idx.short_idx != 0) ..];
+                        }
+                    }
                 };
                 pub fn isMangled(mat: Match) bool {
                     return mat.name.mangle_idx != mat.name.len;
@@ -1593,40 +1624,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     return strtab[0..mat.name.len :0];
                 }
             };
-            const NameIndices = packed struct(usize) {
-                /// Null-terminator position.
-                len: u16 = 0,
-                /// Mangled name start position.
-                mangle_idx: u16 = 0,
-                /// Short name start position.
-                short_idx: u16 = 0,
-                /// Generic end position.
-                cparen_idx: u16 = 0,
-                fn space(name_idx: NameIndices, name: [:0]u8) []u8 {
-                    @setRuntimeSafety(builtin.is_safe);
-                    return name[0..name_idx.short_idx];
-                }
-                fn mangler(name_idx: NameIndices, name: [:0]u8) []u8 {
-                    @setRuntimeSafety(builtin.is_safe);
-                    var end: usize = name_idx.mangle_idx;
-                    while (fmt.ascii.isWord(name[end])) {
-                        end +%= 1;
-                    }
-                    return name[name_idx.mangle_idx..end];
-                }
-                fn mangled(name_idx: NameIndices, name: [:0]u8) [:0]u8 {
-                    @setRuntimeSafety(builtin.is_safe);
-                    return name[name_idx.short_idx +% @intFromBool(name_idx.short_idx != 0) ..];
-                }
-                fn short(name_idx: NameIndices, name: [:0]u8) []u8 {
-                    @setRuntimeSafety(builtin.is_safe);
-                    if (name_idx.mangle_idx > name_idx.short_idx) {
-                        return name[name_idx.short_idx +% @intFromBool(name_idx.short_idx != 0) .. name_idx.mangle_idx];
-                    } else {
-                        return name[name_idx.short_idx +% @intFromBool(name_idx.short_idx != 0) ..];
-                    }
-                }
-            };
+
             const Sort = struct {
                 fn sortSymbolShIndex(sym1: Elf64_Sym, sym2: Elf64_Sym) bool {
                     return sym1.shndx > sym2.shndx;
