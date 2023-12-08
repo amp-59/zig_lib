@@ -2345,7 +2345,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 shndx: usize,
                 width: usize,
             ) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, shndx);
                 ptr = fmt.strcpyEqu(ptr, ei.ehdr.sectionName(shndx));
                 ptr[0..2].* = ": ".*;
@@ -2391,7 +2390,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 shndx2: usize,
                 width: usize,
             ) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, shndx2);
                 ptr = fmt.strcpyEqu(ptr, ei2.ehdr.sectionName(shndx2));
                 ptr[0..2].* = ": ".*;
@@ -2410,7 +2408,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 shndx1: usize,
                 width: usize,
             ) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, shndx1);
                 ptr = fmt.strcpyEqu(ptr, ei1.ehdr.sectionName(shndx1));
                 ptr[0..2].* = ": ".*;
@@ -2430,7 +2427,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 shndx2: usize,
                 width: usize,
             ) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, shndx2);
                 ptr = fmt.strcpyEqu(ptr, ei2.ehdr.sectionName(shndx2));
                 ptr[0..2].* = ": ".*;
@@ -2450,7 +2446,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
             }
             fn writeAddressOrOffset(buf: [*]u8, addr: usize, offset: usize) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
                 if (addr == 0) {
                     ptr[0..7].* = "offset=".*;
@@ -2466,7 +2461,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return 5 +% fmt.BloatDiff.length(old_size, new_size);
             }
             fn writeSizeCmp(buf: [*]u8, old_size: usize, new_size: usize) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 buf[0..5].* = "size=".*;
                 return fmt.BloatDiff.write(buf + 5, old_size, new_size);
             }
@@ -2480,7 +2474,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 width1: usize,
                 width2: usize,
             ) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', width1);
                 ptr = fmt.strcpyEqu(ptr, style_s);
                 ptr[0] = style_b;
@@ -2494,7 +2487,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ptr;
             }
             fn eventString(event: compare.Match.Tag) []const u8 {
-                @setRuntimeSafety(builtin.is_safe);
                 switch (event) {
                     .unknown => return "!",
                     .unmatched => return "?",
