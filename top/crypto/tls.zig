@@ -12,6 +12,8 @@ pub const ProtocolVersion = enum(u16) {
     tls_1_2 = 0x0303,
     tls_1_3 = 0x0304,
     _,
+    const tls_1_2: [2]u8 = .{ 0x3, 0x3 };
+    const tls_1_3: [2]u8 = .{ 0x3, 0x4 };
 };
 pub const ContentType = enum(u8) {
     invalid = 0,
@@ -20,6 +22,11 @@ pub const ContentType = enum(u8) {
     handshake = 22,
     application_data = 23,
     _,
+    const invalid: u8 = 0x0;
+    const change_cipher_spec: u8 = 0x14;
+    const alert: u8 = 0x15;
+    const handshake: u8 = 0x16;
+    const application_data: u8 = 0x17;
 };
 pub const HandshakeType = enum(u8) {
     client_hello = 1,
@@ -34,6 +41,17 @@ pub const HandshakeType = enum(u8) {
     key_update = 24,
     message_hash = 254,
     _,
+    const client_hello: u8 = 0x1;
+    const server_hello: u8 = 0x2;
+    const new_session_ticket: u8 = 0x4;
+    const end_of_early_data: u8 = 0x5;
+    const encrypted_extensions: u8 = 0x8;
+    const certificate: u8 = 0xb;
+    const certificate_request: u8 = 0xd;
+    const certificate_verify: u8 = 0xf;
+    const finished: u8 = 0x14;
+    const key_update: u8 = 0x18;
+    const message_hash: u8 = 0xfe;
 };
 pub const ExtensionType = enum(u16) {
     server_name = 0,
@@ -59,6 +77,28 @@ pub const ExtensionType = enum(u16) {
     signature_algorithms_cert = 50,
     key_share = 51,
     _,
+    const server_name: [2]u8 = .{ 0x0, 0x0 };
+    const max_fragment_len: [2]u8 = .{ 0x0, 0x1 };
+    const status_request: [2]u8 = .{ 0x0, 0x5 };
+    const supported_groups: [2]u8 = .{ 0x0, 0xa };
+    const signature_algorithms: [2]u8 = .{ 0x0, 0xd };
+    const use_srtp: [2]u8 = .{ 0x0, 0xe };
+    const heartbeat: [2]u8 = .{ 0x0, 0xf };
+    const application_layer_protocol_negotiation: [2]u8 = .{ 0x0, 0x10 };
+    const signed_certificate_timestamp: [2]u8 = .{ 0x0, 0x12 };
+    const client_certificate_type: [2]u8 = .{ 0x0, 0x13 };
+    const server_certificate_type: [2]u8 = .{ 0x0, 0x14 };
+    const padding: [2]u8 = .{ 0x0, 0x15 };
+    const pre_shared_key: [2]u8 = .{ 0x0, 0x29 };
+    const early_data: [2]u8 = .{ 0x0, 0x2a };
+    const supported_versions: [2]u8 = .{ 0x0, 0x2b };
+    const cookie: [2]u8 = .{ 0x0, 0x2c };
+    const psk_key_exchange_modes: [2]u8 = .{ 0x0, 0x2d };
+    const certificate_authorities: [2]u8 = .{ 0x0, 0x2f };
+    const oid_filters: [2]u8 = .{ 0x0, 0x30 };
+    const post_handshake_auth: [2]u8 = .{ 0x0, 0x31 };
+    const signature_algorithms_cert: [2]u8 = .{ 0x0, 0x32 };
+    const key_share: [2]u8 = .{ 0x0, 0x33 };
 };
 pub const AlertLevel = enum(u8) {
     warning = 1,
@@ -95,49 +135,46 @@ pub const AlertDescription = enum(u8) {
     no_application_protocol = 120,
     _,
 };
-pub const SignatureScheme = enum(u16) {
-    rsa_pkcs1_sha256 = 0x0401,
-    rsa_pkcs1_sha384 = 0x0501,
-    rsa_pkcs1_sha512 = 0x0601,
-    ecdsa_secp256r1_sha256 = 0x0403,
-    ecdsa_secp384r1_sha384 = 0x0503,
-    ecdsa_secp521r1_sha512 = 0x0603,
-    rsa_pss_rsae_sha256 = 0x0804,
-    rsa_pss_rsae_sha384 = 0x0805,
-    rsa_pss_rsae_sha512 = 0x0806,
-    ed25519 = 0x0807,
-    ed448 = 0x0808,
-    rsa_pss_pss_sha256 = 0x0809,
-    rsa_pss_pss_sha384 = 0x080a,
-    rsa_pss_pss_sha512 = 0x080b,
-    rsa_pkcs1_sha1 = 0x0201,
-    ecdsa_sha1 = 0x0203,
-    _,
+pub const SignatureScheme = struct {
+    const rsa_pkcs1_sha256: [2]u8 = .{ 0x04, 0x01 };
+    const rsa_pkcs1_sha384: [2]u8 = .{ 0x05, 0x01 };
+    const rsa_pkcs1_sha512: [2]u8 = .{ 0x06, 0x01 };
+    const ecdsa_secp256r1_sha256: [2]u8 = .{ 0x04, 0x03 };
+    const ecdsa_secp384r1_sha384: [2]u8 = .{ 0x05, 0x03 };
+    const ecdsa_secp521r1_sha512: [2]u8 = .{ 0x06, 0x03 };
+    const rsa_pss_rsae_sha256: [2]u8 = .{ 0x08, 0x04 };
+    const rsa_pss_rsae_sha384: [2]u8 = .{ 0x08, 0x05 };
+    const rsa_pss_rsae_sha512: [2]u8 = .{ 0x08, 0x06 };
+    const ed25519: [2]u8 = .{ 0x08, 0x07 };
+    const ed448: [2]u8 = .{ 0x08, 0x08 };
+    const rsa_pss_pss_sha256: [2]u8 = .{ 0x08, 0x09 };
+    const rsa_pss_pss_sha384: [2]u8 = .{ 0x08, 0x0a };
+    const rsa_pss_pss_sha512: [2]u8 = .{ 0x08, 0x0b };
+    const rsa_pkcs1_sha1: [2]u8 = .{ 0x02, 0x01 };
+    const ecdsa_sha1: [2]u8 = .{ 0x02, 0x03 };
 };
 pub const NamedGroup = enum(u16) {
-    secp256r1 = 0x0017,
-    secp384r1 = 0x0018,
-    secp521r1 = 0x0019,
-    x25519 = 0x001D,
-    x448 = 0x001E,
-    ffdhe2048 = 0x0100,
-    ffdhe3072 = 0x0101,
-    ffdhe4096 = 0x0102,
-    ffdhe6144 = 0x0103,
-    ffdhe8192 = 0x0104,
-    x25519_kyber512d00 = 0xFE30,
-    x25519_kyber768d00 = 0x6399,
-    _,
+    const secp256r1: [2]u8 = .{ 0x00, 0x17 };
+    const secp384r1: [2]u8 = .{ 0x00, 0x18 };
+    const secp521r1: [2]u8 = .{ 0x00, 0x19 };
+    const x25519: [2]u8 = .{ 0x00, 0x1D };
+    const x448: [2]u8 = .{ 0x00, 0x1E };
+    const ffdhe2048: [2]u8 = .{ 0x01, 0x00 };
+    const ffdhe3072: [2]u8 = .{ 0x01, 0x01 };
+    const ffdhe4096: [2]u8 = .{ 0x01, 0x02 };
+    const ffdhe6144: [2]u8 = .{ 0x01, 0x03 };
+    const ffdhe8192: [2]u8 = .{ 0x01, 0x04 };
+    const x25519_kyber512d00: [2]u8 = .{ 0xFE, 0x30 };
+    const x25519_kyber768d00: [2]u8 = .{ 0x63, 0x99 };
 };
 pub const CipherSuite = enum(u16) {
-    AES_128_GCM_SHA256 = 0x1301,
-    AES_256_GCM_SHA384 = 0x1302,
-    CHACHA20_POLY1305_SHA256 = 0x1303,
-    AES_128_CCM_SHA256 = 0x1304,
-    AES_128_CCM_8_SHA256 = 0x1305,
-    AEGIS_256_SHA384 = 0x1306,
-    AEGIS_128L_SHA256 = 0x1307,
-    _,
+    const AES_128_GCM_SHA256: [2]u8 = .{ 0x13, 0x01 };
+    const AES_256_GCM_SHA384: [2]u8 = .{ 0x13, 0x02 };
+    const CHACHA20_POLY1305_SHA256: [2]u8 = .{ 0x13, 0x03 };
+    const AES_128_CCM_SHA256: [2]u8 = .{ 0x13, 0x04 };
+    const AES_128_CCM_8_SHA256: [2]u8 = .{ 0x13, 0x05 };
+    const AEGIS_256_SHA384: [2]u8 = .{ 0x13, 0x06 };
+    const AEGIS_128L_SHA256: [2]u8 = .{ 0x13, 0x07 };
 };
 pub const CertificateType = enum(u8) {
     X509 = 0,
