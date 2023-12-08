@@ -241,161 +241,7 @@ pub const retry: [32]u8 = .{
     0xC2, 0xA2, 0x11, 0x16, 0x7A, 0xBB, 0x8C, 0x5E,
     0x07, 0x9E, 0x09, 0xE2, 0xC8, 0xA8, 0x33, 0x9C,
 };
-pub fn initOld(host: anytype, seed: *[192]u8, buf: [*]u8) !void {
-    @setRuntimeSafety(false);
-    const host_len: u16 = @intCast(host.len);
-    const hello_rand: [32]u8 = seed[0..32].*;
-    const legacy_session_id: [32]u8 = seed[32..64].*;
-    const x25519_kp_seed: [32]u8 = seed[64..96].*;
-    const secp256r1_kp_seed: [32]u8 = seed[96..128].*;
-    const kyber768_kp_seed: [64]u8 = seed[128..192].*;
-    const x25519_kp: dh.X25519.KeyPair =
-        dh.X25519.KeyPair.create(x25519_kp_seed) catch |err| switch (err) {
-        error.IdentityElement => {
-            return error.InsufficientEntropy;
-        },
-    };
-    const secp256r1_kp: ecdsa.EcdsaP256Sha256.KeyPair =
-        ecdsa.EcdsaP256Sha256.KeyPair.create(secp256r1_kp_seed) catch |err| switch (err) {
-        error.IdentityElement => {
-            return error.InsufficientEntropy;
-        },
-    };
-    const kyber768_kp: kyber.Kyber768.KeyPair =
-        kyber.Kyber768.KeyPair.create(kyber768_kp_seed) catch |err| switch (err) {
-        error.IdentityElement => {
-            return error.InsufficientEntropy;
-        },
-    };
-    const Size16 = *align(1) u16;
-    const Size24 = *align(1) u24;
-    @as(Size24, @ptrCast(buf)).* = @as(u24, @bitCast([3]u8{ @intFromEnum(ContentType.handshake), 0x03, 0x01 }));
-    var pos: u16 = 3;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, @intCast(1472 +% host_len)));
-    pos +%= 2;
-    buf[pos] = @intFromEnum(HandshakeType.client_hello);
-    pos +%= 1;
-    @as(Size24, @ptrCast(buf + pos)).* = @byteSwap(@as(u24, @intCast(1468 +% host_len)));
-    pos +%= 3;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ProtocolVersion.tls_1_2));
-    pos +%= 2;
-    @as(*[32]u8, @ptrCast(buf + pos)).* = hello_rand;
-    pos +%= 32;
-    buf[pos] = 32;
-    pos +%= 1;
-    @as(*[32]u8, @ptrCast(buf + pos)).* = legacy_session_id;
-    pos +%= 32;
-
-    // Cipher suite:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 10));
-    pos +%= 2;
-    @as(*[10]u8, @ptrCast(buf + pos)).* = @as([10]u8, @bitCast([5]u16{
-        @byteSwap(@intFromEnum(CipherSuite.AEGIS_128L_SHA256)),
-        @byteSwap(@intFromEnum(CipherSuite.AEGIS_256_SHA384)),
-        @byteSwap(@intFromEnum(CipherSuite.AES_128_GCM_SHA256)),
-        @byteSwap(@intFromEnum(CipherSuite.AES_256_GCM_SHA384)),
-        @byteSwap(@intFromEnum(CipherSuite.CHACHA20_POLY1305_SHA256)),
-    }));
-    pos +%= 10;
-
-    // Compression:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 0x0100));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(1385 +% host_len);
-    pos +%= 2;
-
-    // Versions:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.supported_versions));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 3));
-    pos +%= 2;
-    @as(*[3]u8, @ptrCast(buf + pos)).* = [_]u8{ 0x02, 0x03, 0x04 };
-    pos +%= 3;
-
-    // Algorithms:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.signature_algorithms));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 22));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 20));
-    pos +%= 2;
-    @as(*align(1) [10]u16, @ptrCast(buf + pos)).* = .{
-        @byteSwap(@intFromEnum(SignatureScheme.ecdsa_secp256r1_sha256)),
-        @byteSwap(@intFromEnum(SignatureScheme.ecdsa_secp384r1_sha384)),
-        @byteSwap(@intFromEnum(SignatureScheme.ecdsa_secp521r1_sha512)),
-        @byteSwap(@intFromEnum(SignatureScheme.rsa_pss_rsae_sha256)),
-        @byteSwap(@intFromEnum(SignatureScheme.rsa_pss_rsae_sha384)),
-        @byteSwap(@intFromEnum(SignatureScheme.rsa_pss_rsae_sha512)),
-        @byteSwap(@intFromEnum(SignatureScheme.rsa_pkcs1_sha256)),
-        @byteSwap(@intFromEnum(SignatureScheme.rsa_pkcs1_sha384)),
-        @byteSwap(@intFromEnum(SignatureScheme.rsa_pkcs1_sha512)),
-        @byteSwap(@intFromEnum(SignatureScheme.ed25519)),
-    };
-    pos +%= 20;
-
-    // Groups:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.supported_groups));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 8));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 6));
-    pos +%= 2;
-    @as(*align(1) [3]u16, @ptrCast(buf + pos)).* = .{
-        @byteSwap(@intFromEnum(NamedGroup.x25519_kyber768d00)),
-        @byteSwap(@intFromEnum(NamedGroup.secp256r1)),
-        @byteSwap(@intFromEnum(NamedGroup.x25519)),
-    };
-    pos +%= 6;
-
-    // Key share extension:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.key_share));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(1466 -% pos);
-    pos +%= 2;
-
-    // Key share payload total length: 1325
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 1325));
-    pos +%= 2;
-
-    // x25519:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(NamedGroup.x25519));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 32));
-    pos +%= 2;
-    @as(*[32]u8, @ptrCast(buf + pos)).* = x25519_kp.public_key;
-    pos +%= 32;
-
-    // secp256r1:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(NamedGroup.secp256r1));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 65));
-    pos +%= 2;
-    @as(*[65]u8, @ptrCast(buf + pos)).* = secp256r1_kp.public_key.toUncompressedSec1();
-    pos +%= 65;
-
-    // x25519_kyber768d00:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(NamedGroup.x25519_kyber768d00));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 1216));
-    pos +%= 2;
-    @as(*[32]u8, @ptrCast(buf + pos)).* = x25519_kp.public_key;
-    pos +%= 32;
-    @as(*[1184]u8, @ptrCast(buf + pos)).* = kyber768_kp.public_key.toBytes();
-    pos +%= 1184;
-
-    // Server name:
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.server_name));
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len + 5);
-    pos +%= 2;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len + 3);
-    pos +%= 2;
-    buf[pos] = 0;
-    pos +%= 1;
-    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len);
-    pos +%= 2;
-}
-pub fn init(host: anytype, seed: *[192]u8, buf: [*]u8) !void {
+pub fn init(host: []const u8, seed: *[192]u8, buf: [*]u8) !void {
     @setRuntimeSafety(false);
     const host_len: u16 = @intCast(host.len);
     const hello_rand: *[32]u8 = seed[0..32];
@@ -404,115 +250,103 @@ pub fn init(host: anytype, seed: *[192]u8, buf: [*]u8) !void {
     const secp256r1_kp_seed: *[32]u8 = seed[96..128];
     const kyber768_kp_seed: *[64]u8 = seed[128..192];
     const x25519_kp: dh.X25519.KeyPair =
-        dh.X25519.KeyPair.create(x25519_kp_seed.*) catch |err| switch (err) {
-        error.IdentityElement => {
-            return error.InsufficientEntropy;
-        },
-    };
+        try dh.X25519.KeyPair.create(x25519_kp_seed.*);
     const secp256r1_kp: ecdsa.EcdsaP256Sha256.KeyPair =
-        ecdsa.EcdsaP256Sha256.KeyPair.create(secp256r1_kp_seed.*) catch |err| switch (err) {
-        error.IdentityElement => {
-            return error.InsufficientEntropy;
-        },
-    };
+        try ecdsa.EcdsaP256Sha256.KeyPair.create(secp256r1_kp_seed.*);
     const kyber768_kp: kyber.Kyber768.KeyPair =
-        kyber.Kyber768.KeyPair.create(kyber768_kp_seed.*) catch |err| switch (err) {
-        error.IdentityElement => {
-            return error.InsufficientEntropy;
-        },
-    };
-
+        try kyber.Kyber768.KeyPair.create(kyber768_kp_seed.*);
     var ptr: [*]u8 = buf;
 
-    ptr = write8(ptr, @intFromEnum(ContentType.handshake));
-    ptr = write8(ptr, 0x03);
-    ptr = write8(ptr, 0x01);
-
-    ptr = write16(ptr, 1472 +% host_len);
-    ptr = write8(ptr, @intFromEnum(HandshakeType.client_hello));
-
-    ptr = write24(ptr, 1468 +% host_len);
-
-    ptr = write16(ptr, @intFromEnum(ProtocolVersion.tls_1_2));
-    ptr[0..32].* = hello_rand.*;
-    ptr += 32;
-
-    ptr = write8(ptr, 32);
+    // Hello:
+    ptr[0] = ContentType.handshake;
+    ptr[1] = 0x03;
+    ptr[2] = 0x01;
+    ptr = write16(ptr + 3, 1472 +% host_len);
+    ptr[0] = HandshakeType.client_hello;
+    ptr = write24(ptr + 1, 1468 +% host_len);
+    ptr[0..2].* = ProtocolVersion.tls_1_2;
+    ptr[2..34].* = hello_rand.*;
+    ptr += 34;
+    ptr[0] = 32;
+    ptr += 1;
     ptr[0..32].* = legacy_session_id.*;
     ptr += 32;
 
     // Cipher suite:
     ptr = write16(ptr, 10);
     {
-        ptr = write16(ptr, @intFromEnum(CipherSuite.AEGIS_128L_SHA256));
-        ptr = write16(ptr, @intFromEnum(CipherSuite.AEGIS_256_SHA384));
-        ptr = write16(ptr, @intFromEnum(CipherSuite.AES_128_GCM_SHA256));
-        ptr = write16(ptr, @intFromEnum(CipherSuite.AES_256_GCM_SHA384));
-        ptr = write16(ptr, @intFromEnum(CipherSuite.CHACHA20_POLY1305_SHA256));
+        ptr[0..2].* = CipherSuite.AEGIS_128L_SHA256;
+        ptr[2..4].* = CipherSuite.AEGIS_256_SHA384;
+        ptr[4..6].* = CipherSuite.AES_128_GCM_SHA256;
+        ptr[6..8].* = CipherSuite.AES_256_GCM_SHA384;
+        ptr[8..10].* = CipherSuite.CHACHA20_POLY1305_SHA256;
+        ptr += 10;
     }
 
     // Compression:
-    ptr = write16(ptr, 0x100);
+    ptr = write16(ptr, 256);
     ptr = write16(ptr, 1385 +% host_len);
 
     // Versions:
-    ptr = write16(ptr, @intFromEnum(ExtensionType.supported_versions));
-    ptr = write16(ptr, 3);
+    ptr[0..2].* = ExtensionType.supported_versions;
+    ptr = write16(ptr + 2, 3);
     {
-        ptr = write8(ptr, 0x02);
-        ptr = write8(ptr, 0x03);
-        ptr = write8(ptr, 0x04);
+        ptr[0] = 0x02;
+        ptr[1] = 0x03;
+        ptr[2] = 0x04;
+        ptr += 3;
     }
 
     // Algorithms:
-    ptr = write16(ptr, @intFromEnum(ExtensionType.signature_algorithms));
-    ptr = write16(ptr, 22);
+    ptr[0..2].* = ExtensionType.signature_algorithms;
+    ptr = write16(ptr + 2, 22);
     {
         ptr = write16(ptr, 20);
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.ecdsa_secp256r1_sha256));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.ecdsa_secp384r1_sha384));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.ecdsa_secp521r1_sha512));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pss_rsae_sha256));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pss_rsae_sha384));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pss_rsae_sha512));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pkcs1_sha256));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pkcs1_sha384));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.rsa_pkcs1_sha512));
-        ptr = write16(ptr, @intFromEnum(SignatureScheme.ed25519));
+        ptr[0..2].* = SignatureScheme.ecdsa_secp256r1_sha256;
+        ptr[2..4].* = SignatureScheme.ecdsa_secp384r1_sha384;
+        ptr[4..6].* = SignatureScheme.ecdsa_secp521r1_sha512;
+        ptr[6..8].* = SignatureScheme.rsa_pss_rsae_sha256;
+        ptr[8..10].* = SignatureScheme.rsa_pss_rsae_sha384;
+        ptr[10..12].* = SignatureScheme.rsa_pss_rsae_sha512;
+        ptr[12..14].* = SignatureScheme.rsa_pkcs1_sha256;
+        ptr[14..16].* = SignatureScheme.rsa_pkcs1_sha384;
+        ptr[16..18].* = SignatureScheme.rsa_pkcs1_sha512;
+        ptr[18..20].* = SignatureScheme.ed25519;
+        ptr += 20;
     }
 
     // Groups:
-    ptr = write16(ptr, @intFromEnum(ExtensionType.supported_groups));
-    ptr = write16(ptr, 8);
+    ptr[0..2].* = ExtensionType.supported_groups;
+    ptr = write16(ptr + 2, 8);
     {
         ptr = write16(ptr, 6);
-        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519_kyber768d00));
-        ptr = write16(ptr, @intFromEnum(NamedGroup.secp256r1));
-        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519));
+        ptr[0..2].* = NamedGroup.x25519_kyber768d00;
+        ptr[2..4].* = NamedGroup.secp256r1;
+        ptr[4..6].* = NamedGroup.x25519;
+        ptr += 6;
     }
 
     // Key share extension:
-    ptr = write16(ptr, @intFromEnum(ExtensionType.key_share));
-    ptr = write16(ptr, 1466 -% len(ptr, buf));
-
-    // Key share payload
+    ptr[0..2].* = ExtensionType.key_share;
+    ptr = write16(ptr + 2, 1327);
+    // Key share payload:
     ptr = write16(ptr, 1325);
     {
         // x25519:
-        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519));
-        ptr = write16(ptr, 32);
+        ptr[0..2].* = NamedGroup.x25519;
+        ptr = write16(ptr + 2, 32);
         ptr[0..32].* = x25519_kp.public_key;
         ptr += 32;
 
         // secp256r1:
-        ptr = write16(ptr, @intFromEnum(NamedGroup.secp256r1));
-        ptr = write16(ptr, 65);
+        ptr[0..2].* = NamedGroup.secp256r1;
+        ptr = write16(ptr + 2, 65);
         ptr[0..65].* = secp256r1_kp.public_key.toUncompressedSec1();
         ptr += 65;
 
         // x25519_kyber768d00:
-        ptr = write16(ptr, @intFromEnum(NamedGroup.x25519_kyber768d00));
-        ptr = write16(ptr, 32 + 1184);
+        ptr[0..2].* = NamedGroup.x25519_kyber768d00;
+        ptr = write16(ptr + 2, 32 + 1184);
         ptr[0..32].* = x25519_kp.public_key;
         ptr += 32;
         ptr[0..1184].* = kyber768_kp.public_key.toBytes();
@@ -520,18 +354,14 @@ pub fn init(host: anytype, seed: *[192]u8, buf: [*]u8) !void {
     }
 
     // Server name:
-    ptr = write16(ptr, @intFromEnum(ExtensionType.server_name));
-    ptr = write16(ptr, host_len +% 5);
+    ptr[0..2].* = ExtensionType.server_name;
+    ptr = write16(ptr + 2, host_len +% 5);
     {
         ptr = write16(ptr, host_len +% 3);
-        ptr = write8(ptr, 0);
+        ptr[0] = 0;
+        ptr += 1;
         ptr = write16(ptr, host_len);
     }
-}
-
-fn write8(ptr: [*]u8, data: u8) [*]u8 {
-    ptr[0] = data;
-    return ptr + 1;
 }
 fn write16(ptr: [*]u8, data: u16) [*]u8 {
     ptr[0..2].* = @bitCast(@byteSwap(data));
@@ -540,7 +370,4 @@ fn write16(ptr: [*]u8, data: u16) [*]u8 {
 fn write24(ptr: [*]u8, data: u24) [*]u8 {
     ptr[0..3].* = @bitCast(@byteSwap(data));
     return ptr + 3;
-}
-fn len(ptr: [*]u8, buf: [*]u8) u16 {
-    return @truncate(@intFromPtr(ptr) -% @intFromPtr(buf));
 }
