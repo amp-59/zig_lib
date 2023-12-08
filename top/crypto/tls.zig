@@ -1,4 +1,5 @@
 const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
 const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
 const dh = @import("dh.zig");
@@ -241,35 +242,46 @@ pub const retry: [32]u8 = .{
     0xC2, 0xA2, 0x11, 0x16, 0x7A, 0xBB, 0x8C, 0x5E,
     0x07, 0x9E, 0x09, 0xE2, 0xC8, 0xA8, 0x33, 0x9C,
 };
+fn write16(ptr: [*]u8, data: u16) [*]u8 {
+    ptr[0..2].* = @bitCast(@byteSwap(data));
+    return ptr + 2;
+}
+fn write24(ptr: [*]u8, data: u24) [*]u8 {
+    ptr[0..3].* = @bitCast(@byteSwap(data));
+    return ptr + 3;
+}
 pub fn init(host: []const u8, seed: *[192]u8, buf: [*]u8) !void {
     @setRuntimeSafety(false);
     const host_len: u16 = @intCast(host.len);
-    const hello_rand: *[32]u8 = seed[0..32];
-    const legacy_session_id: *[32]u8 = seed[32..64];
-    const x25519_kp_seed: *[32]u8 = seed[64..96];
-    const secp256r1_kp_seed: *[32]u8 = seed[96..128];
-    const kyber768_kp_seed: *[64]u8 = seed[128..192];
+
     const x25519_kp: dh.X25519.KeyPair =
-        try dh.X25519.KeyPair.create(x25519_kp_seed.*);
+        try dh.X25519.KeyPair.create(seed[0..32].*);
+
     const secp256r1_kp: ecdsa.EcdsaP256Sha256.KeyPair =
-        try ecdsa.EcdsaP256Sha256.KeyPair.create(secp256r1_kp_seed.*);
+        try ecdsa.EcdsaP256Sha256.KeyPair.create(seed[32..64].*);
+
     const kyber768_kp: kyber.Kyber768.KeyPair =
-        try kyber.Kyber768.KeyPair.create(kyber768_kp_seed.*);
+        try kyber.Kyber768.KeyPair.create(seed[64..128].*);
+
     var ptr: [*]u8 = buf;
 
     // Hello:
     ptr[0] = ContentType.handshake;
     ptr[1] = 0x03;
     ptr[2] = 0x01;
+
     ptr = write16(ptr + 3, 1472 +% host_len);
     ptr[0] = HandshakeType.client_hello;
+
     ptr = write24(ptr + 1, 1468 +% host_len);
     ptr[0..2].* = ProtocolVersion.tls_1_2;
-    ptr[2..34].* = hello_rand.*;
+
+    ptr[2..34].* = seed[128..160].*; // hello_rand
     ptr += 34;
+
     ptr[0] = 32;
     ptr += 1;
-    ptr[0..32].* = legacy_session_id.*;
+    ptr[0..32].* = seed[160..192].*; // session_id
     ptr += 32;
 
     // Cipher suite:
@@ -291,9 +303,8 @@ pub fn init(host: []const u8, seed: *[192]u8, buf: [*]u8) !void {
     ptr[0..2].* = ExtensionType.supported_versions;
     ptr = write16(ptr + 2, 3);
     {
-        ptr[0] = 0x02;
-        ptr[1] = 0x03;
-        ptr[2] = 0x04;
+        ptr[0] = 2;
+        ptr[1..3].* = ProtocolVersion.tls_1_3;
         ptr += 3;
     }
 
@@ -326,12 +337,11 @@ pub fn init(host: []const u8, seed: *[192]u8, buf: [*]u8) !void {
         ptr += 6;
     }
 
-    // Key share extension:
+    // Key share:
     ptr[0..2].* = ExtensionType.key_share;
     ptr = write16(ptr + 2, 1327);
-    // Key share payload:
-    ptr = write16(ptr, 1325);
     {
+        ptr = write16(ptr, 1325);
         // x25519:
         ptr[0..2].* = NamedGroup.x25519;
         ptr = write16(ptr + 2, 32);
@@ -362,12 +372,4 @@ pub fn init(host: []const u8, seed: *[192]u8, buf: [*]u8) !void {
         ptr += 1;
         ptr = write16(ptr, host_len);
     }
-}
-fn write16(ptr: [*]u8, data: u16) [*]u8 {
-    ptr[0..2].* = @bitCast(@byteSwap(data));
-    return ptr + 2;
-}
-fn write24(ptr: [*]u8, data: u24) [*]u8 {
-    ptr[0..3].* = @bitCast(@byteSwap(data));
-    return ptr + 3;
 }
