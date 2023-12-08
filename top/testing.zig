@@ -60,10 +60,10 @@ pub fn arrayOfCharsWrite(buf: []u8, s: []const u8) u64 {
 pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void {
     const arg1_xray_len: u64 = arrayOfCharsLength(arg1);
     const arg2_xray_len: u64 = arrayOfCharsLength(arg2);
-    if (arg1_xray_len + arg2_xray_len > 4096) {
+    if (arg1_xray_len + arg2_xray_len > 65536) {
         return;
     }
-    var buf: [4096]u8 = undefined;
+    var buf: [65536]u8 = undefined;
     var len: u64 = 0;
     len += arrayOfCharsWrite(buf[len..], arg1);
     len += arrayOfCharsWrite(buf[len..], arg2);
@@ -98,7 +98,7 @@ pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) debug
         }
     }
 }
-pub fn expectEqualString(arg1: anytype, arg2: anytype) !void {
+pub fn expectEqualString(arg1: []const u8, arg2: []const u8) !void {
     try expectEqualMany(u8, arg1, arg2);
 }
 pub fn expectError(arg1: anytype, arg2: anytype) !void {
