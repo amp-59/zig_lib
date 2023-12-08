@@ -1272,6 +1272,7 @@ pub const LoaderSpec = struct {
         show_anonymous_symbols: bool = false,
         show_unchanged_symbols: bool = false,
         show_insignificant: bool = false,
+        show_step_back_failed: bool = false,
         show_insignificant_increases: bool = true,
         show_insignificant_decreases: bool = true,
         show_insignificant_additions: bool = true,
@@ -1362,9 +1363,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 if (phdr.type == .LOAD and phdr.memsz != 0) {
                     ei.prog.len +%= bits.alignA4096(phdr.vaddr +% phdr.memsz);
                 }
-            } else {
-                phndx = 1;
             }
+            phndx = 1;
             ei.prog.addr = bits.alignA4096(@atomicRmw(usize, &loader.prog.up_addr, .Add, ei.prog.len, .SeqCst));
             while (phndx != ei.ehdr.phnum) : (phndx +%= 1) {
                 const phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
@@ -1375,9 +1375,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     const off: usize = bits.alignB4096(phdr.offset);
                     try meta.wrap(file.map(map, prot, mmap_flags, fd, ei.prog.addr +% vaddr, len, off));
                 }
-            } else {
-                phndx = 1;
             }
+            phndx = 1;
             try meta.wrap(file.close(close, fd));
             var shndx: usize = 1;
             while (shndx != ei.ehdr.shnum) : (shndx +%= 1) {
@@ -1419,27 +1418,34 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         }
                     }
                 }
-            } else {
-                shndx = 1;
             }
+            shndx = 1;
             var offset: usize = ei.ehdr.phoff +% ei.ehdr.phentsize *% ei.ehdr.phnum;
             while (shndx != ei.ehdr.shnum) : (shndx +%= 1) {
                 const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
-                if (shdr.addr == 0) {
+                if (shdr.addr == 0 and shdr.addralign != 0) {
                     offset = bits.alignA64(addr +% offset, shdr.addralign) -% addr;
-                    mem.addrcpy(addr + offset, addr + shdr.offset, shdr.size);
+                    if (addr + offset + shdr.size >= addr + ei.ehdr.shoff) {
+                        break;
+                    }
+                    mem.addrcpy(addr +% offset, addr +% shdr.offset, shdr.size);
                     shdr.offset = offset;
                     offset +%= shdr.size;
                 }
-            }
-            offset = bits.alignA64(offset, 8);
-            mem.addrcpy(addr + offset, addr + ei.ehdr.shoff, ei.ehdr.shentsize *% ei.ehdr.shnum);
-            ei.ehdr.shoff = offset;
-            offset = offset +% ei.ehdr.shentsize *% ei.ehdr.shnum;
-            const new: usize = bits.alignA4096(addr +% offset);
-            if (new < end) {
-                mem.unmap(unmap, new, end -% new);
-                _ = @cmpxchgStrong(usize, &loader.meta.up_addr, end, new, .SeqCst, .SeqCst);
+            } else {
+                offset = bits.alignA64(offset, 8);
+                mem.addrcpy(addr +% offset, addr +% ei.ehdr.shoff, ei.ehdr.shentsize *% ei.ehdr.shnum);
+                ei.ehdr.shoff = offset;
+                offset = offset +% ei.ehdr.shentsize *% ei.ehdr.shnum;
+                const new: usize = bits.alignA4096(addr +% offset);
+                if (new < end) {
+                    mem.unmap(unmap, new, end -% new);
+                    if (@cmpxchgStrong(usize, &loader.meta.up_addr, end, new, .SeqCst, .SeqCst)) |found| {
+                        if (loader_spec.logging.show_step_back_failed) {
+                            about.failedToCondenseArena(end, found);
+                        }
+                    }
+                }
             }
             return ei;
         }
