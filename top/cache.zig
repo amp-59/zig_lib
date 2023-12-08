@@ -218,7 +218,7 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
             root_pathname: [:0]const u8,
         ) !bool {
             while (@cmpxchgWeak(u32, &mirror.futex, 0, 1, .SeqCst, .SeqCst)) |val| {
-                proc.futexWait(futex, &mirror.futex, val, &.{ .sec = 10 });
+                try meta.wrap(proc.futexWait(futex, &mirror.futex, val, &.{ .sec = 10 }));
             }
             var path_allocator: mem.SimpleAllocator = .{ .start = lb_path_addr, .next = lb_path_addr, .finish = lb_path_addr };
             defer path_allocator.unmapAll();
@@ -241,7 +241,7 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
             );
             try file.close(.{}, cache_m_root_fd);
             mirror.futex = 0;
-            proc.futexWake(futex, &mirror.futex, ~@as(u32, 0));
+            try meta.wrap(proc.futexWake(futex, &mirror.futex, ~@as(u32, 0)));
             return misses == 0;
         }
     };
