@@ -12,8 +12,16 @@ pub const runtime_assertions = false;
 pub const discard_errors: bool = true;
 
 pub fn main() !void {
-    var buf: [65536]u8 = undefined;
-    try crypto.tls.init("hostname", &buf);
+    var buf1: [1477]u8 = .{0} ** 1477;
+    var seed: [192]u8 = .{0} ** 192;
+    try crypto.tls.init("hostname00", &seed, &buf1);
+    for (blank_header, buf1, 0..) |v0, v1, idx| {
+        if (v0 != v1) {
+            zl.debug.write("\x1b[91m");
+            testing.printBufN(4096, .{ .idx = idx, .expected = v0, .found = v1 });
+            zl.debug.write("\x1b[0m");
+        }
+    }
 }
 // With host.len == 10
 pub const blank_header: [1477]u8 = .{
