@@ -1699,8 +1699,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             mem.zero(Extensions, top.sh.extns);
             top.sh.extns.stack_traces = zero.addBuild(allocator, trace_build_cmd, "stack_traces", "top/trace.zig");
             if (have_lazy) {
-                const ptr: *[24][*:0]u8 = @ptrFromInt(allocator.allocateRaw(24 *% 8, 8));
-                const tmp = [24][*:0]const u8{
+                const nodes: *[6]*Node = @ptrCast(top.sh.extns);
+                const args: *[24][*:0]u8 = @ptrFromInt(allocator.allocateRaw(24 *% 8, 8));
+                for ([24][*:0]const u8{
                     top.zigExe(),         "build-lib",
                     "--cache-dir",        zero.cacheRoot(),
                     "--global-cache-dir", zero.globalCacheRoot(),
@@ -1713,44 +1714,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     "-fno-compiler-rt",   "-fno-stack-check",
                     "-fno-unwind-tables", "-fno-function-sections",
                     "-fstrip",            "-ODebug",
-                };
-                for (ptr, tmp) |*dest, src| dest.* = @constCast(src);
-
-                top.sh.extns.proc = createNode(allocator, zero, "proc", extn_flags, .build, obj_lock);
-                top.sh.extns.proc.lists.cmd_args = ptr;
-                top.sh.extns.proc.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.proc.addSourceInputPath(allocator, "top/build/proc.auto.zig");
-                top.sh.extns.proc.lists.cmd_args_max_len = ptr.len;
-
-                top.sh.extns.about = createNode(allocator, zero, "about", extn_flags, .build, obj_lock);
-                top.sh.extns.about.lists.cmd_args = ptr;
-                top.sh.extns.about.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.about.addSourceInputPath(allocator, "top/build/about.auto.zig");
-                top.sh.extns.about.lists.cmd_args_max_len = ptr.len;
-
-                top.sh.extns.build = createNode(allocator, zero, "build", extn_flags, .build, obj_lock);
-                top.sh.extns.build.lists.cmd_args = ptr;
-                top.sh.extns.build.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.build.addSourceInputPath(allocator, "top/build/build.auto.zig");
-                top.sh.extns.build.lists.cmd_args_max_len = ptr.len;
-
-                top.sh.extns.format = createNode(allocator, zero, "format", extn_flags, .build, obj_lock);
-                top.sh.extns.format.lists.cmd_args = ptr;
-                top.sh.extns.format.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.format.addSourceInputPath(allocator, "top/build/format.auto.zig");
-                top.sh.extns.format.lists.cmd_args_max_len = ptr.len;
-
-                top.sh.extns.objcopy = createNode(allocator, zero, "objcopy", extn_flags, .build, obj_lock);
-                top.sh.extns.objcopy.lists.cmd_args = ptr;
-                top.sh.extns.objcopy.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.objcopy.addSourceInputPath(allocator, "top/build/objcopy.auto.zig");
-                top.sh.extns.objcopy.lists.cmd_args_max_len = ptr.len;
-
-                top.sh.extns.archive = createNode(allocator, zero, "archive", extn_flags, .build, obj_lock);
-                top.sh.extns.archive.lists.cmd_args = ptr;
-                top.sh.extns.archive.addBinaryOutputPath(allocator, .output_lib);
-                top.sh.extns.archive.addSourceInputPath(allocator, "top/build/archive.auto.zig");
-                top.sh.extns.archive.lists.cmd_args_max_len = ptr.len;
+                }, 0..) |src, idx| {
+                    args[idx] = @constCast(src);
+                }
+                for ([6][2][:0]const u8{
+                    .{ "about", "top/build/about.auto.zig" },
+                    .{ "proc", "top/build/proc.auto.zig" },
+                    .{ "build", "top/build/build.auto.zig" },
+                    .{ "format", "top/build/format.auto.zig" },
+                    .{ "objcopy", "top/build/objcopy.auto.zig" },
+                    .{ "archive", "top/build/archive.auto.zig" },
+                }, 0..) |names, idx| {
+                    nodes[idx] = createNode(allocator, zero, names[0], extn_flags, .build, obj_lock);
+                    nodes[idx].lists.cmd_args = args;
+                    nodes[idx].addBinaryOutputPath(allocator, .output_lib);
+                    nodes[idx].addSourceInputPath(allocator, names[1]);
+                    nodes[idx].lists.cmd_args_max_len = args.len;
+                }
             }
         }
         fn classifySourceInputName(name: []const u8) types.File.Tag {
