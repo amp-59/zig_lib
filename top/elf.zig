@@ -2624,10 +2624,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr;
             }
-            fn writeSymbolValue() [*]u8 {}
-            fn lengthSymbolValue() usize {}
-            fn writeSymbolValueDifference() void {}
-            fn lengthChangedSymbolValueDifference() void {}
             fn lengthSymbolDifference(
                 sym1: *const Elf64_Sym_Idx,
                 mat1: compare.Match,
