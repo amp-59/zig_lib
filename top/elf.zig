@@ -1222,13 +1222,19 @@ const Section = enum(u16) {
     @".gnu.version_r" = 40,
     @".init_array" = 41,
     @".fini_array" = 42,
-    const tag_list: [43]Section = @bitCast([43]u16{
+    @".text.zig" = 43,
+    @".got.zig" = 44,
+    @".data.rel.ro.zig" = 45,
+    @".data.zig" = 46,
+    @".bss.zig" = 47,
+
+    const tag_list: [48]Section = @bitCast([48]u16{
         0,  1,  2,  3,  4,  5,  6,  7,
         8,  9,  10, 11, 12, 13, 14, 15,
         16, 17, 18, 19, 20, 21, 22, 23,
         24, 25, 26, 27, 28, 29, 30, 31,
         32, 33, 34, 35, 36, 37, 38, 39,
-        40, 41, 42,
+        40, 41, 42, 43, 44, 45, 46, 47,
     });
     comptime {
         if (@typeInfo(Section).Enum.fields.len != tag_list.len) {
