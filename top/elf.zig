@@ -1259,6 +1259,8 @@ pub const LoaderSpec = struct {
         verify_lengths: bool = false,
         /// Determines if and how symbols should be sorted.
         sort: bool = true,
+        /// Attempt to consolidate metadata
+        consolidate_metadata: bool = false,
         const SortingPolicy = enum {
             /// Only sort symbol table entries if the symbol table entry size
             /// matches the symbol size. This allows sorting using a generic
