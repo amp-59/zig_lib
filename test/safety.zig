@@ -204,7 +204,17 @@ fn causeVirtualShiftOverflow(comptime T: type) void {
     var x: T = 1;
     x <<= y;
 }
-
+fn causeCorruptSwitch() void {
+    const E = enum(u8) { a = 1 };
+    var val: u8 = 2;
+    @setRuntimeSafety(false);
+    val += 1;
+    const e: E = @enumFromInt(val);
+    @setRuntimeSafety(true);
+    switch (e) {
+        else => {},
+    }
+}
 const NonScalar = struct {
     a: u64,
     b: u32,
@@ -215,6 +225,7 @@ const ns1 = .{ .a = 1, .b = 2 };
 const ns2 = .{ .a = 3, .b = 4 };
 
 pub fn main() !void {
+    causeCorruptSwitch();
     causeAccessInactiveField();
     causeAccessOutOfBounds();
     causeAccessOutOfOrder();
