@@ -164,7 +164,7 @@ fn causeShlWithOverflow(comptime T: type) void {
 fn causeRHSOfShiftTooBig(comptime T: type) void {
     var x = readOne(T);
     const y = shrWillShiftOutBits(T, &x);
-    safety.panic(.{ .shift_amt_overflowed = T }, .{ .bit_count = @bitSizeOf(T) + 1, .shift_amt = y }, @errorReturnTrace(), @returnAddress());
+    safety.panic(.{ .shift_amt_overflowed = T }, y, @errorReturnTrace(), @returnAddress());
 }
 fn causeShrWithOverflow(comptime T: type) void {
     var x = readOne(T);
@@ -196,24 +196,14 @@ fn causeCastToErrorFromInvalid() void {
 fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
     safety.panic(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 10.0, @errorReturnTrace(), @returnAddress());
 }
-fn causeVirtualShiftOverflow(comptime T: type) void {
-    zl.debug.assert(@popCount(@as(u16, @bitSizeOf(T))) != 1);
-    const Y = zl.builtin.ShiftAmount(zl.meta.LeastRealBitSize(~@as(T, 0)));
-    var y: Y = zl.mem.unstable(Y, ~@as(Y, 0));
-    y += 0;
-    var x: T = 1;
-    x <<= y;
+fn causeReachUnreachable() void {
+    safety.panic(.reached_unreachable_operand, @errorReturnTrace(), @returnAddress());
 }
-fn causeCorruptSwitch() void {
-    const E = enum(u8) { a = 1 };
-    var val: u8 = 2;
-    @setRuntimeSafety(false);
-    val += 1;
-    const e: E = @enumFromInt(val);
-    @setRuntimeSafety(true);
-    switch (e) {
-        else => {},
-    }
+fn causeReachUnreachableError() void {
+    safety.panic(.{ .reached_unreachable_operand = anyerror }, Error.A, @errorReturnTrace(), @returnAddress());
+}
+fn causeReachUnreachableValue() void {
+    safety.panic(.{ .reached_unreachable_operand = Enum }, .a, @errorReturnTrace(), @returnAddress());
 }
 const NonScalar = struct {
     a: u64,
@@ -223,19 +213,17 @@ const Error = error{ A, B, C, D, E };
 const Enum = enum(u16) { a, b, c, d, e = 32768 };
 const ns1 = .{ .a = 1, .b = 2 };
 const ns2 = .{ .a = 3, .b = 4 };
-
 pub fn main() !void {
-    causeCorruptSwitch();
     causeAccessInactiveField();
     causeAccessOutOfBounds();
     causeAccessOutOfOrder();
     causeSentinelMismatch(u32);
-
     if (version == .std or fair_comparison) return;
-    causeVirtualShiftOverflow(u48);
     causeMemcpyArgumentsAlias();
     causeMempcyLengthMismatch();
     causeForLoopLengthMismatch();
+    causeReachUnreachableError();
+    causeReachUnreachableValue();
     causeCastTruncatedBits(u8, u3);
     causeCastToUnsignedFromNegative(i32, u32);
     causeCastToIntFromInvalid(f16, u16);
