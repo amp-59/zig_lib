@@ -196,6 +196,14 @@ fn causeCastToErrorFromInvalid() void {
 fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
     safety.panic(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 10.0, @errorReturnTrace(), @returnAddress());
 }
+fn causeVirtualShiftOverflow(comptime T: type) void {
+    zl.debug.assert(@popCount(@as(u16, @bitSizeOf(T))) != 1);
+    const Y = zl.builtin.ShiftAmount(zl.meta.LeastRealBitSize(~@as(T, 0)));
+    var y: Y = zl.mem.unstable(Y, ~@as(Y, 0));
+    y += 0;
+    var x: T = 1;
+    x <<= y;
+}
 
 const NonScalar = struct {
     a: u64,
@@ -213,7 +221,7 @@ pub fn main() !void {
     causeSentinelMismatch(u32);
 
     if (version == .std or fair_comparison) return;
-
+    causeVirtualShiftOverflow(u48);
     causeMemcpyArgumentsAlias();
     causeMempcyLengthMismatch();
     causeForLoopLengthMismatch();
