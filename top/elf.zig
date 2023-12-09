@@ -1814,188 +1814,186 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var len: usize = 0;
                 for (cmp.mats2[1..ei2.ehdr.shnum], 1..) |*sect_mat2, shndx2| {
                     const shdr2: *Elf64_Shdr = ei2.ehdr.sectionHeader(shndx2);
+                    cmp.sizes[shndx2].sizes_r1.new = shdr2.size;
                     const sh_name2: [:0]const u8 = ei2.ehdr.sectionName(shndx2);
                     const width2: usize = sh_name2.len;
                     var shndx1: usize = 1;
                     while (shndx1 != ei1.ehdr.shnum) : (shndx1 +%= 1) {
                         if (mem.testEqualString(sh_name2, ei1.ehdr.sectionName(shndx1))) {
-                            break;
-                        }
-                    } else {
-                        len +%= about.lengthSection2(ei2, shdr2.addr, shdr2.offset, 0, shdr2.size, shndx2, width1);
-                        continue;
-                    }
-                    const sect_mat1: *Match = &cmp.mats1[shndx1].mat;
-                    sect_mat1.idx = @intCast(shndx2);
-                    sect_mat1.tag = .matched;
-                    sect_mat2.mat.idx = @intCast(shndx1);
-                    sect_mat2.mat.tag = .matched;
-                    const shdr1: *Elf64_Shdr = ei1.ehdr.sectionHeader(shndx1);
-                    len +%= about.lengthSection2(ei2, shdr2.addr, shdr2.offset, shdr1.size, shdr2.size, shndx2, width1);
-                    if (ei1.bestSymbolTable()) |symtab_shdr1| {
-                        if (ei2.bestSymbolTable()) |symtab_shdr2| {
-                            lo: for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2], 0..) |*mat2, *sym2, sym_idx2| {
-                                cmp.sizes[shndx2].sizes_r1.new +%= sym2.size;
-                                const name2: [:0]u8 = symbolName(ei2, symtab_shdr2, sym2, mat2) orelse {
-                                    continue;
-                                };
-                                if (mat2.isMangled() or mat2.isAnonymous()) {
-                                    mat2.tag = .unmatched;
-                                    continue;
-                                }
-                                for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1], 0..) |*mat1, *sym1, sym_idx1| {
-                                    if (mat1.idx != Match.no_idx) {
-                                        continue;
-                                    }
-                                    const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1) orelse {
-                                        continue;
-                                    };
-                                    if (mem.testEqualString(name1, name2)) {
-                                        mat2.tag = .matched;
-                                        mat2.idx = @intCast(sym_idx1);
-                                        mat1.tag = .matched;
-                                        mat1.idx = @intCast(sym_idx2);
-                                        continue :lo;
-                                    }
-                                }
-                                mat2.tag = .addition;
-                            }
-                            for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1], 0..) |*mat1, *sym1, sym_idx1| {
-                                cmp.sizes[shndx2].sizes_r1.old +%= sym1.size;
-                                if (mat1.idx != Match.no_idx) {
-                                    continue;
-                                }
-                                const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1) orelse {
-                                    continue;
-                                };
-                                if (!loader_spec.logging.show_anonymous_symbols and
-                                    mat1.isAnonymous())
-                                {
-                                    continue;
-                                }
-                                var diff: usize = ~@as(usize, 0);
-                                if (mat1.isMangled()) {
-                                    for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2], 0..) |*mat2, *sym2, sym_idx2| {
-                                        if (mat2.idx != Match.no_idx) {
-                                            continue;
-                                        }
+                            const sect_mat1: *Match = &cmp.mats1[shndx1].mat;
+                            sect_mat1.idx = @intCast(shndx2);
+                            sect_mat1.tag = .matched;
+                            sect_mat2.mat.idx = @intCast(shndx1);
+                            sect_mat2.mat.tag = .matched;
+                            const shdr1: *Elf64_Shdr = ei1.ehdr.sectionHeader(shndx1);
+                            cmp.sizes[shndx1].sizes_r1.old = shdr1.size;
+                            len +%= about.lengthSection2(ei2, shdr2.addr, shdr2.offset, shdr1.size, shdr2.size, shndx2, width1);
+                            if (ei1.bestSymbolTable()) |symtab_shdr1| {
+                                if (ei2.bestSymbolTable()) |symtab_shdr2| {
+                                    lo: for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2], 0..) |*mat2, *sym2, sym_idx2| {
                                         const name2: [:0]u8 = symbolName(ei2, symtab_shdr2, sym2, mat2) orelse {
                                             continue;
                                         };
-                                        if (mem.testEqualString(mat1.name.short(name1), mat2.name.short(name2)) and
-                                            mem.testEqualString(mat1.name.space(name1), mat2.name.space(name2)))
-                                        {
-                                            if (mem.testEqualString(ei1.symbolBytes(sym1), ei2.symbolBytes(sym2))) {
-                                                mat1.tag = .matched;
-                                                mat1.idx = @intCast(sym_idx2);
+                                        if (mat2.isMangled() or mat2.isAnonymous()) {
+                                            mat2.tag = .unmatched;
+                                            continue;
+                                        }
+                                        for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1], 0..) |*mat1, *sym1, sym_idx1| {
+                                            if (mat1.idx != Match.no_idx) {
+                                                continue;
+                                            }
+                                            const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1) orelse {
+                                                continue;
+                                            };
+                                            if (mem.testEqualString(name1, name2)) {
                                                 mat2.tag = .matched;
                                                 mat2.idx = @intCast(sym_idx1);
-                                                break;
-                                            }
-                                            if (compareSizes(sym1, sym2, &diff)) {
                                                 mat1.tag = .matched;
                                                 mat1.idx = @intCast(sym_idx2);
+                                                continue :lo;
+                                            }
+                                        }
+                                        mat2.tag = .addition;
+                                    }
+                                    for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1], 0..) |*mat1, *sym1, sym_idx1| {
+                                        if (mat1.idx != Match.no_idx) {
+                                            continue;
+                                        }
+                                        const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1) orelse {
+                                            continue;
+                                        };
+                                        if (!loader_spec.logging.show_anonymous_symbols and
+                                            mat1.isAnonymous())
+                                        {
+                                            continue;
+                                        }
+                                        var diff: usize = ~@as(usize, 0);
+                                        if (mat1.isMangled()) {
+                                            for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2], 0..) |*mat2, *sym2, sym_idx2| {
+                                                if (mat2.idx != Match.no_idx) {
+                                                    continue;
+                                                }
+                                                const name2: [:0]u8 = symbolName(ei2, symtab_shdr2, sym2, mat2) orelse {
+                                                    continue;
+                                                };
+                                                if (mem.testEqualString(mat1.name.short(name1), mat2.name.short(name2)) and
+                                                    mem.testEqualString(mat1.name.space(name1), mat2.name.space(name2)))
+                                                {
+                                                    if (mem.testEqualString(ei1.symbolBytes(sym1), ei2.symbolBytes(sym2))) {
+                                                        mat1.tag = .matched;
+                                                        mat1.idx = @intCast(sym_idx2);
+                                                        mat2.tag = .matched;
+                                                        mat2.idx = @intCast(sym_idx1);
+                                                        break;
+                                                    }
+                                                    if (compareSizes(sym1, sym2, &diff)) {
+                                                        mat1.tag = .matched;
+                                                        mat1.idx = @intCast(sym_idx2);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (mat1.tag == .matched) {
+                                            cmp.mats2[shndx2].mats[mat1.idx].tag = .matched;
+                                            cmp.mats2[shndx2].mats[mat1.idx].idx = @intCast(sym_idx1);
+                                        } else {
+                                            mat1.idx = Match.no_idx;
+                                            mat1.tag = .deletion;
+                                        }
+                                    }
+                                    for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2]) |*mat2, *sym2| {
+                                        if (mat2.idx == Match.no_idx) {
+                                            if (mat2.tag == .unmatched and mat2.isMangled()) {
+                                                mat2.tag = .addition;
+                                            }
+                                            if (!loader_spec.logging.show_anonymous_symbols and
+                                                mat2.isAnonymous())
+                                            {
+                                                continue;
+                                            }
+                                            cmp.sizes[shndx2].sizes_r1.additions +%= sym2.size;
+                                        } else {
+                                            const sym1: *Elf64_Sym_Idx = &cmp.syms1.?[shndx1][mat2.idx];
+                                            if (sym2.size < sym1.size) {
+                                                cmp.sizes[shndx2].sizes_r1.decreases +%= sym1.size -% sym2.size;
+                                                mat2.tag = .decrease;
+                                            } else if (sym2.size > sym1.size) {
+                                                cmp.sizes[shndx2].sizes_r1.increases +%= sym2.size -% sym1.size;
+                                                mat2.tag = .increase;
+                                            } else {
+                                                mat2.tag = .identical;
+                                            }
+                                            cmp.mats1[shndx1].mats[mat2.idx].tag = mat2.tag;
+                                        }
+                                    }
+                                    for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1]) |*mat1, *sym1| {
+                                        if (mat1.tag == .deletion) {
+                                            cmp.sizes[shndx2].sizes_r1.deletions +%= sym1.size;
+                                        }
+                                    }
+                                    for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1]) |*mat1, *sym1| {
+                                        mat1.flags.is_insignificant = switch (mat1.tag) {
+                                            else => sym1.size *% 100 < cmp.sizes[shndx2].sizes_r1.new,
+                                            .increase => (sym1.size -% cmp.syms2.?[shndx2][mat1.idx].size) *% 100 < cmp.sizes[shndx2].sizes_r1.increases,
+                                            .decrease => (cmp.syms2.?[shndx2][mat1.idx].size -% sym1.size) *% 100 < cmp.sizes[shndx2].sizes_r1.decreases,
+                                            .deletion => (sym1.size *% 100) < cmp.sizes[shndx2].sizes_r1.deletions,
+                                        };
+                                    }
+                                    for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2]) |*mat2, *sym2| {
+                                        mat2.flags.is_insignificant = switch (mat2.tag) {
+                                            else => sym2.size *% 100 < cmp.sizes[shndx2].sizes_r1.new,
+                                            .increase => (sym2.size -% cmp.syms1.?[shndx1][mat2.idx].size) *% 100 < cmp.sizes[shndx2].sizes_r1.increases,
+                                            .decrease => (cmp.syms1.?[shndx1][mat2.idx].size -% sym2.size) *% 100 < cmp.sizes[shndx2].sizes_r1.decreases,
+                                            .addition => (sym2.size *% 100) < cmp.sizes[shndx2].sizes_r1.deletions,
+                                        };
+                                    }
+                                    for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2]) |*mat2, *sym2| {
+                                        const name2: [:0]u8 = symbolName(ei2, symtab_shdr2, sym2, mat2).?;
+                                        if (mat2.idx == Match.no_idx) {
+                                            if (filterSymbolsHalf(sym2, mat2.*, &cmp.sizes[shndx2].sizes_r2)) {
+                                                mat2.flags.is_hidden = true;
+                                                continue;
+                                            }
+                                            if (loader_spec.options.write_symbols) {
+                                                len +%= about.lengthSymbolIntro(sym2.index, mat2.tag, width2);
+                                                len +%= about.lengthSymbol(sym2, mat2.*, name2, &cmp.sizes[shndx2].sizes_r1);
+                                            }
+                                        } else {
+                                            const mat1: *Match = &cmp.mats1[shndx1].mats[mat2.idx];
+                                            const sym1: *Elf64_Sym_Idx = &cmp.syms1.?[shndx1][mat2.idx];
+                                            if (filterSymbolsFull(sym1, mat1.*, sym2, mat2.*, &cmp.sizes[shndx2].sizes_r2)) {
+                                                mat1.flags.is_hidden = true;
+                                                continue;
+                                            }
+                                            const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1).?;
+                                            if (loader_spec.options.write_symbols) {
+                                                len +%= about.lengthSymbolIntro(sym2.index, mat2.tag, width2);
+                                                len +%= about.lengthSymbolDifference(sym1, mat1.*, name1, &cmp.sizes[shndx2].sizes_r1, sym2, mat2.*, name2);
                                             }
                                         }
                                     }
-                                }
-                                if (mat1.tag == .matched) {
-                                    cmp.mats2[shndx2].mats[mat1.idx].tag = .matched;
-                                    cmp.mats2[shndx2].mats[mat1.idx].idx = @intCast(sym_idx1);
-                                } else {
-                                    mat1.idx = Match.no_idx;
-                                    mat1.tag = .deletion;
-                                }
-                            }
-                            for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2]) |*mat2, *sym2| {
-                                if (mat2.idx == Match.no_idx) {
-                                    if (mat2.tag == .unmatched and mat2.isMangled()) {
-                                        mat2.tag = .addition;
+                                    for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1]) |*mat1, *sym1| {
+                                        if (mat1.idx != Match.no_idx) {
+                                            continue;
+                                        }
+                                        if (filterSymbolsHalf(sym1, mat1.*, &cmp.sizes[shndx2].sizes_r2)) {
+                                            mat1.flags.is_hidden = true;
+                                            continue;
+                                        }
+                                        const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1).?;
+                                        if (loader_spec.options.write_symbols) {
+                                            len +%= about.lengthSymbolIntro(sym1.index, mat1.tag, width2);
+                                            len +%= about.lengthSymbol(sym1, mat1.*, name1, &cmp.sizes[shndx2].sizes_r1);
+                                        }
                                     }
-                                    if (!loader_spec.logging.show_anonymous_symbols and
-                                        mat2.isAnonymous())
-                                    {
-                                        continue;
-                                    }
-                                    cmp.sizes[shndx2].sizes_r1.additions +%= sym2.size;
-                                } else {
-                                    const sym1: *Elf64_Sym_Idx = &cmp.syms1.?[shndx1][mat2.idx];
-                                    if (sym2.size < sym1.size) {
-                                        cmp.sizes[shndx2].sizes_r1.decreases +%= sym1.size -% sym2.size;
-                                        mat2.tag = .decrease;
-                                    } else if (sym2.size > sym1.size) {
-                                        cmp.sizes[shndx2].sizes_r1.increases +%= sym2.size -% sym1.size;
-                                        mat2.tag = .increase;
-                                    } else {
-                                        mat2.tag = .identical;
-                                    }
-                                    cmp.mats1[shndx1].mats[mat2.idx].tag = mat2.tag;
-                                }
-                            }
-                            for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1]) |*mat1, *sym1| {
-                                if (mat1.tag == .deletion) {
-                                    cmp.sizes[shndx2].sizes_r1.deletions +%= sym1.size;
-                                }
-                            }
-                            for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1]) |*mat1, *sym1| {
-                                mat1.flags.is_insignificant = switch (mat1.tag) {
-                                    else => sym1.size *% 100 < cmp.sizes[shndx2].sizes_r1.new,
-                                    .increase => (sym1.size -% cmp.syms2.?[shndx2][mat1.idx].size) *% 100 < cmp.sizes[shndx2].sizes_r1.increases,
-                                    .decrease => (cmp.syms2.?[shndx2][mat1.idx].size -% sym1.size) *% 100 < cmp.sizes[shndx2].sizes_r1.decreases,
-                                    .deletion => (sym1.size *% 100) < cmp.sizes[shndx2].sizes_r1.deletions,
-                                };
-                            }
-                            for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2]) |*mat2, *sym2| {
-                                mat2.flags.is_insignificant = switch (mat2.tag) {
-                                    else => sym2.size *% 100 < cmp.sizes[shndx2].sizes_r1.new,
-                                    .increase => (sym2.size -% cmp.syms1.?[shndx1][mat2.idx].size) *% 100 < cmp.sizes[shndx2].sizes_r1.increases,
-                                    .decrease => (cmp.syms1.?[shndx1][mat2.idx].size -% sym2.size) *% 100 < cmp.sizes[shndx2].sizes_r1.decreases,
-                                    .addition => (sym2.size *% 100) < cmp.sizes[shndx2].sizes_r1.deletions,
-                                };
-                            }
-                            for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2]) |*mat2, *sym2| {
-                                const name2: [:0]u8 = symbolName(ei2, symtab_shdr2, sym2, mat2).?;
-                                if (mat2.idx == Match.no_idx) {
-                                    if (filterSymbolsHalf(sym2, mat2.*, &cmp.sizes[shndx2].sizes_r2)) {
-                                        mat2.flags.is_hidden = true;
-                                        continue;
-                                    }
-                                    if (loader_spec.options.write_symbols) {
-                                        len +%= about.lengthSymbolIntro(sym2.index, mat2.tag, width2);
-                                        len +%= about.lengthSymbol(sym2, mat2.*, name2, &cmp.sizes[shndx2].sizes_r1);
-                                    }
-                                } else {
-                                    const mat1: *Match = &cmp.mats1[shndx1].mats[mat2.idx];
-                                    const sym1: *Elf64_Sym_Idx = &cmp.syms1.?[shndx1][mat2.idx];
-                                    if (filterSymbolsFull(sym1, mat1.*, sym2, mat2.*, &cmp.sizes[shndx2].sizes_r2)) {
-                                        mat1.flags.is_hidden = true;
-                                        continue;
-                                    }
-                                    const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1).?;
-                                    if (loader_spec.options.write_symbols) {
-                                        len +%= about.lengthSymbolIntro(sym2.index, mat2.tag, width2);
-                                        len +%= about.lengthSymbolDifference(sym1, mat1.*, name1, &cmp.sizes[shndx2].sizes_r1, sym2, mat2.*, name2);
+                                    if (!cmp.sizes[shndx2].sizes_r2.isZero()) {
+                                        len +%= about.lengthExcluded(width2, &cmp.sizes[shndx2].sizes_r2);
                                     }
                                 }
-                            }
-                            for (cmp.mats1[shndx1].mats, cmp.syms1.?[shndx1]) |*mat1, *sym1| {
-                                if (mat1.idx != Match.no_idx) {
-                                    continue;
-                                }
-                                if (filterSymbolsHalf(sym1, mat1.*, &cmp.sizes[shndx2].sizes_r2)) {
-                                    mat1.flags.is_hidden = true;
-                                    continue;
-                                }
-                                const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1).?;
-                                if (loader_spec.options.write_symbols) {
-                                    len +%= about.lengthSymbolIntro(sym1.index, mat1.tag, width2);
-                                    len +%= about.lengthSymbol(sym1, mat1.*, name1, &cmp.sizes[shndx2].sizes_r1);
-                                }
-                            }
-                            if (!cmp.sizes[shndx2].sizes_r2.isZero()) {
-                                len +%= about.lengthExcluded(width2, &cmp.sizes[shndx2].sizes_r2);
                             }
                         }
+                    } else {
+                        len +%= about.lengthSection2(ei2, shdr2.addr, shdr2.offset, 0, shdr2.size, shndx2, width1);
                     }
                 }
                 for (cmp.mats1[1..ei1.ehdr.shnum], 1..) |*mat1, shndx1| {
