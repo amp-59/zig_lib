@@ -2596,24 +2596,25 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ptr + 5;
             }
             fn lengthSymbol(sym: *const Elf64_Sym_Idx, mat: compare.Match, name: [:0]u8, sizes_r1: *const compare.Sizes) usize {
-                return lengthAddressOrOffset(sym.value, 0) +% 13 +%
+                return lengthAddressOrOffset(sym.value, 0) +% 15 +% @tagName(sym.info).len +%
                     switch (mat.tag) {
                     .addition => fmt.BloatDiff.length(0, sym.size),
                     .deletion => fmt.BloatDiff.length(sym.size, 0),
                     else => fmt.Bytes.length(sym.size),
-                } +% lengthPercentage(sym, mat, sizes_r1) +% lengthCompoundNameHalf(mat, name);
+                } +% lengthPercentage(sym.size, mat, sizes_r1) +% lengthCompoundNameHalf(mat, name);
             }
             fn writeSymbol(buf: [*]u8, sym: *const Elf64_Sym_Idx, mat: compare.Match, name: [:0]u8, sizes_r1: *const compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = writeAddressOrOffset(buf, sym.value, 0);
-                ptr[0..5].* = "size=".*;
+                ptr = fmt.strcpyEqu(ptr, @tagName(sym.info));
+                ptr[0..7].* = ", size=".*;
                 ptr = switch (mat.tag) {
-                    .addition => fmt.BloatDiff.write(ptr + 5, 0, sym.size),
-                    .deletion => fmt.BloatDiff.write(ptr + 5, sym.size, 0),
-                    else => fmt.Bytes.write(ptr + 5, sym.size),
+                    .addition => fmt.BloatDiff.write(ptr + 7, 0, sym.size),
+                    .deletion => fmt.BloatDiff.write(ptr + 7, sym.size, 0),
+                    else => fmt.Bytes.write(ptr + 7, sym.size),
                 };
                 ptr[0..2].* = ", ".*;
-                ptr = writePercentage(ptr + 2, sym, mat, sizes_r1);
+                ptr = writePercentage(ptr + 2, sym.size, mat, sizes_r1);
                 ptr[0..5].* = "name=".*;
                 ptr = writeCompoundNameHalf(ptr + 5, mat, name);
                 ptr[0] = '\n';
@@ -2637,11 +2638,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 name2: [:0]u8,
             ) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                var len: usize = lengthAddressOrOffset(sym2.value, 0);
-                len +%= 8 +% fmt.BloatDiff.length(sym1.size, sym2.size);
-                len +%= lengthPercentage(sym2, mat2, sizes);
-                len +%= lengthCompoundName(mat1, name1, mat2, name2);
-                return len;
+                return 15 +% @tagName(sym2.info).len +%
+                    lengthAddressOrOffset(sym2.value, 0) +%
+                    fmt.BloatDiff.length(sym1.size, sym2.size) +%
+                    lengthPercentage(sym2.size, mat2, sizes) +%
+                    lengthCompoundName(mat1, name1, mat2, name2);
             }
             fn writeSymbolDifference(
                 buf: [*]u8,
@@ -2655,18 +2656,18 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = writeAddressOrOffset(buf, sym2.value, 0);
-                ptr[0..5].* = "size=".*;
-                ptr = fmt.BloatDiff.write(ptr + 5, sym1.size, sym2.size);
+                ptr = fmt.strcpyEqu(ptr, @tagName(sym2.info));
+                ptr[0..7].* = ", size=".*;
+                ptr = fmt.BloatDiff.write(ptr + 7, sym1.size, sym2.size);
                 ptr[0..2].* = ", ".*;
-                ptr = writePercentage(ptr + 2, sym2, mat2, sizes);
+                ptr = writePercentage(ptr + 2, sym2.size, mat2, sizes);
                 ptr[0..5].* = "name=".*;
                 ptr = writeCompoundName(ptr + 5, mat1, name1, mat2, name2);
                 ptr[0] = '\n';
-                ptr += 1;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr, buf, lengthSymbolDifference, .{ sym1, mat1, name1, sizes, sym2, mat2, name2 });
+                    verify(ptr + 1, buf, lengthSymbolDifference, .{ sym1, mat1, name1, sizes, sym2, mat2, name2 });
                 }
-                return ptr;
+                return ptr + 1;
             }
             fn lengthName(style: []const u8, name: []const u8) usize {
                 @setRuntimeSafety(builtin.is_safe);
