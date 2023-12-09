@@ -1427,30 +1427,32 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     }
                 }
             }
-            shndx = 1;
-            var offset: usize = ei.ehdr.phoff +% ei.ehdr.phentsize *% ei.ehdr.phnum;
-            while (shndx != ei.ehdr.shnum) : (shndx +%= 1) {
-                const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
-                if (shdr.addr == 0 and shdr.addralign != 0) {
-                    offset = bits.alignA64(addr +% offset, shdr.addralign) -% addr;
-                    if (addr + offset + shdr.size >= addr + ei.ehdr.shoff) {
-                        break;
+            if (loader_spec.options.consolidate_metadata) {
+                shndx = 1;
+                var offset: usize = ei.ehdr.phoff +% ei.ehdr.phentsize *% ei.ehdr.phnum;
+                while (shndx != ei.ehdr.shnum) : (shndx +%= 1) {
+                    const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
+                    if (shdr.addr == 0 and shdr.addralign != 0) {
+                        offset = bits.alignA64(addr +% offset, shdr.addralign) -% addr;
+                        if (addr + offset + shdr.size >= addr + ei.ehdr.shoff) {
+                            break;
+                        }
+                        mem.addrcpy(addr +% offset, addr +% shdr.offset, shdr.size);
+                        shdr.offset = offset;
+                        offset +%= shdr.size;
                     }
-                    mem.addrcpy(addr +% offset, addr +% shdr.offset, shdr.size);
-                    shdr.offset = offset;
-                    offset +%= shdr.size;
-                }
-            } else {
-                offset = bits.alignA64(offset, 8);
-                mem.addrcpy(addr +% offset, addr +% ei.ehdr.shoff, ei.ehdr.shentsize *% ei.ehdr.shnum);
-                ei.ehdr.shoff = offset;
-                offset = offset +% ei.ehdr.shentsize *% ei.ehdr.shnum;
-                const new: usize = bits.alignA4096(addr +% offset);
-                if (new < end) {
-                    mem.unmap(unmap, new, end -% new);
-                    if (@cmpxchgStrong(usize, &loader.meta.up_addr, end, new, .SeqCst, .SeqCst)) |found| {
-                        if (loader_spec.logging.show_step_back_failed) {
-                            about.failedToCondenseArena(end, found);
+                } else {
+                    offset = bits.alignA64(offset, 8);
+                    mem.addrcpy(addr +% offset, addr +% ei.ehdr.shoff, ei.ehdr.shentsize *% ei.ehdr.shnum);
+                    ei.ehdr.shoff = offset;
+                    offset = offset +% ei.ehdr.shentsize *% ei.ehdr.shnum;
+                    const new: usize = bits.alignA4096(addr +% offset);
+                    if (new < end) {
+                        mem.unmap(unmap, new, end -% new);
+                        if (@cmpxchgStrong(usize, &loader.meta.up_addr, end, new, .SeqCst, .SeqCst)) |found| {
+                            if (loader_spec.logging.show_step_back_failed) {
+                                about.failedToCondenseArena(end, found);
+                            }
                         }
                     }
                 }
@@ -1608,7 +1610,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     return mat.name.short_idx == 0;
                 }
                 fn matchName(mat: *Match, strtab: [*]u8) ?[:0]u8 {
-                    @setRuntimeSafety(false);
+                    @setRuntimeSafety(builtin.is_safe);
                     if (mat.name.len == 0) {
                         var idx: usize = 0;
                         while (strtab[idx] != 0) {
@@ -1626,7 +1628,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                             }
                         }
                         idx = len;
-                        idx -%= 1;
+                        idx -|= 1;
                         while (idx != 0) {
                             idx -%= 1;
                             if (strtab[idx] == '_' and strtab[idx +% 1] == '_') {
