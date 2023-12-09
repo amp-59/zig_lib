@@ -3442,7 +3442,19 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         value: Enum,
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(Enum);
-        const max_len: ?comptime_int = null;
+        const ExhaustiveEnum = meta.ExhaustEnum(Enum);
+        const TagTypeIntFormat = IntFormat(spec, type_info.Enum.tag_type);
+        pub const max_len: ?comptime_int = blk: {
+            var len: usize = 0;
+            for (type_info.Enum.fields) |field| {
+                len = @max(len, fieldTagName(field.name).len);
+            }
+            if (type_info.Enum.is_exhaustive) {
+                break :blk len;
+            } else if (spec.enum_out_of_range_to_int) {
+                break :blk @max(len, IntFormat(Enum).max_len);
+            }
+        };
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
             @setRuntimeSafety(fmt_is_safe);
             if (type_info.Enum.is_exhaustive) {
@@ -3450,9 +3462,8 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
                     inline else => |tag| comptime fieldTagName(@tagName(tag)),
                 });
             }
-            const ExhaustiveEnum = meta.ExhaustEnum(Enum);
-            for (meta.enumValues(ExhaustiveEnum)) |tag_val| {
-                if (@intFromEnum(value) == tag_val) {
+            for (meta.enumValues(ExhaustiveEnum)) |int_value| {
+                if (@intFromEnum(value) == int_value) {
                     return EnumFormat(spec, ExhaustiveEnum).write(buf, @as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
                 }
             }
@@ -3469,9 +3480,8 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
                     inline else => |tag| comptime fieldTagName(@tagName(tag)).len,
                 };
             }
-            const ExhaustiveEnum = meta.ExhaustEnum(Enum);
-            for (meta.enumValues(ExhaustiveEnum)) |tag_val| {
-                if (@intFromEnum(value) == tag_val) {
+            for (meta.enumValues(ExhaustiveEnum)) |int_value| {
+                if (@intFromEnum(value) == int_value) {
                     return EnumFormat(spec, ExhaustiveEnum).length(@as(ExhaustiveEnum, @enumFromInt(@intFromEnum(value))));
                 }
             }
