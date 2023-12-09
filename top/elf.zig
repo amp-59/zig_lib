@@ -2313,26 +2313,26 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
-            fn lengthPercentage(sym: *const Elf64_Sym_Idx, mat: compare.Match, sizes: *const compare.Sizes) usize {
+            fn lengthPercentage(size: usize, mat: compare.Match, sizes: *const compare.Sizes) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                if (sym.size * 200 < (sizes.new +% sizes.old) or
+                if (size *% 200 < (sizes.new +% sizes.old) or
                     mat.flags.is_insignificant)
                 {
                     return 0;
                 }
-                const sym_size: f64 = @floatFromInt(sym.size);
+                const sym_size: f64 = @floatFromInt(size);
                 const mem_size: f64 = @floatFromInt(@max(1, if (@intFromEnum(mat.tag) >
                     @intFromEnum(compare.Match.Tag.identical)) sizes.old else sizes.new));
                 return fmt.Udsize.length(@intFromFloat(100 * sym_size / mem_size)) +% 7;
             }
-            fn writePercentage(buf: [*]u8, sym: *const Elf64_Sym_Idx, mat: compare.Match, sizes: *const compare.Sizes) [*]u8 {
+            fn writePercentage(buf: [*]u8, size: usize, mat: compare.Match, sizes: *const compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (sym.size * 200 < (sizes.new +% sizes.old) or
+                if (size *% 200 < (sizes.new +% sizes.old) or
                     mat.flags.is_insignificant)
                 {
                     return buf;
                 }
-                const sym_size: f64 = @floatFromInt(sym.size);
+                const sym_size: f64 = @floatFromInt(size);
                 const mem_size: f64 = @floatFromInt(@max(1, if (@intFromEnum(mat.tag) >
                     @intFromEnum(compare.Match.Tag.identical)) sizes.old else sizes.new));
                 const res: f64 = 100 * sym_size / mem_size;
@@ -2342,7 +2342,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr = fmt.Udsize.write(ptr + 4 - fmt.sigFigLen(usize, dec, 10), dec);
                 ptr[0..3].* = "%, ".*;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 3, buf, lengthPercentage, .{ sym, mat, sizes });
+                    verify(ptr + 3, buf, lengthPercentage, .{ size, mat, sizes });
                 }
                 return ptr + 3;
             }
