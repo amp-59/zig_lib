@@ -1128,6 +1128,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 defer node.lists.confs.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf(Conf), @alignOf(Conf), 1, @ptrCast(&node.lists.confs.ptr), &node.lists.confs_max_len, node.lists.confs.len));
             }
+            fn addPath(node: *Node, allocator: *types.Allocator, tag: types.File.Tag) *types.Path {
+                @setRuntimeSafety(builtin.is_safe);
+                const paths: []types.Path = node.lists.paths;
+                const fs: *types.File = node.addFile(allocator);
+                fs.* = .{
+                    .path_idx = @intCast(paths.len),
+                    .key = .{ .tag = tag },
+                    .st = @ptrFromInt(8),
+                };
+                if (!fs.key.flags.is_cached) {
+                    fs.st = @ptrFromInt(allocator.allocateRaw(144, 8));
+                }
+                defer node.lists.paths.len +%= 1;
+                return @ptrFromInt(allocator.addGeneric(@sizeOf(types.Path), @alignOf(types.Path), 2, @ptrCast(&node.lists.paths.ptr), &node.lists.paths_max_len, node.lists.paths.len));
+            }
             pub fn addConfigString(node: *Node, allocator: *types.Allocator, name: []const u8, value: []const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(value.len +% name.len +% 2, 1);
@@ -1165,21 +1180,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 lists[1] = @intFromPtr(format);
                 fmt.strcpyEqu(@ptrFromInt(addr +% 16), name)[0] = 0;
                 node.addConfig(allocator).data = (16 << (@bitSizeOf(usize) -% 8)) | addr;
-            }
-            fn addPath(node: *Node, allocator: *types.Allocator, tag: types.File.Tag) *types.Path {
-                @setRuntimeSafety(builtin.is_safe);
-                const paths: []types.Path = node.lists.paths;
-                const fs: *types.File = node.addFile(allocator);
-                fs.* = .{
-                    .path_idx = @intCast(paths.len),
-                    .key = .{ .tag = tag },
-                    .st = @ptrFromInt(8),
-                };
-                if (!fs.key.flags.is_cached) {
-                    fs.st = @ptrFromInt(allocator.allocateRaw(144, 8));
-                }
-                defer node.lists.paths.len +%= 1;
-                return @ptrFromInt(allocator.addGeneric(@sizeOf(types.Path), @alignOf(types.Path), 2, @ptrCast(&node.lists.paths.ptr), &node.lists.paths_max_len, node.lists.paths.len));
             }
             pub fn addPathname(node: *Node, allocator: *types.Allocator, tag: types.File.Tag, pathname: []const u8) *types.Path {
                 @setRuntimeSafety(builtin.is_safe);
