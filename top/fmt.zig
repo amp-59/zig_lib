@@ -3336,7 +3336,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         const tag_type: ?type = @typeInfo(Union).Union.tag_type;
         pub const max_len: ?comptime_int = blk: {
             var max_field_len: usize = 0;
-            inline for (fields) |field| {
+            for (fields) |field| {
                 max_field_len = @max(max_field_len, AnyFormat(spec, field.type).max_len.?);
             }
             break :blk (@typeName(Union).len +% 2) +% 1 +% meta.maxNameLength(Union) +% 3 +% max_field_len +% 2;
