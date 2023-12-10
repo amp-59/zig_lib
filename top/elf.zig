@@ -2374,7 +2374,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 width: usize,
             ) usize {
                 return fmt.SideBarIndexFormat.length(width, shndx) +%
-                    ei.ehdr.sectionName(shndx).len +% lengthAddressOrOffset(addr, offset) +% fmt.Bytes.length(size) +% 8;
+                    ei.ehdr.sectionName(shndx).len +%
+                    lengthAddressOrOffset(addr, offset) +%
+                    fmt.Bytes.length(size) +% 8;
             }
             fn lengthSection2(
                 ei: *const ElfInfo,
