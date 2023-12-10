@@ -408,7 +408,7 @@ pub const const_amount_1: [:0]const u8 = amountCount("1");
 const KV = struct { name: []const u8, symbol: [:0]const u8 };
 pub const list: []const KV = blk: {
     var res: []const KV = &.{};
-    inline for (@typeInfo(@This()).Struct.decls) |decl| {
+    for (@typeInfo(@This()).Struct.decls) |decl| {
         if (decl.name.len == 4 and
             decl.name[0] == 'l' and
             decl.name[1] == 'i' and
