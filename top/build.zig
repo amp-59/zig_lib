@@ -494,6 +494,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     len: usize,
                 ) void = null,
             },
+            cache: struct {
+                checkCache: *const fn (*types.Allocator, *Node) bool,
+            },
             about: struct {
                 perf: struct {
                     openFds: *const @TypeOf(PerfEvents.openFds),
@@ -719,6 +722,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             proc: *Node,
             /// Required for rendering.
             about: *Node,
+            /// Required for caching.
+            cache: *Node,
             /// Required for build commands using task struct.
             build: *Node,
             /// Required for format commands using task struct.
