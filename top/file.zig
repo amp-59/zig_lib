@@ -572,6 +572,11 @@ pub const PollSpec = struct {
     return_type: type = void,
     logging: debug.Logging.AttemptSuccessError = .{},
 };
+pub const TimesSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = spec.utimensat.errors.all },
+    logging: debug.Logging.SuccessErrorFault = .{},
+    return_type: type = void,
+};
 pub const StatusSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.stat.errors.all },
     logging: debug.Logging.SuccessErrorFault = .{},
@@ -1586,6 +1591,44 @@ pub fn pathStatus(comptime stat_spec: StatusSpec, pathname: [:0]const u8, st: *S
             about.aboutPathnameError(about.stat_s, @errorName(stat_error), pathname);
         }
         return stat_error;
+    }
+}
+pub fn setTimesAt(comptime utimes_spec: TimesSpec, dir_fd: usize, name: [:0]const u8, times: ?*const [2]time.TimeSpec) sys.ErrorUnion(
+    utimes_spec.errors,
+    utimes_spec.return_type,
+) {
+    @setRuntimeSafety(builtin.is_safe);
+    const logging: debug.Logging.SuccessErrorFault = comptime utimes_spec.logging.override();
+    const ret: isize = asm volatile ("syscall # mmap"
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (@intFromEnum(sys.Fn.utimensat)),
+          [_] "{rdi}" (dir_fd),
+          [_] "{rsi}" (name.ptr),
+          [_] "{rdx}" (times),
+          [_] "{r10}" (0),
+        : "rcx", "r11", "memory"
+    );
+    if (utimes_spec.errors.throw.len != 0) {
+        builtin.throw(sys.ErrorCode, utimes_spec.errors.throw, ret) catch |utimes_error| {
+            if (logging.Error) {
+                about.aboutDirFdNameError(about.utimensat_s, @errorName(utimes_error), dir_fd, name);
+            }
+            return utimes_error;
+        };
+    }
+    if (utimes_spec.errors.abort.len != 0) {
+        builtin.throw(sys.ErrorCode, utimes_spec.errors.abort, ret) catch |utimes_error| {
+            if (logging.Fault) {
+                about.aboutDirFdNameError(about.utimensat_s, @errorName(utimes_error), dir_fd, name);
+            }
+            proc.exitError(utimes_error, 2);
+        };
+    }
+    if (logging.Success) {
+        about.aboutDirFdNameTimesNotice(about.utimensat_s, dir_fd, name, times);
+    }
+    if (utimes_spec.return_type != void) {
+        return @intCast(ret);
     }
 }
 pub fn status(comptime stat_spec: StatusSpec, fd: usize, st: *Status) sys.ErrorUnion(

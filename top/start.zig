@@ -2,16 +2,13 @@
 //! standard library), but not by `zig_lib.zig` (when the library is used as a
 //! package). It serves the same purpose in both cases, achieved by different
 //! means.
-
 const proc = @import("proc.zig");
 const debug = @import("debug.zig");
 const builtin = @import("builtin.zig");
-
 pub const panic = debug.panic;
 pub usingnamespace debug.panic_extra;
 pub usingnamespace ZigLibEntry;
 pub var stack: usize = 0;
-
 pub fn Start(comptime entry: anytype) type {
     return struct {
         pub fn _start() callconv(.Naked) void {
@@ -26,9 +23,7 @@ pub fn Start(comptime entry: anytype) type {
         }
     };
 }
-
 const ZigLibEntry = Start(start);
-
 const UserEntry = struct {
     const _start = builtin.root._start;
 };
