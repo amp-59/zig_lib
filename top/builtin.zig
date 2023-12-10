@@ -284,7 +284,7 @@ pub fn enumFromInt(comptime Enum: type, value: meta.BestInt(Enum)) Enum {
     @setRuntimeSafety(false);
     comptime var field_values: []const meta.BestInt(Enum) = &.{};
     comptime {
-        inline for (@typeInfo(Enum).Enum.fields) |field| {
+        for (@typeInfo(Enum).Enum.fields) |field| {
             field_values = field_values ++ .{field.value};
         }
     }
