@@ -1594,6 +1594,14 @@ pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
     };
     return T;
 }
+pub fn writeNS(buf: [*]u8, ts: time.TimeSpec) [*]u8 {
+    var ptr: [*]u8 = DateTime.write(buf, time.DateTime.init(ts.sec));
+    ptr[0] = '.';
+    return NSec.write(ptr + 1, ts.nsec);
+}
+pub fn lengthNS(date: time.DateTime, ns: u64) [*]u8 {
+    return DateTime.length(date) +% 1 +% NSec.length(ns);
+}
 pub const LazyIdentifierFormat = struct {
     value: []const u8,
     const Format = @This();
@@ -4804,6 +4812,7 @@ pub const Second = GenericPolynomialFormat(.{
     .width = .{ .fixed = 2 },
     .range = .{ .min = 0, .max = 59 },
 });
+pub const DateTime = GenericDateTimeFormat(.{});
 pub fn Ud(comptime Int: type) type {
     return GenericPolynomialFormat(.{
         .bits = meta.alignBitSizeOfAbove(Int),
