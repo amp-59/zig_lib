@@ -2222,7 +2222,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 for (cmp.mats1[1..ei1.ehdr.shnum], 1..) |*mat1, shndx1| {
                     const shdr1: *Elf64_Shdr = ei1.ehdr.sectionHeader(shndx1);
-                    if (mat1.mat.tag == .unmatched) {
+                    if (mat1.mat.tag == .deletion) {
                         ptr = about.writeSectionRemoved(ptr, ei1, shdr1, shndx1, width1);
                     }
                 }
