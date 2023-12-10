@@ -1688,7 +1688,7 @@ pub fn statusExtended(
         }
     } else |stat_error| {
         if (logging.Error) {
-            about.aboutFdError(about.statx_s, @errorName(stat_error), fd);
+            about.aboutDirFdNameError(about.statx_s, @errorName(stat_error), fd, pathname);
         }
         return stat_error;
     }
