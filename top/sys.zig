@@ -1995,6 +1995,7 @@ pub const Fn = enum(comptime_int) {
             .connect,
             .symlinkat,
             .sigaltstack,
+            .futimesat,
             => return 3,
             .newfstatat,
             .mknodat,
