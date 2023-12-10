@@ -424,6 +424,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         .args_type = [][*:0]u8,
         .vars_type = [][*:0]u8,
     };
+    const cache_hit = .{
+        .server = builder_spec.options.compiler_cache_hit_status,
+        .status = 0,
+        .signal = 0,
+    };
     const ar_s = fmt.about("ar");
     const fmt_s = fmt.about("fmt");
     const init_s = fmt.about("init-0");
