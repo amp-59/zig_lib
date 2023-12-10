@@ -76,9 +76,6 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
         .atime = true,
         .ctime = true,
     };
-    const stat_at_flags = .{
-        .empty_path = true,
-    };
     const stat = .{ .errors = cache_spec.errors.stat, .logging = cache_spec.logging.stat };
     const open = .{ .errors = cache_spec.errors.open, .logging = cache_spec.logging.open };
     const read = .{ .errors = cache_spec.errors.read, .logging = cache_spec.logging.read, .return_type = usize };
@@ -139,9 +136,7 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
             mirror: *MirrorCache,
             path_allocator: *mem.SimpleAllocator,
             file_allocator: *mem.SimpleAllocator,
-            build_root: [:0]const u8,
             build_root_fd: usize,
-            cache_root: [:0]const u8,
             cache_root_fd: usize,
             name: [:0]const u8,
         ) !usize {
@@ -170,7 +165,7 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
                 var ptr: [*]u8 = buf;
                 while (buf + cache_file_st.size != ptr) : (path_allocator.next = path_save) {
                     const import: []const u8 = mem.terminate(ptr, 0);
-                    misses +%= try mirror.scanInternal(path_allocator, file_allocator, build_root, build_root_fd, cache_root, cache_root_fd, allocatePath(path_allocator, file.dirname(name), import));
+                    misses +%= try mirror.scanInternal(path_allocator, file_allocator, build_root_fd, cache_root_fd, allocatePath(path_allocator, file.dirname(name), import));
                     ptr += import.len +% 1;
                 }
                 file_allocator.next = file_save;
@@ -181,13 +176,11 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
             }
             mirror.build_inodes[mirror.build_inodes_len] = @intCast(build_file_st.ino);
             mirror.build_inodes_len +%= 1;
-
             const save: usize = file_allocator.next;
             const dirname: []const u8 = file.dirname(name);
             if (dirname.len != 0) {
                 try file.makePathAt(.{}, cache_root_fd, dirname, file.mode.directory);
             }
-            try file.statusExtended(.{}, stat_at_flags, statx_fields, cache_root_fd, &.{}, &cache_file_st);
             const buf: [*:0]u8 = try allocateFileBuf(file_allocator, build_root_fd, &build_file_st, name);
             const tmp: [*]u8 = @ptrFromInt(file_allocator.allocateRaw(build_file_st.size, 1));
             tmp[build_file_st.size] = 0;
@@ -204,15 +197,15 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
                     }
                 }
             }
+            try file.setTimesAt(.{}, build_root_fd, name, null);
             const cache_file_fd: usize = try meta.wrap(file.createAt(create, creat_flags, cache_root_fd, name, file.mode.regular));
             try file.write(.{}, cache_file_fd, fmt.slice(ptr, tmp));
             try file.close(.{}, cache_file_fd);
             file_allocator.next = save;
-            return misses +% try mirror.scanInternal(path_allocator, file_allocator, build_root, build_root_fd, cache_root, cache_root_fd, name);
+            return misses +% try mirror.scanInternal(path_allocator, file_allocator, build_root_fd, cache_root_fd, name);
         }
         pub fn scan(
             mirror: *MirrorCache,
-            build_root: [:0]const u8,
             build_root_fd: usize,
             cache_root: [:0]const u8,
             root_pathname: [:0]const u8,
@@ -229,13 +222,12 @@ pub fn GenericMirrorCache(comptime cache_spec: MirrorCacheSpec) type {
             const cache_m_root: [:0]const u8 = allocatePath(&path_allocator, cache_root, "m");
             file.makeDirAt(.{ .errors = .{} }, build_root_fd, "zig-cache", file.mode.directory);
             file.makeDirAt(.{ .errors = .{} }, build_root_fd, "zig-cache/m", file.mode.directory);
+
             const cache_m_root_fd: usize = try file.openAt(.{}, open_flags, file.cwd, cache_m_root);
             const misses: usize = try mirror.scanInternal(
                 &path_allocator,
                 &file_allocator,
-                build_root,
                 build_root_fd,
-                cache_m_root,
                 cache_m_root_fd,
                 root_pathname,
             );
