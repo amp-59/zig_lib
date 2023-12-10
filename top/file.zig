@@ -2594,6 +2594,7 @@ pub const about = struct {
     const getdents_s: fmt.AboutSrc = fmt.about("getdents");
     const truncate_s: fmt.AboutSrc = fmt.about("truncate");
     const readlink_s: fmt.AboutSrc = fmt.about("readlink");
+    const utimensat_s: fmt.AboutSrc = fmt.about("utimensat");
     const must_not_be_file_s: *const [13:0]u8 = " must not be ";
     const must_be_file_s: *const [9:0]u8 = " must be ";
     const is_file_s: *const [5:0]u8 = "; is ";
@@ -2775,6 +2776,26 @@ pub const about = struct {
         ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..2].* = ", ".*;
         ptr = writeStatus(ptr + 2, st);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutDirFdNameTimesNotice(about_s: fmt.AboutSrc, dir_fd: usize, name: [:0]const u8, times: ?*const [2]time.TimeSpec) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = writeDirFd(buf[about_s.len..], "dir_fd=", dir_fd);
+        ptr[0..2].* = ", ".*;
+        ptr = CompoundPath.writeDisplayPath(ptr + 2, name);
+        ptr[0..2].* = ", ".*;
+        if (times) |ts_pair| {
+            ptr[2..8].* = "atime=".*;
+            ptr = fmt.writeNS(ptr + 8, ts_pair[0]);
+            ptr[0..8].* = ", mtime=".*;
+            ptr = fmt.writeNS(ptr + 8, ts_pair[1]);
+        } else {
+            ptr[2..22].* = "atime=NOW, mtime=NOW".*;
+            ptr += 22;
+        }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -4072,6 +4093,15 @@ pub const spec = struct {
                 .ACCES,  .BADF,        .FAULT, .INVAL,
                 .LOOP,   .NAMETOOLONG, .NOENT, .NOMEM,
                 .NOTDIR,
+            };
+        };
+    };
+    pub const utimensat = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .BADF,        .FAULT, .INVAL,
+                .LOOP,  .NAMETOOLONG, .NOENT, .NOTDIR,
+                .PERM,  .ROFS,        .SRCH,
             };
         };
     };
