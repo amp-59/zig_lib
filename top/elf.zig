@@ -2360,11 +2360,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0..5].* = "size=".*;
                 ptr = fmt.Bytes.write(ptr + 5, shdr.size);
                 ptr[0] = '\n';
-                ptr += 1;
                 if (loader_spec.options.verify_lengths) {
-                    verify(ptr, buf, lengthSection, .{ ei, shdr.addr, shdr.offset, shdr.size, shndx, width });
+                    verify(ptr + 1, buf, lengthSection, .{ ei, shdr.addr, shdr.offset, shdr.size, shndx, width });
                 }
-                return ptr;
+                return ptr + 1;
             }
             fn lengthSection(
                 ei: *const ElfInfo,
