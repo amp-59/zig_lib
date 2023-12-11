@@ -2876,7 +2876,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
-            inline fn writeNoExchangeTask(buf: [*]u8, node: *Node, task: Task, old: State, new: State, arena_index: AddressSpace.Index) [*]u8 {
+            fn writeNoExchangeTask(buf: [*]u8, node: *Node, task: Task, old: State, new: State, arena_index: AddressSpace.Index) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const actual: State = node.lock.get(task);
                 var ptr: [*]u8 = writeExchangeTask(buf, node, task);
