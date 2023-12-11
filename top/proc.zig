@@ -488,7 +488,7 @@ pub fn fork(comptime fork_spec: ForkSpec) sys.ErrorUnion(fork_spec.errors, fork_
         return fork_error;
     }
 }
-pub fn futexWait(comptime futex_spec: FutexSpec, futex: *u32, value: u32, timeout: *const time.TimeSpec) sys.ErrorUnion(
+pub fn futexWait(comptime futex_spec: FutexSpec, futex: *const u32, value: u32, timeout: *const time.TimeSpec) sys.ErrorUnion(
     futex_spec.errors,
     futex_spec.return_type,
 ) {
@@ -508,7 +508,7 @@ pub fn futexWait(comptime futex_spec: FutexSpec, futex: *u32, value: u32, timeou
         return futex_error;
     }
 }
-pub fn futexWake(comptime futex_spec: FutexSpec, futex: *u32, count: u32) sys.ErrorUnion(
+pub fn futexWake(comptime futex_spec: FutexSpec, futex: *const u32, count: u32) sys.ErrorUnion(
     futex_spec.errors,
     futex_spec.return_type,
 ) {
@@ -530,7 +530,7 @@ pub fn futexWake(comptime futex_spec: FutexSpec, futex: *u32, count: u32) sys.Er
         return futex_error;
     }
 }
-pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) sys.ErrorUnion(
+pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) sys.ErrorUnion(
     futex_spec.errors,
     futex_spec.return_type,
 ) {
@@ -552,7 +552,7 @@ pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, c
         return futex_error;
     }
 }
-fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, count1: u32, count2: u32, from: ?u32) sys.ErrorUnion(
+fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, from: ?u32) sys.ErrorUnion(
     futex_spec.errors,
     futex_spec.return_type,
 ) {
@@ -954,7 +954,7 @@ pub const about = opaque {
         }
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWaitNotice(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
+    fn futexWaitNotice(futex: *const u32, value: u32, timeout: *const time.TimeSpec) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
@@ -972,7 +972,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWakeAttempt(futex: *u32, count: u64) void {
+    fn futexWakeAttempt(futex: *const u32, count: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
@@ -986,7 +986,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWakeNotice(futex: *u32, count: u64, ret: u64) void {
+    fn futexWakeNotice(futex: *const u32, count: u64, ret: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
@@ -1002,7 +1002,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
+    fn futexWakeOpAttempt(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
@@ -1022,7 +1022,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp, ret: u64) void {
+    fn futexWakeOpNotice(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, _: FutexOp.WakeOp, ret: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
@@ -1070,7 +1070,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
+    fn futexWaitError(futex_error: anytype, futex: *const u32, value: u32, timeout: *const time.TimeSpec) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wait_s, @errorName(futex_error));
@@ -1087,7 +1087,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
+    fn futexWakeError(futex_error: anytype, futex: *const u32, count: u64) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, futex_wake_s, @errorName(futex_error));
@@ -1100,7 +1100,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn futexWakeOpError(futex_error: anytype, futex: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
+    fn futexWakeOpError(futex_error: anytype, futex: *const u32, futex2: *const u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
         @setRuntimeSafety(false);
         var buf: [256]u8 = undefined;
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
