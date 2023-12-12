@@ -2223,7 +2223,10 @@ const std_lib = struct {
 pub usingnamespace zig;
 pub usingnamespace builtin;
 pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T) T {
-    return if (@hasDecl(root, symbol)) @field(root, symbol) else default;
+    if (@hasDecl(root, symbol)) {
+        return @field(root, symbol);
+    }
+    return default;
 }
 pub usingnamespace if (builtin.zig_backend == .stage2_llvm) struct {
     pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
