@@ -1460,8 +1460,12 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             return ei;
         }
         pub fn unmapAll(loader: *DynamicLoader) void {
-            mem.unmap(unmap, loader.meta.lb_addr, loader.meta.up_addr -% loader.meta.lb_addr);
-            mem.unmap(unmap, loader.prog.lb_addr, loader.prog.up_addr -% loader.prog.lb_addr);
+            if (loader.meta.up_addr != loader.meta.lb_addr) {
+                mem.unmap(unmap, loader.meta.lb_addr, loader.meta.up_addr -% loader.meta.lb_addr);
+            }
+            if (loader.prog.up_addr != loader.prog.lb_addr) {
+                mem.unmap(unmap, loader.prog.lb_addr, loader.prog.up_addr -% loader.prog.lb_addr);
+            }
         }
         pub fn sortSymtab(allocator: *mem.SimpleAllocator, ei: *ElfInfo, st_shdr: *Elf64_Shdr) [*][]Elf64_Sym_Idx {
             @setRuntimeSafety(builtin.is_safe);
@@ -1818,7 +1822,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     const sh_name2: [:0]const u8 = ei2.ehdr.sectionName(shndx2);
                     const width2: usize = sh_name2.len;
                     var shndx1: usize = 1;
-                    while (shndx1 != ei1.ehdr.shnum) : (shndx1 +%= 1) {
+                    while (shndx1 < ei1.ehdr.shnum) : (shndx1 +%= 1) {
                         if (mem.testEqualString(sh_name2, ei1.ehdr.sectionName(shndx1))) {
                             const sect_mat1: *Match = &cmp.mats1[shndx1].mat;
                             sect_mat1.idx = @intCast(shndx2);
