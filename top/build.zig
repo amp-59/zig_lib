@@ -897,7 +897,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         ptr[0..15].* = "\":comptime_int=".*;
                         ptr = fmt.Id64.write(ptr + 15, val.*);
                     } else if (disp == 16) {
-                        const fp: **fn (*anyopaque, [*]u8) usize = @ptrFromInt(addr);
+                        const fp: **const fn (*anyopaque, [*]u8) usize = @ptrFromInt(addr);
                         const val: *anyopaque = @ptrFromInt(addr +% 8);
                         ptr[0..2].* = "\"=".*;
                         ptr += 2;
