@@ -1584,8 +1584,8 @@ pub fn GenericDateTimeFormat(comptime dt_spec: DateTimeFormatSpec) type {
         }
         pub fn length(date: time.DateTime) usize {
             return 5 +% dt_spec.year.length(date.year) +%
-                dt_spec.mont.length(date.month) +%
-                dt_spec.month_day.length(date.month_day) +%
+                dt_spec.month.length(@intFromEnum(date.mon)) +%
+                dt_spec.month_day.length(date.mday) +%
                 dt_spec.hour.length(date.hour) +%
                 dt_spec.minute.length(date.min) +%
                 dt_spec.second.length(date.sec);
