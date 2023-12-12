@@ -291,6 +291,12 @@ pub fn BestExtrema(comptime Int: type) type {
 /// Find the maximum and minimum arithmetical values for an integer type.
 pub inline fn bestExtrema(comptime Int: type) BestExtrema(Int) {
     comptime {
+        if (@typeInfo(Int) == .Vector) {
+            return .{
+                .min = @splat(bestExtrema(@typeInfo(Int).Vector.child).min),
+                .max = @splat(bestExtrema(@typeInfo(Int).Vector.child).max),
+            };
+        }
         switch (Int) {
             u0, i0 => return .{ .min = 0, .max = 0 },
             u1 => return .{ .min = 0, .max = 1 },
