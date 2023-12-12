@@ -5,6 +5,7 @@ const zl = struct {
     const debug = @import("../top/debug.zig");
     const start = @import("../top/start.zig");
 };
+
 pub usingnamespace zl.start;
 
 pub const signal_handlers = .{
@@ -15,7 +16,7 @@ pub const signal_handlers = .{
     .Trap = false,
 };
 const about = zl.fmt.about("futex");
-fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn standardLibFormatter(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     const std = @import("std");
     var buf: [4096]u8 = undefined;
     var fbu = std.io.fixedBufferStream(&buf);
@@ -24,7 +25,7 @@ fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, re
     }) catch {};
     zl.debug.write(fbu.buffer[0..fbu.pos]);
 }
-fn zigLibContainerFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibContainerFormatter(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     var array: zl.mem.array.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
     array.writeAny(zl.mem.array.spec.reinterpret.fmt, .{
@@ -39,7 +40,7 @@ fn zigLibContainerFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32
     });
     zl.debug.write(array.readAll());
 }
-fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibContainerWriteSlices(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     var array: zl.mem.array.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
     array.writeMany(about);
@@ -60,7 +61,7 @@ fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u
     array.writeMany("\n");
     zl.debug.write(array.readAll());
 }
-fn zigLibContainerWriteArrays(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibContainerWriteArrays(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     var array: zl.mem.array.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
     array.writeCount(about.len, about.*);
@@ -81,7 +82,7 @@ fn zigLibContainerWriteArrays(futex1: *u32, futex2: *u32, count1: u32, count2: u
     array.writeCount(1, "\n".*);
     zl.debug.write(array.readAll());
 }
-fn zigLibContainerV2WriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibContainerV2WriteSlices(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     var array: zl.mem2.AutomaticStructuredReadWriteResize(.{
         .child = u8,
         .count = 4096,
@@ -107,7 +108,7 @@ fn zigLibContainerV2WriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2:
     array.writeMany("\n");
     zl.debug.write(array.readAll());
 }
-fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibOptimisedMessage(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
     var ux64: zl.fmt.Ux64 = .{ .value = @intFromPtr(futex1) };
     var ud64: zl.fmt.Ud64 = .{ .value = futex1.* };
@@ -144,7 +145,7 @@ fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, 
     buf[len] = '\n';
     zl.debug.write(buf[0 .. len +% 1]);
 }
-fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibOptimisedMessage2(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
     var ux64: zl.fmt.Ux64 = .{ .value = @intFromPtr(futex1) };
     var ud64: zl.fmt.Ud64 = .{ .value = futex1.* };
@@ -181,7 +182,7 @@ fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
     zl.debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
 }
 /// This technique is better for every measurement in every build mode.
-fn zigLibOptimisedMessage3(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibOptimisedMessage3(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
     buf[0..about.len].* = about.*;
@@ -205,7 +206,7 @@ fn zigLibOptimisedMessage3(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
 }
 /// This program will execute ~8% fewer instructions, but is difficult to write,
 /// and takes longer to compile.
-fn zigLibOptimisedMessage4(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+fn zigLibOptimisedMessage4(futex1: *const u32, futex2: *const u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
     var buf1: [16]u8 = undefined;
@@ -266,8 +267,8 @@ fn zigLibOptimisedMessage4(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
     zl.debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
 }
 pub fn main() void {
-    var futex0: u32 = 0xf0;
-    var futex1: u32 = 0xf1;
+    const futex0: u32 = 0xf0;
+    const futex1: u32 = 0xf1;
     const count1: u32 = 1;
     const count2: u32 = 0;
     const ret: u64 = 2;
