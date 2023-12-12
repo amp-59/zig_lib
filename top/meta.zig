@@ -322,25 +322,30 @@ pub fn BestFloat(comptime Float: type) type {
     return Float;
 }
 pub fn BestInt(comptime T: type) type {
-    if (@typeInfo(T) != .Int) {
-        return BestInt(Child(T));
-    }
-    if (@bitSizeOf(T) <= @bitSizeOf(usize)) {
-        return @Type(.{ .Int = .{
-            .bits = @bitSizeOf(usize),
-            .signedness = switch (@typeInfo(T)) {
-                .Int => |int_info| int_info.signedness,
-                else => .unsigned,
-            },
-        } });
-    } else {
-        return @Type(.{ .Int = .{
-            .bits = @bitSizeOf(T),
-            .signedness = switch (@typeInfo(T)) {
-                .Int => |int_info| int_info.signedness,
-                else => .unsigned,
-            },
-        } });
+    switch (@typeInfo(T)) {
+        .Vector => |vector_info| {
+            return @Vector(vector_info.len, BestInt(vector_info.child));
+        },
+        .Int => if (@bitSizeOf(T) <= @bitSizeOf(usize)) {
+            return @Type(.{ .Int = .{
+                .bits = @bitSizeOf(usize),
+                .signedness = switch (@typeInfo(T)) {
+                    .Int => |int_info| int_info.signedness,
+                    else => .unsigned,
+                },
+            } });
+        } else {
+            return @Type(.{ .Int = .{
+                .bits = @bitSizeOf(T),
+                .signedness = switch (@typeInfo(T)) {
+                    .Int => |int_info| int_info.signedness,
+                    else => .unsigned,
+                },
+            } });
+        },
+        else => {
+            return BestInt(Child(T));
+        },
     }
 }
 pub fn BestNum(comptime Number: type) type {
@@ -1650,17 +1655,17 @@ const about = opaque {
             .EnumLiteral => return "(enum literal)",
         }
     }
-    fn genericTypeList(comptime kind: builtin.Type, any: anytype) []const u8 {
+    fn genericTypeList(comptime kind: type, any: anytype) []const u8 {
         var buf: []const u8 = empty;
         var last: u64 = 0;
         var i: u64 = 0;
         while (i < any.len) : (i += 1) {
             last = buf.len;
             switch (kind) {
-                .type => {
+                else => {
                     buf = buf ++ ", " ++ @typeName(any[i]);
                 },
-                .type_type => {
+                builtin.Type => {
                     buf = buf ++ ", " ++ typeTypeName(any[i]);
                 },
             }
@@ -1676,10 +1681,10 @@ const about = opaque {
         }
     }
     fn typeList(comptime any: []const type) []const u8 {
-        return genericTypeList(.type, any);
+        return genericTypeList(type, any);
     }
     fn typeTypeList(comptime any: anytype) []const u8 {
-        return genericTypeList(.type_type, any);
+        return genericTypeList(builtin.Type, any);
     }
     fn fieldList(comptime type_info: builtin.Type) []const u8 {
         var buf: []const u8 = empty;
