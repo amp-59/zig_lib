@@ -126,7 +126,7 @@ fn causeMempcyLengthMismatch() void {
     safety.panic(.memcpy_argument_lengths_mismatched, .{ .src_len = 16384, .dest_len = 32768 }, @errorReturnTrace(), @returnAddress());
 }
 fn causeForLoopLengthMismatch() void {
-    safety.panic(.for_loop_capture_lengths_mismatched, .{ .prev_index = 2, .prev_len = 32768, .next_len = 16384 }, @errorReturnTrace(), @returnAddress());
+    safety.panic(.for_loop_capture_lengths_mismatched, .{ .loop_len = 32768, .capture_len = 16384 }, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToMisalignedPointer(comptime T: type) void {
     const alignment: usize = @as(usize, 1) << @max(2, readOne(u4));
@@ -184,14 +184,14 @@ fn causeSentinelMismatch(comptime T: type) void {
     }
 }
 fn causeMemcpyArgumentsAlias() void {
-    const data = .{ .dest_start = 0x40000000, .dest_len = 0x1000000, .src_start = 0x40500000, .src_len = 0x500000 };
+    const data = .{ .dest_start = 0x40000000, .dest_finish = 0x40000000 + 0x1000000, .src_start = 0x40500000, .src_finish = 0x40500000 + 0x500000 };
     safety.panic(.memcpy_argument_aliasing, data, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToEnumFromInvalid() void {
     safety.panic(.{ .cast_to_enum_from_invalid = Enum }, 16384, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToErrorFromInvalid() void {
-    safety.panic(.{ .cast_to_error_from_invalid = Error }, 32768, @errorReturnTrace(), @returnAddress());
+    safety.panic(.{ .cast_to_error_from_invalid = .{ .to = Error, .from = u16 } }, 32768, @errorReturnTrace(), @returnAddress());
 }
 fn causeCastToIntFromInvalid(comptime Float: type, comptime Int: type) void {
     safety.panic(.{ .cast_to_int_from_invalid = .{ .from = Float, .to = Int } }, 10.0, @errorReturnTrace(), @returnAddress());
