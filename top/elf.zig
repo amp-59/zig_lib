@@ -1366,7 +1366,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             try meta.wrap(file.map(map, .{}, mmap_flags, fd, addr, size, 0));
             ei.ehdr = @ptrFromInt(addr);
             var phndx: usize = 1;
-            while (phndx != ei.ehdr.phnum) : (phndx +%= 1) {
+            while (phndx < ei.ehdr.phnum) : (phndx +%= 1) {
                 const phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
                 if (phdr.type == .LOAD and phdr.memsz != 0) {
                     ei.prog.len +%= bits.alignA4096(phdr.vaddr +% phdr.memsz);
@@ -1374,7 +1374,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             phndx = 1;
             ei.prog.addr = bits.alignA4096(@atomicRmw(usize, &loader.prog.up_addr, .Add, ei.prog.len, .SeqCst));
-            while (phndx != ei.ehdr.phnum) : (phndx +%= 1) {
+            while (phndx < ei.ehdr.phnum) : (phndx +%= 1) {
                 const phdr: *Elf64_Phdr = ei.ehdr.programHeader(phndx);
                 if (phdr.type == .LOAD and phdr.memsz != 0) {
                     const prot: sys.flags.FileProt = .{ .read = phdr.flags.R, .write = phdr.flags.W, .exec = phdr.flags.X };
@@ -1387,7 +1387,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             phndx = 1;
             try meta.wrap(file.close(close, fd));
             var shndx: usize = 1;
-            while (shndx != ei.ehdr.shnum) : (shndx +%= 1) {
+            while (shndx < ei.ehdr.shnum) : (shndx +%= 1) {
                 const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
                 for (Section.tag_list) |tag| {
                     if (ei.list[@intFromEnum(tag)] == 0 and
@@ -1430,7 +1430,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             if (loader_spec.options.consolidate_metadata) {
                 shndx = 1;
                 var offset: usize = ei.ehdr.phoff +% ei.ehdr.phentsize *% ei.ehdr.phnum;
-                while (shndx != ei.ehdr.shnum) : (shndx +%= 1) {
+                while (shndx < ei.ehdr.shnum) : (shndx +%= 1) {
                     const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
                     if (shdr.addr == 0 and shdr.addralign != 0) {
                         offset = bits.alignA64(addr +% offset, shdr.addralign) -% addr;
