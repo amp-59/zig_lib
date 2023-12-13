@@ -3460,7 +3460,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
             if (type_info.Enum.is_exhaustive) {
                 break :blk len;
             } else if (spec.enum_out_of_range_to_int) {
-                break :blk @max(len, IntFormat(Enum).max_len);
+                break :blk @max(len, IntFormat(spec, Enum).max_len orelse 0);
             }
         };
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
