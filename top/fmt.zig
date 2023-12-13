@@ -4030,44 +4030,25 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
         value: ErrorUnion,
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(ErrorUnion);
-        const PayloadFormat: type = AnyFormat(spec, type_info.ErrorUnion.payload);
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            var len: usize = 0;
-            if (format.value) |value| {
-                const payload_format: PayloadFormat = .{ .value = value };
-                return payload_format.formatWriteBuf(buf);
-            } else |any_error| {
-                @as(*[6]u8, buf).* = "error.".*;
-                len +%= 6;
-                @memcpy(buf + len, @errorName(any_error));
-                len +%= @errorName(any_error).len;
-            }
-            return len;
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            if (spec.forward)
-                return array.define(@call(.always_inline, formatWriteBuf, .{
-                    format, array.referAllUndefined().ptr,
-                }));
-            if (format.value) |value| {
-                const payload_format: PayloadFormat = .{ .value = value };
-                writeFormat(array, payload_format);
-            } else |any_error| {
-                array.writeMany("error.");
-                array.writeMany(@errorName(any_error));
+        const ErrorFormat = AnyFormat(spec, type_info.ErrorUnion.error_set);
+        const PayloadFormat = AnyFormat(spec, type_info.ErrorUnion.payload);
+        pub const max_len: ?comptime_int = 4096;
+
+        pub fn write(buf: [*]u8, value: ErrorUnion) [*]u8 {
+            if (value) |payload| {
+                return PayloadFormat.write(buf, payload);
+            } else |err| {
+                return ErrorFormat.write(buf, err);
             }
         }
-        pub fn formatLength(format: Format) usize {
-            var len: usize = 0;
-            if (format.value) |value| {
-                const payload_format: PayloadFormat = .{ .value = value };
-                len +%= payload_format.formatLength();
-            } else |any_error| {
-                len +%= 6;
-                len +%= @errorName(any_error).len;
+        pub fn length(value: ErrorUnion) usize {
+            if (value) |payload| {
+                return PayloadFormat.length(payload);
+            } else |err| {
+                return ErrorFormat.write(err);
             }
-            return len;
         }
+        pub usingnamespace Interface(Format);
     };
     return T;
 }
