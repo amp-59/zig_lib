@@ -672,7 +672,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const min_digits_count: comptime_int = sigFigLen(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: comptime_int = sigFigLen(Abs, max_abs_value, fmt_spec.radix);
         const specification: PolynomialFormatSpec = fmt_spec;
-        const max_len: ?comptime_int = blk: {
+        pub const max_len: ?comptime_int = blk: {
             var len: comptime_int = 0;
             if (fmt_spec.radix > max_abs_value) {
                 break :blk len +% 1;
