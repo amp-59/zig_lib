@@ -3581,3 +3581,40 @@ pub inline fn pointerOpaqueAligned(
     @setRuntimeSafety(false);
     return @as(*align(alignment) const child, @ptrCast(any));
 }
+
+/// Experiment from Kivi
+extern fn sse42_strcmp(arg1: [*]const u8, arg2: [*]const u8, len: usize, off: usize) bool;
+comptime {
+    asm (
+        \\.intel_syntax noprefix
+        \\sse42_strcmp:
+        \\  mov         rax, rdx
+        \\  movdqu      xmm0, xmmword ptr [rdi + rcx]
+        \\  movdqu      xmm1, xmmword ptr [rsi + rcx]
+        \\  pcmpestri   xmm0, xmm1, 24
+        \\  setae       al
+        \\  ret
+    );
+}
+pub fn testEqualStringSSE(arg1: []const u8, arg2: []const u8) bool {
+    const rem: usize = arg1.len & 0xf;
+    const len: usize = arg1.len -% rem;
+    if (len == 0) {
+        return true;
+    }
+    if (arg1[0] != arg2[0]) {
+        return false;
+    }
+    var off: usize = 0;
+    while (off != len) : (off +%= 16) {
+        if (!sse42_strcmp(arg1.ptr, arg2.ptr, 16, off)) {
+            return false;
+        }
+    }
+    if (rem != 0) {
+        if (!sse42_strcmp(arg1.ptr, arg2.ptr, rem, off)) {
+            return false;
+        }
+    }
+    return true;
+}
