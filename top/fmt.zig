@@ -4056,12 +4056,26 @@ pub fn ErrorSetFormat(comptime ErrorSet: type) type {
     const T = struct {
         value: ErrorSet,
         const Format = @This();
-        pub fn write(buf: [*]u8, value: ErrorSet) [*]u8 {
-            buf[0..6].* = "error.".*;
-            return strcpyEqu(buf + 6, @errorName(value));
+        pub const max_len: ?comptime_int = blk: {
+            var len: usize = 0;
+            if (@typeInfo(ErrorSet).ErrorSet) |error_set| {
+                for (error_set) |err| {
+                    len = @max(len, fieldTagName(err.name).len);
+                }
+            }
+            break :blk 5 + len;
+        };
+        pub fn write(buf: [*]u8, value: anytype) [*]u8 {
+            @setRuntimeSafety(fmt_is_safe);
+            return strcpyEqu(buf, switch (value) {
+                inline else => |tag| "error" ++ comptime fieldTagName(@errorName(tag)),
+            });
         }
-        pub fn length(value: ErrorSet) usize {
-            return 6 +% @errorName(value).len;
+        pub fn length(value: anytype) usize {
+            @setRuntimeSafety(fmt_is_safe);
+            return switch (value) {
+                inline else => |tag| 5 + comptime fieldTagName(@tagName(tag)).len,
+            };
         }
         pub usingnamespace Interface(Format);
     };
