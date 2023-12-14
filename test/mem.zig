@@ -17,6 +17,7 @@ pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const logging_default: debug.Logging.Default = debug.spec.logging.default.verbose;
 pub const AddressSpace = mem.spec.address_space.regular_128;
+var rng: zl.file.DeviceRandomBytes(65536) = .{};
 const Impl = struct {
     im1: ImArrays = .{},
     im2: ImStruct = .{},
@@ -366,7 +367,6 @@ fn testLallocator() !void {
         .logging = mem.dynamic.spec.logging.silent,
     });
     AllocatorL.__refAllDecls();
-    var rng: file.DeviceRandomBytes(65536) = .{};
     var address_space: AddressSpace = .{};
     var allocator: AllocatorL = try AllocatorL.init(&address_space, 0);
     defer allocator.deinit(&address_space, 0);
