@@ -86,8 +86,15 @@ fn testMinMax() !void {
     try debug.expect(mem.testEqual(S, s, builtin.min(S, t, s)));
     try debug.expect(mem.testEqual(S, t, builtin.max(S, t, s)));
 }
+fn testIsUndefined() !void {
+    try testing.expect(builtin.isUndefined(@as(usize, undefined)));
+    try testing.expect(builtin.isUndefined(@as(u64, undefined)));
+    try testing.expect(builtin.isUndefined(@as(f64, undefined)));
+    try testing.expect(builtin.isUndefined(@as(f16, undefined)));
+}
 pub fn main() !void {
     zl.meta.refAllDecls(builtin, &.{});
+    try testIsUndefined();
     try testRuntimeAssertionsCompile();
     try testMinMax();
     debug.sampleAllReports();
