@@ -2706,13 +2706,18 @@ pub inline fn requireComptime(comptime T: type) bool {
     return @inComptime() or @typeInfo(@TypeOf(.{__indicateComptime(T)})).Struct.fields[0].is_comptime;
 }
 pub inline fn isUndefined(comptime value: anytype) bool {
-    const type_name = @typeName([:&value]*const @TypeOf(value));
-    if (type_name.len < 11) {
-        return false;
+    comptime {
+        switch (@typeInfo(@TypeOf(value))) {
+            .Int, .Float => {
+                var name: []const u8 = @typeName(@TypeOf(.{ ._ = value }));
+                name = name[name.len -% 10 ..];
+                const a: *align(1) const usize = @ptrCast(name[0..8]);
+                const b: *align(1) const usize = @ptrCast("undefine");
+                return a.* == b.* and name[8] == 'd';
+            },
+            else => @compileError(@typeName(@TypeOf(value))),
+        }
     }
-    const a: *align(1) const usize = @ptrCast(type_name[2..11]);
-    const b: *align(1) const usize = @ptrCast("undefine");
-    return a.* == b.*;
 }
 pub inline fn ptrCast(comptime T: type, any: anytype) T {
     @setRuntimeSafety(false);
