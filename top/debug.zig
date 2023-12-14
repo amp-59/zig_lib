@@ -702,16 +702,16 @@ pub const printSourceCodeAtAddresses = blk: {
         }
     }
 };
-pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
+pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) void {
     @setCold(true);
     @setRuntimeSafety(false);
     if (builtin.want_stack_traces and logging_general.Error) {
-        if (ret_addr == 0) {
-            if (st) |trace| {
-                printSourceCodeAtAddresses(&builtin.trace, ret_addr, trace.instruction_addresses.ptr, trace.index);
-            }
+        if (ret_addr) |addr| {
+            printStackTrace(&builtin.trace, addr, 0);
         } else {
-            printStackTrace(&builtin.trace, ret_addr, 0);
+            if (st) |trace| {
+                printSourceCodeAtAddresses(&builtin.trace, 0, trace.instruction_addresses.ptr, trace.index);
+            }
         }
     }
     @call(.always_inline, about.errorNotice, .{error_name});
