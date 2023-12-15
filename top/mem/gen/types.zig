@@ -4,7 +4,7 @@ const builtin = @import("../../builtin.zig");
 
 const tok = @import("tok.zig");
 
-pub const BGTypeDescr = fmt.GenericTypeDescrFormat(.{
+pub const MGTypeDescr = fmt.GenericTypeDescrFormat(.{
     .default_field_values = .fast,
 });
 pub const TypeDescr = fmt.GenericTypeDescrFormat(.{
@@ -89,32 +89,32 @@ pub const Specifier = union(enum) {
     decl_optional_variant: Compound,
     const Simple = struct {
         tag: Specifiers.Tag,
-        type: BGTypeDescr,
+        type: MGTypeDescr,
     };
     const Derived = struct {
         tag: Specifiers.Tag,
         fn_name: []const u8,
-        type: BGTypeDescr,
+        type: MGTypeDescr,
     };
     const SimpleDerived = struct {
         tag: Specifiers.Tag,
-        type: BGTypeDescr,
+        type: MGTypeDescr,
         fn_name: []const u8,
     };
     const Compound = struct {
         ctn_tag: Specifiers.Tag,
         decl_tag: Specifiers.Tag,
-        ctn_type: BGTypeDescr,
-        decl_type: BGTypeDescr,
+        ctn_type: MGTypeDescr,
+        decl_type: MGTypeDescr,
     };
     const CompoundDerived = struct {
         ctn_tag: Specifiers.Tag,
         decl_tag: Specifiers.Tag,
-        ctn_type: BGTypeDescr,
-        decl_type: BGTypeDescr,
+        ctn_type: MGTypeDescr,
+        decl_type: MGTypeDescr,
         fn_name: []const u8,
     };
-    pub fn paramFormatter(spec: Specifier) BGTypeDescr {
+    pub fn paramFormatter(spec: Specifier) MGTypeDescr {
         switch (spec) {
             .default => return spec.default.type,
             .derived => return spec.derived.type,
@@ -125,7 +125,7 @@ pub const Specifier = union(enum) {
             .stripped => return undefined,
         }
     }
-    pub fn specFormatter(spec: Specifier) BGTypeDescr {
+    pub fn specFormatter(spec: Specifier) MGTypeDescr {
         switch (spec) {
             .default => return spec.default.type,
             .derived => return spec.derived.type,
