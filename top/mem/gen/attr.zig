@@ -79,27 +79,27 @@ pub const ctn_groups: []const []const types.AbstractSpecification = blk: {
     break :blk buf[0..len];
 };
 fn default(comptime tag: types.Specifiers.Tag, comptime @"type": type) types.Specifier {
-    return .{ .default = .{ .tag = tag, .type = types.ProtoTypeDescr.init(@"type") } };
+    return .{ .default = .{ .tag = tag, .type = types.MGTypeDescr.init(@"type") } };
 }
 fn derived(
     comptime tag: types.Specifiers.Tag,
     comptime @"type": type,
     comptime fn_name: [:0]const u8,
 ) types.Specifier {
-    return .{ .derived = .{ .tag = tag, .type = types.ProtoTypeDescr.init(@"type"), .fn_name = fn_name } };
+    return .{ .derived = .{ .tag = tag, .type = types.MGTypeDescr.init(@"type"), .fn_name = fn_name } };
 }
 fn stripped(comptime tag: types.Specifiers.Tag, comptime @"type": type) types.Specifier {
-    return .{ .stripped = .{ .tag = tag, .type = types.ProtoTypeDescr.init(@"type") } };
+    return .{ .stripped = .{ .tag = tag, .type = types.MGTypeDescr.init(@"type") } };
 }
 fn optional_derived(
     comptime tag: types.Specifiers.Tag,
     comptime @"type": type,
     comptime fn_name: [:0]const u8,
 ) types.Specifier {
-    return .{ .optional_derived = .{ .tag = tag, .type = types.ProtoTypeDescr.init(@"type"), .fn_name = fn_name } };
+    return .{ .optional_derived = .{ .tag = tag, .type = types.MGTypeDescr.init(@"type"), .fn_name = fn_name } };
 }
 fn optional_variant(comptime tag: types.Specifiers.Tag, comptime @"type": type) types.Specifier {
-    return .{ .optional_variant = .{ .tag = tag, .type = types.ProtoTypeDescr.init(@"type") } };
+    return .{ .optional_variant = .{ .tag = tag, .type = types.MGTypeDescr.init(@"type") } };
 }
 fn decl_optional_derived(
     comptime ctn_tag: types.Specifiers.Tag,
@@ -111,8 +111,8 @@ fn decl_optional_derived(
     return .{ .decl_optional_derived = .{
         .ctn_tag = ctn_tag,
         .decl_tag = decl_tag,
-        .ctn_type = types.ProtoTypeDescr.init(ctn_type),
-        .decl_type = types.ProtoTypeDescr.init(decl_type),
+        .ctn_type = types.MGTypeDescr.init(ctn_type),
+        .decl_type = types.MGTypeDescr.init(decl_type),
         .fn_name = fn_name,
     } };
 }
@@ -125,8 +125,8 @@ fn decl_optional_variant(
     return .{ .decl_optional_variant = .{
         .ctn_tag = ctn_tag,
         .decl_tag = decl_tag,
-        .ctn_type = types.ProtoTypeDescr.init(ctn_type),
-        .decl_type = types.ProtoTypeDescr.init(decl_type),
+        .ctn_type = types.MGTypeDescr.init(ctn_type),
+        .decl_type = types.MGTypeDescr.init(decl_type),
     } };
 }
 const auto_specs = &.{
