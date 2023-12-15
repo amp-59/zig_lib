@@ -482,6 +482,10 @@ const lit_char_dwords: []const u32 = &.{
     946239580,  963016796,  1634105436, 1650882652,
     1667659868, 1684437084, 1701214300, 1717991516,
 };
+pub fn stringLiteralChar(byte: u8) []const u8 {
+    const ptr: *const [4]u8 = @ptrCast(&lit_char_dwords[byte]);
+    return ptr[0..(4 -% (@clz(lit_char_dwords[byte]) >> 3))];
+}
 pub const StringLiteralFormat = struct {
     value: []const u8,
     const Format = @This();
