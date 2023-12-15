@@ -281,8 +281,6 @@ fn writeFieldDeductionInternal(
         haveField(allocator, impl_arg_list_pairs, arg_list[0]),
     );
     if (filtered[1].len != 0) {
-        var decls_len: u8 = decl_list.decls_len;
-        defer decl_list.decls_len = decls_len;
         if (filtered[0].len != 0 and
             arg_list[0].ptr != tok.impl_name.ptr)
         {
@@ -339,7 +337,8 @@ pub fn main() !void {
     var array: Array = Array.init(&allocator, 1024 * 4096);
     array.writeMany("const mem=@import(\"../mem.zig\");\n");
     array.writeMany("const meta=@import(\"../meta.zig\");\n");
-    array.writeMany("const mach=@import(\"../mach.zig\");\n");
+    array.writeMany("const math=@import(\"../math.zig\");\n");
+    array.writeMany("const bits=@import(\"../bits.zig\");\n");
     array.writeMany("const " ++ tok.allocator_type_name ++ " = struct {};\n");
     array.writeMany("const " ++ tok.amount_type_name ++ " = struct {};\n");
     var len: [types.Kind.list.len]u64 = .{0} ** types.Kind.list.len;
