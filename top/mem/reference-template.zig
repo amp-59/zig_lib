@@ -2,7 +2,7 @@ const bits = @import("../bits.zig");
 const math = @import("../math.zig");
 const algo = @import("../algo.zig");
 fn automatic_storage_address(impl: anytype) u64 {
-    return @intFromPtr(impl) + @offsetOf(@TypeOf(impl.*), "auto");
+    return @intFromPtr(impl) +% @offsetOf(@TypeOf(impl.*), "auto");
 }
 pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
     @setRuntimeSafety(false);
