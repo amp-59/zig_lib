@@ -12,9 +12,9 @@ pub const Attributes = struct {
     /// Extra function namespace
     type_fn_name: ?[]const u8 = null,
     /// Use these instead of new equivalent types.
-    type_decls: []const ProtoTypeDescr = &.{},
+    type_decls: []const BGTypeDescr = &.{},
 };
-pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
+pub const BGTypeDescr = fmt.GenericTypeDescrFormat(.{
     .default_field_values = .fast,
     .option_5 = true,
     .tokens = .{
@@ -26,12 +26,12 @@ pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
         .indent = "",
     },
 });
-pub const ProtoTypeDescrMap = struct {
-    store: *const ProtoTypeDescr = &boolean,
-    write: ?*const ProtoTypeDescr = null,
-    parse: ?*const ProtoTypeDescr = null,
+pub const BGTypeDescrMap = struct {
+    store: *const BGTypeDescr = &boolean,
+    write: ?*const BGTypeDescr = null,
+    parse: ?*const BGTypeDescr = null,
 };
-pub const boolean: ProtoTypeDescr = ProtoTypeDescr.init(bool);
+pub const boolean: BGTypeDescr = BGTypeDescr.init(bool);
 const Tag = union(enum) {
     field: enum {
         string,
@@ -74,9 +74,9 @@ pub const ParamSpec = struct {
     /// Describes how the argument should be written to the command line buffer
     tag: Tag = .{ .field = .boolean },
     /// Describes how the field type should be written to the command struct,
-    /// can be `*const ProtoTypeDescr` or `*const [2]ProtoTypeDescr` depending
+    /// can be `*const BGTypeDescr` or `*const [2]BGTypeDescr` depending
     /// on the kind of parameter.
-    type: ProtoTypeDescrMap = .{},
+    type: BGTypeDescrMap = .{},
     /// Specifies whether option arguments are separated with '\x00' or '='
     /// If `null` the separator is determined by context
     /// If `immediate` (255) no separator is written
@@ -105,7 +105,7 @@ pub const InverseParamSpec = struct {
     /// Describes how the argument should be written to the command line buffer
     tag: Tag = .{ .field = .boolean },
     /// Describes how the field type should be written to the command struct
-    type: ProtoTypeDescrMap = .{},
+    type: BGTypeDescrMap = .{},
     /// Specifies whether option arguments are separated with '\x00' or '='
     /// If `null` the separator is determined by context
     /// If `immediate` (255) no separator is written

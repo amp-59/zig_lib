@@ -957,6 +957,7 @@ export fn formatParseArgsObjcopyCommand(cmd: *tasks.ObjcopyCommand, allocator: *
             debug.write(objcopy_help);
         }
         _ = allocator;
+        _ = &arg;
     }
 }
 export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {

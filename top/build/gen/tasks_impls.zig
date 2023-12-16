@@ -22,9 +22,9 @@ fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
     }, array.referAllUndefined());
     array.define(len);
     for (attr.scope) |decl| {
-        array.writeFormat(types.ProtoTypeDescr{ .type_decl = decl });
+        array.writeFormat(types.BGTypeDescr{ .type_decl = decl });
     }
-    types.ProtoTypeDescr.scope = attr.scope;
+    types.BGTypeDescr.scope = attr.scope;
     for (attr.all) |attributes| {
         common.writeOpenStruct(array, language, attributes);
         common.writeFields(array, language, attributes);
@@ -45,7 +45,7 @@ fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
     } else {
         debug.write(array.readAll());
     }
-    types.ProtoTypeDescr.scope = &.{};
+    types.BGTypeDescr.scope = &.{};
     array.undefineAll();
     if (wip_llc) {
         len = try gen.readFile(.{ .return_type = usize }, switch (language) {
@@ -54,9 +54,9 @@ fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
         }, array.referAllUndefined());
         array.define(len);
         for (attr.scope) |decl| {
-            array.writeFormat(types.ProtoTypeDescr{ .type_decl = decl });
+            array.writeFormat(types.BGTypeDescr{ .type_decl = decl });
         }
-        types.ProtoTypeDescr.scope = attr.scope;
+        types.BGTypeDescr.scope = attr.scope;
         common.writeOpenStruct(array, language, attr.llvm_llc_command_attributes);
         common.writeFields(array, language, attr.llvm_llc_command_attributes);
         common.writeDeclarations(array, language, attr.llvm_llc_command_attributes);
