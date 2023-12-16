@@ -714,7 +714,7 @@ fn writeSpecifications(allocator: *config.Allocator, array: *Array) !void {
 }
 fn writeContainerKinds(array: *Array) !void {
     array.undefineAll();
-    array.writeMany("const ctn_fn = @import(\"./ctn_fn.zig\");\n");
+    array.writeMany("const ctn_fn = @import(\"ctn_fn.zig\");\n");
     const writeKind = attr.Fn.static.writeKindSwitch;
     const Pair = attr.Fn.static.Pair(ctn_fn.Fn);
     const read: Pair = attr.Fn.static.prefixSubTagNew(ctn_fn.Fn, .read);
@@ -826,9 +826,9 @@ fn validateAllSerial(
     impl_details: []const types.Implementation,
 ) !void {
     @setRuntimeSafety(builtin.is_safe);
-    var f_x_p_infos: []const []const types.Specifier = attr.getParams(allocator);
-    var f_x_q_infos: []const []const types.Technique = attr.getOptions(allocator);
-    var f_impl_details: []const types.Implementation = attr.getImplDetails(allocator);
+    const f_x_p_infos: []const []const types.Specifier = attr.getParams(allocator);
+    const f_x_q_infos: []const []const types.Technique = attr.getOptions(allocator);
+    const f_impl_details: []const types.Implementation = attr.getImplDetails(allocator);
     for (f_x_p_infos, x_p_infos, 0..) |xx, yy, idx_0| {
         for (xx, yy, 0..) |x, y, idx_1| {
             if (!mem.testEqualMemory(@TypeOf(x), x, y)) {
@@ -848,8 +848,8 @@ fn validateAllSerial(
             nonEqualIndices("details", .{idx_0});
         }
     }
-    var f_spec_sets: []const []const []const types.Specifier = attr.getSpecs(allocator);
-    var f_tech_sets: []const []const []const types.Technique = attr.getTechs(allocator);
+    const f_spec_sets: []const []const []const types.Specifier = attr.getSpecs(allocator);
+    const f_tech_sets: []const []const []const types.Technique = attr.getTechs(allocator);
     var i: u64 = 0;
     while (i != spec_sets.len) : (i +%= 1) {
         var j: u64 = 0;
@@ -889,8 +889,8 @@ const data = blk: {
     var x_q_infos: []const []const types.Technique = &.{};
     var spec_sets: []const []const []const types.Specifier = &.{};
     var tech_sets: []const []const []const types.Technique = &.{};
-    inline for (attr.ctn_groups) |abstract_specs| {
-        inline for (abstract_specs) |abstract_spec| {
+    for (attr.ctn_groups) |abstract_specs| {
+        for (abstract_specs) |abstract_spec| {
             const x_info: [3][]const types.Specifier = populateParameters(abstract_spec);
             const spec_set: []const []const types.Specifier = populateSpecifiers(x_info[1], x_info[2]);
             const tech_set: []const []const types.Technique = populateTechniques(abstract_spec);
