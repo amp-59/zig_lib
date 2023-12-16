@@ -12,5 +12,6 @@ export fn load(fp: *zl.builtin.root.Builder.FunctionPointers) void {
             .printErrors = zl.builtin.root.Builder.about.printErrors,
             .writeTaskDataConfig = zl.builtin.root.Builder.about.writeTaskDataConfig,
         },
+        .print = zl.builtin.root.Builder.about.print,
     };
 }
