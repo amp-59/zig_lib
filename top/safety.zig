@@ -651,7 +651,7 @@ fn panicArithOverflow(comptime Number: type) type {
     return struct {
         const Extrema = zl.math.BestExtrema(Number);
         const Absolute = zl.math.Absolute(Number);
-        const ShiftAmount = ShiftAmt(Number);
+        const ShiftAmount = zl.builtin.ShiftAmount(Number);
 
         fn add(
             type_name: []const u8,
