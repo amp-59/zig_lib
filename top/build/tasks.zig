@@ -3479,7 +3479,7 @@ pub const ObjcopyCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--output-target", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
@@ -3525,6 +3525,7 @@ pub const ObjcopyCommand = struct {
                 debug.write(objcopy_help);
             }
             _ = allocator;
+            _ = &arg;
         }
     }
 };
