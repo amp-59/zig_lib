@@ -30,6 +30,8 @@ const memcpy_threshold: usize = 7;
 const combine_len: bool = true;
 var len_decl: bool = false;
 var len_int: usize = 0;
+var arg_modified: bool = false;
+var allocator_used: bool = false;
 var lens: Array2 = .{};
 
 pub const Array = mem.array.StaticString(64 * 1024 * 1024);
@@ -482,7 +484,6 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: Variant) void 
 fn writeArgString(array: *Array, arg_string: []const u8, variant: Variant) void {
     var length_variant: Variant = variant;
     length_variant.function = .formatLength;
-
     switch (variant.function) {
         else => {},
         .formatWriteBuf, .write => {
@@ -586,7 +587,7 @@ fn writeMapped(
     opt_switch_string: []const u8,
     arg_string: []const u8,
     variant: Variant,
-    to: types.ProtoTypeDescr,
+    to: types.BGTypeDescr,
     char: u8,
 ) void {
     if (opt_switch_string.len != 0) {
@@ -1134,7 +1135,7 @@ fn writeType(fields_array: *Array, param_spec: types.ParamSpec) void {
         const yes_bool: bool = param_spec.tag == .field and param_spec.tag.field == .boolean;
         const no_bool: bool = no_param_spec.tag == .field and no_param_spec.tag.field == .boolean;
         if (yes_bool != no_bool) {
-            const new_type: types.ProtoTypeDescr = .{ .type_ref = .{
+            const new_type: types.BGTypeDescr = .{ .type_ref = .{
                 .spec = "?",
                 .type = &.{ .type_decl = .{ .defn = .{
                     .spec = "union(enum)",
@@ -1146,7 +1147,7 @@ fn writeType(fields_array: *Array, param_spec: types.ParamSpec) void {
             } };
             fields_array.writeFormat(new_type);
         } else {
-            fields_array.writeFormat(comptime types.ProtoTypeDescr.init(?bool));
+            fields_array.writeFormat(comptime types.BGTypeDescr.init(?bool));
         }
     } else {
         fields_array.writeFormat(param_spec.type.store.*);
@@ -1428,6 +1429,7 @@ fn writeArgSliceFromTo(array: *Array, start: usize, end: usize) void {
     array.writeMany(")]");
 }
 fn writeAssignCurIndex(array: *Array) void {
+    arg_modified = true;
     array.writeMany("arg=");
     writeArgCurIndex(array);
     array.writeMany(";\n");
@@ -1455,6 +1457,7 @@ fn writeOpenIfArgCmpLength(array: *Array, symbol: []const u8, length: usize) voi
     array.writeMany("){\n");
 }
 fn writeAssignArgToArgFrom(array: *Array, offset: usize) void {
+    arg_modified = true;
     array.writeMany("arg=");
     writeArgSliceFrom(array, offset);
     array.writeMany(";\n");
@@ -1572,7 +1575,7 @@ fn writeAssignSpecifierFormatParser(
     calling_convention: Variant.Language,
     field_name: []const u8,
     offset: usize,
-    specifier: union(enum) { yes: types.ProtoTypeDescr, no: types.ProtoTypeDescr },
+    specifier: union(enum) { yes: types.BGTypeDescr, no: types.BGTypeDescr },
 ) void {
     array.writeMany("cmd.");
     array.writeMany(field_name);
@@ -1601,7 +1604,8 @@ fn writeAssignSpecifierFormatParser(
     }
 }
 fn writeParserFunctionBody(array: *Array, calling_convention: Variant.Language, attributes: types.Attributes) void {
-    var do_discard: bool = true;
+    arg_modified = false;
+    allocator_used = false;
     len_decl = true;
     for (attributes.params) |param_spec| {
         if (param_spec.string.len == 0 or !param_spec.flags.do_parse) {
@@ -1759,7 +1763,7 @@ fn writeParserFunctionBody(array: *Array, calling_convention: Variant.Language, 
                             writeNext(array, calling_convention);
                         }
                         writeAddOptionalRepeatableString(array, param_spec.name);
-                        do_discard = false;
+                        allocator_used = true;
                         writeIfElse(array);
                     },
                     .repeatable_tag => {
@@ -1778,7 +1782,7 @@ fn writeParserFunctionBody(array: *Array, calling_convention: Variant.Language, 
                                 writeIfElse(array);
                             }
                             array.undefine(5);
-                            do_discard = false;
+                            allocator_used = true;
                             writeIfElse(array);
                         }
                     },
@@ -1797,7 +1801,7 @@ fn writeParserFunctionBody(array: *Array, calling_convention: Variant.Language, 
                                 param_spec.name,
                                 p.type_decl.name.?,
                             );
-                            do_discard = false;
+                            allocator_used = true;
                             writeIfElse(array);
                         }
                     },
@@ -1816,7 +1820,7 @@ fn writeParserFunctionBody(array: *Array, calling_convention: Variant.Language, 
                                 param_spec.name,
                                 parse.type_decl.name.?,
                             );
-                            do_discard = false;
+                            allocator_used = true;
                             writeIfElse(array);
                         }
                     },
@@ -1833,8 +1837,11 @@ fn writeParserFunctionBody(array: *Array, calling_convention: Variant.Language, 
     array.writeMany(attributes.fn_name);
     array.writeMany("_help);\n");
     array.writeMany("}\n");
-    if (do_discard) {
-        array.writeMany("_=allocator;");
+    if (!allocator_used) {
+        array.writeMany("_=allocator;\n");
+    }
+    if (!arg_modified) {
+        array.writeMany("_=&arg;\n");
     }
     writeCloseIf(array);
     writeCloseIf(array);
