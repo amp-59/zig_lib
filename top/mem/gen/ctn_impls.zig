@@ -32,7 +32,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: types.Con
     var undefine: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .undefine);
     var seek: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .seek);
     var tell: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .tell);
-    var writable_byte_count: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .writable_byte_count);
+    const writable_byte_count: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .writable_byte_count);
     var defined_byte_count: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .defined_byte_count);
     var undefined_byte_count: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .undefined_byte_count);
     var streamed_byte_count: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .streamed_byte_count);
