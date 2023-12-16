@@ -67,7 +67,7 @@ fn writeParameter(array: *Array, v: MinorVariant, comptime param_type: type, com
     if (v == .wrappers or v == .ptr_fields_source) {
         array.writeMany(prefix);
         array.writeMany(":");
-        array.writeFormat(comptime types.ProtoTypeDescr.init(param_type));
+        array.writeFormat(comptime types.BGTypeDescr.init(param_type));
         array.writeMany(",");
     } else {
         switch (@typeInfo(param_type)) {
@@ -77,14 +77,14 @@ fn writeParameter(array: *Array, v: MinorVariant, comptime param_type: type, com
                     many_pointer_info.size = .Many;
                     array.writeMany(prefix);
                     array.writeMany("_ptr:");
-                    array.writeFormat(comptime types.ProtoTypeDescr.init(@Type(.{ .Pointer = many_pointer_info })));
+                    array.writeFormat(comptime types.BGTypeDescr.init(@Type(.{ .Pointer = many_pointer_info })));
                     array.writeMany(",");
                     array.writeMany(prefix);
                     array.writeMany("_len:usize,");
                 } else {
                     array.writeMany(prefix);
                     array.writeMany(":");
-                    array.writeFormat(comptime types.ProtoTypeDescr.init(param_type));
+                    array.writeFormat(comptime types.BGTypeDescr.init(param_type));
                     array.writeMany(",");
                 }
             },
@@ -92,7 +92,7 @@ fn writeParameter(array: *Array, v: MinorVariant, comptime param_type: type, com
                 if (struct_info.layout == .Extern) {
                     array.writeMany(prefix);
                     array.writeMany(":");
-                    array.writeFormat(comptime types.ProtoTypeDescr.init(param_type));
+                    array.writeFormat(comptime types.BGTypeDescr.init(param_type));
                     array.writeMany(",");
                 } else {
                     inline for (struct_info.fields) |field| {
@@ -103,7 +103,7 @@ fn writeParameter(array: *Array, v: MinorVariant, comptime param_type: type, com
             else => {
                 array.writeMany(prefix);
                 array.writeMany(":");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(param_type));
+                array.writeFormat(comptime types.BGTypeDescr.init(param_type));
                 array.writeMany(",");
             },
         }
@@ -244,7 +244,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
                     writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")callconv(.C)");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeFormat(comptime types.BGTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany("=@ptrFromInt(8);\n");
             },
             .exports => if (names.forward) {
@@ -255,7 +255,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
                     writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")callconv(.C)");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeFormat(comptime types.BGTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany("{\n");
                 array.writeMany("return source." ++ names.decl_name ++ "(");
                 inline for (field_type_info.Fn.params, 0..) |param, idx| {
@@ -275,7 +275,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
                     writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeFormat(comptime types.BGTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany(";");
             },
             .wrappers => {
@@ -284,7 +284,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
                     writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeFormat(comptime types.BGTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany("{\n");
                 array.writeMany("return ");
                 array.writeFormat(fmt.identifier(names.export_name));
@@ -305,7 +305,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
                     writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeFormat(comptime types.BGTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany("=@ptrFromInt(8),\n");
             },
             .load_assign_source => {
@@ -323,7 +323,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
                     writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeFormat(comptime types.BGTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany("=@ptrFromInt(8);\n");
             },
             .load_assign_export => {
@@ -405,10 +405,10 @@ fn writeCommandCoreLibrary(array: *Array, comptime Command: type, comptime type_
     writeImportBuild(array);
     writeImportMach(array);
     writeGenericCommand(array, type_name);
-    types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("types.Path", build.Path).type_decl,
-        comptime types.ProtoTypeDescr.declare(type_name, Command).type_decl,
-        comptime types.ProtoTypeDescr.declare("types.Allocator", build.Allocator).type_decl,
+    types.BGTypeDescr.scope = &.{
+        comptime types.BGTypeDescr.declare("types.Path", build.Path).type_decl,
+        comptime types.BGTypeDescr.declare(type_name, Command).type_decl,
+        comptime types.BGTypeDescr.declare("types.Allocator", build.Allocator).type_decl,
     };
     writeInternal(array, mv, build.GenericCommand(Command));
 }
@@ -416,10 +416,10 @@ fn writeCommandExtraLibrary(array: *Array, comptime Command: type, comptime type
     writeImportBuild(array);
     writeImportMach(array);
     writeGenericExtraCommand(array, type_name);
-    types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("types.Path", build.Path).type_decl,
-        comptime types.ProtoTypeDescr.declare(type_name, Command).type_decl,
-        comptime types.ProtoTypeDescr.declare("types.Allocator", build.Allocator).type_decl,
+    types.BGTypeDescr.scope = &.{
+        comptime types.BGTypeDescr.declare("types.Path", build.Path).type_decl,
+        comptime types.BGTypeDescr.declare(type_name, Command).type_decl,
+        comptime types.BGTypeDescr.declare("types.Allocator", build.Allocator).type_decl,
     };
     writeInternal(array, mv, build.GenericExtraCommand(Command));
 }
