@@ -673,25 +673,35 @@ pub fn Element(comptime T: type) type {
         },
     }
 }
-pub fn sentinel(comptime T: type) ?Element(T) {
-    switch (@typeInfo(T)) {
-        else => |type_info| {
-            about.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
-        },
-        .Array => |array_info| {
-            if (array_info.sentinel) |sentinel_ptr| {
-                const ret: *align(@alignOf(array_info.child)) const array_info.child = @ptrCast(@alignCast(sentinel_ptr));
-                return ret.*;
-            }
-        },
-        .Pointer => |pointer_info| {
-            if (pointer_info.sentinel) |sentinel_ptr| {
-                const ret: *align(@alignOf(pointer_info.child)) const pointer_info.child = @ptrCast(@alignCast(sentinel_ptr));
-                return ret.*;
-            }
-        },
+pub inline fn sentinel(comptime T: type) ?Element(T) {
+    comptime {
+        switch (@typeInfo(T)) {
+            else => |type_info| {
+                about.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+            },
+            .Array => |array_info| {
+                if (array_info.sentinel) |sentinel_ptr| {
+                    const ret: *align(@alignOf(array_info.child)) const array_info.child = @ptrCast(@alignCast(sentinel_ptr));
+                    return ret.*;
+                }
+            },
+            .Pointer => |pointer_info| {
+                if (pointer_info.size == .One) {
+                    const array_info = @typeInfo(pointer_info.child).Array;
+                    if (array_info.sentinel) |sentinel_ptr| {
+                        const ret: *align(@alignOf(array_info.child)) const array_info.child = @ptrCast(@alignCast(sentinel_ptr));
+                        return ret.*;
+                    }
+                } else {
+                    if (pointer_info.sentinel) |sentinel_ptr| {
+                        const ret: *align(@alignOf(pointer_info.child)) const pointer_info.child = @ptrCast(@alignCast(sentinel_ptr));
+                        return ret.*;
+                    }
+                }
+            },
+        }
+        return null;
     }
-    return null;
 }
 fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     const bytes1: []const u8 = &toBytes(arg1);
