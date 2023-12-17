@@ -508,6 +508,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     printErrors: *const @TypeOf(about.printErrors),
                     writeTaskDataConfig: *const @TypeOf(about.writeTaskDataConfig),
                 },
+                print: *const @TypeOf(about.print),
             },
             build: struct {
                 formatWriteBuf: *const fn (*tasks.BuildCommand, []const u8, []const types.Path, [*]u8) usize,
@@ -808,13 +809,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// (Internal) Whether to execute `autoLoad` functions on
                 /// completion of build tasks.
                 is_dynamic_extension: bool = false,
-                /// (Internal) Whether a node will be processed before being
+                /// (Internal) Whether a node will be initialised before being
                 /// returned to `buildMain`.
                 do_init: bool = true,
-                /// (Internal) Whether a node will be processed before executing
+                /// (Internal) Whether a node will be prepared before executing
                 /// from command line.
                 do_prepare: bool = true,
-                /// (Internal) Whether a node will be processed on request to
+                /// (Internal) Whether a node will be printed on request to
                 /// regenerate the build program.
                 do_regenerate: bool = true,
                 /// (Internal) Whether a node stores a valid pointer to a task
