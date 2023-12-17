@@ -622,7 +622,7 @@ pub fn Child(comptime T: type) type {
         .Array, .Pointer => {
             return Element(T);
         },
-        .Int => {
+        .Int, .Float => {
             return T;
         },
         .Enum => |enum_info| {
