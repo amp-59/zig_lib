@@ -3581,7 +3581,6 @@ pub inline fn pointerOpaqueAligned(
     @setRuntimeSafety(false);
     return @as(*align(alignment) const child, @ptrCast(any));
 }
-
 /// Experiment from Kivi
 extern fn sse42_strcmp(arg1: [*]const u8, arg2: [*]const u8, len: usize, off: usize) bool;
 comptime {
@@ -3596,12 +3595,12 @@ comptime {
         \\  ret
     );
 }
-pub fn testEqualStringSSE(arg1: []const u8, arg2: []const u8) bool {
+pub fn testEqualStringSSE(
+    arg1: []const u8,
+    arg2: []const u8,
+) bool {
     const rem: usize = arg1.len & 0xf;
     const len: usize = arg1.len -% rem;
-    if (len == 0) {
-        return true;
-    }
     if (arg1[0] != arg2[0]) {
         return false;
     }
@@ -3617,4 +3616,15 @@ pub fn testEqualStringSSE(arg1: []const u8, arg2: []const u8) bool {
         }
     }
     return true;
+}
+pub fn testEqualMemorySSE(
+    comptime T: type,
+    arg1: []const T,
+    arg2: []const T,
+) bool {
+    @setRuntimeSafety(false);
+    return @call(.always_inline, testEqualStringSSE, .{
+        @as([*]const u8, @ptrCast(arg1.ptr))[0 .. arg1.len *% @sizeOf(T)],
+        @as([*]const u8, @ptrCast(arg2.ptr))[0 .. arg2.len *% @sizeOf(T)],
+    });
 }
