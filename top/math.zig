@@ -504,7 +504,49 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
 pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
     return @as(builtin.ShiftAmount(T), @intCast((@typeInfo(T).Int.bits -% 1) -% @clz(x)));
 }
+
 pub const float = struct {
+    pub const F16 = packed struct(u16) {
+        fraction: u10,
+        exponent: u5,
+        negative: bool,
+        pub const bias = 15;
+    };
+    pub const F32 = packed struct(u32) {
+        fraction: u23,
+        exponent: u8,
+        negative: bool,
+        pub const bias = 127;
+    };
+    pub const F64 = packed struct(u64) {
+        fraction: u52,
+        exponent: u11,
+        negative: bool,
+        pub const bias = 1023;
+    };
+    pub const F80 = packed struct(u80) {
+        fraction: u63,
+        integer: u1,
+        exponent: u15,
+        negative: bool,
+        pub const bias = 16383;
+    };
+    pub const F128 = packed struct(u128) {
+        fraction: u112,
+        exponent: u15,
+        negative: bool,
+        pub const bias = 16383;
+    };
+    pub fn Bits(comptime Float: type) type {
+        switch (@typeInfo(Float).Float.bits) {
+            16 => return F16,
+            32 => return F32,
+            64 => return F64,
+            80 => return F80,
+            128 => return F128,
+            else => @compileError("invalid float bit-size"),
+        }
+    }
     pub fn Mantissa(comptime T: type) type {
         return switch (T) {
             f16, f32, f64 => u64,
