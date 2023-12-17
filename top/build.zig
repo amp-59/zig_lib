@@ -1474,50 +1474,49 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     return (node.tasks.cmd.build.mode orelse .Debug) != .ReleaseSmall;
                 }
             }
-            pub fn formatWriteNameFull(node: *const Node, sep: u8, buf: [*]u8) usize {
+            fn writeNameFull(buf: [*]u8, node: *const Node, sep: u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                var ptr: [*]u8 = buf;
                 if (node.flags.is_top) {
-                    return 0;
+                    return buf;
                 }
-                const nodes: []*Node = node.lists.nodes;
-                if (nodes.len != 0) {
-                    ptr += nodes[0].formatWriteNameFull(sep, ptr);
+                var ptr: [*]u8 = buf;
+                if (node.lists.nodes.len != 0) {
+                    ptr = writeNameFull(ptr, node.lists.nodes[0], sep);
                     if (ptr != buf) {
                         ptr[0] = sep;
                         ptr += 1;
                     }
                     ptr = fmt.strcpyEqu(ptr, node.name);
                 }
-                return @intFromPtr(ptr) -% @intFromPtr(buf);
+                return ptr;
             }
-            pub fn formatLengthNameFull(node: *const Node) usize {
+            fn lengthNameFull(node: *const Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 if (node.flags.is_top) {
                     return 0;
                 }
-                var len: usize = node.lists.nodes[0].formatLengthNameFull();
+                var len: usize = lengthNameFull(node.lists.nodes[0]);
                 len +%= @intFromBool(len != 0) +% node.name.len;
                 return len;
             }
-            pub fn formatWriteNameRelative(node: *const Node, group: *const Node, sep: u8, buf: [*]u8) usize {
+            pub fn writeNameRelative(buf: [*]u8, node: *const Node, group: *const Node, sep: u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
                 if (node != group) {
-                    ptr += node.lists.nodes[0].formatWriteNameRelative(group, sep, ptr);
+                    ptr = writeNameRelative(ptr, node.lists.nodes[0], sep);
                     if (ptr != buf) {
                         ptr[0] = sep;
                         ptr += 1;
                     }
                     ptr = fmt.strcpyEqu(ptr, node.name);
                 }
-                return fmt.strlen(ptr, buf);
+                return ptr;
             }
-            pub fn formatLengthNameRelative(node: *const Node, group: *const Node) usize {
+            pub fn lengthNameRelative(node: *const Node, group: *const Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 var len: usize = 0;
                 if (node != group) {
-                    len +%= node.lists.nodes[0].formatLengthNameRelative(group);
+                    len +%= lengthNameRelative(node, node.lists.nodes[0]);
                     len +%= @intFromBool(len != 0) +% node.name.len;
                 }
                 return len;
@@ -1608,9 +1607,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         };
         pub fn configRootRelative(allocator: *types.Allocator, node: *Node) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
-            const name_len: usize = node.formatLengthNameFull();
+            const name_len: usize = Node.lengthNameFull(node);
             const buf: [*:0]u8 = @ptrFromInt(allocator.allocateRaw(name_len +% 5, 1));
-            fmt.strcpyEqu(buf + node.formatWriteNameFull('-', buf), ".zig")[0] = 0;
+            fmt.strcpyEqu(Node.writeNameFull(buf, node, '-'), ".zig")[0] = 0;
             return buf[0 .. name_len +% 4 :0];
         }
         fn createConfigRoot(allocator: *types.Allocator, node: *Node, pathname: [:0]const u8) void {
@@ -1627,10 +1626,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub fn outputRelative(allocator: *types.Allocator, node: *Node, tag: types.File.Tag) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var buf: [4096]u8 = undefined;
-            const name: []u8 = if (builder_spec.options.naming_policy == .full_name) blk: {
-                const len: usize = node.formatWriteNameFull('-', &buf);
-                break :blk buf[0..len];
-            } else node.name;
+            const name: []u8 = fmt.slice(Node.writeNameFull(&buf, node, '-'), &buf);
             return concatenate(allocator, switch (tag) {
                 .output_exe => &[_][]const u8{ binary_prefix, name },
                 .output_ar => &[_][]const u8{ archive_prefix, name, ".a" },
