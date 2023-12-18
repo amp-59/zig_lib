@@ -2708,7 +2708,7 @@ pub inline fn requireComptime(comptime T: type) bool {
 pub inline fn isUndefined(comptime value: anytype) bool {
     comptime {
         switch (@typeInfo(@TypeOf(value))) {
-            .Int, .Float => {
+            .Int, .Float, .Optional, .Pointer => {
                 var name: []const u8 = @typeName(@TypeOf(.{ ._ = value }));
                 name = name[name.len -% 10 ..];
                 const a: *align(1) const usize = @ptrCast(name[0..8]);
