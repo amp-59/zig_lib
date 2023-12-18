@@ -87,6 +87,9 @@ fn testMinMax() !void {
     try debug.expect(mem.testEqual(S, t, builtin.max(S, t, s)));
 }
 fn testIsUndefined() !void {
+    try testing.expect(builtin.isUndefined(@as(*const struct { u: usize }, undefined)));
+    try testing.expect(builtin.isUndefined(@as(*const anyopaque, undefined)));
+    try testing.expect(builtin.isUndefined(@as(?*const anyopaque, undefined)));
     try testing.expect(builtin.isUndefined(@as(usize, undefined)));
     try testing.expect(builtin.isUndefined(@as(u64, undefined)));
     try testing.expect(builtin.isUndefined(@as(f64, undefined)));
