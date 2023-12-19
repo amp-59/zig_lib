@@ -1563,10 +1563,6 @@ pub const SimpleAllocator = struct {
             .finish = @intFromPtr(buf.ptr + @sizeOf(meta.Child(@TypeOf(buf)))),
         };
     }
-    pub fn alignAbove(allocator: *Allocator, alignment: usize) usize {
-        const mask: usize = alignment -% 1;
-        return (allocator.next +% mask) & ~mask;
-    }
     pub fn addGeneric(allocator: *Allocator, size: usize, alignment: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
         @setRuntimeSafety(builtin.is_safe);
         const new_max_len: usize = len +% 2;
