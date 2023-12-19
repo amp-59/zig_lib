@@ -3577,7 +3577,7 @@ pub inline fn pointerOpaqueAligned(
     return @as(*align(alignment) const child, @ptrCast(any));
 }
 /// Experiment from Kivi
-extern fn sse42_strcmp(arg1: [*]const u8, arg2: [*]const u8, len: usize, off: usize) bool;
+extern fn sse42_strcmp(arg1: *const anyopaque, arg2: *const anyopaque, len: usize, off: usize) bool;
 comptime {
     asm (
         \\.intel_syntax noprefix
@@ -3590,36 +3590,38 @@ comptime {
         \\  ret
     );
 }
-pub fn testEqualStringSSE(
-    arg1: []const u8,
-    arg2: []const u8,
-) bool {
-    const rem: usize = arg1.len & 0xf;
-    const len: usize = arg1.len -% rem;
-    if (arg1[0] != arg2[0]) {
+pub fn testEqualManySSE(comptime T: type, arg1: []const T, arg2: []const T) bool {
+    @setRuntimeSafety(false);
+    if (arg1.len != arg2.len) {
         return false;
     }
+    if (arg1.len == 0) {
+        return true;
+    }
+    if (@as(*const u8, @ptrCast(arg1.ptr)).* !=
+        @as(*const u8, @ptrCast(arg2.ptr)).*)
+    {
+        return false;
+    }
+    const rem: usize = arg1.len *% @sizeOf(T) & 0xf;
+    const len: usize = arg1.len *% @sizeOf(T) -% rem;
     var off: usize = 0;
     while (off != len) : (off +%= 16) {
         if (!sse42_strcmp(arg1.ptr, arg2.ptr, 16, off)) {
             return false;
         }
     }
-    if (rem != 0) {
-        if (!sse42_strcmp(arg1.ptr, arg2.ptr, rem, off)) {
+    if (rem == 0) {
+        return true;
+    }
+    const rem1: []const T = arg1[off / @sizeOf(T) ..];
+    const rem2: []const T = arg1[off / @sizeOf(T) ..];
+    var idx: usize = 0;
+    while (idx != rem1.len) {
+        if (!testEqual(T, rem1[idx], rem2[idx])) {
             return false;
         }
+        idx +%= 1;
     }
     return true;
-}
-pub fn testEqualMemorySSE(
-    comptime T: type,
-    arg1: []const T,
-    arg2: []const T,
-) bool {
-    @setRuntimeSafety(false);
-    return @call(.always_inline, testEqualStringSSE, .{
-        @as([*]const u8, @ptrCast(arg1.ptr))[0 .. arg1.len *% @sizeOf(T)],
-        @as([*]const u8, @ptrCast(arg2.ptr))[0 .. arg2.len *% @sizeOf(T)],
-    });
 }
