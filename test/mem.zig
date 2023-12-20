@@ -425,9 +425,28 @@ fn testSampleAllReports() !void {
     testing.announce(@src());
     mem.about.sampleAllReports();
 }
+fn testEqualMemorySSE() !void {
+    var allocator: mem.SimpleAllocator = .{};
+    inline for (.{ u8, struct { i8, usize }, isize }) |T| {
+        const save: usize = allocator.next;
+        defer allocator.next = save;
+        for (0..0x10000) |_| {
+            const len: usize = rng.readOne(u8);
+            const buf1: []T = allocator.allocate(T, len);
+            const buf2: []T = allocator.allocate(T, len);
+            for (buf1, buf2) |*ptr1, *ptr2| {
+                ptr1.* = rng.readOne(T);
+                ptr2.* = ptr1.*;
+            }
+            try testing.expect(mem.testEqualMany(T, buf1, buf2));
+            _ = allocator.allocateRaw(1, 1);
+        }
+    }
+}
 pub fn main() !void {
     meta.refAllDecls(mem, &.{});
     try testLallocator();
+    try testEqualMemorySSE();
     try meta.wrap(testRegularAddressSpace());
     try meta.wrap(testDiscreteAddressSpace(tab.trivial_list));
     testSimpleAllocator();
