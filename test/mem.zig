@@ -427,6 +427,7 @@ fn testSampleAllReports() !void {
 }
 fn testEqualMemorySSE() !void {
     var allocator: mem.SimpleAllocator = .{};
+    defer allocator.unmapAll();
     inline for (.{ u8, struct { i8, usize }, isize }) |T| {
         const save: usize = allocator.next;
         defer allocator.next = save;
