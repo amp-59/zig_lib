@@ -2070,11 +2070,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
             const dest_pathname: [:0]const u8 = node.lists.paths[0].concatenate(allocator);
-            const output: *file.Status = node.getFile(.{ .tag = .output_generic }).?.st;
-            if (node.extra.binary_analysis.before == null and
-                output.mode.kind == .regular and output.size != 0)
-            {
-                node.extra.binary_analysis.before = node.sh.dl.load(dest_pathname);
+            if (node.flags.want_binary_analysis) {
+                const output: *file.Status = node.getFile(.{ .tag = .output_generic }).?.st;
+                file.statusAt(stat, .{}, file.cwd, dest_pathname, output);
+                if (node.extra.binary_analysis.before == null and
+                    output.mode.kind == .regular and output.size != 0)
+                {
+                    node.extra.binary_analysis.before = node.sh.dl.load(dest_pathname);
+                }
             }
             if (buildTaskArgs(allocator, node)) |args| {
                 const in: file.Pipe = file.makePipe(pipe, pipe_options);
