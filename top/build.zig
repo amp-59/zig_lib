@@ -718,7 +718,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .have_task_data = false,
         };
         pub const Extensions = struct {
-            /// Raw commands build commands producing dynamic library
             /// Required for multi-threading.
             proc: *Node,
             /// Required for rendering.
@@ -877,7 +876,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 on_task: Task,
                 /// In this state ...
                 on_state: State,
-                zb: u8 = 0,
+
+                on: u8 = 0,
             };
             pub const Conf = extern struct {
                 data: u64,
@@ -2070,6 +2070,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
             const dest_pathname: [:0]const u8 = node.lists.paths[0].concatenate(allocator);
+            const output: *file.Status = node.getFile(.{ .tag = .output_generic }).?.st;
+            if (node.extra.binary_analysis.before == null and
+                output.mode.kind == .regular and output.size != 0)
+            {
+                node.extra.binary_analysis.before = node.sh.dl.load(dest_pathname);
+            }
             if (buildTaskArgs(allocator, node)) |args| {
                 const in: file.Pipe = file.makePipe(pipe, pipe_options);
                 const out: file.Pipe = file.makePipe(pipe, pipe_options);
@@ -2475,7 +2481,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (have_size and
                     node.flags.want_binary_analysis)
                 {
-                    if (output.mode.kind == .regular and output.size != 0) {
+                    if (node.extra.binary_analysis.before == null and
+                        output.mode.kind == .regular and output.size != 0)
+                    {
                         node.extra.binary_analysis.before = node.sh.dl.load(output_pathname);
                     }
                     if (cached.mode.kind == .regular and cached.size != 0) {
@@ -2836,16 +2844,34 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (builder_spec.logging.show_high_level_summary) {
                         about.writeErrorsAndFinished(group);
                     }
-                    break;
-                } else {
-                    break;
                 }
+                break;
             } else {
                 about.writeAndWalk(allocator, group, .basic);
             }
             group.sh.dl.unmapAll();
         }
         pub const about = struct {
+            pub fn print(allocator: *types.Allocator, node: *Node) void {
+                @setRuntimeSafety(builtin.is_safe);
+                if (have_lazy and builtin.output_mode == .Exe) {
+                    if (defined(node.sh.fp.about.print)) {
+                        node.sh.fp.about.print(allocator, node);
+                    }
+                    return;
+                }
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                if (node.tasks.tag == .build) {
+                    ptr[0..6].* = "const ".*;
+                    ptr += 6;
+
+                    ptr = Node.writeNameFull(ptr, node, '_');
+                }
+                ptr[0] = '\n';
+                ptr += 1;
+                debug.write(fmt.slice(ptr, &buf));
+            }
             fn writeErrorsAndFinished(group: *Node) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
@@ -2929,7 +2955,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 };
                 const width: usize = fmt.aboutCentre(about_s);
                 const signal: sys.SignalCode = @enumFromInt(node.extra.execve_res.signal);
-                var len: usize = about_s.len +% 8 +% node.formatLengthNameFull();
+                var len: usize = about_s.len +% 8 +% Node.lengthNameFull(node);
                 if (task == .build) {
                     if (builder_spec.logging.show_output_destination and
                         node.extra.execve_res.server ==
@@ -3023,7 +3049,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const signal: sys.SignalCode = @enumFromInt(node.extra.execve_res.signal);
                 ptr[0..about_s.len].* = about_s.*;
                 ptr += about_s.len;
-                ptr += node.formatWriteNameFull('.', ptr);
+                ptr = Node.writeNameFull(ptr, node, '.');
                 if (task == .build) {
                     if (builder_spec.logging.show_output_destination and
                         node.extra.execve_res.server ==
