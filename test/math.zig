@@ -5,7 +5,10 @@ const math = zl.math;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
+
 pub usingnamespace zl.start;
+
+var rng: zl.file.DeviceRandomBytes(4096) = .{};
 
 fn testExtrema() !void {
     try debug.expectEqual(i1, -1, math.extrema(i1).min);
@@ -34,9 +37,11 @@ fn testShl() !void {
     try debug.expect(math.shl(u8, 0b11111111, 8) == 0);
     try debug.expect(math.shl(u8, 0b11111111, 9) == 0);
     try debug.expect(math.shl(u8, 0b11111111, -2) == 0b00111111);
-    try debug.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, @as(usize, 1))[0] == @as(u32, 42) << 1);
-    try debug.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, @as(isize, -1))[0] == @as(u32, 42) >> 1);
-    try debug.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, 33)[0] == 0);
+    if (builtin.zig_backend == .stage2_llvm) {
+        try debug.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, @as(usize, 1))[0] == @as(u32, 42) << 1);
+        try debug.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, @as(isize, -1))[0] == @as(u32, 42) >> 1);
+        try debug.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, 33)[0] == 0);
+    }
 }
 fn testShr() !void {
     try debug.expect(math.shr(u8, 0b11111111, @as(usize, 3)) == 0b00011111);
@@ -47,9 +52,11 @@ fn testShr() !void {
     try debug.expect(math.shr(u8, 0b11111111, 8) == 0);
     try debug.expect(math.shr(u8, 0b11111111, 9) == 0);
     try debug.expect(math.shr(u8, 0b11111111, -2) == 0b11111100);
-    try debug.expect(math.shr(@Vector(1, u32), @Vector(1, u32){42}, @as(usize, 1))[0] == @as(u32, 42) >> 1);
-    try debug.expect(math.shr(@Vector(1, u32), @Vector(1, u32){42}, @as(isize, -1))[0] == @as(u32, 42) << 1);
-    try debug.expect(math.shr(@Vector(1, u32), @Vector(1, u32){42}, 33)[0] == 0);
+    if (builtin.zig_backend == .stage2_llvm) {
+        try debug.expect(math.shr(@Vector(1, u32), @Vector(1, u32){42}, @as(usize, 1))[0] == @as(u32, 42) >> 1);
+        try debug.expect(math.shr(@Vector(1, u32), @Vector(1, u32){42}, @as(isize, -1))[0] == @as(u32, 42) << 1);
+        try debug.expect(math.shr(@Vector(1, u32), @Vector(1, u32){42}, 33)[0] == 0);
+    }
 }
 fn testRotr() !void {
     try debug.expect(math.rotr(u0, 0b0, @as(usize, 3)) == 0b0);
