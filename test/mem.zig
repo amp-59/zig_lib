@@ -440,15 +440,15 @@ fn testEqualMemorySSE() !void {
                 ptr1.* = rng.readOne(T);
                 ptr2.* = ptr1.*;
             }
-            try testing.expect(mem.testEqualMany(T, buf1, buf2));
+            try testing.expect(mem.testEqualManySSE(T, buf1, buf2));
             _ = allocator.allocateRaw(1, 1);
         }
     }
 }
 pub fn main() !void {
     meta.refAllDecls(mem, &.{});
-    try testLallocator();
     try testEqualMemorySSE();
+    try testLallocator();
     try meta.wrap(testRegularAddressSpace());
     try meta.wrap(testDiscreteAddressSpace(tab.trivial_list));
     testSimpleAllocator();
