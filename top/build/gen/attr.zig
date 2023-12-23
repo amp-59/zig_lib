@@ -174,14 +174,6 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"(default=no) Output analysis (.json)"},
         },
         .{
-            .name = "emit_implib",
-            .string = "-femit-implib",
-            .tag = .{ .optional_field = .formatter },
-            .type = optional_path_type,
-            .and_no = .{ .string = "-fno-emit-implib" },
-            .descr = &.{"(default=yes) Output an import when building a Windows DLL (.lib)"},
-        },
-        .{
             .name = "cache_root",
             .string = "--cache-dir",
             .tag = .{ .optional_field = .string },
