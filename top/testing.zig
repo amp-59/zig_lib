@@ -77,6 +77,13 @@ pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void 
         debug.write("\n");
     }
 }
+pub fn initRandom(rng: anytype, comptime T: type) T {
+    var res: T = undefined;
+    inline for (@typeInfo(T).Struct.fields) |field| {
+        @field(res, field.name) = rng.readOne(field.type);
+    }
+    return res;
+}
 // Q: Why not put this in builtin, according to specification?
 // A: Because without a low level value renderer it can only serve special
 // cases. fault-error-test requires the former two variants render the error
