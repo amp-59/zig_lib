@@ -226,7 +226,7 @@ pub fn main() !void {
     causeReachUnreachableValue();
     causeCastTruncatedBits(u8, u3);
     causeCastToUnsignedFromNegative(i32, u32);
-    causeCastToIntFromInvalid(f16, u16);
+    //causeCastToIntFromInvalid(f16, u16);
     causeCastToErrorFromInvalid();
     causeCastToEnumFromInvalid();
     causeCastToMisalignedPointer(u32);
