@@ -1,5 +1,12 @@
 const zl = @import("../../zig_lib.zig");
 pub usingnamespace zl.start;
+pub const logging_override = .{
+    .Acquire = true,
+    .Release = true,
+    .Success = true,
+    .Error = true,
+    .Fault = true,
+};
 pub const panic_return_value: u8 = 0;
 pub const trace: zl.debug.Trace = .{
     .options = .{ .show_line_no = false },

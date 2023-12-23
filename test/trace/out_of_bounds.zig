@@ -9,7 +9,8 @@ pub const trace: zl.debug.Trace = .{
     },
 };
 fn causeOutOfBounds() void {
-    var idx: usize = 512;
+    var idx: usize = 0;
+    idx = 512;
     var a: [512]u8 = undefined;
     a[idx] = 'a';
 }

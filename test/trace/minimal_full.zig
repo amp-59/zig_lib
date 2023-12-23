@@ -20,7 +20,8 @@ pub const logging_default: zl.debug.Logging.Default = .{
     .Fault = true,
 };
 fn causePanicSentinelMismatch() void {
-    var b: bool = zl.mem.unstable(bool, do_it);
+    var b: bool = zl.mem.unstable(bool, false);
+    b = do_it;
     if (b) {
         var a: [4096]u8 = undefined;
         const c: [:0]u8 = a[0..512 :0];
@@ -28,7 +29,8 @@ fn causePanicSentinelMismatch() void {
     }
 }
 fn causePanicSentinelMismatchNonScalarSentinel() void {
-    var b: bool = zl.mem.unstable(bool, do_it);
+    var b: bool = zl.mem.unstable(bool, false);
+    b = do_it;
     if (b) {
         const S = struct { x: usize = 0 };
         var a: [256:.{}]S = undefined;
@@ -39,17 +41,21 @@ fn causePanicSentinelMismatchNonScalarSentinel() void {
     }
 }
 fn causePanicReachedUnreachable() void {
-    var b: bool = zl.mem.unstable(bool, do_it);
+    var b: bool = zl.mem.unstable(bool, false);
+    b = do_it;
     if (b) {
-        var x: u64 = 0x10000;
-        var y: u64 = 0x10010;
+        var x: u64 = 0;
+        x = 0x10000;
+        var y: u64 = 0;
+        y = 0x10010;
         if (x < y) {
             unreachable;
         }
     }
 }
 fn causePanicInactiveUnionField() void {
-    var b: bool = zl.mem.unstable(bool, do_it);
+    var b: bool = zl.mem.unstable(bool, false);
+    b = do_it;
     if (b) {
         var u: union(enum(u8)) {
             a: u64 = 0,
@@ -59,7 +65,8 @@ fn causePanicInactiveUnionField() void {
     }
 }
 fn causePanicUnwrapError(err: anyerror, idx: usize) void {
-    var b: bool = zl.mem.unstable(bool, do_it);
+    var b: bool = zl.mem.unstable(bool, false);
+    b = do_it;
     if (b) {
         if (idx != 5) {
             causePanicUnwrapError(err, idx +% 1);
@@ -68,7 +75,8 @@ fn causePanicUnwrapError(err: anyerror, idx: usize) void {
     }
 }
 fn causePanicStartGreaterThanEnd() void {
-    var b: bool = zl.mem.unstable(bool, do_it);
+    var b: bool = zl.mem.unstable(bool, false);
+    b = do_it;
     if (b) {
         var a: [512]u8 = undefined;
         const s: []u8 = a[@intFromPtr(&a)..256];
@@ -76,10 +84,12 @@ fn causePanicStartGreaterThanEnd() void {
     }
 }
 fn causePanicOutOfBounds() void {
-    var b: bool = zl.mem.unstable(bool, do_it);
+    var b: bool = zl.mem.unstable(bool, false);
+    b = do_it;
     if (b) {
         var a: [512]u8 = undefined;
-        var idx: usize = 512;
+        var idx: usize = 0;
+        idx = 512;
         a[idx] = 'a';
     }
 }

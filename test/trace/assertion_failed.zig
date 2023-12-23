@@ -13,8 +13,8 @@ pub const trace: zl.debug.Trace = .{
     },
 };
 fn causeAssertionFailed() void {
-    var x: u64 = 0x10000;
-    var y: u64 = 0x10010;
+    const x: u64 = 0x10000;
+    const y: u64 = 0x10010;
     zl.debug.assertEqual(u64, x, y);
 }
 pub fn main() void {
