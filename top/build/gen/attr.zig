@@ -233,9 +233,9 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "check_unwrapped_null",
-            .string = "-fcheck-accessed-null",
-            .and_no = .{ .string = "-fno-check-accessed-null" },
-            .descr = &.{"Toggle check for .? operator"},
+            .string = "-fcheck-unwrapped-null",
+            .and_no = .{ .string = "-fno-check-unwrapped-null" },
+            .descr = &.{"Toggle check for unwrapping (.?) null optional values"},
         },
         .{
             .name = "check_returned_noreturn",
