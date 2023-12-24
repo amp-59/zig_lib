@@ -2557,6 +2557,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             file.close(close, out.read);
         }
         fn serverLoop(allocator: *types.Allocator, node: *Node, dest_pathname: [:0]const u8, in: file.Pipe, out: file.Pipe) void {
+            @setRuntimeSafety(false);
             var hdr: Message.ServerHeader = undefined;
             var fd: [1]file.PollFd = .{.{ .fd = out.read, .expect = .{ .input = true } }};
             while (try meta.wrap(file.poll(poll, &fd, builder_spec.options.timeout_milliseconds))) {
