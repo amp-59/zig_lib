@@ -172,15 +172,13 @@ const AboutKind = enum(u8) { @"error", note };
 fn writeAbout(buf: [*]u8, kind: AboutKind) [*]u8 {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
-    switch (kind) {
-        .@"error" => {
-            ptr[0..4].* = "\x1b[1m".*;
-            ptr += 4;
-        },
-        .note => {
-            ptr[0..15].* = "\x1b[0;38;5;250;1m".*;
-            ptr += 15;
-        },
+    if (kind == .@"error") {
+        ptr[0..4].* = "\x1b[1m".*;
+        ptr += 4;
+    }
+    if (kind == .note) {
+        ptr[0..15].* = "\x1b[0;38;5;250;1m".*;
+        ptr += 15;
     }
     ptr = fmt.strcpyEqu(ptr, @tagName(kind));
     ptr[0..2].* = ": ".*;
