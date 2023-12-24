@@ -680,27 +680,28 @@ fn writeSourceCodeAtAddress(
             break;
         }
     } else {
-        if (dwarf_info.findCompileUnit(addr)) |unit| {
-            if (dwarf_info.getSourceLocation(allocator, unit, addr)) |src| {
-                if (test_pc_range) {
-                    for (dwarf_info.src_locs[0..dwarf_info.src_locs_len]) |*src_loc| {
-                        if (src_loc.column == src.column and
-                            src_loc.line == src.line and
-                            mem.testEqualString(src.file, src_loc.file))
-                        {
-                            return null;
-                        }
-                    }
-                    dwarf_info.addSourceLocation(allocator).* = src;
+        for (dwarf_info.funcs[0..dwarf_info.funcs_len]) |func| {
+            if (func.range.start <= addr and
+                func.range.end > addr)
+            {
+                if (dwarf_info.getSourceLocation(allocator, func.unit, addr)) |src| {
+                    var ptr: [*]u8 = writeExtendedSourceLocation(dwarf_info, buf, addr, func.unit, src);
+                    ptr = writeSourceContext(trace, allocator, file_map, ptr, width, addr, src);
+                    ptr = writeLastLine(ptr, trace, width);
+                    return .{ .addr = addr, .start = buf, .finish = ptr };
                 }
-                var ptr: [*]u8 = writeExtendedSourceLocation(dwarf_info, buf, addr, unit, src);
-                ptr = writeSourceContext(trace, allocator, file_map, ptr, width, addr, src);
-                ptr = writeLastLine(ptr, trace, width);
-                return .{ .addr = addr, .start = buf, .finish = ptr };
             }
         }
     }
     return null;
+}
+fn noCompileUnitNotice(addr: usize) void {
+    @setRuntimeSafety(false);
+    var buf: [256]u8 = undefined;
+    buf[0..40].* = "Could not find compile unit for address ".*;
+    var ptr: [*]u8 = fmt.Uxsize.write(buf[40..], addr);
+    ptr[0] = '\n';
+    debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
 }
 fn writeNTimes(buf: [*]u8, count: usize) [*]u8 {
     @setRuntimeSafety(false);
