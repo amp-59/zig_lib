@@ -26,6 +26,7 @@ const Range = packed struct {
 const Func = struct {
     range: Range,
     name: ?[]const u8,
+    unit: *Unit,
 };
 const Tag = enum(u64) {
     padding = 0x00,
@@ -938,6 +939,7 @@ pub const DwarfInfo = extern struct {
                     dwarf_info.addFunc(allocator).* = .{
                         .name = parseFuncName(allocator, dwarf_info, unit, &info_entry, unit_off, next_off),
                         .range = parseRange(dwarf_info, unit, &info_entry),
+                        .unit = unit,
                     };
                 }
             }
@@ -1002,7 +1004,7 @@ pub const DwarfInfo = extern struct {
                     },
                     .Const => |val| return .{
                         .start = low_pc,
-                        .end = low_pc + val.asUnsignedLe(),
+                        .end = low_pc +% val.asUnsignedLe(),
                     },
                     else => proc.exitError(error.InvalidEncoding, 2),
                 }
