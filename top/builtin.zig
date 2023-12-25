@@ -2194,6 +2194,9 @@ pub const ObjectFormat = @TypeOf(builtin.target.ofmt);
 const std_lib = struct {
     const std = @import("std");
     pub const StackTrace = std.builtin.StackTrace;
+    pub const PanicCause = std.builtin.PanicCause;
+    pub const PanicId = std.builtin.PanicId;
+    pub const PanicData = std.builtin.PanicData;
     pub const GlobalLinkage = std.builtin.GlobalLinkage;
     pub const SymbolVisibility = std.builtin.SymbolVisibility;
     pub const AtomicOrder = std.builtin.AtomicOrder;
@@ -2267,19 +2270,23 @@ pub usingnamespace if (builtin.zig_backend == .stage2_llvm) struct {
     }
 } else struct {
     pub fn memcpy(noalias dest_bytes: [*]u8, noalias src_bytes: [*]const u8, len: u64) void {
+        @setRuntimeSafety(false);
         for (dest_bytes[0..len], src_bytes[0..len]) |*ptr, val| {
             ptr.* = val;
         }
     }
     pub fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void {
+        @setRuntimeSafety(false);
         for (dest[0..count]) |*ptr| {
             ptr.* = value;
         }
     }
     pub fn addrcpy(dest: usize, src: usize, len: usize) void {
+        @setRuntimeSafety(false);
         memcpy(@ptrFromInt(dest), @ptrFromInt(src), len);
     }
     pub fn addrset(dest: usize, value: u8, count: usize) void {
+        @setRuntimeSafety(false);
         memset(@ptrFromInt(dest), value, count);
     }
 };
