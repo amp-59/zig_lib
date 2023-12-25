@@ -1807,14 +1807,13 @@ const about = struct {
     fn debugDieNotice(info_entry: *Die) void {
         @setRuntimeSafety(is_safe);
         var buf: [32768]u8 = undefined;
-        var id64: fmt.Id64 = undefined;
         buf[0..debug_entry_s.len].* = debug_entry_s.*;
         var ptr: [*]u8 = buf[debug_entry_s.len..];
         ptr = fmt.strcpyEqu(ptr, @tagName(info_entry.head.tag));
         ptr[0] = '\n';
         ptr += 1;
         for (info_entry.kvs[0..info_entry.kvs_len], 0..) |*kv, kv_idx| {
-            ptr += fmt.writeSideBarIndex(ptr, 4, kv_idx);
+            ptr = fmt.SideBarIndexFormat.write(ptr, 4, kv_idx);
             ptr = fmt.strcpyEqu(ptr, @tagName(kv.key));
             ptr[0..2].* = ": ".*;
             ptr += 2;
@@ -1823,12 +1822,10 @@ const about = struct {
             ptr += 3;
             switch (kv.val) {
                 .Address => |addr| {
-                    id64.value = @bitCast(addr);
-                    ptr += id64.formatWriteBuf(ptr);
+                    ptr = fmt.Ixsize.write(ptr, @bitCast(addr));
                 },
                 .AddrOffset => |addrx| {
-                    id64.value = @bitCast(addrx);
-                    ptr += id64.formatWriteBuf(ptr);
+                    ptr = fmt.Idsize.write(ptr, @bitCast(addrx));
                 },
                 .Block => |block| {
                     debug.write(fmt.slice(ptr, &buf));
@@ -1836,26 +1833,15 @@ const about = struct {
                     debug.write(block);
                 },
                 .Const => |val| {
-                    id64 = @bitCast(val.payload);
-                    ptr += id64.formatWriteBuf(ptr);
-                },
-                .StrPtr => |strptr| {
-                    if (DwarfInfo.active) |dwarf_info| {
-                        debug.write(fmt.slice(ptr, &buf));
-                        ptr = buf[0..];
-                        debug.write(dwarf_info.getString(strptr));
-                    } else {
-                        ptr[0] = '@';
-                        ptr += 1;
-                        id64.value = @bitCast(strptr);
-                        ptr += id64.formatWriteBuf(ptr);
-                    }
+                    ptr = fmt.Idsize.write(ptr, @bitCast(val.payload));
                 },
                 .Ref => |ref| {
                     ptr[0] = '@';
                     ptr += 1;
-                    id64.value = @bitCast(ref);
-                    ptr += id64.formatWriteBuf(ptr);
+                    ptr = fmt.Idsize.write(ptr, @bitCast(ref));
+                },
+                .String => |name| {
+                    ptr = fmt.strcpyEqu(ptr, name);
                 },
                 else => {},
             }
