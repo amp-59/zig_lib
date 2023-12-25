@@ -13,7 +13,7 @@ pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
 });
 pub const DynamicLoader = zl.elf.GenericDynamicLoader(.{
     .errors = .{},
-    .options = .{},
+    .options = .{ .verify_lengths = true },
     .AddressSpace = LoaderSpace,
     .logging = .{
         .show_insignificant = true,
@@ -75,9 +75,9 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     }
     if (args.len == 2) {
         const len: usize = DynamicLoader.compare.lengthElf(cmp, &allocator, ei1, width);
-        const buf: []u8 = allocator.allocate(u8, len);
-        const end: [*]u8 = DynamicLoader.compare.writeElf(cmp, buf.ptr, ei1, width);
-        debug.assertEqual(usize, len, fmt.strlen(end, buf.ptr));
+        const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len, 1));
+        const end: [*]u8 = DynamicLoader.compare.writeElf(cmp, buf, ei1, width);
+        debug.assertEqual(usize, len, fmt.strlen(end, buf));
         debug.write(buf[0..len]);
     } else for (args[2..]) |arg| {
         const name: [:0]u8 = mem.terminate(arg, 0);
