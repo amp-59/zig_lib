@@ -327,13 +327,11 @@ pub fn BestInt(comptime T: type) type {
             return @Vector(vector_info.len, BestInt(vector_info.child));
         },
         .Int => if (@bitSizeOf(T) <= @bitSizeOf(usize)) {
-            return @Type(.{ .Int = .{
-                .bits = @bitSizeOf(usize),
-                .signedness = switch (@typeInfo(T)) {
-                    .Int => |int_info| int_info.signedness,
-                    else => .unsigned,
-                },
-            } });
+            if (@typeInfo(T).Int.signedness == .signed) {
+                return isize;
+            } else {
+                return usize;
+            }
         } else {
             return @Type(.{ .Int = .{
                 .bits = @bitSizeOf(T),
