@@ -350,7 +350,8 @@ pub fn BestNum(comptime Number: type) type {
     switch (@typeInfo(Number)) {
         .ComptimeInt, .Int => return BestInt(Number),
         .ComptimeFloat, .Float => return BestFloat(Number),
-        else => unreachable,
+        .Vector => return Number,
+        else => @compileError(@typeName(Number)),
     }
 }
 pub fn signedRealBitSize(value: isize) u16 {
