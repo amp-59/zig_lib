@@ -633,7 +633,7 @@ pub const reinterpret = opaque {
             reinterpret.writeAnyUnstructured(child, write_spec, memory, @field(fields, field.name));
         }
     }
-    pub fn writeFormat(comptime child: type, memory: anytype, format: anytype) void {
+    pub inline fn writeFormat(comptime child: type, memory: anytype, format: anytype) void {
         const Format: type = @TypeOf(format);
         if (child != u8) {
             @compileError("invalid destination type for format write: " ++ @typeName(child));
@@ -1440,13 +1440,13 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
     });
@@ -1614,13 +1614,13 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
     });
@@ -1967,13 +1967,13 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
@@ -2150,13 +2150,13 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
@@ -2500,13 +2500,13 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsUnstructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsUnstructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
@@ -2682,13 +2682,13 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsUnstructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsUnstructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
@@ -2978,13 +2978,13 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
@@ -3336,13 +3336,13 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
@@ -3721,13 +3721,13 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsUnstructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsUnstructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
         pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
@@ -4077,13 +4077,13 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsUnstructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsUnstructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
         pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
@@ -4464,13 +4464,13 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
@@ -4687,13 +4687,13 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsStructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsStructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
@@ -4986,13 +4986,13 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
             reinterpret.writeFieldsUnstructured(child, write_spec, array, fields);
         }
-        pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
+        pub inline fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsUnstructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
@@ -5211,10 +5211,10 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             reinterpret.writeArgsUnstructured(child, write_spec, array, args);
         }
-        pub fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
+        pub inline fn writeFormat(array: *Array, comptime child: type, format: anytype) void {
             reinterpret.writeFormat(child, array, format);
         }
-        pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
+        pub inline fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
