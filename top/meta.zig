@@ -602,14 +602,15 @@ pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@Ty
     return @as(SliceToArrayPointer(@TypeOf(any), any.len), @ptrCast(any.ptr));
 }
 /// Extracts types like:
-/// Int                 => Int,
-/// Enum(Int)           => Int,
-/// Struct(Int)         => Int,
-/// Union(Enum(Int))    => Int,
-/// Optional(Any)       => Any,
-/// Array(Any)          => Any,
-/// Pointer(Array(Any)) => Any,
-/// Pointer(Any)        => Any,
+/// Int                     => Int,
+/// Enum(Int)               => Int,
+/// Struct(Int)             => Int,
+/// Union(Enum(Int))        => Int,
+/// Optional(Pointer(Any))  => Any,
+/// Optional(Any)           => Any,
+/// Array(Any)              => Any,
+/// Pointer(Array(Any))     => Any,
+/// Pointer(Any)            => Any,
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
@@ -669,6 +670,20 @@ pub fn Element(comptime T: type) type {
                     about.unexpectedTypeTypeError(T, child_type_info, .Array);
                 },
             }
+        },
+    }
+}
+
+pub inline fn isAllowzero(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        else => |type_info| {
+            about.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Pointer });
+        },
+        .Optional => |opt_info| {
+            return isAllowzero(opt_info.child);
+        },
+        .Pointer => |ptr_info| {
+            return ptr_info.is_allowzero;
         },
     }
 }
