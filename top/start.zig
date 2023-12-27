@@ -75,6 +75,9 @@ pub fn start() callconv(.C) noreturn {
         if (@call(.auto, builtin.root.main, params)) {
             return proc.exitNotice(0);
         } else |err| {
+            if (@errorReturnTrace()) |st| {
+                debug.alarm(@errorName(err), st, null);
+            }
             return proc.exitError(err, @truncate(@intFromError(err)));
         }
     }
@@ -84,6 +87,9 @@ pub fn start() callconv(.C) noreturn {
         if (@call(.auto, builtin.root.main, params)) |rc| {
             return proc.exitNotice(rc);
         } else |err| {
+            if (@errorReturnTrace()) |st| {
+                debug.alarm(@errorName(err), st, null);
+            }
             return proc.exitError(err, @truncate(@intFromError(err)));
         }
     }
