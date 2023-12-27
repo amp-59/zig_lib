@@ -6,8 +6,8 @@ const proc = @import("proc.zig");
 const debug = @import("debug.zig");
 const builtin = @import("builtin.zig");
 pub const panic = debug.panic;
+pub const panicNew = debug.safety.panicNew;
 pub usingnamespace debug.panic_extra;
-pub usingnamespace ZigLibEntry;
 pub var stack: usize = 0;
 pub fn Start(comptime entry: anytype) type {
     return struct {
@@ -23,21 +23,20 @@ pub fn Start(comptime entry: anytype) type {
         }
     };
 }
-const ZigLibEntry = Start(start);
-const UserEntry = struct {
-    const _start = builtin.root._start;
-};
 comptime {
     if (builtin.output_mode == .Exe and
-        @hasDecl(builtin.root, "Start"))
+        (@hasDecl(builtin.root, "Start") or
+        (@hasDecl(builtin.root, "want_zig_lib_start") and builtin.root.want_zig_lib_start)))
     {
-        @export(ZigLibEntry._start, .{ .name = "_start", .linkage = .Strong });
+        @export(_start, .{ .name = "_start", .linkage = .Strong });
     }
 }
+pub const _start = Start(start)._start;
 pub fn start() callconv(.C) noreturn {
     @setRuntimeSafety(false);
     @setAlignStack(16);
     if (builtin.output_mode != .Exe) {
+        @setRuntimeSafety(false);
         unreachable;
     }
     const main_type_info: builtin.Type = @typeInfo(@TypeOf(builtin.root.main));
@@ -61,7 +60,7 @@ pub fn start() callconv(.C) noreturn {
         1 => .{args[0..args_len]},
         2 => .{ args[0..args_len], vars[0..vars_len] },
         3 => .{ args[0..args_len], vars[0..vars_len], auxv },
-        else => unreachable,
+        else => @compileError("invalid number of arguments"),
     };
     if (main_return_type == void) {
         @call(.auto, builtin.root.main, params);
