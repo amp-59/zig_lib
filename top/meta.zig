@@ -1650,6 +1650,14 @@ pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) v
         }
     }
 }
+pub fn isValidEnum(comptime Enum: type, tag: Enum) bool {
+    inline for (@typeInfo(Enum).Enum.fields) |field| {
+        if (field.value == @intFromEnum(tag)) {
+            return true;
+        }
+    }
+    return false;
+}
 const about = opaque {
     fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
         switch (any) {
