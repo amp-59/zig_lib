@@ -82,10 +82,32 @@ fn testGlobalVariables() !void {
     try zl.debug.expectEqualMemory([]const u8, "home", gv[0].name);
     try zl.debug.expectEqualMemory([]const u8, "cwd", gv[1].name);
 }
+fn testIsValidEnum() !void {
+    @setRuntimeSafety(false);
+    const E = enum(u8) { A, B, C };
+    var no: u8 = @intFromEnum(E.C);
+    var tag: E = @enumFromInt(no);
+    no = 8;
+    try zl.debug.expect(zl.meta.isValidEnum(E, tag));
+    tag = @enumFromInt(no);
+    try zl.debug.expect(!zl.meta.isValidEnum(E, tag));
+}
+fn testIsValidError() !void {
+    @setRuntimeSafety(false);
+    const E = error{ A, B, C };
+    var errno: u16 = @intFromError(error.A);
+    var err: E = @errorCast(@errorFromInt(errno));
+    errno += 4096;
+    try zl.debug.expect(zl.meta.isValidErrorCode(E, err));
+    err = @errorCast(@errorFromInt(errno));
+    try zl.debug.expect(!zl.meta.isValidErrorCode(E, err));
+}
 pub fn main(_: anytype, _: [][*:0]u8) !void {
     zl.meta.refAllDecls(zl.meta, &.{});
     try testBasicMetaFunctions();
     try testBitCastMetaFunctions();
     try testAlignmentMetaFunctions();
     try testMemoryMetaFunctions();
+    try testIsValidError();
+    try testIsValidEnum();
 }
