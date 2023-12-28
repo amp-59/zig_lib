@@ -312,6 +312,7 @@ pub const noexcept = struct {
         }
     }
     pub fn signedLEB128(bytes: [*]const u8) struct { isize, u8 } {
+        @setRuntimeSafety(false);
         const max_idx: comptime_int = (@bitSizeOf(isize) +% 6) / 7;
         var value: usize = 0;
         var idx: u8 = 0;
@@ -328,6 +329,7 @@ pub const noexcept = struct {
         unreachable;
     }
     pub fn unsignedLEB128(bytes: [*]const u8) struct { usize, u8 } {
+        @setRuntimeSafety(false);
         const max_idx: comptime_int = (@bitSizeOf(usize) +% 6) / 7;
         var value: usize = 0;
         var idx: u8 = 0;
