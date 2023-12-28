@@ -296,7 +296,7 @@ pub const Socket = struct {
         port: u16,
         addr: [4]u8,
         @"0": [8]u8 = undefined,
-        pub const addrlen: u64 = @sizeOf(AddressIPv4);
+        pub const addrlen: usize = @sizeOf(AddressIPv4);
         pub fn create(port: u16, addr: [4]u8) Address {
             return .{ .ipv4 = .{
                 .port = @byteSwap(port),
@@ -310,7 +310,7 @@ pub const Socket = struct {
         flow_info: u32,
         addr: [8]u16,
         scope_id: u32,
-        pub const addrlen: u64 = @sizeOf(AddressIPv6);
+        pub const addrlen: usize = @sizeOf(AddressIPv6);
         pub fn create(port: u16, flow_info: u32, addr: [8]u16, scope_id: u32) Address {
             return .{ .ipv6 = .{
                 .port = @byteSwap(port),
@@ -320,7 +320,7 @@ pub const Socket = struct {
             } };
         }
     };
-    pub const Protocol = enum(u64) {
+    pub const Protocol = enum(usize) {
         ip = 0,
         icmp = 1,
         igmp = 2,
