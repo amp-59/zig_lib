@@ -506,35 +506,50 @@ pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
 }
 
 pub const float = struct {
-    pub const F16 = packed struct(u16) {
-        fraction: u10,
-        exponent: u5,
-        negative: bool,
+    pub const F16 = packed union {
+        bits: u16,
+        elems: packed struct(u16) {
+            fraction: u10,
+            exponent: i5,
+            negative: bool,
+        },
         pub const bias = 15;
     };
-    pub const F32 = packed struct(u32) {
-        fraction: u23,
-        exponent: u8,
-        negative: bool,
+    pub const F32 = packed union {
+        bits: u32,
+        elems: packed struct(u32) {
+            fraction: u23,
+            exponent: i8,
+            negative: bool,
+        },
         pub const bias = 127;
     };
-    pub const F64 = packed struct(u64) {
-        fraction: u52,
-        exponent: u11,
-        negative: bool,
+    pub const F64 = packed union {
+        bits: u64,
+        elems: packed struct(u64) {
+            fraction: u52,
+            exponent: i11,
+            negative: bool,
+        },
         pub const bias = 1023;
     };
-    pub const F80 = packed struct(u80) {
-        fraction: u63,
-        integer: u1,
-        exponent: u15,
-        negative: bool,
+    pub const F80 = packed union {
+        bits: u80,
+        elems: packed struct(u80) {
+            fraction: u63,
+            integer: bool,
+            exponent: i15,
+            negative: bool,
+        },
         pub const bias = 16383;
     };
-    pub const F128 = packed struct(u128) {
-        fraction: u112,
-        exponent: u15,
-        negative: bool,
+    pub const F128 = packed union {
+        bits: u128,
+        elems: packed struct(u128) {
+            fraction: u112,
+            exponent: i15,
+            negative: bool,
+        },
         pub const bias = 16383;
     };
     pub fn Bits(comptime Float: type) type {
