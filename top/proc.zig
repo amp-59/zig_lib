@@ -257,13 +257,13 @@ pub const WaitSpec = struct {
         stopped: bool = false,
         continued: bool = false,
     };
-    const For = union(enum) {
-        pid: usize,
-        pgid: usize,
-        ppid,
-        any,
+    const For = union(enum(isize)) {
+        ppid = 0,
+        any = -1,
+        pid: usize = 1,
+        pgid: usize = 2,
     };
-    fn pid(id: For) u64 {
+    fn pid(id: For) usize {
         @setRuntimeSafety(false);
         const val: isize = switch (id) {
             .ppid => 0,
