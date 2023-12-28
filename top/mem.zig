@@ -2455,13 +2455,8 @@ pub const DiscreteMultiArena = struct {
         }
         return map_list;
     }
-    pub fn capacityAll(comptime multi_arena: MultiArena) comptime_int {
-        return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
-    }
-    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) comptime_int {
-        return multi_arena.list[index].up_addr -% multi_arena.list[index].up_addr;
-    }
-    pub fn invert(comptime multi_arena: MultiArena, addr: usize) multi_arena.index_type {
+    pub fn invert(comptime multi_arena: MultiArena, addr: usize) ?multi_arena.index_type {
+        @setRuntimeSafety(builtin.is_safe);
         var index: multi_arena.index_type = 0;
         while (index != multi_arena.list.len) : (index +%= 1) {
             if (addr >= multi_arena.list[index].lb_addr and
@@ -2470,7 +2465,13 @@ pub const DiscreteMultiArena = struct {
                 return index;
             }
         }
-        unreachable;
+        return null;
+    }
+    pub fn capacityAll(comptime multi_arena: MultiArena) comptime_int {
+        return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
+    }
+    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) comptime_int {
+        return multi_arena.list[index].up_addr -% multi_arena.list[index].up_addr;
     }
     pub fn arena(comptime multi_arena: MultiArena, index: multi_arena.index_type) Arena {
         return multi_arena.list[index];
