@@ -1137,8 +1137,7 @@ pub const about = opaque {
             ptr = fmt.Ud64.write(ptr + 6, tid);
         }
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += about.exe(ptr[0..4096]);
+        ptr += about.exe(ptr[2..4098]);
         debug.panic_extra.panicSignal(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], ctx.?);
     }
     pub fn sampleAllReports() void {
