@@ -1847,7 +1847,9 @@ pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]
     }
 }
 pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
-    debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    if (builtin.runtime_assertions) {
+        debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    }
     if (@typeInfo(T).Int.bits == 0) {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
@@ -1866,7 +1868,9 @@ pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
     }
 }
 pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
-    debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    if (builtin.runtime_assertions) {
+        debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    }
     if (@typeInfo(T).Int.bits == 0) {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
@@ -1932,7 +1936,9 @@ pub fn nativeToBig(comptime T: type, x: T) T {
 }
 pub fn readIntSliceNative(comptime T: type, bytes: []const u8) T {
     const n = @divExact(@typeInfo(T).Int.bits, 8);
-    debug.assert(bytes.len >= n);
+    if (builtin.runtime_assertions) {
+        debug.assert(bytes.len >= n);
+    }
     return readIntNative(T, bytes[0..n]);
 }
 pub fn readIntSliceForeign(comptime T: type, bytes: []const u8) T {
