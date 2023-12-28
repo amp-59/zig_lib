@@ -2076,12 +2076,15 @@ fn ThreadSafeSetBoolInt(comptime elements: u16, comptime index_type: type) type 
         const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *const SafeSet, index: index_type) bool {
+            @setRuntimeSafety(false);
             return safe_set.bytes[index] != 0;
         }
         pub fn set(safe_set: *SafeSet, index: index_type) void {
+            @setRuntimeSafety(false);
             safe_set.bytes[index] = 255;
         }
         pub fn unset(safe_set: *SafeSet, index: index_type) void {
+            @setRuntimeSafety(false);
             safe_set.bytes[index] = 0;
         }
         pub inline fn atomicSet(safe_set: *SafeSet, index: index_type) bool {
@@ -2161,9 +2164,11 @@ fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime value_type: type, comp
         const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *const SafeSet, index: index_type) value_type {
+            @setRuntimeSafety(false);
             return safe_set.bytes[@intFromEnum(index)];
         }
         pub fn set(safe_set: *SafeSet, index: index_type, to: value_type) void {
+            @setRuntimeSafety(false);
             safe_set.bytes[@intFromEnum(index)] = to;
         }
         pub fn exchange(safe_set: *SafeSet, index: index_type, if_state: value_type, to_state: value_type) bool {
@@ -2593,9 +2598,11 @@ pub const RegularMultiArena = struct {
         return @as(Index(multi_arena), @intCast((addr -% multi_arena.lb_addr) / capacityEach(multi_arena)));
     }
     pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
+        @setRuntimeSafety(false);
         return @max(multi_arena.lb_addr +% multi_arena.lb_offset, multi_arena.lb_addr +% (index *% comptime capacityEach(multi_arena)));
     }
     pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
+        @setRuntimeSafety(false);
         return @min(multi_arena.up_addr -% multi_arena.up_offset, multi_arena.lb_addr +% ((index +% 1) *% comptime capacityEach(multi_arena)));
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
