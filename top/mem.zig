@@ -3589,7 +3589,6 @@ pub inline fn pointerOpaqueAligned(
     @setRuntimeSafety(false);
     return @as(*align(alignment) const child, @ptrCast(any));
 }
-/// Experiment from Kivi
 extern fn sse42_strcmp(arg1: *const anyopaque, arg2: *const anyopaque, len: usize, off: usize) bool;
 comptime {
     asm (
