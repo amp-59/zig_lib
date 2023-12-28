@@ -1650,14 +1650,26 @@ pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) v
         }
     }
 }
-pub fn isValidEnum(comptime Enum: type, tag: Enum) bool {
-    inline for (@typeInfo(Enum).Enum.fields) |field| {
+
+pub fn isValidEnum(comptime E: type, tag: E) bool {
+    inline for (@typeInfo(E).Enum.fields) |field| {
         if (field.value == @intFromEnum(tag)) {
             return true;
         }
     }
     return false;
 }
+pub fn isValidErrorCode(comptime E: type, err: E) bool {
+    if (@typeInfo(E).ErrorSet) |error_set| {
+        inline for (error_set) |elem| {
+            if (@intFromError(@field(E, elem.name)) == @intFromError(err)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 const about = opaque {
     fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
         switch (any) {
