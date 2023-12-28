@@ -2995,9 +2995,6 @@ pub fn GenericElementaryAddressSpace(comptime addr_spec: ElementaryAddressSpaceS
 }
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     const T = extern struct {
-        pub fn invert(addr: usize) AddressSpace.Index {
-            return @as(AddressSpace.Index, @intCast(AddressSpace.specification.invert(addr)));
-        }
         pub fn SubSpace(comptime label_or_index: anytype) type {
             return GenericSubSpace(AddressSpace.specification.subspace.?, label_or_index);
         }
