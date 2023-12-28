@@ -1473,7 +1473,7 @@ pub fn getCwd(comptime getcwd_spec: GetWorkingDirectorySpec, buf: []u8) sys.Erro
         buf[len] = 0;
         const ret: [:0]u8 = buf[0 .. len -% 1 :0];
         if (logging.Success) {
-            about.aboutPathnameNotice(about.getcwd_s, ret);
+            about.aboutGetCwdNotice(about.getcwd_s, ret);
         }
         return ret;
     } else |getcwd_error| {
