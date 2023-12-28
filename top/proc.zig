@@ -1434,6 +1434,7 @@ pub fn GenericOptions(comptime Options: type) type {
 }
 pub fn exitNotice(return_code: u8) noreturn {
     @setCold(true);
+    @setRuntimeSafety(false);
     if (debug.logging_general.Success) {
         debug.about.exitRcNotice(return_code);
     }
@@ -1441,6 +1442,7 @@ pub fn exitNotice(return_code: u8) noreturn {
 }
 pub fn exitGroupNotice(return_code: u8) noreturn {
     @setCold(true);
+    @setRuntimeSafety(false);
     if (debug.logging_general.Success) {
         debug.about.exitRcNotice(return_code);
     }
@@ -1448,6 +1450,7 @@ pub fn exitGroupNotice(return_code: u8) noreturn {
 }
 pub fn exitError(exit_error: anyerror, return_code: u8) noreturn {
     @setCold(true);
+    @setRuntimeSafety(false);
     if (debug.logging_general.Fault) {
         debug.about.errorRcNotice(@errorName(exit_error), return_code);
     }
@@ -1455,6 +1458,7 @@ pub fn exitError(exit_error: anyerror, return_code: u8) noreturn {
 }
 pub fn exitGroupError(exit_error: anyerror, return_code: u8) noreturn {
     @setCold(true);
+    @setRuntimeSafety(false);
     if (debug.logging_general.Fault) {
         debug.about.errorRcNotice(@errorName(exit_error), return_code);
     }
@@ -1462,6 +1466,7 @@ pub fn exitGroupError(exit_error: anyerror, return_code: u8) noreturn {
 }
 pub fn exitFault(message: []const u8, return_code: u8) noreturn {
     @setCold(true);
+    @setRuntimeSafety(false);
     if (debug.logging_general.Fault) {
         debug.about.faultRcNotice(message, return_code);
     }
@@ -1469,6 +1474,7 @@ pub fn exitFault(message: []const u8, return_code: u8) noreturn {
 }
 pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
     @setCold(true);
+    @setRuntimeSafety(false);
     if (debug.logging_general.Fault) {
         debug.about.faultRcNotice(message, return_code);
     }
@@ -1476,6 +1482,7 @@ pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
 }
 pub fn exitErrorFault(exit_error: anyerror, message: []const u8, return_code: u8) noreturn {
     @setCold(true);
+    @setRuntimeSafety(false);
     if (debug.logging_general.Fault and
         debug.logging_general.Error)
     {
@@ -1501,6 +1508,7 @@ pub fn exitGroupErrorFault(exit_error: anyerror, message: []const u8, return_cod
     exitGroup(return_code);
 }
 pub fn exit(rc: u8) noreturn {
+    @setRuntimeSafety(false);
     asm volatile (
         \\syscall
         :
@@ -1510,6 +1518,7 @@ pub fn exit(rc: u8) noreturn {
     unreachable;
 }
 pub fn exitGroup(rc: u8) noreturn {
+    @setRuntimeSafety(false);
     asm volatile (
         \\syscall
         :
