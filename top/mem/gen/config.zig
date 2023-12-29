@@ -43,9 +43,15 @@ pub const debug_argument_substitution_match_fail: bool = false;
 /// Auxiliary products of memory implementation generator go here. These are
 /// generated source files (src) or serialised data (bin). They exist to speed
 /// subsequent steps and will be replaced whenever missing.
-pub const zig_out_dir: [:0]const u8 = builtin.root.build_root ++ "/top/mem/gen/zig-out";
+pub const zig_out_dir: [:0]const u8 = builtin.lib_root ++ "/top/mem/gen/zig-out";
 pub const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
 pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
+
+pub const test_dir: [:0]const u8 = builtin.lib_root ++ "/test";
+pub const test_safety_dir: [:0]const u8 = test_dir ++ "/safety";
+pub const test_safety_slice_dir: [:0]const u8 = test_safety_dir ++ "/slice";
+
+pub const test_safety_slice_common_path: [:0]const u8 = test_safety_slice_dir ++ "/common.zig";
 
 /// Currently all containers are written to this file. Later, each container
 /// will be given its own file.
