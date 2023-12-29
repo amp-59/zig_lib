@@ -36,8 +36,7 @@ pub fn start() callconv(.C) noreturn {
     @setRuntimeSafety(false);
     @setAlignStack(16);
     if (builtin.output_mode != .Exe) {
-        @setRuntimeSafety(false);
-        unreachable;
+        @compileError("uncallable");
     }
     const main_type_info: builtin.Type = @typeInfo(@TypeOf(builtin.root.main));
     const main_return_type: type = main_type_info.Fn.return_type.?;
