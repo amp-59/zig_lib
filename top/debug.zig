@@ -1894,3 +1894,549 @@ pub const spec = struct {
         };
     };
 };
+
+pub const safety = struct {
+    const str = struct {
+        const eql = " == ".*;
+        const lost_sign = " lost signedness (".*;
+        const max = " maximum (".*;
+        const min = " minimum (".*;
+        const above = " above ".*;
+        const below = " below ".*;
+        const colon = ": ".*;
+        const trunc_bits = " truncated bits: ".*;
+        const shr = " >> ".*;
+        const shr_ov = "right shift overflowed ".*;
+        const shl = " << ".*;
+        const shl_ov = "left shift overflowed ".*;
+        const add_ov = "add overflowed ".*;
+        const add = " + ".*;
+        const mul_ov = "mul overflowed ".*;
+        const mul = " * ".*;
+        const sub = " - ".*;
+        const sub_ov = "sub overflowed ".*;
+        const div_exact = "exact division with remainder: ".*;
+        const bad_sent = " sentinel mismatch: expected ".*;
+        const found = ", found ".*;
+        const cast_to_ty = "cast to '".*;
+        const from = "' from ".*;
+        const from_ty = "' from '".*;
+    };
+
+    fn panicCastToPointerFromInvalid(
+        address: usize,
+        alignment: usize,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        var ptr: [*]u8 = &buf;
+        if (address != 0) {
+            ptr[0..42].* = "cast to pointer with incorrect alignment (".*;
+            ptr = fmt.Udsize.write(ptr + 42, alignment);
+            ptr[0..3].* = "): ".*;
+            ptr = fmt.Udsize.write(ptr + 3, address);
+            ptr[0..4].* = " == ".*;
+            ptr = fmt.Udsize.write(ptr + 4, address & ~(alignment -% 1));
+            ptr[0] = '+';
+            ptr = fmt.Udsize.write(ptr + 1, address & (alignment -% 1));
+        } else {
+            ptr[0..40].* = "cast to null pointer without 'allowzero'".*;
+            ptr += 40;
+        }
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn panicCastToTagFromInvalid(
+        comptime Integer: type,
+        type_name: []const u8,
+        value: Integer,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        buf[0..9].* = "cast to '".*;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf[9..], type_name);
+        ptr[0..21].* = "' from invalid value ".*;
+        ptr = fmt.Udsize.write(ptr + 21, value);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn panicCastToErrorFromInvalid(
+        comptime From: type,
+        type_name: []const u8,
+        value: From,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        buf[0..9].* = str.cast_to_ty;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf[9..], type_name);
+        ptr[0..7].* = str.from;
+        if (@typeInfo(From) == .Int) {
+            ptr[7..32].* = "non-existent error-code (".*;
+            ptr = fmt.Udsize.write(ptr + 32, value);
+            ptr[0] = ')';
+            ptr += 1;
+        } else {
+            ptr[7] = '\'';
+            ptr = fmt.strcpyEqu2(ptr + 8, @typeName(From));
+            ptr[0..2].* = "' ".*;
+            ptr = fmt.AnyFormat(.{}, From).write(ptr + 2, value);
+        }
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn panicCastToIntFromInvalid(
+        comptime To: type,
+        to_type_name: []const u8,
+        comptime From: type,
+        from_type_name: []const u8,
+        extrema: math.BestExtrema(To),
+        value: From,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        const yn: bool = value < 0;
+        const x: math.Extrema = math.extrema(To);
+        var ptr: [*]u8 = writeCastToFrom(&buf, to_type_name, from_type_name);
+        ptr[0..13].* = " overflowed: ".*;
+        ptr += 13;
+        if (value < x.max and value > x.min) {
+            ptr[0] = '(';
+            ptr = fmt.Udsize.write(ptr + 1, @intFromFloat(@trunc(value)));
+            ptr[0] = ')';
+            ptr += 1;
+        }
+        ptr = writeAboveOrBelowLimit(ptr, To, to_type_name, yn, if (yn) extrema.min else extrema.max);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn panicCastTruncatedData(
+        comptime To: type,
+        to_type_name: []const u8,
+        comptime From: type,
+        from_type_name: []const u8,
+        extrema: math.BestExtrema(To),
+        value: From,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        const yn: bool = value < 0;
+        var ptr: [*]u8 = writeCastToFrom(&buf, to_type_name, from_type_name);
+        ptr[0..17].* = " truncated bits: ".*;
+        ptr = fmt.Xd(From).write(ptr + 17, value);
+        ptr = writeAboveOrBelowLimit(ptr, To, to_type_name, yn, if (yn) extrema.min else extrema.max);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn panicCastToUnsignedFromNegative(
+        comptime _: type,
+        to_type_name: []const u8,
+        comptime From: type,
+        from_type_name: []const u8,
+        value: From,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        var ptr: [*]u8 = writeCastToFrom(&buf, to_type_name, from_type_name);
+        ptr[0..18].* = " lost signedness (".*;
+        ptr = fmt.AnyFormat(.{}, From).write(ptr + 18, value);
+        ptr[0] = ')';
+        builtin.panic(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn panicMismatchedSentinel(
+        comptime Number: type,
+        type_name: []const u8,
+        comptime expected: Number,
+        found: Number,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
+        ptr[0..29].* = " sentinel mismatch: expected ".*;
+        ptr = fmt.AnyFormat(.{}, Number).write(ptr + 29, expected);
+        ptr[0..8].* = ", found ".*;
+        ptr = fmt.AnyFormat(.{}, Number).write(ptr + 8, found);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn panicExactDivisionWithRemainder(
+        comptime Number: type,
+        lhs: Number,
+        rhs: Number,
+        ret_addr: usize,
+    ) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
+        buf[0..31].* = "exact division with remainder: ".*;
+        var ptr: [*]u8 = fmt.AnyFormat(.{}, Number).write(buf[31..], lhs);
+        ptr[0] = '/';
+        ptr = fmt.AnyFormat(.{}, Number).write(ptr + 1, rhs);
+        ptr[0..4].* = " == ".*;
+        ptr = fmt.AnyFormat(.{}, Number).write(ptr + 4, @divTrunc(lhs, rhs));
+        ptr[0] = 'r';
+        ptr = fmt.AnyFormat(.{}, Number).write(ptr + 1, @rem(lhs, rhs));
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    fn writeCastToFrom(
+        buf: [*]u8,
+        to_type_name: []const u8,
+        from_type_name: []const u8,
+    ) [*]u8 {
+        @setRuntimeSafety(false);
+        buf[0..9].* = "cast to '".*;
+        const ptr: [*]u8 = fmt.strcpyEqu(buf + 9, to_type_name);
+        ptr[0..8].* = "' from '".*;
+        fmt.strcpyEqu(ptr + 8, from_type_name)[0] = '\'';
+        return ptr + 9 + from_type_name.len;
+    }
+    fn writeAboveOrBelowLimit(
+        buf: [*]u8,
+        comptime To: type,
+        to_type_name: []const u8,
+        yn: bool,
+        limit: To,
+    ) [*]u8 {
+        @setRuntimeSafety(false);
+        buf[0..7].* = if (yn) " below ".* else " above ".*;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf + 7, to_type_name);
+        ptr[0..10].* = if (yn) " minimum (".* else " maximum (".*;
+        ptr = fmt.Xd(To).write(ptr + 10, limit);
+        ptr[0] = ')';
+        return ptr + 1;
+    }
+    fn panicArithOverflow(comptime Number: type) type {
+        return struct {
+            const Extrema = math.BestExtrema(Number);
+            const Absolute = math.Absolute(Number);
+            fn add(
+                type_name: []const u8,
+                extrema: Extrema,
+                lhs: Number,
+                rhs: Number,
+                ret_addr: usize,
+            ) noreturn {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                const yn: bool = rhs < 0;
+                var buf: [256]u8 = undefined;
+                var ptr: [*]u8 = writeOverflowed(&buf, "add overflowed ", type_name, " + ", lhs, rhs, &@addWithOverflow(lhs, rhs));
+                ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
+                builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+            }
+            fn sub(
+                type_name: []const u8,
+                extrema: Extrema,
+                lhs: Number,
+                rhs: Number,
+                ret_addr: usize,
+            ) noreturn {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                const yn: bool = rhs > 0;
+                var buf: [256]u8 = undefined;
+                var ptr: [*]u8 = writeOverflowed(&buf, "sub overflowed ", type_name, " - ", lhs, rhs, &@subWithOverflow(lhs, rhs));
+                ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
+                builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+            }
+            fn mul(
+                type_name: []const u8,
+                extrema: Extrema,
+                lhs: Number,
+                rhs: Number,
+                ret_addr: usize,
+            ) noreturn {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                var buf: [256]u8 = undefined;
+                var ptr: [*]u8 = writeOverflowed(&buf, "mul overflowed ", type_name, " * ", lhs, rhs, &@mulWithOverflow(lhs, rhs));
+                const yn: bool = @bitCast(
+                    (@intFromBool(rhs < 0) & @intFromBool(lhs > 0)) |
+                        (@intFromBool(lhs < 0) & @intFromBool(rhs > 0)),
+                );
+                ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
+                builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+            }
+            fn combined(
+                pc: builtin.PanicId,
+                type_name: []const u8,
+                extrema: Extrema,
+                lhs: Number,
+                rhs: Number,
+                ret_addr: usize,
+            ) noreturn {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                const yn: bool = switch (pc) {
+                    .add_overflowed => rhs < 0,
+                    .sub_overflowed => rhs > 0,
+                    else => @bitCast(
+                        (@intFromBool(rhs < 0) & @intFromBool(lhs > 0)) |
+                            (@intFromBool(lhs < 0) & @intFromBool(rhs > 0)),
+                    ),
+                };
+                var buf: [256]u8 = undefined;
+                var ptr: [*]u8 = writeOverflowed(&buf, switch (pc) {
+                    .add_overflowed => "add overflowed ",
+                    .sub_overflowed => "sub overflowed ",
+                    else => "mul overflowed ",
+                }, type_name, switch (pc) {
+                    .add_overflowed => " + ",
+                    .sub_overflowed => " - ",
+                    else => " * ",
+                }, lhs, rhs, switch (pc) {
+                    .add_overflowed => @addWithOverflow(lhs, rhs),
+                    .sub_overflowed => @subWithOverflow(lhs, rhs),
+                    else => @mulWithOverflow(lhs, rhs),
+                });
+                ptr = writeAboveOrBelowLimit(ptr, Number, type_name, yn, if (yn) extrema.min else extrema.max);
+                builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+            }
+            fn shl(
+                type_name: []const u8,
+                value: Number,
+                shift_amt: u16,
+                mask: Absolute,
+                ret_addr: usize,
+            ) noreturn {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                const absolute: Absolute = @bitCast(value);
+                const ov_bits: u16 = @popCount(absolute & mask) -% @popCount((absolute << @intCast(shift_amt)) & mask);
+                var buf: [256]u8 = undefined;
+                buf[0..22].* = "left shift overflowed ".*;
+                var ptr: [*]u8 = fmt.strcpyEqu(buf[22..], type_name);
+                ptr[0..2].* = ": ".*;
+                ptr = fmt.Xd(Number).write(ptr + 2, value);
+                ptr[0..4].* = " << ".*;
+                ptr = fmt.Xd(Number).write(ptr + 4, shift_amt);
+                ptr = writeShiftedOutBits(ptr, ov_bits);
+                builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+            }
+            fn shr(
+                type_name: []const u8,
+                value: Number,
+                shift_amt: u16,
+                mask: Absolute,
+                ret_addr: usize,
+            ) noreturn {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                const absolute: Absolute = @bitCast(value);
+                const ov_bits: u16 = @popCount(absolute & mask) -% @popCount((absolute << @intCast(shift_amt)) & mask);
+                var buf: [256]u8 = undefined;
+                buf[0..23].* = "right shift overflowed ".*;
+                var ptr: [*]u8 = fmt.strcpyEqu(buf[23..], type_name);
+                ptr[0..2].* = ": ".*;
+                ptr = fmt.Xd(Number).write(ptr + 2, value);
+                ptr[0..4].* = " >> ".*;
+                ptr = fmt.Xd(Number).write(ptr + 4, shift_amt);
+                ptr = writeShiftedOutBits(ptr, ov_bits);
+                builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+            }
+            fn shiftRhs(
+                type_name: []const u8,
+                bit_count: u16,
+                shift_amt: u16,
+                ret_addr: usize,
+            ) noreturn {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                var buf: [256]u8 = undefined;
+                var ptr: [*]u8 = fmt.strcpyEqu(&buf, type_name);
+                ptr[0..23].* = " RHS of shift too big: ".*;
+                ptr = fmt.Xd(Number).write(ptr + 23, shift_amt);
+                ptr[0..3].* = " > ".*;
+                ptr = fmt.Xd(Number).write(ptr + 3, bit_count);
+                builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+            }
+            fn writeOverflowed(
+                buf: [*]u8,
+                op_name: *const [15]u8,
+                type_name: []const u8,
+                op_sym: *const [3]u8,
+                lhs: Number,
+                rhs: Number,
+                res: *const struct { Number, u1 },
+            ) [*]u8 {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                buf[0..15].* = op_name.*;
+                var ptr: [*]u8 = fmt.strcpyEqu(buf[15..], type_name);
+                ptr[0..2].* = ": ".*;
+                ptr = fmt.Xd(Number).write(ptr + 2, lhs);
+                ptr[0..3].* = op_sym.*;
+                ptr = fmt.Xd(Number).write(ptr + 3, rhs);
+                if (res[1] == 0) {
+                    ptr[0..2].* = " (".*;
+                    ptr = fmt.Xd(Number).write(ptr + 2, res[0]);
+                    ptr[0] = ')';
+                    ptr += 1;
+                }
+                return ptr;
+            }
+            fn writeShiftedOutBits(
+                buf: [*]u8,
+                ov_bits: u16,
+            ) [*]u8 {
+                @setCold(true);
+                @setRuntimeSafety(false);
+                buf[0..13].* = " shifted out ".*;
+                var ptr: [*]u8 = fmt.Xd(Number).write(buf + 13, ov_bits);
+                ptr[0..5].* = " bits".*;
+                return ptr + 4 + @intFromBool(ov_bits != 1);
+            }
+        };
+    }
+    const want_panic_data: bool = if (@hasDecl(builtin, "want_panic_data")) builtin.want_panic_data else true;
+
+    pub fn panicNew(comptime cause: builtin.PanicCause, data: builtin.PanicData(cause)) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        if (want_panic_data) {
+            switch (cause) {
+                .message => {
+                    panic(data, null, @returnAddress());
+                },
+                .accessed_null_value => {
+                    panic("attempted to use null value", null, @returnAddress());
+                },
+                .divided_by_zero => {
+                    panic("attempted to divide by zero", null, @returnAddress());
+                },
+                .returned_noreturn => {
+                    panic("returned from function marked 'noreturn'", null, @returnAddress());
+                },
+                .reached_unreachable => {
+                    panic("reached unreachable code", null, @returnAddress());
+                },
+                .unwrapped_error => {
+                    @setRuntimeSafety(false);
+                    var buf: [256]u8 = undefined;
+                    buf[0..28].* = "attempted to discard error: ".*;
+                    const ptr: [*]u8 = fmt.strcpyEqu(buf[28..], @errorName(data.err));
+                    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], data.st, @returnAddress());
+                },
+                .accessed_out_of_order => {
+                    @setRuntimeSafety(false);
+                    var buf: [256]u8 = undefined;
+                    buf[0..12].* = "start index ".*;
+                    var ptr: [*]u8 = fmt.Udsize.write(buf[12..], data.start);
+                    ptr[0..26].* = " is larger than end index ".*;
+                    ptr = fmt.Udsize.write(ptr + 26, data.finish);
+                    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, @returnAddress());
+                },
+                .accessed_out_of_bounds => {
+                    @setRuntimeSafety(false);
+                    var buf: [256]u8 = undefined;
+                    var ptr: [*]u8 = &buf;
+                    ptr[0..6].* = "index ".*;
+                    ptr = fmt.Udsize.write(ptr + 6, data.index);
+                    ptr[0..15].* = " above maximum ".*;
+                    ptr = fmt.Udsize.write(ptr + 15, data.length -% 1);
+                    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, @returnAddress());
+                },
+                .accessed_inactive_field => {
+                    @setRuntimeSafety(false);
+                    var buf: [256]u8 = undefined;
+                    buf[0..23].* = "access of union field '".*;
+                    var ptr: [*]u8 = fmt.strcpyEqu(buf[23..], @tagName(data.found));
+                    ptr[0..15].* = "' while field '".*;
+                    ptr = fmt.strcpyEqu(ptr + 15, @tagName(data.expected));
+                    ptr = fmt.strcpyEqu(ptr, "' is active");
+                    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, @returnAddress());
+                },
+                .memcpy_argument_aliasing => {
+                    @setRuntimeSafety(false);
+                    var buf: [256]u8 = undefined;
+                    buf[0..32].* = "@memcpy arguments alias between ".*;
+                    var ptr: [*]u8 = fmt.Uxsize.write(buf[32..], @max(data.dest_start, data.src_start));
+                    ptr[0..5].* = " and ".*;
+                    ptr = fmt.Uxsize.write(ptr + 5, @min(data.dest_finish, data.src_finish));
+                    ptr[0..2].* = " (".*;
+                    ptr = fmt.Udsize.write(ptr + 2, data.dest_finish -% data.dest_start);
+                    ptr[0..7].* = " bytes)".*;
+                    panic(buf[0 .. @intFromPtr(ptr + 7) -% @intFromPtr(&buf)], null, @returnAddress());
+                },
+                .mismatched_memcpy_argument_lengths => {
+                    @setRuntimeSafety(false);
+                    var buf: [256]u8 = undefined;
+                    buf[0..65].* = "@memcpy destination and source with mismatched lengths: expected ".*;
+                    var ptr: [*]u8 = fmt.Udsize.write(buf[65..], data.dest_len);
+                    ptr[0..8].* = ", found ".*;
+                    ptr = fmt.Udsize.write(ptr + 8, data.src_len);
+                    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, @returnAddress());
+                },
+                .mismatched_for_loop_capture_lengths => {
+                    @setRuntimeSafety(false);
+                    var buf: [256]u8 = undefined;
+                    buf[0..58].* = "multi-for loop captures with mismatched lengths: expected ".*;
+                    var ptr: [*]u8 = fmt.Udsize.write(buf[58..], data.loop_len);
+                    ptr[0..8].* = ", found ".*;
+                    ptr = fmt.Udsize.write(ptr + 8, data.capture_len);
+                    panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, @returnAddress());
+                },
+                .cast_to_enum_from_invalid => |enum_type| @call(.never_inline, safety.panicCastToTagFromInvalid, .{
+                    meta.BestInt(enum_type), @typeName(enum_type), data, @returnAddress(),
+                }),
+                .cast_to_error_from_invalid => |error_type| @call(.never_inline, safety.panicCastToErrorFromInvalid, .{
+                    error_type.from, @typeName(error_type.to), data, @returnAddress(),
+                }),
+                .mul_overflowed => |int_type| @call(.never_inline, safety.panicArithOverflow(meta.BestInt(int_type)).mul, .{
+                    @typeName(int_type), math.bestExtrema(int_type), data.lhs, data.rhs, @returnAddress(),
+                }),
+                .add_overflowed => |int_type| @call(.never_inline, safety.panicArithOverflow(meta.BestInt(int_type)).add, .{
+                    @typeName(int_type), math.bestExtrema(int_type), data.lhs, data.rhs, @returnAddress(),
+                }),
+                .sub_overflowed => |int_type| @call(.never_inline, safety.panicArithOverflow(meta.BestInt(int_type)).sub, .{
+                    @typeName(int_type), math.bestExtrema(int_type), data.lhs, data.rhs, @returnAddress(),
+                }),
+                .shl_overflowed => |int_type| @call(.never_inline, safety.panicArithOverflow(meta.BestInt(int_type)).shl, .{
+                    @typeName(int_type), data.value, data.shift_amt, ~@abs(@as(int_type, 0)), @returnAddress(),
+                }),
+                .shr_overflowed => |int_type| @call(.never_inline, safety.panicArithOverflow(meta.BestInt(int_type)).shr, .{
+                    @typeName(int_type), data.value, data.shift_amt, ~@abs(@as(int_type, 0)), @returnAddress(),
+                }),
+                .shift_amt_overflowed => |int_type| @call(.never_inline, safety.panicArithOverflow(meta.BestInt(int_type)).shiftRhs, .{
+                    @typeName(int_type), @bitSizeOf(int_type), data, @returnAddress(),
+                }),
+                .div_with_remainder => |num_type| @call(.never_inline, safety.panicExactDivisionWithRemainder, .{
+                    meta.BestNum(num_type), data.lhs, data.rhs, @returnAddress(),
+                }),
+                .mismatched_sentinel => |ptr_type| @call(.never_inline, safety.panicMismatchedSentinel, .{
+                    meta.BestNum(meta.Element(ptr_type)), @typeName(meta.Element(ptr_type)),
+                    meta.sentinel(ptr_type).?,            data,
+                    @returnAddress(),
+                }),
+                .cast_to_ptr_from_invalid => |alignment| @call(.never_inline, safety.panicCastToPointerFromInvalid, .{
+                    data, alignment, @returnAddress(),
+                }),
+                .cast_to_unsigned_from_negative => |int_types| @call(.never_inline, safety.panicCastToUnsignedFromNegative, .{
+                    meta.BestNum(int_types.to),   @typeName(int_types.to),
+                    meta.BestNum(int_types.from), @typeName(int_types.from),
+                    data,                         @returnAddress(),
+                }),
+                .cast_to_int_from_invalid => |num_types| @call(.never_inline, safety.panicCastToIntFromInvalid, .{
+                    meta.BestNum(num_types.to),     @typeName(num_types.to),
+                    meta.BestNum(num_types.from),   @typeName(num_types.from),
+                    math.bestExtrema(num_types.to), data,
+                    @returnAddress(),
+                }),
+                .cast_truncated_data => |num_types| @call(.never_inline, safety.panicCastTruncatedData, .{
+                    meta.BestNum(num_types.to),     @typeName(num_types.to),
+                    meta.BestNum(num_types.from),   @typeName(num_types.from),
+                    math.bestExtrema(num_types.to), data,
+                    @returnAddress(),
+                }),
+            }
+        }
+        panic(@tagName(cause), null, @returnAddress());
+    }
+};
