@@ -51,7 +51,7 @@ pub fn compareSorts() !void {
     try file.readRandom(rnbuf);
     const values_1 = @as([*]T, @ptrFromInt(size))[0..(size / @sizeOf(T))];
     const values_2 = @as([*]T, @ptrFromInt(size + size))[0..(size / @sizeOf(T))];
-    if (true) {
+    if (false) {
         @memcpy(@as([*]u8, @ptrFromInt(size + size))[0..size], @as([*]const u8, @ptrFromInt(size)));
         const t_0 = try time.get(.{}, .realtime);
         algo.insertionSort(T, S.asc, values_2[0 .. values_2.len / 10]);
