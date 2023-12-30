@@ -182,19 +182,6 @@ pub fn asc(x: anytype, y: anytype) bool {
 pub fn desc(x: anytype, y: anytype) bool {
     return x < y;
 }
-/// insert: [524288]u64 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
-pub fn insertionSort(comptime T: type, comptime comparison: anytype, values: []T) void {
-    @setRuntimeSafety(false);
-    var idx: usize = 1;
-    while (idx != values.len) : (idx +%= 1) {
-        const value: T = values[idx];
-        var end: usize = idx -% 1;
-        while (end >= 0 and comparison(values[end], value)) : (end -%= 1) {
-            values[end +% 1] = values[end];
-        }
-        values[end +% 1] = value;
-    }
-}
 /// shell: [524288]u64 = top.time.TimeSpec{ .nsec = 568540594, }
 pub fn shellSort(comptime T: type, comparison: anytype, values: []T) void {
     @setRuntimeSafety(false);
