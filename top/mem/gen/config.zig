@@ -82,6 +82,7 @@ pub const reference_template_path: [:0]const u8 = primarySourceFile("reference-t
 /// Contains the hand-written part of the allocator end-product.
 pub const allocator_template_path: [:0]const u8 = primarySourceFile("allocator-template.zig");
 
+pub const slice_kinds_path: [:0]const u8 = auxiliarySourceFile("slice_attr.zig");
 pub const container_kinds_path: [:0]const u8 = secondarySourceFile("ctn_kinds.zig");
 pub const reference_kinds_path: [:0]const u8 = auxiliarySourceFile("reference_kinds.zig");
 pub const allocator_kinds_path: [:0]const u8 = auxiliarySourceFile("allocator_kinds.zig");
