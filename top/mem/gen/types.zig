@@ -632,3 +632,56 @@ pub const Option = struct {
         return option.fieldName(index)[0 .. option.fieldName(index).len - (option.info.field_name.len + 1)];
     }
 };
+
+pub const SlicesFormat = fmt.AnyFormat(.{ .omit_trailing_comma = true }, []const Slice);
+
+pub const Slice = union(Slice.Kind) {
+    slice_start: SliceStart,
+    slice_end: SliceEnd,
+    slice_sentinel: SliceSentinel,
+    slice_length: SliceLength,
+
+    pub const SliceStart = packed struct {
+        ptr: State = .variable,
+        max: State3 = .unknown,
+        start: State = .variable,
+    };
+    pub const SliceEnd = packed struct {
+        ptr: State = .variable,
+        max: State3 = .unknown,
+        start: State = .variable,
+        end: State = .variable,
+    };
+    pub const SliceSentinel = packed struct {
+        ptr: State = .variable,
+        max: State3 = .unknown,
+        start: State = .variable,
+        end: State = .variable,
+    };
+    pub const SliceLength = packed struct {
+        ptr: State = .variable,
+        max: State3 = .unknown,
+        start: State = .variable,
+        len: State = .variable,
+        sent: State2 = .unknown,
+    };
+    pub const Kind = enum {
+        slice_start,
+        slice_end,
+        slice_sentinel,
+        slice_length,
+    };
+};
+pub const State = enum(u2) {
+    variable = 1,
+    known = 2,
+};
+pub const State2 = enum(u2) {
+    unknown = 0,
+    known = 2,
+};
+pub const State3 = enum(u2) {
+    unknown = 0,
+    variable = 1,
+    known = 2,
+};
