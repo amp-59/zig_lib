@@ -2,6 +2,13 @@ const zl = @import("../zig_lib.zig");
 
 pub usingnamespace zl.start;
 
+pub const AbsoluteState = struct {
+    home: [:0]u8,
+    cwd: [:0]u8,
+    proj: [:0]u8,
+    pid: u16,
+};
+
 pub const runtime_assertions: bool = true;
 pub const logging_default: zl.debug.Logging.Default = zl.debug.spec.logging.default.verbose;
 const getcwd_spec: zl.file.GetWorkingDirectorySpec = .{};
