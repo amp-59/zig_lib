@@ -664,6 +664,17 @@ pub const PolynomialFormatSpec = struct {
         max,
         fixed: u16,
     };
+    fn percentFormatSpec(
+        comptime fmt_spec: PolynomialFormatSpec,
+        comptime decimal_places: comptime_int,
+    ) PercentFormatSpec {
+        return .{
+            .bits = fmt_spec.bits,
+            .width = fmt_spec.width,
+            .signedness = fmt_spec.signedness,
+            .decimal_places = decimal_places,
+        };
+    }
 };
 pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     const T = packed struct {
