@@ -927,6 +927,7 @@ pub fn PathFormat(comptime Path: type) type {
             return ptr;
         }
         pub fn length(path: Path) usize {
+            @setRuntimeSafety(fmt_is_safe);
             var len: usize = 0;
             if (path.names_len != 0) {
                 len +%= path.names[0].len;
@@ -1150,17 +1151,21 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             } else {
                 ptr = writeStyledChange(buf, old_value -% new_value, fmt_spec.dec_style);
             }
+            ptr[0..fmt_spec.arrow_style.len].* = fmt_spec.arrow_style[0..fmt_spec.arrow_style.len].*;
+            ptr += fmt_spec.arrow_style.len;
             return ptr;
         }
         fn lengthDelta(old_value: Old, new_value: New) usize {
             @setRuntimeSafety(fmt_is_safe);
+            var len: usize = 0;
             if (old_value == new_value) {
-                return 4;
+                len +%= 4;
             } else if (new_value > old_value) {
-                return lengthStyledChange(new_value -% old_value, fmt_spec.inc_style);
+                len +%= lengthStyledChange(new_value -% old_value, fmt_spec.inc_style);
             } else {
-                return lengthStyledChange(old_value -% new_value, fmt_spec.dec_style);
+                len +%= lengthStyledChange(old_value -% new_value, fmt_spec.dec_style);
             }
+            return len +% fmt_spec.arrow_style.len;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
