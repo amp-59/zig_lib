@@ -1174,14 +1174,193 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = OldIntFormat.write(buf, old_value);
             ptr = writeDelta(ptr, old_value, new_value);
-            ptr[0..fmt_spec.arrow_style.len].* = fmt_spec.arrow_style[0..fmt_spec.arrow_style.len].*;
-            ptr += fmt_spec.arrow_style.len;
             return NewIntFormat.write(ptr, new_value);
         }
         pub fn length(old_value: Old, new_value: New) usize {
             return OldIntFormat.length(old_value) +%
-                lengthDelta(old_value, new_value) +% 4 +%
+                lengthDelta(old_value, new_value) +%
                 NewIntFormat.length(new_value);
+        }
+    };
+    return T;
+}
+pub const ChangedPercentFormatSpec = struct {
+    old_fmt_spec: PercentFormatSpec,
+    new_fmt_spec: PercentFormatSpec,
+    del_fmt_spec: PercentFormatSpec,
+    dec_style: []const u8 = "\x1b[91m-",
+    inc_style: []const u8 = "\x1b[92m+",
+    no_style: []const u8 = "\x1b[0m",
+    arrow_style: []const u8 = " => ",
+};
+pub fn GenericChangedPercentFormat(comptime fmt_spec: ChangedPercentFormatSpec) type {
+    const T = struct {
+        old_numeraotr: Old,
+        old_denominator: Old,
+        new_numerator: New,
+        new_denominator: New,
+        const Format: type = @This();
+        const Old = OldPercentFormat.Int;
+        const New = NewPercentFormat.Int;
+        const Int = if (@bitSizeOf(Old) > @bitSizeOf(New)) Old else New;
+        const OldPercentFormat = GenericPercentFormat(fmt_spec.old_fmt_spec);
+        const NewPercentFormat = GenericPercentFormat(fmt_spec.new_fmt_spec);
+        const DeltaPercentFormat = GenericPercentFormat(fmt_spec.del_fmt_spec);
+        const ChangedIntFormat = GenericChangedIntFormat(.{
+            .old_fmt_spec = fmt_spec.old_fmt_spec.polynomialFormatSpec(),
+            .new_fmt_spec = fmt_spec.new_fmt_spec.polynomialFormatSpec(),
+            .del_fmt_spec = fmt_spec.del_fmt_spec.polynomialFormatSpec(),
+            .dec_style = fmt_spec.dec_style,
+            .inc_style = fmt_spec.dec_style,
+            .no_style = fmt_spec.no_style,
+            .arrow_style = fmt_spec.arrow_style,
+        });
+        pub const max_len: ?comptime_int = OldPercentFormat.max_len.? +% 1 +%
+            DeltaPercentFormat.max_len.? +% 5 +%
+            fmt_spec.no_style.len +%
+            NewPercentFormat.max_len.? +%
+            @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len);
+        fn writeStyledChange(buf: [*]u8, int: Int, dec: Int, style_s: []const u8) [*]u8 {
+            @setRuntimeSafety(fmt_is_safe);
+            buf[0] = '(';
+            var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
+            ptr = DeltaPercentFormat.write2(ptr, int, dec);
+            ptr = strcpyEqu(ptr, fmt_spec.no_style);
+            ptr[0] = ')';
+            return strcpyEqu(ptr + 1, fmt_spec.arrow_style);
+        }
+        fn lengthStyledChange(int: Int, dec: Int, style_s: []const u8) usize {
+            @setRuntimeSafety(fmt_is_safe);
+            return 1 +% style_s.len +% DeltaPercentFormat.length2(int, dec) +% fmt_spec.no_style.len +% 1 +% fmt_spec.arrow_style.len;
+        }
+        const old_factor = OldPercentFormat.factor;
+        const new_factor = NewPercentFormat.factor;
+        fn lengthNewIntGt(old_int: Old, old_dec: Old, new_int: New, new_dec: New) usize {
+            @setRuntimeSafety(false);
+            const new_dec_lt: bool = new_dec < old_dec;
+            const new_dec_ne: bool = new_dec != old_dec;
+            const int: Int = new_int -% (old_int +% @intFromBool(new_dec_lt));
+            const dec: Int = if (new_dec_ne) ((new_dec -% old_dec) +% if (new_dec_lt) NewPercentFormat.factor else 0) else 0;
+            var len: usize = OldPercentFormat.length2(old_int, old_dec);
+            len +%= lengthStyledChange(int, dec, fmt_spec.inc_style);
+            len +%= NewPercentFormat.length2(new_int, new_dec);
+            return len;
+        }
+        fn lengthOldIntGt(old_int: Old, old_dec: Old, new_int: New, new_dec: New) usize {
+            @setRuntimeSafety(false);
+            const old_dec_lt: bool = old_dec < new_dec;
+            const old_dec_ne: bool = old_dec != new_dec;
+            const int: Int = old_int -% (new_int +% @intFromBool(old_dec_lt));
+            const dec: Int = if (old_dec_ne) ((old_dec -% new_dec) +% if (old_dec_lt) OldPercentFormat.factor else 0) else 0;
+            var len: usize = OldPercentFormat.length2(old_int, old_dec);
+            len +%= lengthStyledChange(int, dec, fmt_spec.dec_style);
+            len +%= NewPercentFormat.length2(new_int, new_dec);
+            return len;
+        }
+        fn lengthIntEql(old_numerator: Old, old_int: Old, old_dec: Old, new_numerator: New, new_int: New, new_dec: New) usize {
+            @setRuntimeSafety(false);
+            const old_dec_gt: bool = old_dec > new_dec;
+            const old_dec_lt: bool = old_dec < new_dec;
+            const int: Int = 0;
+            const dec: Int = if (old_dec_gt) (old_dec -% new_dec) else 0 | if (old_dec_lt) (new_dec -% old_dec) else 0;
+            const style: []const u8 = if (old_dec_gt) fmt_spec.dec_style else (if (old_dec_lt) fmt_spec.inc_style else fmt_spec.no_style);
+            if (dec == 0) {
+                if (new_numerator != old_numerator) {
+                    return ChangedIntFormat.length(old_numerator, new_numerator);
+                }
+            }
+            var len: usize = OldPercentFormat.length2(old_int, old_dec);
+            len +%= lengthStyledChange(int, dec, style);
+            len +%= NewPercentFormat.length2(new_int, new_dec);
+            return len;
+        }
+        fn writeNewIntGt(buf: [*]u8, old_int: Old, old_dec: Old, new_int: New, new_dec: New) [*]u8 {
+            @setRuntimeSafety(false);
+            const new_dec_lt: bool = new_dec < old_dec;
+            const new_dec_ne: bool = new_dec != old_dec;
+            const int: Int = new_int -% (old_int +% @intFromBool(new_dec_lt));
+            const dec: Int = if (new_dec_ne) ((new_dec -% old_dec) +% if (new_dec_lt) NewPercentFormat.factor else 0) else 0;
+            var ptr: [*]u8 = OldPercentFormat.write2(buf, old_int, old_dec);
+            ptr = writeStyledChange(ptr, int, dec, fmt_spec.inc_style);
+            ptr = NewPercentFormat.write2(ptr, new_int, new_dec);
+            return ptr;
+        }
+        fn writeOldIntGt(buf: [*]u8, old_int: Old, old_dec: Old, new_int: New, new_dec: New) [*]u8 {
+            @setRuntimeSafety(false);
+            const old_dec_lt: bool = old_dec < new_dec;
+            const old_dec_ne: bool = old_dec != new_dec;
+            const int: Int = old_int -% (new_int +% @intFromBool(old_dec_lt));
+            const dec: Int = if (old_dec_ne) ((old_dec -% new_dec) +% if (old_dec_lt) OldPercentFormat.factor else 0) else 0;
+            var ptr: [*]u8 = OldPercentFormat.write2(buf, old_int, old_dec);
+            ptr = writeStyledChange(ptr, int, dec, fmt_spec.dec_style);
+            ptr = NewPercentFormat.write2(ptr, new_int, new_dec);
+            return ptr;
+        }
+        fn writeIntEql(buf: [*]u8, old_numerator: Old, old_int: Old, old_dec: Old, new_numerator: New, new_int: New, new_dec: New) [*]u8 {
+            @setRuntimeSafety(false);
+            const old_dec_gt: bool = old_dec > new_dec;
+            const old_dec_lt: bool = old_dec < new_dec;
+            const int: Int = 0;
+            const dec: Int = if (old_dec_gt) (old_dec -% new_dec) else 0 | if (old_dec_lt) (new_dec -% old_dec) else 0;
+            const style: []const u8 = if (old_dec_gt) fmt_spec.dec_style else (if (old_dec_lt) fmt_spec.inc_style else fmt_spec.no_style);
+            if (dec == 0) {
+                if (new_numerator != old_numerator) {
+                    return ChangedIntFormat.write(buf, old_numerator, new_numerator);
+                }
+            }
+            var ptr: [*]u8 = OldPercentFormat.write2(buf, old_int, old_dec);
+            ptr = writeStyledChange(ptr, int, dec, style);
+            ptr = NewPercentFormat.write2(ptr, new_int, new_dec);
+            return ptr;
+        }
+        pub fn write(
+            buf: [*]u8,
+            old_numerator: Old,
+            old_denominator: Old,
+            new_numerator: New,
+            new_denominator: New,
+        ) [*]u8 {
+            @setRuntimeSafety(false);
+            if (old_denominator *% new_denominator == 0) {
+                return buf;
+            }
+            const old_res: Old = (100 *% old_factor *% old_numerator) / old_denominator;
+            const old_int: Old = old_res / old_factor;
+            const old_dec: Old = old_res -% (old_int *% old_factor);
+            const new_res: New = (100 *% new_factor *% new_numerator) / new_denominator;
+            const new_int: New = new_res / new_factor;
+            const new_dec: New = new_res -% (new_int *% new_factor);
+            if (new_int > old_int) {
+                return writeNewIntGt(buf, old_int, old_dec, new_int, new_dec);
+            } else if (old_int > new_int) {
+                return writeOldIntGt(buf, old_int, old_dec, new_int, new_dec);
+            } else {
+                return writeIntEql(buf, old_numerator, old_int, old_dec, new_numerator, new_int, new_dec);
+            }
+        }
+        pub fn length(
+            old_numerator: Old,
+            old_denominator: Old,
+            new_numerator: New,
+            new_denominator: New,
+        ) usize {
+            @setRuntimeSafety(false);
+            if (old_denominator *% new_denominator == 0) {
+                return 0;
+            }
+            const old_res: Old = (100 *% old_factor *% old_numerator) / old_denominator;
+            const old_int: Old = old_res / old_factor;
+            const old_dec: Old = old_res -% (old_int *% old_factor);
+            const new_res: New = (100 *% new_factor *% new_numerator) / new_denominator;
+            const new_int: New = new_res / new_factor;
+            const new_dec: New = new_res -% (new_int *% new_factor);
+            if (new_int > old_int) {
+                return lengthNewIntGt(old_int, old_dec, new_int, new_dec);
+            } else if (old_int > new_int) {
+                return lengthOldIntGt(old_int, old_dec, new_int, new_dec);
+            } else {
+                return lengthIntEql(old_numerator, old_int, old_dec, new_numerator, new_int, new_dec);
+            }
         }
     };
     return T;
@@ -1191,6 +1370,7 @@ pub const ChangedBytesFormatSpec = struct {
     inc_style: []const u8 = "\x1b[92m+",
     no_style: []const u8 = "\x1b[0m",
     to_from_zero: bool = false,
+    percent: ?comptime_int = null,
 };
 pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
     const T = struct {
