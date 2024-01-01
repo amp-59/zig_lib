@@ -1806,6 +1806,71 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
     };
     return T;
 }
+pub const PercentFormatSpec = struct {
+    bits: u16,
+    signedness: builtin.Signedness,
+    width: PolynomialFormatSpec.Width = .min,
+    decimal_places: comptime_int = 3,
+    fn polynomialFormatSpec(comptime fmt_spec: PercentFormatSpec) PolynomialFormatSpec {
+        return .{
+            .bits = fmt_spec.bits,
+            .radix = 10,
+            .width = fmt_spec.width,
+            .signedness = fmt_spec.signedness,
+        };
+    }
+};
+pub fn GenericPercentFormat(comptime spec: PercentFormatSpec) type {
+    const T = struct {
+        numerator: Int,
+        denominator: Int,
+        const Format = @This();
+        const Int = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
+        const IntFormat = AnyFormat(Int);
+        pub const fmt_spec: PercentFormatSpec = spec;
+        pub const max_len: ?usize = Xd(Int).max_len.? + 1 + fmt_spec.decimal_places + 1;
+        const factor: usize = math.sigFigList(usize, 10).?[fmt_spec.decimal_places] + 1;
+        pub fn write(buf: [*]u8, numerator: Int, denominator: Int) [*]u8 {
+            @setRuntimeSafety(false);
+            if (denominator == 0) {
+                return buf;
+            }
+            const res: Int = (100 *% factor *% numerator) / denominator;
+            const int: Int = res / factor;
+            const dec: Int = res -% (int *% factor);
+            return write2(buf, int, dec);
+        }
+        pub fn length(numerator: Int, denominator: Int) usize {
+            @setRuntimeSafety(false);
+            if (denominator == 0) {
+                return 0;
+            }
+            const res: Int = (100 *% factor *% numerator) / denominator;
+            const int: Int = res / factor;
+            const dec: Int = res -% (int *% factor);
+            return length2(int, dec);
+        }
+        pub fn write2(buf: [*]u8, int: Int, dec: Int) [*]u8 {
+            const figs: usize = sigFigLen(usize, dec, 10);
+            var ptr: [*]u8 = Udsize.write(buf, int);
+            ptr[0] = '.';
+            ptr += 1;
+            @memset(ptr[0..fmt_spec.decimal_places], '0');
+            ptr += fmt_spec.decimal_places;
+            ptr = Udsize.write(ptr - figs, dec);
+            ptr[0] = '%';
+            return ptr + 1;
+        }
+        pub fn length2(int: Int, dec: Int) usize {
+            return (2 +% Udsize.length(int) +%
+                Udsize.length(dec) +%
+                fmt_spec.decimal_places) -%
+                sigFigLen(usize, dec, 10);
+        }
+        pub usingnamespace Interface(Format);
+    };
+    return T;
+}
 pub const DateTimeFormatSpec = struct {
     month: type = Month,
     month_day: type = MonthDay,
@@ -2806,6 +2871,7 @@ pub inline fn render(comptime spec: RenderSpec, value: anytype) AnyFormat(spec, 
     return .{ .value = value };
 }
 fn TypeName(comptime T: type, comptime spec: RenderSpec) type {
+    @setRuntimeSafety(false);
     if (spec.infer_type_names or
         spec.infer_type_names_recursively)
     {
