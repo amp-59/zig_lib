@@ -1380,6 +1380,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
         const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
         const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
+        const PercentFormat = GenericPercentFormat(PolynomialFormatSpec.percentFormatSpec(Bytes.MajorIntFormat.specification, fmt_spec.percent.?));
         pub inline fn formatWrite(format: Format, array: anytype) void {
             return array.define(format.formatWriteBuf(@ptrCast(array.referOneUndefined())));
         }
@@ -1388,6 +1389,32 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         }
         pub inline fn formatLength(format: Format) usize {
             return length(format.old_value, format.new_value);
+        }
+        fn writeFullPercent(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
+            @setRuntimeSafety(fmt_is_safe);
+            var ptr: [*]u8 = Bytes.write(buf, old_count);
+            if (old_count != new_count) {
+                if (new_count > old_count) {
+                    ptr = writeStyledChangePercent(ptr, old_count, new_count -% old_count, inc_s);
+                } else {
+                    ptr = writeStyledChangePercent(ptr, old_count, old_count -% new_count, dec_s);
+                }
+                ptr[0..4].* = " => ".*;
+                ptr = Bytes.write(ptr + 4, new_count);
+            }
+            return ptr;
+        }
+        fn lengthFullPercent(old_count: usize, new_count: usize) usize {
+            var len: usize = Bytes.length(old_count);
+            if (old_count != new_count) {
+                if (new_count > old_count) {
+                    len +%= lengthStyledChangePercent(old_count, new_count -% old_count, inc_s);
+                } else {
+                    len +%= lengthStyledChangePercent(old_count, old_count -% new_count, dec_s);
+                }
+                len +%= 4 +% Bytes.length(new_count);
+            }
+            return len;
         }
         fn writeFull(buf: [*]u8, old_count: usize, new_count: usize) [*]u8 {
             @setRuntimeSafety(fmt_is_safe);
@@ -1415,6 +1442,19 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             }
             return len;
         }
+        fn writeStyledChangePercent(buf: [*]u8, old_count: usize, count: usize, style_s: []const u8) [*]u8 {
+            @setRuntimeSafety(fmt_is_safe);
+            buf[0] = '(';
+            var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
+            ptr = Bytes.write(ptr, count);
+            ptr = strcpyEqu(ptr, no_s);
+            ptr[0] = '/';
+            ptr = strcpyEqu(ptr + 1, style_s);
+            ptr = PercentFormat.write(ptr, count, old_count);
+            ptr = strcpyEqu(ptr, no_s);
+            ptr[0] = ')';
+            return ptr + 1;
+        }
         fn writeStyledChange(buf: [*]u8, count: usize, style_s: []const u8) [*]u8 {
             @setRuntimeSafety(fmt_is_safe);
             buf[0] = '(';
@@ -1423,6 +1463,12 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             ptr = strcpyEqu(ptr, no_s);
             ptr[0] = ')';
             return ptr + 1;
+        }
+        fn lengthStyledChangePercent(old_count: usize, count: usize, style_s: []const u8) usize {
+            @setRuntimeSafety(fmt_is_safe);
+            return 1 +% style_s.len +% Bytes.length(count) +%
+                no_s.len +% 1 +% style_s.len +%
+                PercentFormat.length(count, old_count) +% no_s.len +% 1;
         }
         fn lengthStyledChange(count: usize, style_s: []const u8) usize {
             return 1 +% style_s.len +% Bytes.length(count) +% no_s.len +% 1;
@@ -1436,6 +1482,8 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                     return writeStyledChange(buf, new_count, fmt_spec.inc_style);
                 } else if (new_count == 0) {
                     return writeStyledChange(buf, old_count, fmt_spec.dec_style);
+                } else if (fmt_spec.percent != null) {
+                    return writeFullPercent(buf, old_count, new_count);
                 } else {
                     return writeFull(buf, old_count, new_count);
                 }
@@ -1450,6 +1498,8 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                     return lengthStyledChange(new_count, fmt_spec.inc_style);
                 } else if (new_count == 0) {
                     return lengthStyledChange(old_count, fmt_spec.dec_style);
+                } else if (fmt_spec.percent != null) {
+                    return lengthFullPercent(old_count, new_count);
                 } else {
                     return lengthFull(old_count, new_count);
                 }
