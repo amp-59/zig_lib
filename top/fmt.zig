@@ -3425,7 +3425,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         const Format = @This();
         pub const max_len: ?comptime_int = blk: {
             var len: usize = 0;
-            len +%= @typeName(Struct).len +% 2;
+            len +%= type_name.len +% 2;
             if (fields.len == 0) {
                 len +%= 1;
             } else {
@@ -3652,7 +3652,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     if (@typeInfo(Union) != .Union) {
         return AnyFormat(spec, Union);
     }
-    const type_name = if (spec.infer_type_names) "." else @typeInfo(Union);
+    const type_name = if (spec.infer_type_names) "." else @typeName(Union);
     const T = struct {
         value: Union,
         const Format = @This();
