@@ -1719,7 +1719,7 @@ pub fn getStatusExtended(comptime stat_spec: StatusExtendedSpec, at: sys.flags.A
     try meta.wrap(statusExtended(stat_spec, at, fd, pathname, &st));
     return st;
 }
-pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.flags.FileMap, fd: usize, addr: u64, len: u64, off: u64) sys.ErrorUnion(
+pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.flags.FileMap, fd: usize, addr: usize, len: usize, off: usize) sys.ErrorUnion(
     map_spec.errors,
     map_spec.return_type,
 ) {
