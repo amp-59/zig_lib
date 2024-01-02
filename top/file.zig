@@ -1993,9 +1993,8 @@ pub fn duplicateTo(comptime dup3_spec: Duplicate3Spec, flags: Flags.Duplicate, o
 }
 pub fn makePipe(comptime pipe2_spec: MakePipeSpec, flags: Flags.Duplicate) sys.ErrorUnion(pipe2_spec.errors, Pipe) {
     var pipefd: Pipe = undefined;
-    const pipefd_addr: u64 = @intFromPtr(&pipefd);
     const logging: debug.Logging.AcquireError = comptime pipe2_spec.logging.override();
-    if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ pipefd_addr, @bitCast(flags) }))) {
+    if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ @intFromPtr(&pipefd), @bitCast(flags) }))) {
         if (logging.Acquire) {
             about.aboutFdFdNotice(about.pipe_s, "read_fd=", "write_fd=", pipefd.read, pipefd.write);
         }
@@ -2010,12 +2009,11 @@ pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Error
     poll_spec.errors,
     poll_spec.return_type,
 ) {
-    const fds_addr: u64 = @intFromPtr(fds.ptr);
     const logging: debug.Logging.AttemptSuccessError = comptime poll_spec.logging.override();
     if (logging.Attempt) {
         about.pollNotice(fds, timeout);
     }
-    if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ fds_addr, fds.len, timeout }))) {
+    if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ @intFromPtr(fds.ptr), fds.len, timeout }))) {
         if (logging.Success) {
             about.pollNotice(fds, timeout);
         }
