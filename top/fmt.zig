@@ -5250,6 +5250,7 @@ pub const BloatDiff = GenericChangedBytesFormat(.{
     .inc_style = "\x1b[91m+",
     .no_style = "\x1b[0m",
     .to_from_zero = false,
+    .percent = 1,
 });
 pub const AddrDiff = GenericChangedIntFormat(.{
     .del_fmt_spec = Ux64.specification,
