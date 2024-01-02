@@ -3663,7 +3663,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             for (fields) |field| {
                 max_field_len = @max(max_field_len, AnyFormat(spec, field.type).max_len.?);
             }
-            break :blk (@typeName(Union).len +% 2) +% 1 +% meta.maxNameLength(Union) +% 3 +% max_field_len +% 2;
+            break :blk (type_name.len +% 2) +% 1 +% meta.maxNameLength(Union) +% 3 +% max_field_len +% 2;
         };
         fn writeUntagged(buf: [*]u8, value: Union) [*]u8 {
             if (@hasDecl(Union, "tagged") and
@@ -4383,15 +4383,24 @@ pub fn ErrorSetFormat(comptime ErrorSet: type) type {
         };
         pub fn write(buf: [*]u8, value: anytype) [*]u8 {
             @setRuntimeSafety(fmt_is_safe);
-            return strcpyEqu(buf, switch (value) {
-                inline else => |tag| "error" ++ comptime fieldTagName(@errorName(tag)),
-            });
+            if (ErrorSet == anyerror) {
+                buf[0..6].* = "error.".*;
+                return IdentifierFormat.write(buf + 6, @errorName(value));
+            } else {
+                return strcpyEqu(buf, switch (value) {
+                    inline else => |tag| "error" ++ comptime fieldTagName(@errorName(tag)),
+                });
+            }
         }
         pub fn length(value: anytype) usize {
             @setRuntimeSafety(fmt_is_safe);
-            return switch (value) {
-                inline else => |tag| 5 + comptime fieldTagName(@tagName(tag)).len,
-            };
+            if (ErrorSet == anyerror) {
+                return 6 +% IdentifierFormat.length(@errorName(value));
+            } else {
+                return switch (value) {
+                    inline else => |tag| 5 + comptime fieldTagName(@errorName(tag)).len,
+                };
+            }
         }
         pub usingnamespace Interface(Format);
     };
