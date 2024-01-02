@@ -1738,7 +1738,7 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.
     if (map_spec.errors.throw.len != 0) {
         builtin.throw(sys.ErrorCode, map_spec.errors.throw, ret) catch |map_error| {
             if (logging.Error) {
-                about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
+                about.aboutFdAddrLenOffsetProtFlagsError(about.map_s, @errorName(map_error), fd, addr, len, off, prot, flags);
             }
             return map_error;
         };
@@ -1746,30 +1746,30 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.
     if (map_spec.errors.abort.len != 0) {
         builtin.throw(sys.ErrorCode, map_spec.errors.abort, ret) catch |map_error| {
             if (logging.Error) {
-                about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
+                about.aboutFdAddrLenOffsetProtFlagsError(about.map_s, @errorName(map_error), fd, addr, len, off, prot, flags);
             }
             proc.exitError(map_error, 2);
         };
     }
     if (logging.Acquire) {
-        about.aboutFdAddrLenOffsetNotice(about.map_s, fd, addr, len, off);
+        about.aboutFdAddrLenOffsetProtFlagsNotice(about.map_s, fd, addr, len, off, prot, flags);
     }
     if (map_spec.return_type != void) {
         return @intCast(ret);
     }
 }
-pub fn send(comptime send_spec: SendSpec, dest_fd: usize, src_fd: usize, offset: ?*u64, count: u64) sys.ErrorUnion(
+pub fn send(comptime send_spec: SendSpec, dest_fd: usize, src_fd: usize, offset: ?*usize, count: usize) sys.ErrorUnion(
     send_spec.errors,
     send_spec.return_type,
 ) {
     const logging: debug.Logging.SuccessError = comptime send_spec.logging.override();
-    if (meta.wrap(sys.call(.sendfile, send_spec.errors, u64, .{
+    if (meta.wrap(sys.call(.sendfile, send_spec.errors, usize, .{
         dest_fd, src_fd, @intFromPtr(offset), count,
     }))) |ret| {
         if (logging.Success) {
             about.sendNotice(dest_fd, src_fd, offset, count, ret);
         }
-        if (send_spec.return_type == u64) {
+        if (send_spec.return_type != void) {
             return ret;
         }
     } else |sendfile_error| {
