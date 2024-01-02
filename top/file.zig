@@ -1779,23 +1779,23 @@ pub fn send(comptime send_spec: SendSpec, dest_fd: usize, src_fd: usize, offset:
         return sendfile_error;
     }
 }
-pub fn copy(comptime copy_spec: CopySpec, dest_fd: usize, dest_offset: ?*u64, src_fd: usize, src_offset: ?*u64, count: u64) sys.ErrorUnion(
+pub fn copy(comptime copy_spec: CopySpec, dest_fd: usize, dest_offset: ?*usize, src_fd: usize, src_offset: ?*usize, count: usize) sys.ErrorUnion(
     copy_spec.errors,
     copy_spec.return_type,
 ) {
     const logging: debug.Logging.SuccessError = comptime copy_spec.logging.override();
-    if (meta.wrap(sys.call(.copy_file_range, copy_spec.errors, copy_spec.return_type, .{
+    if (meta.wrap(sys.call(.copy_file_range, copy_spec.errors, usize, .{
         src_fd, @intFromPtr(src_offset), dest_fd, @intFromPtr(dest_offset), count, 0,
     }))) |ret| {
         if (logging.Success) {
-            about.copyNotice(src_fd, src_offset, dest_fd, dest_offset, count, ret);
+            about.copyNotice(dest_fd, dest_offset, src_fd, src_offset, count, ret);
         }
-        if (copy_spec.return_type == u64) {
+        if (copy_spec.return_type != void) {
             return ret;
         }
     } else |copy_file_range_error| {
         if (logging.Error) {
-            about.copyError(copy_file_range_error, src_fd, src_offset, dest_fd, dest_offset, count);
+            about.copyError(copy_file_range_error, dest_fd, dest_offset, src_fd, src_offset, count);
         }
         return copy_file_range_error;
     }
