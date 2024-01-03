@@ -3148,7 +3148,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    pub fn aboutFdAddrLenOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, addr: u64, len: u64, offset: usize) void {
+    pub fn aboutFdAddrLenOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, addr: usize, len: usize, offset: usize) void {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
@@ -3165,6 +3165,41 @@ pub const about = struct {
         ptr = fmt.Ux64.write(ptr + 2, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr = fmt.Bytes.write(ptr + 2, len);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    pub fn aboutFdAddrLenOffsetProtFlagsError(
+        about_s: fmt.AboutSrc,
+        error_name: []const u8,
+        fd: usize,
+        addr: usize,
+        len: usize,
+        offset: usize,
+        prot: sys.flags.FileProt,
+        flags: sys.flags.FileMap,
+    ) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
+        ptr[0..5].* = ", fd=".*;
+        ptr = fmt.Ud64.write(ptr + 5, fd);
+        ptr[0..9].* = ", offset=".*;
+        ptr = fmt.Ud64.write(ptr + 9, offset);
+        ptr[0..2].* = ", ".*;
+        ptr = fmt.Ux64.write(ptr + 2, addr);
+        ptr[0..2].* = "..".*;
+        ptr = fmt.Ux64.write(ptr + 2, addr +% len);
+        ptr[0..2].* = ", ".*;
+        ptr = fmt.Bytes.write(ptr + 2, len);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += prot.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += flags.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
