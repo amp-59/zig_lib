@@ -2910,7 +2910,7 @@ pub const about = struct {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[about_s.len..], pathname);
+        var ptr: [*]u8 = CompoundPath.writeDisplayPath(buf[about_s.len..], pathname);
         ptr[0..2].* = ", ".*;
         ptr = writeMode(ptr + 2, file_mode);
         ptr[0..6].* = ", dev=".*;
@@ -2972,7 +2972,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutDirFdNameDirFdNameNotice(about_s: fmt.AboutSrc, dir_fd1_s: []const u8, relation_s: [:0]const u8, dir_fd2_s: []const u8, dir_fd1: u64, name1: [:0]const u8, dir_fd2: u64, name2: [:0]const u8) void {
+    fn aboutDirFdNameDirFdNameNotice(about_s: fmt.AboutSrc, dir_fd1_s: []const u8, relation_s: [:0]const u8, dir_fd2_s: []const u8, dir_fd1: usize, name1: [:0]const u8, dir_fd2: usize, name2: [:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
@@ -3092,7 +3092,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn seekNotice(fd: usize, offset: usize, whence: Whence, to: u64) void {
+    fn seekNotice(fd: usize, offset: usize, whence: Whence, to: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..seek_s.len].* = seek_s.*;
@@ -3110,7 +3110,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn pollNotice(pollfds: []PollFd, timeout: u64) void {
+    fn pollNotice(pollfds: []PollFd, timeout: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..poll_s.len].* = poll_s.*;
@@ -3123,7 +3123,7 @@ pub const about = struct {
         ptr = writePollFds(ptr + 3, pollfds);
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn listenNotice(sock_fd: usize, backlog: u64) void {
+    fn listenNotice(sock_fd: usize, backlog: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..listen_s.len].* = listen_s.*;
