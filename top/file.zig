@@ -2696,7 +2696,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
-    fn aboutFdLenNotice(about_s: fmt.AboutSrc, fd: usize, fd_len: u64) void {
+    fn aboutFdLenNotice(about_s: fmt.AboutSrc, fd: usize, fd_len: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
@@ -2765,7 +2765,7 @@ pub const about = struct {
         ptr[0..7].* = " bytes\n".*;
         debug.write(buf[0..(@intFromPtr(ptr + 7) -% @intFromPtr(&buf))]);
     }
-    fn aboutFdFdNotice(about_s: fmt.AboutSrc, fd1_s: []const u8, fd2_s: []const u8, fd1: u64, fd2: u64) void {
+    fn aboutFdFdNotice(about_s: fmt.AboutSrc, fd1_s: []const u8, fd2_s: []const u8, fd1: usize, fd2: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
@@ -2864,11 +2864,19 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutPathnameModeNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, file_mode: Mode) void {
+    fn aboutGetCwdNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[about_s.len..], pathname);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutPathnameModeNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, file_mode: Mode) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = CompoundPath.writeDisplayPath(buf[about_s.len..], pathname);
         ptr[0..2].* = ", ".*;
         ptr = writeMode(ptr + 2, file_mode);
         ptr[0] = '\n';
