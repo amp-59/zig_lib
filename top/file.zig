@@ -2395,7 +2395,7 @@ pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
         }
         comptime {
             if (dirs_spec.options.make_list) {
-                debug.assert(dirs_spec.options.init_read_all);
+                if (!dirs_spec.options.init_read_all) @compileError("");
             }
         }
     });
