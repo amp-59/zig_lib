@@ -2114,23 +2114,23 @@ pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: 
         return st;
     }
 }
-pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: usize, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
+pub fn isAt(comptime stat_spec: StatusSpec, at: sys.flags.At, dir_fd: usize, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
     var st: Status = comptime builtin.zero(Status);
-    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
+    try meta.wrap(statusAt(stat_spec, at, dir_fd, name, &st));
     if (stat_spec.return_type == ?Status) {
         return if (st.mode.kind == kind) st else null;
     }
     return st.mode.kind == kind;
 }
-pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: usize, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
+pub fn isNotAt(comptime stat_spec: StatusSpec, at: sys.flags.At, dir_fd: usize, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
     var st: Status = comptime builtin.zero(Status);
-    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
+    try meta.wrap(statusAt(stat_spec, at, dir_fd, name, &st));
     if (stat_spec.return_type == ?Status) {
         return if (st.mode.kind != kind) st else null;
     }
