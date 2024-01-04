@@ -3267,18 +3267,15 @@ pub const about = struct {
         ptr[0..5].* = ", fd=".*;
         ptr = fmt.Ud64.write(ptr + 5, fd);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += flags.formatWriteBuf(ptr);
+        ptr += flags.formatWriteBuf(ptr + 2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutFdFdError(about_s: fmt.AboutSrc, error_name: [:0]const u8, fd1_s: []const u8, fd2_s: []const u8, fd1: u64, fd2: u64) void {
+    fn aboutFdFdError(about_s: fmt.AboutSrc, error_name: [:0]const u8, fd1_s: []const u8, fd2_s: []const u8, fd1: usize, fd2: usize) void {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr = fmt.strcpyEqu(ptr + 2, fd1_s);
         ptr = fmt.Ud64.write(ptr, fd1);
@@ -3292,9 +3289,7 @@ pub const about = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr = fmt.strcpyEqu(ptr + 2, pathname1);
         ptr = fmt.strcpyEqu(ptr, relation_s);
@@ -3306,27 +3301,21 @@ pub const about = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr + 2, pathname);
         ptr = fmt.strcpyEqu(ptr, relation_s);
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = CompoundPath.writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr + 2, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutDirFdNameDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, dir_fd1_s: []const u8, relation_s: [:0]const u8, dir_fd2_s: []const u8, dir_fd1: u64, name1: [:0]const u8, dir_fd2: u64, name2: [:0]const u8) void {
+    fn aboutDirFdNameDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, dir_fd1_s: []const u8, relation_s: [:0]const u8, dir_fd2_s: []const u8, dir_fd1: usize, name1: [:0]const u8, dir_fd2: usize, name2: [:0]const u8) void {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr = writeDirFd(ptr + 2, dir_fd1_s, dir_fd1);
         ptr[0..2].* = ", ".*;
@@ -3342,10 +3331,7 @@ pub const about = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..socket_s.len].* = socket_s.*;
-        buf[socket_s.len..fmt.about_err_len].* = debug.about.error_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], @errorName(socket_error));
-        ptr += @errorName(socket_error).len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, socket_s, @errorName(socket_error));
         ptr[0..2].* = ", ".*;
         ptr = fmt.strcpyEqu(ptr + 2, @tagName(dom));
         ptr[0..2].* = ", ".*;
@@ -3361,33 +3347,27 @@ pub const about = struct {
         ptr[0] = '\n';
         return ptr + 1;
     }
-    fn sendError(sendfile_error: anyerror, dest_fd: usize, src_fd: usize, offset: ?*u64, max_count: u64) void {
+    fn sendError(sendfile_error: anyerror, dest_fd: usize, src_fd: usize, offset: ?*usize, max_count: usize) void {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..send_s.len].* = send_s.*;
-        buf[send_s.len..fmt.about_err_len].* = debug.about.error_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], @errorName(sendfile_error));
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, send_s, @errorName(sendfile_error));
         ptr[0..9].* = ", src_fd=".*;
-        ptr = fmt.Ud64.write(ptr + 9, src_fd);
+        ptr = fmt.Udsize.write(ptr + 9, src_fd);
         ptr[0..10].* = ", dest_fd=".*;
-        ptr = fmt.Ud64.write(ptr + 10, dest_fd);
+        ptr = fmt.Udsize.write(ptr + 10, dest_fd);
         ptr[0..2].* = ", ".*;
-        ptr = fmt.Ud64.write(ptr + 2, 0);
+        ptr = fmt.Udsize.write(ptr + 2, 0);
         ptr[0] = '/';
-        ptr = fmt.Ud64.write(ptr + 1, max_count);
+        ptr = fmt.Udsize.write(ptr + 1, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
-        if (offset) |off| {
-            ptr = writeUpdateFdOffset(ptr, src_fd, off.*);
-        }
+        if (offset) |off| ptr = writeUpdateFdOffset(ptr, src_fd, off.*);
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn copyError(copy_file_range_error: anyerror, dest_fd: usize, dest_offset: ?*u64, src_fd: usize, src_offset: ?*u64, max_count: u64) void {
+    fn copyError(copy_file_range_error: anyerror, dest_fd: usize, dest_offset: ?*usize, src_fd: usize, src_offset: ?*usize, max_count: usize) void {
         var buf: [32768]u8 = undefined;
-        buf[0..copy_s.len].* = copy_s.*;
-        buf[copy_s.len..fmt.about_err_len].* = debug.about.error_s.*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], @errorName(copy_file_range_error));
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, copy_s, @errorName(copy_file_range_error));
         ptr[0..9].* = ", src_fd=".*;
         ptr = fmt.Ud64.write(ptr + 9, src_fd);
         ptr[0..10].* = ", dest_fd=".*;
@@ -3398,21 +3378,14 @@ pub const about = struct {
         ptr = fmt.Ud64.write(ptr + 1, max_count);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
-        if (src_offset) |off| {
-            ptr = writeUpdateFdOffset(ptr, src_fd, off.*);
-        }
-        if (dest_offset) |off| {
-            ptr = writeUpdateFdOffset(ptr, dest_fd, off.*);
-        }
+        if (src_offset) |off| ptr = writeUpdateFdOffset(ptr, src_fd, off.*);
+        if (dest_offset) |off| ptr = writeUpdateFdOffset(ptr, dest_fd, off.*);
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
     fn aboutPathnameOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8, offset: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = fmt.strcpyEqu(ptr + debug.about.error_s.len, error_name);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr = CompoundPath.writeDisplayPath(ptr + 2, pathname);
         ptr[0..9].* = ", offset=".*;
@@ -3423,11 +3396,7 @@ pub const about = struct {
     fn aboutFdOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, offset: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        ptr = fmt.strcpyEqu(ptr, error_name);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..5].* = ", fd=".*;
         ptr = fmt.Ud64.write(ptr + 5, fd);
         ptr[0..9].* = ", offset=".*;
@@ -3438,11 +3407,7 @@ pub const about = struct {
     fn aboutFdOffsetReadWriteError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, offset: usize, flags: sys.flags.ReadWrite) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        ptr = fmt.strcpyEqu(ptr, error_name);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..5].* = ", fd=".*;
         ptr += 5;
         ptr = fmt.Ud64.write(ptr, fd);
@@ -3458,11 +3423,7 @@ pub const about = struct {
     fn seekError(seek_error: anyerror, fd: usize, offset: usize, whence: Whence) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..seek_s.len].* = seek_s.*;
-        var ptr: [*]u8 = buf[seek_s.len..].ptr;
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        ptr = fmt.strcpyEqu(ptr, @errorName(seek_error));
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, seek_s, @errorName(seek_error));
         ptr[0..5].* = ", fd=".*;
         ptr += 5;
         ptr = fmt.Ud64.write(ptr, fd);
@@ -3480,14 +3441,10 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn listenError(listen_error: anyerror, sock_fd: usize, backlog: u64) void {
+    fn listenError(listen_error: anyerror, sock_fd: usize, backlog: usize) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        buf[0..listen_s.len].* = listen_s.*;
-        var ptr: [*]u8 = buf[listen_s.len..].ptr;
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        ptr = fmt.strcpyEqu(ptr, @errorName(listen_error));
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, listen_s, @errorName(listen_error));
         ptr[0..10].* = ", sock_fd=".*;
         ptr += 10;
         ptr = fmt.Ud64.write(ptr, sock_fd);
@@ -3500,27 +3457,16 @@ pub const about = struct {
     pub fn executeErrorBrief(exec_error: anyerror, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        var ptr: [*]u8 = &buf;
-        ptr[0..execve_s.len].* = execve_s.*;
-        ptr += execve_s.len;
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        ptr = fmt.strcpyEqu(ptr, @errorName(exec_error));
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, execve_s, @errorName(exec_error));
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr + 2, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn executeError(exec_error: anyerror, pathname: [:0]const u8, args: []const [*:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        var ptr: [*]u8 = &buf;
-        ptr[0..execve_s.len].* = execve_s.*;
-        ptr += execve_s.len;
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        ptr = fmt.strcpyEqu(ptr, @errorName(exec_error));
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, execve_s, @errorName(exec_error));
         ptr[0..2].* = ", ".*;
         ptr = CompoundPath.writeDisplayPath(ptr + 2, pathname);
         if (args.len != 0) {
@@ -3746,7 +3692,7 @@ pub const about = struct {
             idx +%= 1;
         }
         while (idx != args.len) : (idx +%= 1) {
-            var arg_len: u64 = 0;
+            var arg_len: usize = 0;
             while (args[idx][arg_len] != 0) arg_len +%= 1;
             if (arg_len == 0) {
                 ptr[0] = '\'';
@@ -3784,10 +3730,10 @@ pub const about = struct {
         const error_name: [:0]const u8 = "ErrorName";
         const pathname1: [:0]const u8 = "/file/test/path/name1";
         const pathname2: [:0]const u8 = "/file/test/path/name2";
-        const fd1: u64 = 3;
-        const fd2: u64 = 4;
-        const dir_fd1: u64 = 5;
-        const dir_fd2: u64 = 6;
+        const fd1: usize = 3;
+        const fd2: usize = 4;
+        const dir_fd1: usize = 5;
+        const dir_fd2: usize = 6;
         var offset: usize = 4096;
         const name1: [:0]const u8 = "file1";
         const name2: [:0]const u8 = "file2";
@@ -3797,7 +3743,7 @@ pub const about = struct {
         var pollfds: [3]PollFd = .{pollfd} ** 3;
         const addr: usize = 0x40000000;
         const len: usize = 0x10000;
-        const timeout: u64 = 86400;
+        const timeout: usize = 86400;
         var off1: usize = 256;
         var off2: usize = 256;
         aboutFdNotice(about_s, fd1);
