@@ -1,9 +1,9 @@
 const mem = @import("mem.zig");
 const tab = @import("tab.zig");
 const sys = @import("sys.zig");
-const x86 = @import("x86.zig");
 const fmt = @import("fmt.zig");
 const file = @import("file.zig");
+const math = @import("math.zig");
 const proc = @import("proc.zig");
 const algo = @import("algo.zig");
 const meta = @import("meta.zig");
@@ -1278,9 +1278,14 @@ pub const LoaderSpec = struct {
     pub const Logging = packed struct {
         show_elf_header: bool = false,
         show_relocations: bool = false,
+        /// Show symbols with suffix mangler. Usually generic functions.
         show_mangled_symbols: bool = true,
+        /// Show symbols with name length equal to zero.
+        show_unnamed_symbols: bool = false,
+        /// Symbols with names mangled by `__unnamed_` and `__anon_`.
         show_anonymous_symbols: bool = false,
         show_unchanged_symbols: bool = false,
+        show_size_above: usize = 15,
         show_insignificant: bool = false,
         show_step_back_failed: bool = false,
         show_insignificant_increases: bool = true,
