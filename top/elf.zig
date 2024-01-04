@@ -1322,6 +1322,22 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         .fixed = false,
         .fixed_noreplace = true,
     };
+    const pcnt_fmt_spec = .{
+        .bits = @bitSizeOf(usize),
+        .decimal_places = 1,
+        .signedness = .unsigned,
+        .width = .min,
+    };
+    const PercentFormat = fmt.GenericPercentFormat(pcnt_fmt_spec);
+    const ChangedPercentFormat = fmt.GenericChangedPercentFormat(.{
+        .inc_style = "\x1b[91m+",
+        .dec_style = "\x1b[92m-",
+        .no_style = "\x1b[0m",
+        .arrow_style = " => ",
+        .del_fmt_spec = pcnt_fmt_spec,
+        .old_fmt_spec = pcnt_fmt_spec,
+        .new_fmt_spec = pcnt_fmt_spec,
+    });
     const T = struct {
         meta: mem.Bounds = .{
             .lb_addr = lb_meta_addr,
