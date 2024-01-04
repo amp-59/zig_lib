@@ -1700,22 +1700,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 sizes: *Sizes,
             ) bool {
                 if (mat.flags.is_insignificant) {
-                    if (!loader_spec.logging.show_insignificant and
-                        mat.tag == .identical)
+                    if (!loader_spec.logging.show_unnamed_symbols and
+                        mat.name.len == 0)
                     {
                         sizes.common +%= sym.size;
                         return true;
                     }
-                    if (!loader_spec.logging.show_insignificant_additions and
-                        mat.tag == .addition)
-                    {
-                        sizes.additions +%= sym.size;
-                        return true;
-                    }
-                    if (!loader_spec.logging.show_insignificant_deletions and
-                        mat.tag == .deletion)
-                    {
-                        sizes.deletions +%= sym.size;
+                    if (sym.size <= loader_spec.logging.show_size_above) {
+                        sizes.common +%= sym.size;
                         return true;
                     }
                 }
