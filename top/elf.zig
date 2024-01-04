@@ -1411,7 +1411,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             try meta.wrap(file.close(close, fd));
             var shndx: usize = 1;
             while (shndx < ei.ehdr.shnum) : (shndx +%= 1) {
-                const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(shndx);
                 for (Section.tag_list) |tag| {
                     if (ei.list[@intFromEnum(tag)] == 0 and
                         mem.testEqualString(ei.ehdr.sectionName(shndx), @tagName(tag)))
@@ -1420,24 +1419,26 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         break;
                     }
                 }
-                if (shdr.type == .DYNAMIC) {
-                    var rela_addr: usize = 0;
-                    var rela_entsize: usize = 0;
-                    var rela_len: usize = 0;
-                    const dyn_len: usize = @divExact(shdr.size, shdr.entsize);
-                    const dyn: [*]Elf64_Dyn = @ptrFromInt(ei.prog.addr + shdr.addr);
-                    var dyn_idx: usize = 1;
-                    while (dyn_idx != dyn_len) : (dyn_idx +%= 1) {
-                        switch (dyn[dyn_idx].tag) {
-                            else => continue,
-                            .RELA => rela_addr = dyn[dyn_idx].val,
-                            .RELACOUNT => rela_len = dyn[dyn_idx].val,
-                            .RELAENT => rela_entsize = dyn[dyn_idx].val,
-                        }
+            }
+            const dynamic_shndx: usize = ei.list[@intFromEnum(Section.@".dynamic")];
+            if (dynamic_shndx != 0) {
+                const shdr: *Elf64_Shdr = ei.ehdr.sectionHeader(dynamic_shndx);
+                var rela_addr: usize = 0;
+                var rela_entsize: usize = 0;
+                var rela_len: usize = 0;
+                const dyn_len: usize = @divExact(shdr.size, shdr.entsize);
+                const dyn: [*]Elf64_Dyn = @ptrFromInt(ei.prog.addr + shdr.addr);
+                var dyn_idx: usize = 1;
+                while (dyn_idx != dyn_len) : (dyn_idx +%= 1) {
+                    switch (dyn[dyn_idx].tag) {
+                        else => |_| {},
+                        .PLTGOT => {},
+                        .RELA => rela_addr = dyn[dyn_idx].val,
+                        .RELACOUNT => rela_len = dyn[dyn_idx].val,
+                        .RELAENT => rela_entsize = dyn[dyn_idx].val,
                     }
-                    if (rela_addr == 0) {
-                        continue;
-                    }
+                }
+                if (rela_addr != 0) {
                     rela_addr +%= ei.prog.addr;
                     var rela_idx: usize = 0;
                     while (rela_idx != rela_len) : (rela_idx +%= 1) {
