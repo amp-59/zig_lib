@@ -1639,13 +1639,19 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 fn matchName(mat: *Match, strtab: [*]u8) ?[:0]u8 {
                     @setRuntimeSafety(builtin.is_safe);
-                    if (mat.name.len == 0) {
+                    if (mat.name.len == 0) done: {
                         var idx: usize = 0;
                         while (strtab[idx] != 0) {
                             idx +%= 1;
                         }
                         const len: usize = @min(idx, ~@as(u16, 0));
                         mat.name.len = @intCast(len);
+                        if (len > 10) {
+                            if (mem.testEqualString(strtab[0..10], "__unnamed_")) {
+                                mat.name.mangle_idx = 0;
+                                break :done;
+                            }
+                        }
                         mat.name.mangle_idx = @intCast(len);
                         var byte: u8 = strtab[idx];
                         while (idx != 0) : (byte = strtab[idx]) {
