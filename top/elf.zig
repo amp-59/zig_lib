@@ -2216,6 +2216,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                                     continue;
                                 }
                                 const name1: [:0]u8 = symbolName(ei1, symtab_shdr1, sym1, mat1).?;
+                                if (name1.len == 0) {
+                                    continue;
+                                }
                                 if (loader_spec.options.write_symbols) {
                                     ptr = about.writeSymbolIntro(ptr, sym1.index, mat1.tag, width1, width2);
                                     ptr = about.writeSymbol(ptr, sym1, mat1.*, name1, &cmp.sizes[shndx2].sizes_r1);
@@ -2340,36 +2343,38 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn lengthPercentage(size: usize, mat: compare.Match, sizes: *const compare.Sizes) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                if (size *% 200 < (sizes.new +% sizes.old) or
-                    mat.flags.is_insignificant)
-                {
+                if (size *% sizes.new == 0 or mat.flags.is_insignificant) {
                     return 0;
                 }
-                const sym_size: f64 = @floatFromInt(size);
-                const mem_size: f64 = @floatFromInt(@max(1, if (@intFromEnum(mat.tag) >
-                    @intFromEnum(compare.Match.Tag.identical)) sizes.old else sizes.new));
-                return fmt.Udsize.length(@intFromFloat(100 * sym_size / mem_size)) +% 7;
+                return PercentFormat.length(size, sizes.new) +% 2;
             }
             fn writePercentage(buf: [*]u8, size: usize, mat: compare.Match, sizes: *const compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (size *% 200 < (sizes.new +% sizes.old) or
-                    mat.flags.is_insignificant)
-                {
+                if (size *% sizes.new == 0 or mat.flags.is_insignificant) {
                     return buf;
                 }
-                const sym_size: f64 = @floatFromInt(size);
-                const mem_size: f64 = @floatFromInt(@max(1, if (@intFromEnum(mat.tag) >
-                    @intFromEnum(compare.Match.Tag.identical)) sizes.old else sizes.new));
-                const res: f64 = 100 * sym_size / mem_size;
-                const dec: u64 = @intFromFloat(res * 1000 - @trunc(res) * 1000);
-                var ptr: [*]u8 = fmt.Udsize.write(buf, @intFromFloat(res));
-                ptr[0..4].* = ".000".*;
-                ptr = fmt.Udsize.write(ptr + 4 - fmt.sigFigLen(usize, dec, 10), dec);
-                ptr[0..3].* = "%, ".*;
-                if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 3, buf, lengthPercentage, .{ size, mat, sizes });
+                const ptr: [*]u8 = PercentFormat.write(buf, size, sizes.new);
+                ptr[0..2].* = ", ".*;
+                return ptr + 2;
+            }
+            fn lengthPercentages(size1: usize, size2: usize, mat: compare.Match, sizes: *const compare.Sizes) usize {
+                @setRuntimeSafety(builtin.is_safe);
+                if (size1 *% size2 == 0 or mat.flags.is_insignificant) {
+                    return 0;
                 }
-                return ptr + 3;
+                return ChangedPercentFormat.length(size1, sizes.old, size2, sizes.new) +% 2;
+            }
+            fn writePercentages(buf: [*]u8, size1: usize, size2: usize, mat: compare.Match, sizes: *const compare.Sizes) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                if (size1 *% size2 == 0 or mat.flags.is_insignificant) {
+                    return buf;
+                }
+                const ptr: [*]u8 = ChangedPercentFormat.write(buf, size1, sizes.old, size2, sizes.new);
+                ptr[0..2].* = ", ".*;
+                if (loader_spec.options.verify_lengths) {
+                    verify(ptr + 2, buf, lengthPercentages, .{ size1, size2, mat, sizes });
+                }
+                return ptr + 2;
             }
             fn writeSection2(
                 buf: [*]u8,
