@@ -1732,50 +1732,49 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 mat2: Match,
                 sizes: *Sizes,
             ) bool {
+                const diff = @max(sym1.size, sym2.size) -% @min(sym1.size, sym2.size);
+                if (!loader_spec.logging.show_unnamed_symbols and
+                    mat2.name.len == 0)
+                {
+                    sizes.common +%= diff;
+                    return true;
+                }
                 if (!loader_spec.logging.show_unchanged_symbols and
                     mat2.tag == .identical)
                 {
-                    sizes.common +%= builtin.diff(usize, sym1.size, sym2.size);
+                    sizes.common +%= diff;
+                    return true;
+                }
+                if (sym2.size <= loader_spec.logging.show_size_above) {
+                    sizes.common +%= diff;
                     return true;
                 }
                 if (mat2.flags.is_insignificant and
                     mat1.flags.is_insignificant)
                 {
-                    if (!loader_spec.logging.show_insignificant_additions and
-                        mat2.tag == .addition)
-                    {
-                        sizes.additions +%= builtin.diff(usize, sym1.size, sym2.size);
-                        return true;
-                    }
-                    if (!loader_spec.logging.show_insignificant_deletions and
-                        mat2.tag == .deletion)
-                    {
-                        sizes.deletions +%= builtin.diff(usize, sym1.size, sym2.size);
-                        return true;
-                    }
                     if (!loader_spec.logging.show_insignificant_increases and
                         mat2.tag == .increase)
                     {
-                        sizes.increases +%= builtin.diff(usize, sym1.size, sym2.size);
+                        sizes.increases +%= diff;
                         return true;
                     }
                     if (!loader_spec.logging.show_insignificant_decreases and
                         mat2.tag == .decrease)
                     {
-                        sizes.decreases +%= builtin.diff(usize, sym1.size, sym2.size);
+                        sizes.decreases +%= diff;
                         return true;
                     }
                 }
                 if (!loader_spec.logging.show_mangled_symbols and
                     mat2.isMangled())
                 {
-                    sizes.common +%= builtin.diff(usize, sym1.size, sym2.size);
+                    sizes.common +%= diff;
                     return true;
                 }
                 if (!loader_spec.logging.show_anonymous_symbols and
                     mat2.isAnonymous())
                 {
-                    sizes.common +%= builtin.diff(usize, sym1.size, sym2.size);
+                    sizes.common +%= diff;
                     return true;
                 }
                 return false;
