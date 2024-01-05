@@ -2808,7 +2808,6 @@ pub fn uxd(old_int: anytype, new_int: anytype) blk: {
 pub const RenderSpec = struct {
     radix: u7 = 10,
     render_smallest_int: bool = false,
-    render_float_places: u8 = 3,
     string_literal: ?bool = true,
     multi_line_string_literal: ?bool = false,
     omit_default_fields: bool = true,
@@ -2822,7 +2821,6 @@ pub const RenderSpec = struct {
     infer_type_names_recursively: bool = false,
     char_literal_formatter: type = Esc,
     inline_field_types: bool = true,
-    forward: bool = false,
     names: Names = .{},
     views: Views = .{},
     decls: Decls = .{},
@@ -4292,10 +4290,6 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
         const type_name: TypeName(Vector, spec) = typeName(Vector, spec);
         const max_len: ?comptime_int = if (ChildFormat.max_len) |len| (type_name.len +% 2) + vector_info.Vector.len *% (len +% 2) else null;
         pub fn formatWrite(format: Format, array: anytype) void {
-            if (spec.forward)
-                return array.define(@call(.always_inline, formatWriteBuf, .{
-                    format, array.referAllUndefined().ptr,
-                }));
             if (vector_info.Vector.len == 0) {
                 array.writeMany(type_name);
                 array.writeMany("{}");
@@ -4349,7 +4343,6 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
         const ErrorFormat = AnyFormat(spec, type_info.ErrorUnion.error_set);
         const PayloadFormat = AnyFormat(spec, type_info.ErrorUnion.payload);
         pub const max_len: ?comptime_int = 4096;
-
         pub fn write(buf: [*]u8, value: ErrorUnion) [*]u8 {
             if (value) |payload| {
                 return PayloadFormat.write(buf, payload);
@@ -4455,7 +4448,6 @@ pub const TypeDescrFormatSpec = struct {
     depth: u64 = 0,
     decls: bool = false,
     identifier_name: bool = true,
-    forward: bool = false,
     option_5: bool = false,
     tokens: Tokens = .{},
     default_field_values: DefaultFieldValues = .{ .exact = .{} },
