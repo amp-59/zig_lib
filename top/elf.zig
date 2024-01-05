@@ -2383,6 +2383,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 shndx: usize,
                 width: usize,
             ) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = fmt.SideBarIndexFormat.write(buf, width, shndx);
                 ptr = fmt.strcpyEqu(ptr, ei.ehdr.sectionName(shndx));
                 ptr[0..2].* = ": ".*;
@@ -2526,6 +2527,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ptr;
             }
             fn eventString(event: compare.Match.Tag) []const u8 {
+                @setRuntimeSafety(false);
                 switch (event) {
                     .unknown => return "!",
                     .unmatched => return "?",
@@ -2668,7 +2670,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return 15 +% @tagName(sym2.info).len +%
                     lengthAddressOrOffset(sym2.value, 0) +%
                     fmt.BloatDiff.length(sym1.size, sym2.size) +%
-                    lengthPercentage(sym2.size, mat2, sizes) +%
+                    lengthPercentages(sym1.size, sym2.size, mat2, sizes) +%
                     lengthCompoundName(mat1, name1, mat2, name2);
             }
             fn writeSymbolDifference(
@@ -2687,7 +2689,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0..7].* = ", size=".*;
                 ptr = fmt.BloatDiff.write(ptr + 7, sym1.size, sym2.size);
                 ptr[0..2].* = ", ".*;
-                ptr = writePercentage(ptr + 2, sym2.size, mat2, sizes);
+                ptr = writePercentages(ptr + 2, sym1.size, sym2.size, mat2, sizes);
                 ptr[0..5].* = "name=".*;
                 ptr = writeCompoundName(ptr + 5, mat1, name1, mat2, name2);
                 ptr[0] = '\n';
