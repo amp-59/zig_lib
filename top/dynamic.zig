@@ -959,7 +959,9 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
                         l_node_addr = r_node_addr;
                     },
                     Node4.F => l_node_addr = Node4.link(l_node_addr),
-                    else => unreachable,
+                    else => |l_node_kind| {
+                        about.aboutNodeAddrFault(l_node_addr, l_node_kind);
+                    },
                 }
             }
             allocator.consolidate();
@@ -989,7 +991,9 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
                         }
                         l_node_addr = r_node_addr;
                     },
-                    else => unreachable,
+                    else => |l_node_kind| {
+                        about.aboutNodeAddrFault(l_node_addr, l_node_kind);
+                    },
                 }
             }
         }
