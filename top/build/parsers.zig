@@ -101,19 +101,6 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-analysis", arg)) {
             cmd.emit_analysis = .no;
-        } else if (mem.testEqualString("-femit-implib", arg[0..@min(arg.len, 13)])) {
-            if (arg.len > 14 and arg[13] == '=') {
-                cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(
-                    allocator,
-                    args[0..args_len],
-                    &args_idx,
-                    arg[14..],
-                ) };
-            } else {
-                cmd.emit_implib = .{ .yes = null };
-            }
-        } else if (mem.testEqualString("-fno-emit-implib", arg)) {
-            cmd.emit_implib = .no;
         } else if (mem.testEqualString("--cache-dir", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
@@ -363,6 +350,98 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             } else if (mem.testEqualString("large", arg)) {
                 cmd.code_model = .large;
             }
+        } else if (mem.testEqualString("-fruntime-safety", arg)) {
+            cmd.runtime_safety = true;
+        } else if (mem.testEqualString("-fno-runtime-safety", arg)) {
+            cmd.runtime_safety = false;
+        } else if (mem.testEqualString("-fpanic-data", arg)) {
+            cmd.panic_data = true;
+        } else if (mem.testEqualString("-fno-panic-data", arg)) {
+            cmd.panic_data = false;
+        } else if (mem.testEqualString("-fcheck-unwrapped-error", arg)) {
+            cmd.check_unwrapped_error = true;
+        } else if (mem.testEqualString("-fno-check-unwrapped-error", arg)) {
+            cmd.check_unwrapped_error = false;
+        } else if (mem.testEqualString("-fcheck-unwrapped-null", arg)) {
+            cmd.check_unwrapped_null = true;
+        } else if (mem.testEqualString("-fno-check-unwrapped-null", arg)) {
+            cmd.check_unwrapped_null = false;
+        } else if (mem.testEqualString("-fcheck-returned-noreturn", arg)) {
+            cmd.check_returned_noreturn = true;
+        } else if (mem.testEqualString("-fno-check-returned-noreturn", arg)) {
+            cmd.check_returned_noreturn = false;
+        } else if (mem.testEqualString("-fcheck-reached-unreachable", arg)) {
+            cmd.check_reached_unreachable = true;
+        } else if (mem.testEqualString("-fno-check-reached-unreachable", arg)) {
+            cmd.check_reached_unreachable = false;
+        } else if (mem.testEqualString("-fcheck-accessed-out-of-bounds", arg)) {
+            cmd.check_accessed_out_of_bounds = true;
+        } else if (mem.testEqualString("-fno-check-accessed-out-of-bounds", arg)) {
+            cmd.check_accessed_out_of_bounds = false;
+        } else if (mem.testEqualString("-fcheck-accessed-out-of-order", arg)) {
+            cmd.check_accessed_out_of_order = true;
+        } else if (mem.testEqualString("-fno-check-accessed-out-of-order", arg)) {
+            cmd.check_accessed_out_of_order = false;
+        } else if (mem.testEqualString("-fcheck-accessed-inactive-field", arg)) {
+            cmd.check_accessed_inactive_field = true;
+        } else if (mem.testEqualString("-fno-check-accessed-inactive-field", arg)) {
+            cmd.check_accessed_inactive_field = false;
+        } else if (mem.testEqualString("-fcheck-divided-by-zero", arg)) {
+            cmd.check_divided_by_zero = true;
+        } else if (mem.testEqualString("-fno-check-divided-by-zero", arg)) {
+            cmd.check_divided_by_zero = false;
+        } else if (mem.testEqualString("-fcheck-memcpy-argument-aliasing", arg)) {
+            cmd.check_memcpy_argument_aliasing = true;
+        } else if (mem.testEqualString("-fno-check-memcpy-argument-aliasing", arg)) {
+            cmd.check_memcpy_argument_aliasing = false;
+        } else if (mem.testEqualString("-fcheck-mismatched-memcpy-argument-lengths", arg)) {
+            cmd.check_mismatched_memcpy_argument_lengths = true;
+        } else if (mem.testEqualString("-fno-check-mismatched-memcpy-argument-lengths", arg)) {
+            cmd.check_mismatched_memcpy_argument_lengths = false;
+        } else if (mem.testEqualString("-fcheck-mismatched-for-loop-capture-lengths", arg)) {
+            cmd.check_mismatched_for_loop_capture_lengths = true;
+        } else if (mem.testEqualString("-fno-check-mismatched-for-loop-capture-lengths", arg)) {
+            cmd.check_mismatched_for_loop_capture_lengths = false;
+        } else if (mem.testEqualString("-fcheck-mismatched-sentinel", arg)) {
+            cmd.check_mismatched_sentinel = true;
+        } else if (mem.testEqualString("-fno-check-mismatched-sentinel", arg)) {
+            cmd.check_mismatched_sentinel = false;
+        } else if (mem.testEqualString("-fcheck-shift-amt-overflowed", arg)) {
+            cmd.check_shift_amt_overflowed = true;
+        } else if (mem.testEqualString("-fno-check-shift-amt-overflowed", arg)) {
+            cmd.check_shift_amt_overflowed = false;
+        } else if (mem.testEqualString("-fcheck-arith-exact", arg)) {
+            cmd.check_arith_exact = true;
+        } else if (mem.testEqualString("-fno-check-arith-exact", arg)) {
+            cmd.check_arith_exact = false;
+        } else if (mem.testEqualString("-fcheck-arith-overflowed", arg)) {
+            cmd.check_arith_overflowed = true;
+        } else if (mem.testEqualString("-fno-check-arith-overflowed", arg)) {
+            cmd.check_arith_overflowed = false;
+        } else if (mem.testEqualString("-fcheck-cast-truncated-data", arg)) {
+            cmd.check_cast_truncated_data = true;
+        } else if (mem.testEqualString("-fno-check-cast-truncated-data", arg)) {
+            cmd.check_cast_truncated_data = false;
+        } else if (mem.testEqualString("-fcheck-cast-to-enum-from-invalid", arg)) {
+            cmd.check_cast_to_enum_from_invalid = true;
+        } else if (mem.testEqualString("-fno-check-cast-to-enum-from-invalid", arg)) {
+            cmd.check_cast_to_enum_from_invalid = false;
+        } else if (mem.testEqualString("-fcheck-cast-to-error-from-invalid", arg)) {
+            cmd.check_cast_to_error_from_invalid = true;
+        } else if (mem.testEqualString("-fno-check-cast-to-error-from-invalid", arg)) {
+            cmd.check_cast_to_error_from_invalid = false;
+        } else if (mem.testEqualString("-fcheck-cast-to-pointer-from-invalid", arg)) {
+            cmd.check_cast_to_pointer_from_invalid = true;
+        } else if (mem.testEqualString("-fno-check-cast-to-pointer-from-invalid", arg)) {
+            cmd.check_cast_to_pointer_from_invalid = false;
+        } else if (mem.testEqualString("-fcheck-cast-to-int-from-invalid", arg)) {
+            cmd.check_cast_to_int_from_invalid = true;
+        } else if (mem.testEqualString("-fno-check-cast-to-int-from-invalid", arg)) {
+            cmd.check_cast_to_int_from_invalid = false;
+        } else if (mem.testEqualString("-fcheck-cast-to-unsigned-from-negative", arg)) {
+            cmd.check_cast_to_unsigned_from_negative = true;
+        } else if (mem.testEqualString("-fno-check-cast-to-unsigned-from-negative", arg)) {
+            cmd.check_cast_to_unsigned_from_negative = false;
         } else if (mem.testEqualString("-mred-zone", arg)) {
             cmd.red_zone = true;
         } else if (mem.testEqualString("-mno-red-zone", arg)) {
@@ -371,34 +450,6 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             cmd.implicit_builtins = true;
         } else if (mem.testEqualString("-fno-builtin", arg)) {
             cmd.implicit_builtins = false;
-        } else if (mem.testEqualString("-fpanic-mismatched-arguments", arg)) {
-            cmd.panic_mismatched_arguments = true;
-        } else if (mem.testEqualString("-fno-panic-mismatched-arguments", arg)) {
-            cmd.panic_mismatched_arguments = false;
-        } else if (mem.testEqualString("-fpanic-reached-unreachable", arg)) {
-            cmd.panic_reached_unreachable = true;
-        } else if (mem.testEqualString("-fno-panic-reached-unreachable", arg)) {
-            cmd.panic_reached_unreachable = false;
-        } else if (mem.testEqualString("-fpanic-accessed-invalid-memory", arg)) {
-            cmd.panic_accessed_invalid_memory = true;
-        } else if (mem.testEqualString("-fno-panic-accessed-invalid-memory", arg)) {
-            cmd.panic_accessed_invalid_memory = false;
-        } else if (mem.testEqualString("-fpanic-mismatched-sentinel", arg)) {
-            cmd.panic_mismatched_sentinel = true;
-        } else if (mem.testEqualString("-fno-panic-mismatched-sentinel", arg)) {
-            cmd.panic_mismatched_sentinel = false;
-        } else if (mem.testEqualString("-fpanic-arith-lost-precision", arg)) {
-            cmd.panic_arith_lost_precision = true;
-        } else if (mem.testEqualString("-fno-panic-arith-lost-precision", arg)) {
-            cmd.panic_arith_lost_precision = false;
-        } else if (mem.testEqualString("-fpanic-arith-overflowed", arg)) {
-            cmd.panic_arith_overflowed = true;
-        } else if (mem.testEqualString("-fno-panic-arith-overflowed", arg)) {
-            cmd.panic_arith_overflowed = false;
-        } else if (mem.testEqualString("-fpanic-cast-from-invalid", arg)) {
-            cmd.panic_cast_from_invalid = true;
-        } else if (mem.testEqualString("-fno-panic-cast-from-invalid", arg)) {
-            cmd.panic_cast_from_invalid = false;
         } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
             cmd.omit_frame_pointer = true;
         } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
@@ -785,6 +836,8 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("--deps", arg)) {
             cmd.dependencies = types.ModuleDependencies.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+        } else if (mem.testEqualString("--dep", arg)) {
+            cmd.deps = types.ModuleDependencies.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
         } else if (mem.testEqualString("-cflags", arg)) {
             cmd.cflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
         } else if (mem.testEqualString("-rcflags", arg)) {
@@ -845,6 +898,268 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             cmd.debug_link_snapshot = true;
         } else {
             debug.write(build_help);
+        }
+    }
+}
+export fn formatParseArgsBuildModuleCommand(cmd: *tasks.BuildModuleCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+    @setRuntimeSafety(builtin.is_safe);
+    var args_idx: usize = 0;
+    while (args_idx != args_len) : (args_idx +%= 1) {
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        if (mem.testEqualString("-target", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.target = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("-O", arg[0..@min(arg.len, 2)])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            if (mem.testEqualString("Debug", arg)) {
+                cmd.mode = .Debug;
+            } else if (mem.testEqualString("ReleaseSafe", arg)) {
+                cmd.mode = .ReleaseSafe;
+            } else if (mem.testEqualString("ReleaseFast", arg)) {
+                cmd.mode = .ReleaseFast;
+            } else if (mem.testEqualString("ReleaseSmall", arg)) {
+                cmd.mode = .ReleaseSmall;
+            }
+        } else if (mem.testEqualString("-ofmt", arg)) {
+            args_idx +%= 1;
+            if (args_idx == args_len) {
+                return;
+            }
+            arg = mem.terminate(args[args_idx], 0);
+            if (mem.testEqualString("coff", arg)) {
+                cmd.format = .coff;
+            } else if (mem.testEqualString("dxcontainer", arg)) {
+                cmd.format = .dxcontainer;
+            } else if (mem.testEqualString("elf", arg)) {
+                cmd.format = .elf;
+            } else if (mem.testEqualString("macho", arg)) {
+                cmd.format = .macho;
+            } else if (mem.testEqualString("spirv", arg)) {
+                cmd.format = .spirv;
+            } else if (mem.testEqualString("wasm", arg)) {
+                cmd.format = .wasm;
+            } else if (mem.testEqualString("c", arg)) {
+                cmd.format = .c;
+            } else if (mem.testEqualString("hex", arg)) {
+                cmd.format = .hex;
+            } else if (mem.testEqualString("raw", arg)) {
+                cmd.format = .raw;
+            } else if (mem.testEqualString("plan9", arg)) {
+                cmd.format = .plan9;
+            } else if (mem.testEqualString("nvptx", arg)) {
+                cmd.format = .nvptx;
+            }
+        } else if (mem.testEqualString("--mcpu", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.mcpu = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("-mcmodel", arg)) {
+            args_idx +%= 1;
+            if (args_idx == args_len) {
+                return;
+            }
+            arg = mem.terminate(args[args_idx], 0);
+            if (mem.testEqualString("default", arg)) {
+                cmd.code_model = .default;
+            } else if (mem.testEqualString("tiny", arg)) {
+                cmd.code_model = .tiny;
+            } else if (mem.testEqualString("small", arg)) {
+                cmd.code_model = .small;
+            } else if (mem.testEqualString("kernel", arg)) {
+                cmd.code_model = .kernel;
+            } else if (mem.testEqualString("medium", arg)) {
+                cmd.code_model = .medium;
+            } else if (mem.testEqualString("large", arg)) {
+                cmd.code_model = .large;
+            }
+        } else if (mem.testEqualString("-mred-zone", arg)) {
+            cmd.red_zone = true;
+        } else if (mem.testEqualString("-mno-red-zone", arg)) {
+            cmd.red_zone = false;
+        } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
+            cmd.omit_frame_pointer = true;
+        } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
+            cmd.omit_frame_pointer = false;
+        } else if (mem.testEqualString("-fPIC", arg)) {
+            cmd.pic = true;
+        } else if (mem.testEqualString("-fno-PIC", arg)) {
+            cmd.pic = false;
+        } else if (mem.testEqualString("-fstack-check", arg)) {
+            cmd.stack_check = true;
+        } else if (mem.testEqualString("-fno-stack-check", arg)) {
+            cmd.stack_check = false;
+        } else if (mem.testEqualString("-fstack-protector", arg)) {
+            cmd.stack_protector = true;
+        } else if (mem.testEqualString("-fno-stack-protector", arg)) {
+            cmd.stack_protector = false;
+        } else if (mem.testEqualString("-fsanitize-c", arg)) {
+            cmd.sanitize_c = true;
+        } else if (mem.testEqualString("-fno-sanitize-c", arg)) {
+            cmd.sanitize_c = false;
+        } else if (mem.testEqualString("-fvalgrind", arg)) {
+            cmd.valgrind = true;
+        } else if (mem.testEqualString("-fno-valgrind", arg)) {
+            cmd.valgrind = false;
+        } else if (mem.testEqualString("-fsanitize-thread", arg)) {
+            cmd.sanitize_thread = true;
+        } else if (mem.testEqualString("-fno-sanitize-thread", arg)) {
+            cmd.sanitize_thread = false;
+        } else if (mem.testEqualString("-funwind-tables", arg)) {
+            cmd.unwind_tables = true;
+        } else if (mem.testEqualString("-fno-unwind-tables", arg)) {
+            cmd.unwind_tables = false;
+        } else if (mem.testEqualString("-ferror-tracing", arg)) {
+            cmd.error_tracing = true;
+        } else if (mem.testEqualString("-fno-error-tracing", arg)) {
+            cmd.error_tracing = false;
+        } else if (mem.testEqualString("-fsingle-threaded", arg)) {
+            cmd.single_threaded = true;
+        } else if (mem.testEqualString("-fno-single-threaded", arg)) {
+            cmd.single_threaded = false;
+        } else if (mem.testEqualString("-fstrip", arg)) {
+            cmd.strip = true;
+        } else if (mem.testEqualString("-fno-strip", arg)) {
+            cmd.strip = false;
+        } else if (mem.testEqualString("-fformatted-panics", arg)) {
+            cmd.formatted_panics = true;
+        } else if (mem.testEqualString("-fno-formatted-panics", arg)) {
+            cmd.formatted_panics = false;
+        } else if (mem.testEqualString("-idirafter", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.dirafter = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("-isystem", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.system = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            if (cmd.include) |src| {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                @memcpy(dest, src);
+                dest[src.len] = arg;
+                cmd.include = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                dest[0] = arg;
+                cmd.include = dest[0..1];
+            }
+        } else if (mem.testEqualString("-cflags", arg)) {
+            cmd.cflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+        } else if (mem.testEqualString("-rcflags", arg)) {
+            cmd.rcflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+        } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            if (cmd.macros) |src| {
+                const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
+                    @sizeOf(types.Macro) *% (src.len +% 1),
+                    @alignOf(types.Macro),
+                ));
+                @memcpy(dest, src);
+                dest[src.len] = types.Macro.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+                cmd.macros = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
+                    @sizeOf(types.Macro),
+                    @alignOf(types.Macro),
+                ));
+                dest[0] = types.Macro.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+                cmd.macros = dest[0..1];
+            }
+        } else if (mem.testEqualString("--library", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.library = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("-needed-library", arg)) {
+            args_idx +%= 1;
+            if (args_idx == args_len) {
+                return;
+            }
+            arg = mem.terminate(args[args_idx], 0);
+            if (cmd.needed_library) |src| {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                @memcpy(dest, src);
+                dest[src.len] = arg;
+                cmd.needed_library = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                dest[0] = arg;
+                cmd.needed_library = dest[0..1];
+            }
+        } else if (mem.testEqualString("-weak_library", arg)) {
+            args_idx +%= 1;
+            if (args_idx == args_len) {
+                return;
+            }
+            arg = mem.terminate(args[args_idx], 0);
+            if (cmd.weak_library) |src| {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                @memcpy(dest, src);
+                dest[src.len] = arg;
+                cmd.weak_library = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                dest[0] = arg;
+                cmd.weak_library = dest[0..1];
+            }
+        } else if (mem.testEqualString("--library-directory", arg)) {
+            args_idx +%= 1;
+            if (args_idx == args_len) {
+                return;
+            }
+            arg = mem.terminate(args[args_idx], 0);
+            if (cmd.library_directory) |src| {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                @memcpy(dest, src);
+                dest[src.len] = arg;
+                cmd.library_directory = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                dest[0] = arg;
+                cmd.library_directory = dest[0..1];
+            }
+        } else {
+            debug.write(module_help);
         }
     }
 }
@@ -997,170 +1312,203 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-const build_help: [:0]const u8 =
-    \\    -femit-bin=<string>                     (default=yes) Output machine code
+const build_help: [:0]const u8 = 
+    \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
-    \\    -femit-asm=<string>                     (default=no) Output assembly code (.s)
+    \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
     \\    -fno-emit-asm
-    \\    -femit-llvm-ir=<string>                 (default=no) Output optimized LLVM IR (.ll)
+    \\    -femit-llvm-ir=<string>                             (default=no) Output optimized LLVM IR (.ll)
     \\    -fno-emit-llvm-ir
-    \\    -femit-llvm-bc=<string>                 (default=no) Output optimized LLVM BC (.bc)
+    \\    -femit-llvm-bc=<string>                             (default=no) Output optimized LLVM BC (.bc)
     \\    -fno-emit-llvm-bc
-    \\    -femit-h=<string>                       (default=no) Output a C header file (.h)
+    \\    -femit-h=<string>                                   (default=no) Output a C header file (.h)
     \\    -fno-emit-h
-    \\    -femit-docs=<string>                    (default=no) Output documentation (.html)
+    \\    -femit-docs=<string>                                (default=no) Output documentation (.html)
     \\    -fno-emit-docs
-    \\    -femit-analysis=<string>                (default=no) Output analysis (.json)
+    \\    -femit-analysis=<string>                            (default=no) Output analysis (.json)
     \\    -fno-emit-analysis
-    \\    -femit-implib=<string>                  (default=yes) Output an import when building a Windows DLL (.lib)
-    \\    -fno-emit-implib
-    \\    --cache-dir=<string>                    Override the local cache directory
-    \\    --global-cache-dir=<string>             Override the global cache directory
-    \\    --zig-lib-dir=<string>                  Override Zig installation lib directory
-    \\    --listen=<tag>                          [MISSING]
-    \\    -target=<string>                        <arch><sub>-<os>-<abi> see the targets command
-    \\    -mcpu=<tag>                             Specify target CPU and feature set
-    \\    -mcmodel=<tag>                          Limit range of code and data virtual addresses
-    \\    -m[no-]red-zone                         Enable the "red-zone"
-    \\    -f[no-]builtin                          Enable implicit builtin knowledge of functions
-    \\    -f[no-]panic-mismatched-arguments       Enables panic causes:
-    \\                                              memcpy_argument_aliasing
-    \\                                              memcpy_argument_lengths_mismatched
-    \\                                              for_loop_capture_lengths_mismatched
-    \\    -f[no-]panic-reached-unreachable        Enables panic causes:
-    \\                                              message
-    \\                                              discarded_error
-    \\                                              corrupt_switch
-    \\                                              returned_noreturn
-    \\                                              reached_unreachable
-    \\                                              accessed_null_value
-    \\    -f[no-]panic-accessed-invalid-memory    Enables panic causes:
-    \\                                              accessed_out_of_bounds
-    \\                                              accessed_out_of_order
-    \\                                              accessed_inactive_field
-    \\    -f[no-]panic-mismatched-sentinel        Enables panic causes:
-    \\                                              mismatched_sentinel
-    \\                                              mismatched_non_scalar_sentinel
-    \\    -f[no-]panic-arith-lost-precision       Enables panic causes:
-    \\                                              div_with_remainder
-    \\                                              shl_overflowed
-    \\                                              shr_overflowed
-    \\                                              shift_amt_overflowed
-    \\    -f[no-]panic-arith-overflowed           Enables panic causes:
-    \\                                              mul_overflowed
-    \\                                              add_overflowed
-    \\                                              sub_overflowed
-    \\    -f[no-]panic-cast-from-invalid          Enables panic causes:
-    \\                                              cast_to_int_from_invalid
-    \\                                              cast_truncated_data
-    \\                                              cast_to_unsigned_from_negative
-    \\                                              cast_to_pointer_from_invalid
-    \\                                              cast_to_enum_from_invalid
-    \\                                              cast_to_error_from_invalid
-    \\    -f[no-]omit-frame-pointer               Omit the stack frame pointer
-    \\    -mexec-model=<string>                   (WASI) Execution model
-    \\    --name=<string>                         Override root name
-    \\    -fsoname=<string>                       Override the default SONAME value
+    \\    --cache-dir=<string>                                Override the local cache directory
+    \\    --global-cache-dir=<string>                         Override the global cache directory
+    \\    --zig-lib-dir=<string>                              Override Zig installation lib directory
+    \\    --listen=<tag>                                      [MISSING]
+    \\    -target=<string>                                    <arch><sub>-<os>-<abi> see the targets command
+    \\    -mcpu=<tag>                                         Specify target CPU and feature set
+    \\    -mcmodel=<tag>                                      Limit range of code and data virtual addresses
+    \\    -f[no-]runtime-safety                               Toggle definition of `PanicData` parameter
+    \\    -f[no-]panic-data                                   Toggle definition of `PanicData` parameter
+    \\    -f[no-]check-unwrapped-error                        Toggle check for returning from a noreturn function
+    \\    -f[no-]check-unwrapped-null                         Toggle check for unwrapping (.?) null optional values
+    \\    -f[no-]check-returned-noreturn                      Toggle check for returning from a noreturn function
+    \\    -f[no-]check-reached-unreachable                    Toggle check for reaching unreachable code
+    \\    -f[no-]check-accessed-out-of-bounds                 Toggle check for slice[idx] st. idx < slice.len
+    \\    -f[no-]check-accessed-out-of-order                  Toggle check for slice[start..finish] st. start <= finish
+    \\    -f[no-]check-accessed-inactive-field                Toggle check for tagged union field accesses
+    \\    -f[no-]check-divided-by-zero                        Toggle check for division by zero
+    \\    -f[no-]check-memcpy-argument-aliasing               Toggle check for pointer aliasing
+    \\    -f[no-]check-mismatched-memcpy-argument-lengths     Toggle check for @memcpy argument lengths
+    \\    -f[no-]check-mismatched-for-loop-capture-lengths    Toggle check for for loop capture lengths
+    \\    -f[no-]check-mismatched-sentinel                    Toggle check for sentinel value
+    \\    -f[no-]check-shift-amt-overflowed                   Toggle check for shift amount for non power-of-two integer bit sizes
+    \\    -f[no-]check-arith-exact                            Toggle checks for inexact arithmetic by @shlExact, @shrExact, and @divExact
+    \\    -f[no-]check-arith-overflowed                       Toggle checks for integer overflow by addition, subtraction, and multiplication
+    \\    -f[no-]check-cast-truncated-data                    Toggle check for @intCast to smaller from larger
+    \\    -f[no-]check-cast-to-enum-from-invalid              Toggle check for @enumFromInt
+    \\    -f[no-]check-cast-to-error-from-invalid             Toggle checks for @errorCast and @errorFromInt
+    \\    -f[no-]check-cast-to-pointer-from-invalid           Toggle checks for @ptrCast and @ptrFromInt
+    \\    -f[no-]check-cast-to-int-from-invalid               Toggle check for @intFromFloat
+    \\    -f[no-]check-cast-to-unsigned-from-negative         Toggle check for @intCast to unsigned from signed
+    \\    -m[no-]red-zone                                     Enable or disable the "red-zone"
+    \\    -f[no-]builtin                                      Enable or disable implicit builtin knowledge of functions
+    \\    -f[no-]omit-frame-pointer                           Omit the stack frame pointer
+    \\    -mexec-model=<string>                               (WASI) Execution model
+    \\    --name=<string>                                     Override root name
+    \\    -fsoname=<string>                                   Override the default SONAME value
     \\    -fno-soname
-    \\    -O<tag>                                 Choose what to optimize for:
-    \\                                              Debug          Optimizations off, safety on
-    \\                                              ReleaseSafe    Optimizations on, safety on
-    \\                                              ReleaseFast    Optimizations on, safety off
-    \\                                              ReleaseSmall   Size optimizations on, safety off
-    \\    -fopt-bisect-limit=<integer>            Only run [limit] first LLVM optimization passes
-    \\    --main-mod-path=<string>                Set the directory of the root package
-    \\    -f[no-]PIC                              Enable Position Independent Code
-    \\    -f[no-]PIE                              Enable Position Independent Executable
-    \\    -f[no-]lto                              Enable Link Time Optimization
-    \\    -f[no-]stack-check                      Enable stack probing in unsafe builds
-    \\    -f[no-]stack-protector                  Enable stack protection in unsafe builds
-    \\    -f[no-]sanitize-c                       Enable C undefined behaviour detection in unsafe builds
-    \\    -f[no-]valgrind                         Include valgrind client requests in release builds
-    \\    -f[no-]sanitize-thread                  Enable thread sanitizer
-    \\    -f[no-]unwind-tables                    Always produce unwind table entries for all functions
-    \\    -f[no-]reference-trace                  How many lines of reference trace should be shown per compile error
-    \\    -f[no-]error-tracing                    Enable error tracing in `ReleaseFast` mode
-    \\    -f[no-]single-threaded                  Code assumes there is only one thread
-    \\    -f[no-]function-sections                Places each function in a separate section
-    \\    -f[no-]data-sections                    Places data in separate sections
-    \\    -f[no-]strip                            Omit debug symbols
-    \\    -f[no-]formatted-panics                 Enable formatted safety panics
-    \\    -ofmt=<tag>                             Override target object format:
-    \\                                              elf                    Executable and Linking Format
-    \\                                              c                      C source code
-    \\                                              wasm                   WebAssembly
-    \\                                              coff                   Common Object File Format (Windows)
-    \\                                              macho                  macOS relocatables
-    \\                                              spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
-    \\                                              plan9                  Plan 9 from Bell Labs object format
-    \\                                              hex (planned feature)  Intel IHEX
-    \\                                              raw (planned feature)  Dump machine code directly
-    \\    -idirafter=<string>                     Add directory to AFTER include search path
-    \\    -isystem=<string>                       Add directory to SYSTEM include search path
-    \\    --libc=<string>                         Provide a file which specifies libc paths
-    \\    --library=<string>                      Link against system library (only if actually used)
-    \\    -I<string>                              Add directories to include search path
-    \\    --needed-library=<string>               Link against system library (even if unused)
-    \\    --library-directory=<string>            Add a directory to the library search path
-    \\    --script=<string>                       Use a custom linker script
-    \\    --version-script=<string>               Provide a version .map file
-    \\    --dynamic-linker=<string>               Set the dynamic interpreter path
-    \\    --sysroot=<string>                      Set the system root directory
-    \\    -fentry=<string>                        Override the default entry symbol name
+    \\    -O<tag>                                             Choose what to optimize for:
+    \\                                                          Debug          Optimizations off, safety on
+    \\                                                          ReleaseSafe    Optimizations on, safety on
+    \\                                                          ReleaseFast    Optimizations on, safety off
+    \\                                                          ReleaseSmall   Size optimizations on, safety off
+    \\    -fopt-bisect-limit=<integer>                        Only run [limit] first LLVM optimization passes
+    \\    --main-mod-path=<string>                            Set the directory of the root package
+    \\    -f[no-]PIC                                          Enable Position Independent Code
+    \\    -f[no-]PIE                                          Enable Position Independent Executable
+    \\    -f[no-]lto                                          Enable Link Time Optimization
+    \\    -f[no-]stack-check                                  Enable stack probing in unsafe builds
+    \\    -f[no-]stack-protector                              Enable stack protection in unsafe builds
+    \\    -f[no-]sanitize-c                                   Enable C undefined behaviour detection in unsafe builds
+    \\    -f[no-]valgrind                                     Include valgrind client requests in release builds
+    \\    -f[no-]sanitize-thread                              Enable thread sanitizer
+    \\    -f[no-]unwind-tables                                Always produce unwind table entries for all functions
+    \\    -f[no-]reference-trace                              How many lines of reference trace should be shown per compile error
+    \\    -f[no-]error-tracing                                Enable error tracing in `ReleaseFast` mode
+    \\    -f[no-]single-threaded                              Code assumes there is only one thread
+    \\    -f[no-]function-sections                            Places each function in a separate section
+    \\    -f[no-]data-sections                                Places data in separate sections
+    \\    -f[no-]strip                                        Omit debug symbols
+    \\    -f[no-]formatted-panics                             Enable formatted safety panics
+    \\    -ofmt=<tag>                                         Override target object format:
+    \\                                                          elf                    Executable and Linking Format
+    \\                                                          c                      C source code
+    \\                                                          wasm                   WebAssembly
+    \\                                                          coff                   Common Object File Format (Windows)
+    \\                                                          macho                  macOS relocatables
+    \\                                                          spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    \\                                                          plan9                  Plan 9 from Bell Labs object format
+    \\                                                          hex (planned feature)  Intel IHEX
+    \\                                                          raw (planned feature)  Dump machine code directly
+    \\    -idirafter=<string>                                 Add directory to AFTER include search path
+    \\    -isystem=<string>                                   Add directory to SYSTEM include search path
+    \\    --libc=<string>                                     Provide a file which specifies libc paths
+    \\    --library=<string>                                  Link against system library (only if actually used)
+    \\    -I<string>                                          Add directories to include search path
+    \\    --needed-library=<string>                           Link against system library (even if unused)
+    \\    --library-directory=<string>                        Add a directory to the library search path
+    \\    --script=<string>                                   Use a custom linker script
+    \\    --version-script=<string>                           Provide a version .map file
+    \\    --dynamic-linker=<string>                           Set the dynamic interpreter path
+    \\    --sysroot=<string>                                  Set the system root directory
+    \\    -fentry=<string>                                    Override the default entry symbol name
     \\    -fno-entry
-    \\    -f[no-]lld                              Use LLD as the linker
-    \\    -f[no-]llvm                             Use LLVM as the codegen backend
-    \\    -f[no-]compiler-rt                      (default) Include compiler-rt symbols in output
-    \\    -rpath=<string>                         Add directory to the runtime library search path
-    \\    -f[no-]each-lib-rpath                   Ensure adding rpath for each used dynamic library
-    \\    -f[no-]allow-shlib-undefined            Allow undefined symbols in shared libraries
-    \\    --build-id=<tag>                        Help coordinate stripped binaries with debug symbols
-    \\    --eh-frame-hdr                          Enable C++ exception handling by passing --eh-frame-hdr to linker
-    \\    --emit-relocs                           Enable output of relocation sections for post build tools
-    \\    --[no-]gc-sections                      Force removal of functions and data that are unreachable by the entry point or exported symbols
-    \\    --stack=<integer>                       Override default stack size
-    \\    --image-base=<integer>                  Set base address for executable image
-    \\    -D<string>                              Define C macros available within the `@cImport` namespace
-    \\    --mod=<string>                          Define modules available as dependencies for the current target
-    \\    --deps=<string>                         Define module dependencies for the current target
-    \\    -cflags=<string>                        Set extra flags for the next position C source files
-    \\    -rcflags=<string>                       Set extra flags for the next positional .rc source files
-    \\    -lc                                     Link libc
-    \\    -rdynamic                               Add all symbols to the dynamic symbol table
-    \\    -dynamic                                Force output to be dynamically linked
-    \\    -static                                 Force output to be statically linked
-    \\    -Bsymbolic                              Bind global references locally
-    \\    -z<string>                              Set linker extension flags:
-    \\                                              nodelete                   Indicate that the object cannot be deleted from a process
-    \\                                              notext                     Permit read-only relocations in read-only segments
-    \\                                              defs                       Force a fatal error if any undefined symbols remain
-    \\                                              undefs                     Reverse of -z defs
-    \\                                              origin                     Indicate that the object must have its origin processed
-    \\                                              nocopyreloc                Disable the creation of copy relocations
-    \\                                              now (default)              Force all relocations to be processed on load
-    \\                                              lazy                       Don't force all relocations to be processed on load
-    \\                                              relro (default)            Force all relocations to be read-only after processing
-    \\                                              norelro                    Don't force all relocations to be read-only after processing
-    \\                                              common-page-size=[bytes]   Set the common page size for ELF binaries
-    \\                                              max-page-size=[bytes]      Set the max page size for ELF binaries
-    \\    --color=<tag>                           Enable or disable colored error messages
-    \\    --debug-incremental                     Enable experimental feature: incremental compilation
-    \\    -ftime-report                           Print timing diagnostics
-    \\    -fstack-report                          Print stack size diagnostics
-    \\    --verbose-link                          Display linker invocations
-    \\    --verbose-cc                            Display C compiler invocations
-    \\    --verbose-air                           Enable compiler debug output for Zig AIR
-    \\    --verbose-mir                           Enable compiler debug output for Zig MIR
-    \\    --verbose-llvm-ir                       Enable compiler debug output for LLVM IR
-    \\    --verbose-cimport                       Enable compiler debug output for C imports
-    \\    --verbose-llvm-cpu-features             Enable compiler debug output for LLVM CPU features
-    \\    --debug-log=<string>                    Enable printing debug/info log messages for scope
-    \\    --debug-compile-errors                  Crash with helpful diagnostics at the first compile error
-    \\    --debug-link-snapshot                   Enable dumping of the linker's state in JSON
+    \\    -f[no-]lld                                          Use LLD as the linker
+    \\    -f[no-]llvm                                         Use LLVM as the codegen backend
+    \\    -f[no-]compiler-rt                                  (default) Include compiler-rt symbols in output
+    \\    -rpath=<string>                                     Add directory to the runtime library search path
+    \\    -f[no-]each-lib-rpath                               Ensure adding rpath for each used dynamic library
+    \\    -f[no-]allow-shlib-undefined                        Allow undefined symbols in shared libraries
+    \\    --build-id=<tag>                                    Help coordinate stripped binaries with debug symbols
+    \\    --eh-frame-hdr                                      Enable C++ exception handling by passing --eh-frame-hdr to linker
+    \\    --emit-relocs                                       Enable output of relocation sections for post build tools
+    \\    --[no-]gc-sections                                  Force removal of functions and data that are unreachable by the entry point or exported symbols
+    \\    --stack=<integer>                                   Override default stack size
+    \\    --image-base=<integer>                              Set base address for executable image
+    \\    -D<string>                                          Define C macros available within the `@cImport` namespace
+    \\    --mod=<string>                                      Define modules available as dependencies for the current target
+    \\    --deps=<string>                                     Define module dependencies for the current target
+    \\    --dep=<string>                                      Define module dependencies for the current target
+    \\    -cflags=<string>                                    Set extra flags for the next position C source files
+    \\    -rcflags=<string>                                   Set extra flags for the next positional .rc source files
+    \\    -lc                                                 Link libc
+    \\    -rdynamic                                           Add all symbols to the dynamic symbol table
+    \\    -dynamic                                            Force output to be dynamically linked
+    \\    -static                                             Force output to be statically linked
+    \\    -Bsymbolic                                          Bind global references locally
+    \\    -z<string>                                          Set linker extension flags:
+    \\                                                          nodelete                   Indicate that the object cannot be deleted from a process
+    \\                                                          notext                     Permit read-only relocations in read-only segments
+    \\                                                          defs                       Force a fatal error if any undefined symbols remain
+    \\                                                          undefs                     Reverse of -z defs
+    \\                                                          origin                     Indicate that the object must have its origin processed
+    \\                                                          nocopyreloc                Disable the creation of copy relocations
+    \\                                                          now (default)              Force all relocations to be processed on load
+    \\                                                          lazy                       Don't force all relocations to be processed on load
+    \\                                                          relro (default)            Force all relocations to be read-only after processing
+    \\                                                          norelro                    Don't force all relocations to be read-only after processing
+    \\                                                          common-page-size=[bytes]   Set the common page size for ELF binaries
+    \\                                                          max-page-size=[bytes]      Set the max page size for ELF binaries
+    \\    --color=<tag>                                       Enable or disable colored error messages
+    \\    --debug-incremental                                 Enable experimental feature: incremental compilation
+    \\    -ftime-report                                       Print timing diagnostics
+    \\    -fstack-report                                      Print stack size diagnostics
+    \\    --verbose-link                                      Display linker invocations
+    \\    --verbose-cc                                        Display C compiler invocations
+    \\    --verbose-air                                       Enable compiler debug output for Zig AIR
+    \\    --verbose-mir                                       Enable compiler debug output for Zig MIR
+    \\    --verbose-llvm-ir                                   Enable compiler debug output for LLVM IR
+    \\    --verbose-cimport                                   Enable compiler debug output for C imports
+    \\    --verbose-llvm-cpu-features                         Enable compiler debug output for LLVM CPU features
+    \\    --debug-log=<string>                                Enable printing debug/info log messages for scope
+    \\    --debug-compile-errors                              Crash with helpful diagnostics at the first compile error
+    \\    --debug-link-snapshot                               Enable dumping of the linker's state in JSON
     \\
     \\
 ;
-const archive_help: [:0]const u8 =
+const module_help: [:0]const u8 = 
+    \\    -target=<string>                <arch><sub>-<os>-<abi> see the targets command
+    \\    -O<tag>                         Choose what to optimize for:
+    \\                                      Debug          Optimizations off, safety on
+    \\                                      ReleaseSafe    Optimizations on, safety on
+    \\                                      ReleaseFast    Optimizations on, safety off
+    \\                                      ReleaseSmall   Size optimizations on, safety off
+    \\    -ofmt=<tag>                     Override target object format:
+    \\                                      elf                    Executable and Linking Format
+    \\                                      c                      C source code
+    \\                                      wasm                   WebAssembly
+    \\                                      coff                   Common Object File Format (Windows)
+    \\                                      macho                  macOS relocatables
+    \\                                      spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    \\                                      plan9                  Plan 9 from Bell Labs object format
+    \\                                      hex (planned feature)  Intel IHEX
+    \\                                      raw (planned feature)  Dump machine code directly
+    \\    --mcpu=<string>                 Target a specific cpu type (-mcpu=help for details)
+    \\    -mcmodel=<tag>                  Limit range of code and data virtual addresses
+    \\    -m[no-]red-zone                 Enable or disable the "red-zone"
+    \\    -f[no-]omit-frame-pointer       Omit the stack frame pointer
+    \\    -f[no-]PIC                      Enable Position Independent Code
+    \\    -f[no-]stack-check              Enable stack probing in unsafe builds
+    \\    -f[no-]stack-protector          Enable stack protection in unsafe builds
+    \\    -f[no-]sanitize-c               Enable C undefined behaviour detection in unsafe builds
+    \\    -f[no-]valgrind                 Include valgrind client requests in release builds
+    \\    -f[no-]sanitize-thread          Enable thread sanitizer
+    \\    -f[no-]unwind-tables            Always produce unwind table entries for all functions
+    \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
+    \\    -f[no-]single-threaded          Code assumes there is only one thread
+    \\    -f[no-]strip                    Omit debug symbols
+    \\    -f[no-]formatted-panics         Enable formatted safety panics
+    \\    -idirafter=<string>             Add directory to AFTER include search path
+    \\    -isystem=<string>               Add directory to SYSTEM include search path
+    \\    -I<string>                      Add directories to include search path
+    \\    -cflags=<string>                Set extra flags for the next position C source files
+    \\    -rcflags=<string>               Set extra flags for the next positional .rc source files
+    \\    -D<string>                      Define C macros available within the `@cImport` namespace
+    \\    --library=<string>              Link against system library (only if actually used)
+    \\    -needed-library=<string>        Link against system library (even if unused)
+    \\    -weak_library=<string>          Link against system library marking it and all referenced symbols as weak
+    \\    --library-directory=<string>    Add a directory to the library search path
+    \\
+    \\
+;
+const archive_help: [:0]const u8 = 
     \\    --format=<tag>          Archive format to create
     \\    --plugin                Ignored for compatibility
     \\    --output=<string>       Extraction target directory
@@ -1178,7 +1526,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    --output-target=<string>
     \\    --only-section=<string>
     \\    --pad-to=<integer>
@@ -1190,7 +1538,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    --color=<tag>           Enable or disable colored error messages
     \\    --stdin                 Format code from stdin; output to stdout
     \\    --check                 List non-conforming files and exit with an error if the list is non-empty
