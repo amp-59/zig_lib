@@ -29,8 +29,6 @@ pub const BuildCommand = struct {
     emit_docs: ?PathUnion = null,
     /// (default=no) Output analysis (.json)
     emit_analysis: ?PathUnion = null,
-    /// (default=yes) Output an import when building a Windows DLL (.lib)
-    emit_implib: ?PathUnion = null,
     /// Override the local cache directory
     cache_root: ?[]const u8 = null,
     /// Override the global cache directory
@@ -137,51 +135,56 @@ pub const BuildCommand = struct {
     } = null,
     /// Limit range of code and data virtual addresses
     code_model: ?builtin.CodeModel = null,
-    /// Enable the "red-zone"
+    /// Toggle definition of `PanicData` parameter
+    runtime_safety: ?bool = null,
+    /// Toggle definition of `PanicData` parameter
+    panic_data: ?bool = null,
+    /// Toggle check for returning from a noreturn function
+    check_unwrapped_error: ?bool = null,
+    /// Toggle check for unwrapping (.?) null optional values
+    check_unwrapped_null: ?bool = null,
+    /// Toggle check for returning from a noreturn function
+    check_returned_noreturn: ?bool = null,
+    /// Toggle check for reaching unreachable code
+    check_reached_unreachable: ?bool = null,
+    /// Toggle check for slice[idx] st. idx < slice.len
+    check_accessed_out_of_bounds: ?bool = null,
+    /// Toggle check for slice[start..finish] st. start <= finish
+    check_accessed_out_of_order: ?bool = null,
+    /// Toggle check for tagged union field accesses
+    check_accessed_inactive_field: ?bool = null,
+    /// Toggle check for division by zero
+    check_divided_by_zero: ?bool = null,
+    /// Toggle check for pointer aliasing
+    check_memcpy_argument_aliasing: ?bool = null,
+    /// Toggle check for @memcpy argument lengths
+    check_mismatched_memcpy_argument_lengths: ?bool = null,
+    /// Toggle check for for loop capture lengths
+    check_mismatched_for_loop_capture_lengths: ?bool = null,
+    /// Toggle check for sentinel value
+    check_mismatched_sentinel: ?bool = null,
+    /// Toggle check for shift amount for non power-of-two integer bit sizes
+    check_shift_amt_overflowed: ?bool = null,
+    /// Toggle checks for inexact arithmetic by @shlExact, @shrExact, and @divExact
+    check_arith_exact: ?bool = null,
+    /// Toggle checks for integer overflow by addition, subtraction, and multiplication
+    check_arith_overflowed: ?bool = null,
+    /// Toggle check for @intCast to smaller from larger
+    check_cast_truncated_data: ?bool = null,
+    /// Toggle check for @enumFromInt
+    check_cast_to_enum_from_invalid: ?bool = null,
+    /// Toggle checks for @errorCast and @errorFromInt
+    check_cast_to_error_from_invalid: ?bool = null,
+    /// Toggle checks for @ptrCast and @ptrFromInt
+    check_cast_to_pointer_from_invalid: ?bool = null,
+    /// Toggle check for @intFromFloat
+    check_cast_to_int_from_invalid: ?bool = null,
+    /// Toggle check for @intCast to unsigned from signed
+    check_cast_to_unsigned_from_negative: ?bool = null,
+    /// Enable or disable the "red-zone"
     red_zone: ?bool = null,
-    /// Enable implicit builtin knowledge of functions
+    /// Enable or disable implicit builtin knowledge of functions
     implicit_builtins: ?bool = null,
-    /// Enables panic causes:
-    ///   memcpy_argument_aliasing
-    ///   memcpy_argument_lengths_mismatched
-    ///   for_loop_capture_lengths_mismatched
-    panic_mismatched_arguments: ?bool = null,
-    /// Enables panic causes:
-    ///   message
-    ///   discarded_error
-    ///   corrupt_switch
-    ///   returned_noreturn
-    ///   reached_unreachable
-    ///   accessed_null_value
-    panic_reached_unreachable: ?bool = null,
-    /// Enables panic causes:
-    ///   accessed_out_of_bounds
-    ///   accessed_out_of_order
-    ///   accessed_inactive_field
-    panic_accessed_invalid_memory: ?bool = null,
-    /// Enables panic causes:
-    ///   mismatched_sentinel
-    ///   mismatched_non_scalar_sentinel
-    panic_mismatched_sentinel: ?bool = null,
-    /// Enables panic causes:
-    ///   div_with_remainder
-    ///   shl_overflowed
-    ///   shr_overflowed
-    ///   shift_amt_overflowed
-    panic_arith_lost_precision: ?bool = null,
-    /// Enables panic causes:
-    ///   mul_overflowed
-    ///   add_overflowed
-    ///   sub_overflowed
-    panic_arith_overflowed: ?bool = null,
-    /// Enables panic causes:
-    ///   cast_to_int_from_invalid
-    ///   cast_truncated_data
-    ///   cast_to_unsigned_from_negative
-    ///   cast_to_pointer_from_invalid
-    ///   cast_to_enum_from_invalid
-    ///   cast_to_error_from_invalid
-    panic_cast_from_invalid: ?bool = null,
     /// Omit the stack frame pointer
     omit_frame_pointer: ?bool = null,
     /// (WASI) Execution model
@@ -301,8 +304,12 @@ pub const BuildCommand = struct {
     macros: ?[]const types.Macro = null,
     /// Define modules available as dependencies for the current target
     modules: ?[]const types.Module = null,
+    /// Define modules available as dependencies for the current target
+    mods: []BuildModuleCommand = &.{},
     /// Define module dependencies for the current target
     dependencies: ?[]const types.ModuleDependency = null,
+    /// Define module dependencies for the current target
+    deps: ?[]const types.ModuleDependency = null,
     /// Set extra flags for the next position C source files
     cflags: ?[]const []const u8 = null,
     /// Set extra flags for the next positional .rc source files
@@ -371,14 +378,18 @@ pub const BuildCommand = struct {
     debug_link_snapshot: bool = false,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
+    pub fn write(
+        buf: [*]u8,
+        cmd: *BuildCommand,
+        zig_exe: []const u8,
+        files: []const types.Path,
+    ) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
         ptr[0] = 0;
         ptr += 1;
-        ptr[0..6].* = "build-".*;
-        ptr += 6;
+        ptr = fmt.strcpyEqu(ptr, "build-");
         ptr = fmt.strcpyEqu(ptr, @tagName(cmd.kind));
         ptr[0] = 0;
         ptr += 1;
@@ -487,21 +498,6 @@ pub const BuildCommand = struct {
                 },
             }
         }
-        if (cmd.emit_implib) |emit_implib| {
-            switch (emit_implib) {
-                .yes => |yes| {
-                    if (yes) |arg| {
-                        ptr = fmt.strcpyEqu(ptr, "-femit-implib\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
-                    } else {
-                        ptr = fmt.strcpyEqu(ptr, "-femit-implib\x00");
-                    }
-                },
-                .no => {
-                    ptr = fmt.strcpyEqu(ptr, "-fno-emit-implib\x00");
-                },
-            }
-        }
         if (cmd.cache_root) |cache_root| {
             ptr = fmt.strcpyEqu(ptr, "--cache-dir\x00");
             ptr = fmt.strcpyEqu(ptr, cache_root);
@@ -527,15 +523,13 @@ pub const BuildCommand = struct {
             ptr += 1;
         }
         if (cmd.target) |target| {
-            ptr[0..8].* = "-target\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "-target\x00");
             ptr = fmt.strcpyEqu(ptr, target);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.cpu) |cpu| {
-            ptr[0..6].* = "-mcpu\x00".*;
-            ptr += 6;
+            ptr = fmt.strcpyEqu(ptr, "-mcpu\x00");
             ptr = fmt.strcpyEqu(ptr, @tagName(cpu));
             ptr[0] = 0;
             ptr += 1;
@@ -545,6 +539,167 @@ pub const BuildCommand = struct {
             ptr = fmt.strcpyEqu(ptr, @tagName(code_model));
             ptr[0] = 0;
             ptr += 1;
+        }
+        if (cmd.runtime_safety) |runtime_safety| {
+            if (runtime_safety) {
+                ptr = fmt.strcpyEqu(ptr, "-fruntime-safety\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-runtime-safety\x00");
+            }
+        }
+        if (cmd.panic_data) |panic_data| {
+            if (panic_data) {
+                ptr = fmt.strcpyEqu(ptr, "-fpanic-data\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-panic-data\x00");
+            }
+        }
+        if (cmd.check_unwrapped_error) |check_unwrapped_error| {
+            if (check_unwrapped_error) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-unwrapped-error\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-unwrapped-error\x00");
+            }
+        }
+        if (cmd.check_unwrapped_null) |check_unwrapped_null| {
+            if (check_unwrapped_null) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-unwrapped-null\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-unwrapped-null\x00");
+            }
+        }
+        if (cmd.check_returned_noreturn) |check_returned_noreturn| {
+            if (check_returned_noreturn) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-returned-noreturn\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-returned-noreturn\x00");
+            }
+        }
+        if (cmd.check_reached_unreachable) |check_reached_unreachable| {
+            if (check_reached_unreachable) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-reached-unreachable\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-reached-unreachable\x00");
+            }
+        }
+        if (cmd.check_accessed_out_of_bounds) |check_accessed_out_of_bounds| {
+            if (check_accessed_out_of_bounds) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-accessed-out-of-bounds\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-accessed-out-of-bounds\x00");
+            }
+        }
+        if (cmd.check_accessed_out_of_order) |check_accessed_out_of_order| {
+            if (check_accessed_out_of_order) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-accessed-out-of-order\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-accessed-out-of-order\x00");
+            }
+        }
+        if (cmd.check_accessed_inactive_field) |check_accessed_inactive_field| {
+            if (check_accessed_inactive_field) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-accessed-inactive-field\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-accessed-inactive-field\x00");
+            }
+        }
+        if (cmd.check_divided_by_zero) |check_divided_by_zero| {
+            if (check_divided_by_zero) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-divided-by-zero\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-divided-by-zero\x00");
+            }
+        }
+        if (cmd.check_memcpy_argument_aliasing) |check_memcpy_argument_aliasing| {
+            if (check_memcpy_argument_aliasing) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-memcpy-argument-aliasing\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-memcpy-argument-aliasing\x00");
+            }
+        }
+        if (cmd.check_mismatched_memcpy_argument_lengths) |check_mismatched_memcpy_argument_lengths| {
+            if (check_mismatched_memcpy_argument_lengths) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-mismatched-memcpy-argument-lengths\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-mismatched-memcpy-argument-lengths\x00");
+            }
+        }
+        if (cmd.check_mismatched_for_loop_capture_lengths) |check_mismatched_for_loop_capture_lengths| {
+            if (check_mismatched_for_loop_capture_lengths) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-mismatched-for-loop-capture-lengths\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-mismatched-for-loop-capture-lengths\x00");
+            }
+        }
+        if (cmd.check_mismatched_sentinel) |check_mismatched_sentinel| {
+            if (check_mismatched_sentinel) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-mismatched-sentinel\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-mismatched-sentinel\x00");
+            }
+        }
+        if (cmd.check_shift_amt_overflowed) |check_shift_amt_overflowed| {
+            if (check_shift_amt_overflowed) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-shift-amt-overflowed\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-shift-amt-overflowed\x00");
+            }
+        }
+        if (cmd.check_arith_exact) |check_arith_exact| {
+            if (check_arith_exact) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-arith-exact\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-arith-exact\x00");
+            }
+        }
+        if (cmd.check_arith_overflowed) |check_arith_overflowed| {
+            if (check_arith_overflowed) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-arith-overflowed\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-arith-overflowed\x00");
+            }
+        }
+        if (cmd.check_cast_truncated_data) |check_cast_truncated_data| {
+            if (check_cast_truncated_data) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-cast-truncated-data\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-cast-truncated-data\x00");
+            }
+        }
+        if (cmd.check_cast_to_enum_from_invalid) |check_cast_to_enum_from_invalid| {
+            if (check_cast_to_enum_from_invalid) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-cast-to-enum-from-invalid\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-cast-to-enum-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_error_from_invalid) |check_cast_to_error_from_invalid| {
+            if (check_cast_to_error_from_invalid) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-cast-to-error-from-invalid\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-cast-to-error-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_pointer_from_invalid) |check_cast_to_pointer_from_invalid| {
+            if (check_cast_to_pointer_from_invalid) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-cast-to-pointer-from-invalid\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-cast-to-pointer-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_int_from_invalid) |check_cast_to_int_from_invalid| {
+            if (check_cast_to_int_from_invalid) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-cast-to-int-from-invalid\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-cast-to-int-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_unsigned_from_negative) |check_cast_to_unsigned_from_negative| {
+            if (check_cast_to_unsigned_from_negative) {
+                ptr = fmt.strcpyEqu(ptr, "-fcheck-cast-to-unsigned-from-negative\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-check-cast-to-unsigned-from-negative\x00");
+            }
         }
         if (cmd.red_zone) |red_zone| {
             if (red_zone) {
@@ -558,55 +713,6 @@ pub const BuildCommand = struct {
                 ptr = fmt.strcpyEqu(ptr, "-fbuiltin\x00");
             } else {
                 ptr = fmt.strcpyEqu(ptr, "-fno-builtin\x00");
-            }
-        }
-        if (cmd.panic_mismatched_arguments) |panic_mismatched_arguments| {
-            if (panic_mismatched_arguments) {
-                ptr = fmt.strcpyEqu(ptr, "-fpanic-mismatched-arguments\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-panic-mismatched-arguments\x00");
-            }
-        }
-        if (cmd.panic_reached_unreachable) |panic_reached_unreachable| {
-            if (panic_reached_unreachable) {
-                ptr = fmt.strcpyEqu(ptr, "-fpanic-reached-unreachable\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-panic-reached-unreachable\x00");
-            }
-        }
-        if (cmd.panic_accessed_invalid_memory) |panic_accessed_invalid_memory| {
-            if (panic_accessed_invalid_memory) {
-                ptr = fmt.strcpyEqu(ptr, "-fpanic-accessed-invalid-memory\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-panic-accessed-invalid-memory\x00");
-            }
-        }
-        if (cmd.panic_mismatched_sentinel) |panic_mismatched_sentinel| {
-            if (panic_mismatched_sentinel) {
-                ptr = fmt.strcpyEqu(ptr, "-fpanic-mismatched-sentinel\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-panic-mismatched-sentinel\x00");
-            }
-        }
-        if (cmd.panic_arith_lost_precision) |panic_arith_lost_precision| {
-            if (panic_arith_lost_precision) {
-                ptr = fmt.strcpyEqu(ptr, "-fpanic-arith-lost-precision\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-panic-arith-lost-precision\x00");
-            }
-        }
-        if (cmd.panic_arith_overflowed) |panic_arith_overflowed| {
-            if (panic_arith_overflowed) {
-                ptr = fmt.strcpyEqu(ptr, "-fpanic-arith-overflowed\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-panic-arith-overflowed\x00");
-            }
-        }
-        if (cmd.panic_cast_from_invalid) |panic_cast_from_invalid| {
-            if (panic_cast_from_invalid) {
-                ptr = fmt.strcpyEqu(ptr, "-fpanic-cast-from-invalid\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-panic-cast-from-invalid\x00");
             }
         }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
@@ -623,8 +729,7 @@ pub const BuildCommand = struct {
             ptr += 1;
         }
         if (cmd.name) |name| {
-            ptr[0..7].* = "--name\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--name\x00");
             ptr = fmt.strcpyEqu(ptr, name);
             ptr[0] = 0;
             ptr += 1;
@@ -663,24 +768,21 @@ pub const BuildCommand = struct {
         }
         if (cmd.pic) |pic| {
             if (pic) {
-                ptr[0..6].* = "-fPIC\x00".*;
-                ptr += 6;
+                ptr = fmt.strcpyEqu(ptr, "-fPIC\x00");
             } else {
                 ptr = fmt.strcpyEqu(ptr, "-fno-PIC\x00");
             }
         }
         if (cmd.pie) |pie| {
             if (pie) {
-                ptr[0..6].* = "-fPIE\x00".*;
-                ptr += 6;
+                ptr = fmt.strcpyEqu(ptr, "-fPIE\x00");
             } else {
                 ptr = fmt.strcpyEqu(ptr, "-fno-PIE\x00");
             }
         }
         if (cmd.lto) |lto| {
             if (lto) {
-                ptr[0..6].* = "-flto\x00".*;
-                ptr += 6;
+                ptr = fmt.strcpyEqu(ptr, "-flto\x00");
             } else {
                 ptr = fmt.strcpyEqu(ptr, "-fno-lto\x00");
             }
@@ -764,8 +866,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.strip) |strip| {
             if (strip) {
-                ptr[0..8].* = "-fstrip\x00".*;
-                ptr += 8;
+                ptr = fmt.strcpyEqu(ptr, "-fstrip\x00");
             } else {
                 ptr = fmt.strcpyEqu(ptr, "-fno-strip\x00");
             }
@@ -778,8 +879,7 @@ pub const BuildCommand = struct {
             }
         }
         if (cmd.format) |format| {
-            ptr[0..6].* = "-ofmt\x3d".*;
-            ptr += 6;
+            ptr = fmt.strcpyEqu(ptr, "-ofmt\x3d");
             ptr = fmt.strcpyEqu(ptr, @tagName(format));
             ptr[0] = 0;
             ptr += 1;
@@ -797,8 +897,7 @@ pub const BuildCommand = struct {
             ptr += 1;
         }
         if (cmd.libc) |libc| {
-            ptr[0..7].* = "--libc\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--libc\x00");
             ptr = fmt.strcpyEqu(ptr, libc);
             ptr[0] = 0;
             ptr += 1;
@@ -861,8 +960,7 @@ pub const BuildCommand = struct {
         if (cmd.entry) |entry| {
             switch (entry) {
                 .yes => |arg| {
-                    ptr[0..8].* = "-fentry\x3d".*;
-                    ptr += 8;
+                    ptr = fmt.strcpyEqu(ptr, "-fentry\x3d");
                     ptr = fmt.strcpyEqu(ptr, arg);
                     ptr[0] = 0;
                     ptr += 1;
@@ -874,16 +972,14 @@ pub const BuildCommand = struct {
         }
         if (cmd.lld) |lld| {
             if (lld) {
-                ptr[0..6].* = "-flld\x00".*;
-                ptr += 6;
+                ptr = fmt.strcpyEqu(ptr, "-flld\x00");
             } else {
                 ptr = fmt.strcpyEqu(ptr, "-fno-lld\x00");
             }
         }
         if (cmd.llvm) |llvm| {
             if (llvm) {
-                ptr[0..7].* = "-fllvm\x00".*;
-                ptr += 7;
+                ptr = fmt.strcpyEqu(ptr, "-fllvm\x00");
             } else {
                 ptr = fmt.strcpyEqu(ptr, "-fno-llvm\x00");
             }
@@ -896,8 +992,7 @@ pub const BuildCommand = struct {
             }
         }
         if (cmd.rpath) |rpath| {
-            ptr[0..7].* = "-rpath\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "-rpath\x00");
             ptr = fmt.strcpyEqu(ptr, rpath);
             ptr[0] = 0;
             ptr += 1;
@@ -936,8 +1031,7 @@ pub const BuildCommand = struct {
             }
         }
         if (cmd.stack) |stack| {
-            ptr[0..8].* = "--stack\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--stack\x00");
             ptr = fmt.Ud64.write(ptr, stack);
             ptr[0] = 0;
             ptr += 1;
@@ -958,8 +1052,14 @@ pub const BuildCommand = struct {
                 ptr += value.formatWriteBuf(ptr);
             }
         }
+        for (cmd.mods) |*value| {
+            ptr = tasks.BuildModuleCommand.write(ptr, value);
+        }
         if (cmd.dependencies) |dependencies| {
             ptr += types.ModuleDependencies.formatWriteBuf(.{ .value = dependencies }, ptr);
+        }
+        if (cmd.deps) |deps| {
+            ptr += types.ModuleDependencies.formatWriteBuf(.{ .value = deps }, ptr);
         }
         if (cmd.cflags) |cflags| {
             ptr += types.ExtraFlags.formatWriteBuf(.{ .value = cflags }, ptr);
@@ -978,8 +1078,7 @@ pub const BuildCommand = struct {
             ptr = fmt.strcpyEqu(ptr, "-dynamic\x00");
         }
         if (cmd.static) {
-            ptr[0..8].* = "-static\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "-static\x00");
         }
         if (cmd.symbolic) {
             ptr = fmt.strcpyEqu(ptr, "-Bsymbolic\x00");
@@ -997,8 +1096,7 @@ pub const BuildCommand = struct {
             ptr += value.formatWriteBuf(ptr);
         }
         if (cmd.color) |color| {
-            ptr[0..8].* = "--color\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--color\x00");
             ptr = fmt.strcpyEqu(ptr, @tagName(color));
             ptr[0] = 0;
             ptr += 1;
@@ -1045,9 +1143,9 @@ pub const BuildCommand = struct {
         if (cmd.debug_link_snapshot) {
             ptr = fmt.strcpyEqu(ptr, "--debug-link-snapshot\x00");
         }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return ptr;
     }
-    pub fn formatLength(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path) usize {
+    pub fn length(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 8 +% zig_exe.len +% @tagName(cmd.kind).len;
         if (cmd.emit_bin) |emit_bin| {
@@ -1148,20 +1246,6 @@ pub const BuildCommand = struct {
                 },
             }
         }
-        if (cmd.emit_implib) |emit_implib| {
-            switch (emit_implib) {
-                .yes => |yes| {
-                    if (yes) |arg| {
-                        len +%= 14 +% arg.formatLength();
-                    } else {
-                        len +%= 14;
-                    }
-                },
-                .no => {
-                    len +%= 17;
-                },
-            }
-        }
         if (cmd.cache_root) |cache_root| {
             len +%= 13 +% cache_root.len;
         }
@@ -1183,6 +1267,167 @@ pub const BuildCommand = struct {
         if (cmd.code_model) |code_model| {
             len +%= 10 +% @tagName(code_model).len;
         }
+        if (cmd.runtime_safety) |runtime_safety| {
+            if (runtime_safety) {
+                len +%= 17;
+            } else {
+                len +%= 20;
+            }
+        }
+        if (cmd.panic_data) |panic_data| {
+            if (panic_data) {
+                len +%= 13;
+            } else {
+                len +%= 16;
+            }
+        }
+        if (cmd.check_unwrapped_error) |check_unwrapped_error| {
+            if (check_unwrapped_error) {
+                len +%= 24;
+            } else {
+                len +%= 27;
+            }
+        }
+        if (cmd.check_unwrapped_null) |check_unwrapped_null| {
+            if (check_unwrapped_null) {
+                len +%= 23;
+            } else {
+                len +%= 26;
+            }
+        }
+        if (cmd.check_returned_noreturn) |check_returned_noreturn| {
+            if (check_returned_noreturn) {
+                len +%= 26;
+            } else {
+                len +%= 29;
+            }
+        }
+        if (cmd.check_reached_unreachable) |check_reached_unreachable| {
+            if (check_reached_unreachable) {
+                len +%= 28;
+            } else {
+                len +%= 31;
+            }
+        }
+        if (cmd.check_accessed_out_of_bounds) |check_accessed_out_of_bounds| {
+            if (check_accessed_out_of_bounds) {
+                len +%= 31;
+            } else {
+                len +%= 34;
+            }
+        }
+        if (cmd.check_accessed_out_of_order) |check_accessed_out_of_order| {
+            if (check_accessed_out_of_order) {
+                len +%= 30;
+            } else {
+                len +%= 33;
+            }
+        }
+        if (cmd.check_accessed_inactive_field) |check_accessed_inactive_field| {
+            if (check_accessed_inactive_field) {
+                len +%= 32;
+            } else {
+                len +%= 35;
+            }
+        }
+        if (cmd.check_divided_by_zero) |check_divided_by_zero| {
+            if (check_divided_by_zero) {
+                len +%= 24;
+            } else {
+                len +%= 27;
+            }
+        }
+        if (cmd.check_memcpy_argument_aliasing) |check_memcpy_argument_aliasing| {
+            if (check_memcpy_argument_aliasing) {
+                len +%= 33;
+            } else {
+                len +%= 36;
+            }
+        }
+        if (cmd.check_mismatched_memcpy_argument_lengths) |check_mismatched_memcpy_argument_lengths| {
+            if (check_mismatched_memcpy_argument_lengths) {
+                len +%= 43;
+            } else {
+                len +%= 46;
+            }
+        }
+        if (cmd.check_mismatched_for_loop_capture_lengths) |check_mismatched_for_loop_capture_lengths| {
+            if (check_mismatched_for_loop_capture_lengths) {
+                len +%= 44;
+            } else {
+                len +%= 47;
+            }
+        }
+        if (cmd.check_mismatched_sentinel) |check_mismatched_sentinel| {
+            if (check_mismatched_sentinel) {
+                len +%= 28;
+            } else {
+                len +%= 31;
+            }
+        }
+        if (cmd.check_shift_amt_overflowed) |check_shift_amt_overflowed| {
+            if (check_shift_amt_overflowed) {
+                len +%= 29;
+            } else {
+                len +%= 32;
+            }
+        }
+        if (cmd.check_arith_exact) |check_arith_exact| {
+            if (check_arith_exact) {
+                len +%= 20;
+            } else {
+                len +%= 23;
+            }
+        }
+        if (cmd.check_arith_overflowed) |check_arith_overflowed| {
+            if (check_arith_overflowed) {
+                len +%= 25;
+            } else {
+                len +%= 28;
+            }
+        }
+        if (cmd.check_cast_truncated_data) |check_cast_truncated_data| {
+            if (check_cast_truncated_data) {
+                len +%= 28;
+            } else {
+                len +%= 31;
+            }
+        }
+        if (cmd.check_cast_to_enum_from_invalid) |check_cast_to_enum_from_invalid| {
+            if (check_cast_to_enum_from_invalid) {
+                len +%= 34;
+            } else {
+                len +%= 37;
+            }
+        }
+        if (cmd.check_cast_to_error_from_invalid) |check_cast_to_error_from_invalid| {
+            if (check_cast_to_error_from_invalid) {
+                len +%= 35;
+            } else {
+                len +%= 38;
+            }
+        }
+        if (cmd.check_cast_to_pointer_from_invalid) |check_cast_to_pointer_from_invalid| {
+            if (check_cast_to_pointer_from_invalid) {
+                len +%= 37;
+            } else {
+                len +%= 40;
+            }
+        }
+        if (cmd.check_cast_to_int_from_invalid) |check_cast_to_int_from_invalid| {
+            if (check_cast_to_int_from_invalid) {
+                len +%= 33;
+            } else {
+                len +%= 36;
+            }
+        }
+        if (cmd.check_cast_to_unsigned_from_negative) |check_cast_to_unsigned_from_negative| {
+            if (check_cast_to_unsigned_from_negative) {
+                len +%= 39;
+            } else {
+                len +%= 42;
+            }
+        }
         if (cmd.red_zone) |red_zone| {
             if (red_zone) {
                 len +%= 11;
@@ -1195,55 +1440,6 @@ pub const BuildCommand = struct {
                 len +%= 10;
             } else {
                 len +%= 13;
-            }
-        }
-        if (cmd.panic_mismatched_arguments) |panic_mismatched_arguments| {
-            if (panic_mismatched_arguments) {
-                len +%= 29;
-            } else {
-                len +%= 32;
-            }
-        }
-        if (cmd.panic_reached_unreachable) |panic_reached_unreachable| {
-            if (panic_reached_unreachable) {
-                len +%= 28;
-            } else {
-                len +%= 31;
-            }
-        }
-        if (cmd.panic_accessed_invalid_memory) |panic_accessed_invalid_memory| {
-            if (panic_accessed_invalid_memory) {
-                len +%= 32;
-            } else {
-                len +%= 35;
-            }
-        }
-        if (cmd.panic_mismatched_sentinel) |panic_mismatched_sentinel| {
-            if (panic_mismatched_sentinel) {
-                len +%= 28;
-            } else {
-                len +%= 31;
-            }
-        }
-        if (cmd.panic_arith_lost_precision) |panic_arith_lost_precision| {
-            if (panic_arith_lost_precision) {
-                len +%= 29;
-            } else {
-                len +%= 32;
-            }
-        }
-        if (cmd.panic_arith_overflowed) |panic_arith_overflowed| {
-            if (panic_arith_overflowed) {
-                len +%= 25;
-            } else {
-                len +%= 28;
-            }
-        }
-        if (cmd.panic_cast_from_invalid) |panic_cast_from_invalid| {
-            if (panic_cast_from_invalid) {
-                len +%= 26;
-            } else {
-                len +%= 29;
             }
         }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
@@ -1515,6 +1711,9 @@ pub const BuildCommand = struct {
         if (cmd.dependencies) |dependencies| {
             len = len +% types.ModuleDependencies.formatLength(.{ .value = dependencies });
         }
+        if (cmd.deps) |deps| {
+            len = len +% types.ModuleDependencies.formatLength(.{ .value = deps });
+        }
         if (cmd.cflags) |cflags| {
             len = len +% types.ExtraFlags.formatLength(.{ .value = cflags });
         }
@@ -1700,21 +1899,6 @@ pub const BuildCommand = struct {
                 },
             }
         }
-        if (cmd.emit_implib) |emit_implib| {
-            switch (emit_implib) {
-                .yes => |yes| {
-                    if (yes) |arg| {
-                        array.writeMany("-femit-implib\x3d");
-                        array.writeFormat(arg);
-                    } else {
-                        array.writeMany("-femit-implib\x00");
-                    }
-                },
-                .no => {
-                    array.writeMany("-fno-emit-implib\x00");
-                },
-            }
-        }
         if (cmd.cache_root) |cache_root| {
             array.writeMany("--cache-dir\x00");
             array.writeMany(cache_root);
@@ -1750,6 +1934,167 @@ pub const BuildCommand = struct {
             array.writeMany(@tagName(code_model));
             array.writeOne(0);
         }
+        if (cmd.runtime_safety) |runtime_safety| {
+            if (runtime_safety) {
+                array.writeMany("-fruntime-safety\x00");
+            } else {
+                array.writeMany("-fno-runtime-safety\x00");
+            }
+        }
+        if (cmd.panic_data) |panic_data| {
+            if (panic_data) {
+                array.writeMany("-fpanic-data\x00");
+            } else {
+                array.writeMany("-fno-panic-data\x00");
+            }
+        }
+        if (cmd.check_unwrapped_error) |check_unwrapped_error| {
+            if (check_unwrapped_error) {
+                array.writeMany("-fcheck-unwrapped-error\x00");
+            } else {
+                array.writeMany("-fno-check-unwrapped-error\x00");
+            }
+        }
+        if (cmd.check_unwrapped_null) |check_unwrapped_null| {
+            if (check_unwrapped_null) {
+                array.writeMany("-fcheck-unwrapped-null\x00");
+            } else {
+                array.writeMany("-fno-check-unwrapped-null\x00");
+            }
+        }
+        if (cmd.check_returned_noreturn) |check_returned_noreturn| {
+            if (check_returned_noreturn) {
+                array.writeMany("-fcheck-returned-noreturn\x00");
+            } else {
+                array.writeMany("-fno-check-returned-noreturn\x00");
+            }
+        }
+        if (cmd.check_reached_unreachable) |check_reached_unreachable| {
+            if (check_reached_unreachable) {
+                array.writeMany("-fcheck-reached-unreachable\x00");
+            } else {
+                array.writeMany("-fno-check-reached-unreachable\x00");
+            }
+        }
+        if (cmd.check_accessed_out_of_bounds) |check_accessed_out_of_bounds| {
+            if (check_accessed_out_of_bounds) {
+                array.writeMany("-fcheck-accessed-out-of-bounds\x00");
+            } else {
+                array.writeMany("-fno-check-accessed-out-of-bounds\x00");
+            }
+        }
+        if (cmd.check_accessed_out_of_order) |check_accessed_out_of_order| {
+            if (check_accessed_out_of_order) {
+                array.writeMany("-fcheck-accessed-out-of-order\x00");
+            } else {
+                array.writeMany("-fno-check-accessed-out-of-order\x00");
+            }
+        }
+        if (cmd.check_accessed_inactive_field) |check_accessed_inactive_field| {
+            if (check_accessed_inactive_field) {
+                array.writeMany("-fcheck-accessed-inactive-field\x00");
+            } else {
+                array.writeMany("-fno-check-accessed-inactive-field\x00");
+            }
+        }
+        if (cmd.check_divided_by_zero) |check_divided_by_zero| {
+            if (check_divided_by_zero) {
+                array.writeMany("-fcheck-divided-by-zero\x00");
+            } else {
+                array.writeMany("-fno-check-divided-by-zero\x00");
+            }
+        }
+        if (cmd.check_memcpy_argument_aliasing) |check_memcpy_argument_aliasing| {
+            if (check_memcpy_argument_aliasing) {
+                array.writeMany("-fcheck-memcpy-argument-aliasing\x00");
+            } else {
+                array.writeMany("-fno-check-memcpy-argument-aliasing\x00");
+            }
+        }
+        if (cmd.check_mismatched_memcpy_argument_lengths) |check_mismatched_memcpy_argument_lengths| {
+            if (check_mismatched_memcpy_argument_lengths) {
+                array.writeMany("-fcheck-mismatched-memcpy-argument-lengths\x00");
+            } else {
+                array.writeMany("-fno-check-mismatched-memcpy-argument-lengths\x00");
+            }
+        }
+        if (cmd.check_mismatched_for_loop_capture_lengths) |check_mismatched_for_loop_capture_lengths| {
+            if (check_mismatched_for_loop_capture_lengths) {
+                array.writeMany("-fcheck-mismatched-for-loop-capture-lengths\x00");
+            } else {
+                array.writeMany("-fno-check-mismatched-for-loop-capture-lengths\x00");
+            }
+        }
+        if (cmd.check_mismatched_sentinel) |check_mismatched_sentinel| {
+            if (check_mismatched_sentinel) {
+                array.writeMany("-fcheck-mismatched-sentinel\x00");
+            } else {
+                array.writeMany("-fno-check-mismatched-sentinel\x00");
+            }
+        }
+        if (cmd.check_shift_amt_overflowed) |check_shift_amt_overflowed| {
+            if (check_shift_amt_overflowed) {
+                array.writeMany("-fcheck-shift-amt-overflowed\x00");
+            } else {
+                array.writeMany("-fno-check-shift-amt-overflowed\x00");
+            }
+        }
+        if (cmd.check_arith_exact) |check_arith_exact| {
+            if (check_arith_exact) {
+                array.writeMany("-fcheck-arith-exact\x00");
+            } else {
+                array.writeMany("-fno-check-arith-exact\x00");
+            }
+        }
+        if (cmd.check_arith_overflowed) |check_arith_overflowed| {
+            if (check_arith_overflowed) {
+                array.writeMany("-fcheck-arith-overflowed\x00");
+            } else {
+                array.writeMany("-fno-check-arith-overflowed\x00");
+            }
+        }
+        if (cmd.check_cast_truncated_data) |check_cast_truncated_data| {
+            if (check_cast_truncated_data) {
+                array.writeMany("-fcheck-cast-truncated-data\x00");
+            } else {
+                array.writeMany("-fno-check-cast-truncated-data\x00");
+            }
+        }
+        if (cmd.check_cast_to_enum_from_invalid) |check_cast_to_enum_from_invalid| {
+            if (check_cast_to_enum_from_invalid) {
+                array.writeMany("-fcheck-cast-to-enum-from-invalid\x00");
+            } else {
+                array.writeMany("-fno-check-cast-to-enum-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_error_from_invalid) |check_cast_to_error_from_invalid| {
+            if (check_cast_to_error_from_invalid) {
+                array.writeMany("-fcheck-cast-to-error-from-invalid\x00");
+            } else {
+                array.writeMany("-fno-check-cast-to-error-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_pointer_from_invalid) |check_cast_to_pointer_from_invalid| {
+            if (check_cast_to_pointer_from_invalid) {
+                array.writeMany("-fcheck-cast-to-pointer-from-invalid\x00");
+            } else {
+                array.writeMany("-fno-check-cast-to-pointer-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_int_from_invalid) |check_cast_to_int_from_invalid| {
+            if (check_cast_to_int_from_invalid) {
+                array.writeMany("-fcheck-cast-to-int-from-invalid\x00");
+            } else {
+                array.writeMany("-fno-check-cast-to-int-from-invalid\x00");
+            }
+        }
+        if (cmd.check_cast_to_unsigned_from_negative) |check_cast_to_unsigned_from_negative| {
+            if (check_cast_to_unsigned_from_negative) {
+                array.writeMany("-fcheck-cast-to-unsigned-from-negative\x00");
+            } else {
+                array.writeMany("-fno-check-cast-to-unsigned-from-negative\x00");
+            }
+        }
         if (cmd.red_zone) |red_zone| {
             if (red_zone) {
                 array.writeMany("-mred-zone\x00");
@@ -1762,55 +2107,6 @@ pub const BuildCommand = struct {
                 array.writeMany("-fbuiltin\x00");
             } else {
                 array.writeMany("-fno-builtin\x00");
-            }
-        }
-        if (cmd.panic_mismatched_arguments) |panic_mismatched_arguments| {
-            if (panic_mismatched_arguments) {
-                array.writeMany("-fpanic-mismatched-arguments\x00");
-            } else {
-                array.writeMany("-fno-panic-mismatched-arguments\x00");
-            }
-        }
-        if (cmd.panic_reached_unreachable) |panic_reached_unreachable| {
-            if (panic_reached_unreachable) {
-                array.writeMany("-fpanic-reached-unreachable\x00");
-            } else {
-                array.writeMany("-fno-panic-reached-unreachable\x00");
-            }
-        }
-        if (cmd.panic_accessed_invalid_memory) |panic_accessed_invalid_memory| {
-            if (panic_accessed_invalid_memory) {
-                array.writeMany("-fpanic-accessed-invalid-memory\x00");
-            } else {
-                array.writeMany("-fno-panic-accessed-invalid-memory\x00");
-            }
-        }
-        if (cmd.panic_mismatched_sentinel) |panic_mismatched_sentinel| {
-            if (panic_mismatched_sentinel) {
-                array.writeMany("-fpanic-mismatched-sentinel\x00");
-            } else {
-                array.writeMany("-fno-panic-mismatched-sentinel\x00");
-            }
-        }
-        if (cmd.panic_arith_lost_precision) |panic_arith_lost_precision| {
-            if (panic_arith_lost_precision) {
-                array.writeMany("-fpanic-arith-lost-precision\x00");
-            } else {
-                array.writeMany("-fno-panic-arith-lost-precision\x00");
-            }
-        }
-        if (cmd.panic_arith_overflowed) |panic_arith_overflowed| {
-            if (panic_arith_overflowed) {
-                array.writeMany("-fpanic-arith-overflowed\x00");
-            } else {
-                array.writeMany("-fno-panic-arith-overflowed\x00");
-            }
-        }
-        if (cmd.panic_cast_from_invalid) |panic_cast_from_invalid| {
-            if (panic_cast_from_invalid) {
-                array.writeMany("-fpanic-cast-from-invalid\x00");
-            } else {
-                array.writeMany("-fno-panic-cast-from-invalid\x00");
             }
         }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
@@ -2128,6 +2424,9 @@ pub const BuildCommand = struct {
         if (cmd.dependencies) |dependencies| {
             array.writeFormat(types.ModuleDependencies{ .value = dependencies });
         }
+        if (cmd.deps) |deps| {
+            array.writeFormat(types.ModuleDependencies{ .value = deps });
+        }
         if (cmd.cflags) |cflags| {
             array.writeFormat(types.ExtraFlags{ .value = cflags });
         }
@@ -2302,19 +2601,6 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-analysis", arg)) {
                 cmd.emit_analysis = .no;
-            } else if (mem.testEqualString("-femit-implib", arg[0..@min(arg.len, 13)])) {
-                if (arg.len > 14 and arg[13] == '=') {
-                    cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(
-                        allocator,
-                        args,
-                        &args_idx,
-                        arg[14..],
-                    ) };
-                } else {
-                    cmd.emit_implib = .{ .yes = null };
-                }
-            } else if (mem.testEqualString("-fno-emit-implib", arg)) {
-                cmd.emit_implib = .no;
             } else if (mem.testEqualString("--cache-dir", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
@@ -2564,6 +2850,98 @@ pub const BuildCommand = struct {
                 } else if (mem.testEqualString("large", arg)) {
                     cmd.code_model = .large;
                 }
+            } else if (mem.testEqualString("-fruntime-safety", arg)) {
+                cmd.runtime_safety = true;
+            } else if (mem.testEqualString("-fno-runtime-safety", arg)) {
+                cmd.runtime_safety = false;
+            } else if (mem.testEqualString("-fpanic-data", arg)) {
+                cmd.panic_data = true;
+            } else if (mem.testEqualString("-fno-panic-data", arg)) {
+                cmd.panic_data = false;
+            } else if (mem.testEqualString("-fcheck-unwrapped-error", arg)) {
+                cmd.check_unwrapped_error = true;
+            } else if (mem.testEqualString("-fno-check-unwrapped-error", arg)) {
+                cmd.check_unwrapped_error = false;
+            } else if (mem.testEqualString("-fcheck-unwrapped-null", arg)) {
+                cmd.check_unwrapped_null = true;
+            } else if (mem.testEqualString("-fno-check-unwrapped-null", arg)) {
+                cmd.check_unwrapped_null = false;
+            } else if (mem.testEqualString("-fcheck-returned-noreturn", arg)) {
+                cmd.check_returned_noreturn = true;
+            } else if (mem.testEqualString("-fno-check-returned-noreturn", arg)) {
+                cmd.check_returned_noreturn = false;
+            } else if (mem.testEqualString("-fcheck-reached-unreachable", arg)) {
+                cmd.check_reached_unreachable = true;
+            } else if (mem.testEqualString("-fno-check-reached-unreachable", arg)) {
+                cmd.check_reached_unreachable = false;
+            } else if (mem.testEqualString("-fcheck-accessed-out-of-bounds", arg)) {
+                cmd.check_accessed_out_of_bounds = true;
+            } else if (mem.testEqualString("-fno-check-accessed-out-of-bounds", arg)) {
+                cmd.check_accessed_out_of_bounds = false;
+            } else if (mem.testEqualString("-fcheck-accessed-out-of-order", arg)) {
+                cmd.check_accessed_out_of_order = true;
+            } else if (mem.testEqualString("-fno-check-accessed-out-of-order", arg)) {
+                cmd.check_accessed_out_of_order = false;
+            } else if (mem.testEqualString("-fcheck-accessed-inactive-field", arg)) {
+                cmd.check_accessed_inactive_field = true;
+            } else if (mem.testEqualString("-fno-check-accessed-inactive-field", arg)) {
+                cmd.check_accessed_inactive_field = false;
+            } else if (mem.testEqualString("-fcheck-divided-by-zero", arg)) {
+                cmd.check_divided_by_zero = true;
+            } else if (mem.testEqualString("-fno-check-divided-by-zero", arg)) {
+                cmd.check_divided_by_zero = false;
+            } else if (mem.testEqualString("-fcheck-memcpy-argument-aliasing", arg)) {
+                cmd.check_memcpy_argument_aliasing = true;
+            } else if (mem.testEqualString("-fno-check-memcpy-argument-aliasing", arg)) {
+                cmd.check_memcpy_argument_aliasing = false;
+            } else if (mem.testEqualString("-fcheck-mismatched-memcpy-argument-lengths", arg)) {
+                cmd.check_mismatched_memcpy_argument_lengths = true;
+            } else if (mem.testEqualString("-fno-check-mismatched-memcpy-argument-lengths", arg)) {
+                cmd.check_mismatched_memcpy_argument_lengths = false;
+            } else if (mem.testEqualString("-fcheck-mismatched-for-loop-capture-lengths", arg)) {
+                cmd.check_mismatched_for_loop_capture_lengths = true;
+            } else if (mem.testEqualString("-fno-check-mismatched-for-loop-capture-lengths", arg)) {
+                cmd.check_mismatched_for_loop_capture_lengths = false;
+            } else if (mem.testEqualString("-fcheck-mismatched-sentinel", arg)) {
+                cmd.check_mismatched_sentinel = true;
+            } else if (mem.testEqualString("-fno-check-mismatched-sentinel", arg)) {
+                cmd.check_mismatched_sentinel = false;
+            } else if (mem.testEqualString("-fcheck-shift-amt-overflowed", arg)) {
+                cmd.check_shift_amt_overflowed = true;
+            } else if (mem.testEqualString("-fno-check-shift-amt-overflowed", arg)) {
+                cmd.check_shift_amt_overflowed = false;
+            } else if (mem.testEqualString("-fcheck-arith-exact", arg)) {
+                cmd.check_arith_exact = true;
+            } else if (mem.testEqualString("-fno-check-arith-exact", arg)) {
+                cmd.check_arith_exact = false;
+            } else if (mem.testEqualString("-fcheck-arith-overflowed", arg)) {
+                cmd.check_arith_overflowed = true;
+            } else if (mem.testEqualString("-fno-check-arith-overflowed", arg)) {
+                cmd.check_arith_overflowed = false;
+            } else if (mem.testEqualString("-fcheck-cast-truncated-data", arg)) {
+                cmd.check_cast_truncated_data = true;
+            } else if (mem.testEqualString("-fno-check-cast-truncated-data", arg)) {
+                cmd.check_cast_truncated_data = false;
+            } else if (mem.testEqualString("-fcheck-cast-to-enum-from-invalid", arg)) {
+                cmd.check_cast_to_enum_from_invalid = true;
+            } else if (mem.testEqualString("-fno-check-cast-to-enum-from-invalid", arg)) {
+                cmd.check_cast_to_enum_from_invalid = false;
+            } else if (mem.testEqualString("-fcheck-cast-to-error-from-invalid", arg)) {
+                cmd.check_cast_to_error_from_invalid = true;
+            } else if (mem.testEqualString("-fno-check-cast-to-error-from-invalid", arg)) {
+                cmd.check_cast_to_error_from_invalid = false;
+            } else if (mem.testEqualString("-fcheck-cast-to-pointer-from-invalid", arg)) {
+                cmd.check_cast_to_pointer_from_invalid = true;
+            } else if (mem.testEqualString("-fno-check-cast-to-pointer-from-invalid", arg)) {
+                cmd.check_cast_to_pointer_from_invalid = false;
+            } else if (mem.testEqualString("-fcheck-cast-to-int-from-invalid", arg)) {
+                cmd.check_cast_to_int_from_invalid = true;
+            } else if (mem.testEqualString("-fno-check-cast-to-int-from-invalid", arg)) {
+                cmd.check_cast_to_int_from_invalid = false;
+            } else if (mem.testEqualString("-fcheck-cast-to-unsigned-from-negative", arg)) {
+                cmd.check_cast_to_unsigned_from_negative = true;
+            } else if (mem.testEqualString("-fno-check-cast-to-unsigned-from-negative", arg)) {
+                cmd.check_cast_to_unsigned_from_negative = false;
             } else if (mem.testEqualString("-mred-zone", arg)) {
                 cmd.red_zone = true;
             } else if (mem.testEqualString("-mno-red-zone", arg)) {
@@ -2572,34 +2950,6 @@ pub const BuildCommand = struct {
                 cmd.implicit_builtins = true;
             } else if (mem.testEqualString("-fno-builtin", arg)) {
                 cmd.implicit_builtins = false;
-            } else if (mem.testEqualString("-fpanic-mismatched-arguments", arg)) {
-                cmd.panic_mismatched_arguments = true;
-            } else if (mem.testEqualString("-fno-panic-mismatched-arguments", arg)) {
-                cmd.panic_mismatched_arguments = false;
-            } else if (mem.testEqualString("-fpanic-reached-unreachable", arg)) {
-                cmd.panic_reached_unreachable = true;
-            } else if (mem.testEqualString("-fno-panic-reached-unreachable", arg)) {
-                cmd.panic_reached_unreachable = false;
-            } else if (mem.testEqualString("-fpanic-accessed-invalid-memory", arg)) {
-                cmd.panic_accessed_invalid_memory = true;
-            } else if (mem.testEqualString("-fno-panic-accessed-invalid-memory", arg)) {
-                cmd.panic_accessed_invalid_memory = false;
-            } else if (mem.testEqualString("-fpanic-mismatched-sentinel", arg)) {
-                cmd.panic_mismatched_sentinel = true;
-            } else if (mem.testEqualString("-fno-panic-mismatched-sentinel", arg)) {
-                cmd.panic_mismatched_sentinel = false;
-            } else if (mem.testEqualString("-fpanic-arith-lost-precision", arg)) {
-                cmd.panic_arith_lost_precision = true;
-            } else if (mem.testEqualString("-fno-panic-arith-lost-precision", arg)) {
-                cmd.panic_arith_lost_precision = false;
-            } else if (mem.testEqualString("-fpanic-arith-overflowed", arg)) {
-                cmd.panic_arith_overflowed = true;
-            } else if (mem.testEqualString("-fno-panic-arith-overflowed", arg)) {
-                cmd.panic_arith_overflowed = false;
-            } else if (mem.testEqualString("-fpanic-cast-from-invalid", arg)) {
-                cmd.panic_cast_from_invalid = true;
-            } else if (mem.testEqualString("-fno-panic-cast-from-invalid", arg)) {
-                cmd.panic_cast_from_invalid = false;
             } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
                 cmd.omit_frame_pointer = true;
             } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
@@ -2986,6 +3336,8 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("--deps", arg)) {
                 cmd.dependencies = types.ModuleDependencies.formatParseArgs(allocator, args, &args_idx, arg);
+            } else if (mem.testEqualString("--dep", arg)) {
+                cmd.deps = types.ModuleDependencies.formatParseArgs(allocator, args, &args_idx, arg);
             } else if (mem.testEqualString("-cflags", arg)) {
                 cmd.cflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
             } else if (mem.testEqualString("-rcflags", arg)) {
@@ -3050,6 +3402,871 @@ pub const BuildCommand = struct {
         }
     }
 };
+pub const BuildModuleCommand = struct {
+    /// <arch><sub>-<os>-<abi> see the targets command
+    target: ?[]const u8 = null,
+    /// Choose what to optimize for:
+    ///   Debug          Optimizations off, safety on
+    ///   ReleaseSafe    Optimizations on, safety on
+    ///   ReleaseFast    Optimizations on, safety off
+    ///   ReleaseSmall   Size optimizations on, safety off
+    mode: ?builtin.OptimizeMode = null,
+    /// Override target object format:
+    ///   elf                    Executable and Linking Format
+    ///   c                      C source code
+    ///   wasm                   WebAssembly
+    ///   coff                   Common Object File Format (Windows)
+    ///   macho                  macOS relocatables
+    ///   spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    ///   plan9                  Plan 9 from Bell Labs object format
+    ///   hex (planned feature)  Intel IHEX
+    ///   raw (planned feature)  Dump machine code directly
+    format: ?builtin.ObjectFormat = null,
+    /// Target a specific cpu type (-mcpu=help for details)
+    mcpu: ?[]const u8 = null,
+    /// Limit range of code and data virtual addresses
+    code_model: ?builtin.CodeModel = null,
+    /// Enable or disable the "red-zone"
+    red_zone: ?bool = null,
+    /// Omit the stack frame pointer
+    omit_frame_pointer: ?bool = null,
+    /// Enable Position Independent Code
+    pic: ?bool = null,
+    /// Enable stack probing in unsafe builds
+    stack_check: ?bool = null,
+    /// Enable stack protection in unsafe builds
+    stack_protector: ?bool = null,
+    /// Enable C undefined behaviour detection in unsafe builds
+    sanitize_c: ?bool = null,
+    /// Include valgrind client requests in release builds
+    valgrind: ?bool = null,
+    /// Enable thread sanitizer
+    sanitize_thread: ?bool = null,
+    /// Always produce unwind table entries for all functions
+    unwind_tables: ?bool = null,
+    /// Enable error tracing in `ReleaseFast` mode
+    error_tracing: ?bool = null,
+    /// Code assumes there is only one thread
+    single_threaded: ?bool = null,
+    /// Omit debug symbols
+    strip: ?bool = null,
+    /// Enable formatted safety panics
+    formatted_panics: ?bool = null,
+    /// Add directory to AFTER include search path
+    dirafter: ?[]const u8 = null,
+    /// Add directory to SYSTEM include search path
+    system: ?[]const u8 = null,
+    /// Add directories to include search path
+    include: ?[]const []const u8 = null,
+    /// Set extra flags for the next position C source files
+    cflags: ?[]const []const u8 = null,
+    /// Set extra flags for the next positional .rc source files
+    rcflags: ?[]const []const u8 = null,
+    /// Define C macros available within the `@cImport` namespace
+    macros: ?[]const types.Macro = null,
+    /// Link against system library (only if actually used)
+    library: ?[]const u8 = null,
+    /// Link against system library (even if unused)
+    needed_library: ?[]const []const u8 = null,
+    /// Link against system library marking it and all referenced symbols as weak
+    weak_library: ?[]const []const u8 = null,
+    /// Add a directory to the library search path
+    library_directory: ?[]const []const u8 = null,
+    name: []const u8,
+    path: []const u8,
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
+    pub fn write(
+        buf: [*]u8,
+        cmd: *BuildModuleCommand,
+    ) [*]u8 {
+        @setRuntimeSafety(false);
+        var ptr: [*]u8 = buf;
+        if (cmd.target) |target| {
+            ptr = fmt.strcpyEqu(ptr, "-target\x00");
+            ptr = fmt.strcpyEqu(ptr, target);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.mode) |mode| {
+            ptr[0..3].* = "-O\x00".*;
+            ptr += 3;
+            ptr = fmt.strcpyEqu(ptr, @tagName(mode));
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.format) |format| {
+            ptr = fmt.strcpyEqu(ptr, "-ofmt\x3d");
+            ptr = fmt.strcpyEqu(ptr, @tagName(format));
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.mcpu) |mcpu| {
+            ptr = fmt.strcpyEqu(ptr, "--mcpu\x00");
+            ptr = fmt.strcpyEqu(ptr, mcpu);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.code_model) |code_model| {
+            ptr = fmt.strcpyEqu(ptr, "-mcmodel\x00");
+            ptr = fmt.strcpyEqu(ptr, @tagName(code_model));
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.red_zone) |red_zone| {
+            if (red_zone) {
+                ptr = fmt.strcpyEqu(ptr, "-mred-zone\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-mno-red-zone\x00");
+            }
+        }
+        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
+            if (omit_frame_pointer) {
+                ptr = fmt.strcpyEqu(ptr, "-fomit-frame-pointer\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-omit-frame-pointer\x00");
+            }
+        }
+        if (cmd.pic) |pic| {
+            if (pic) {
+                ptr = fmt.strcpyEqu(ptr, "-fPIC\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-PIC\x00");
+            }
+        }
+        if (cmd.stack_check) |stack_check| {
+            if (stack_check) {
+                ptr = fmt.strcpyEqu(ptr, "-fstack-check\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-stack-check\x00");
+            }
+        }
+        if (cmd.stack_protector) |stack_protector| {
+            if (stack_protector) {
+                ptr = fmt.strcpyEqu(ptr, "-fstack-protector\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-stack-protector\x00");
+            }
+        }
+        if (cmd.sanitize_c) |sanitize_c| {
+            if (sanitize_c) {
+                ptr = fmt.strcpyEqu(ptr, "-fsanitize-c\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-sanitize-c\x00");
+            }
+        }
+        if (cmd.valgrind) |valgrind| {
+            if (valgrind) {
+                ptr = fmt.strcpyEqu(ptr, "-fvalgrind\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-valgrind\x00");
+            }
+        }
+        if (cmd.sanitize_thread) |sanitize_thread| {
+            if (sanitize_thread) {
+                ptr = fmt.strcpyEqu(ptr, "-fsanitize-thread\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-sanitize-thread\x00");
+            }
+        }
+        if (cmd.unwind_tables) |unwind_tables| {
+            if (unwind_tables) {
+                ptr = fmt.strcpyEqu(ptr, "-funwind-tables\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-unwind-tables\x00");
+            }
+        }
+        if (cmd.error_tracing) |error_tracing| {
+            if (error_tracing) {
+                ptr = fmt.strcpyEqu(ptr, "-ferror-tracing\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-error-tracing\x00");
+            }
+        }
+        if (cmd.single_threaded) |single_threaded| {
+            if (single_threaded) {
+                ptr = fmt.strcpyEqu(ptr, "-fsingle-threaded\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-single-threaded\x00");
+            }
+        }
+        if (cmd.strip) |strip| {
+            if (strip) {
+                ptr = fmt.strcpyEqu(ptr, "-fstrip\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-strip\x00");
+            }
+        }
+        if (cmd.formatted_panics) |formatted_panics| {
+            if (formatted_panics) {
+                ptr = fmt.strcpyEqu(ptr, "-fformatted-panics\x00");
+            } else {
+                ptr = fmt.strcpyEqu(ptr, "-fno-formatted-panics\x00");
+            }
+        }
+        if (cmd.dirafter) |dirafter| {
+            ptr = fmt.strcpyEqu(ptr, "-idirafter\x00");
+            ptr = fmt.strcpyEqu(ptr, dirafter);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.system) |system| {
+            ptr = fmt.strcpyEqu(ptr, "-isystem\x00");
+            ptr = fmt.strcpyEqu(ptr, system);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.include) |include| {
+            for (include) |value| {
+                ptr[0..3].* = "-I\x00".*;
+                ptr += 3;
+                ptr = fmt.strcpyEqu(ptr, value);
+                ptr[0] = 0;
+                ptr += 1;
+            }
+        }
+        if (cmd.cflags) |cflags| {
+            ptr += types.ExtraFlags.formatWriteBuf(.{ .value = cflags }, ptr);
+        }
+        if (cmd.rcflags) |rcflags| {
+            ptr += types.ExtraFlags.formatWriteBuf(.{ .value = rcflags }, ptr);
+        }
+        if (cmd.macros) |macros| {
+            for (macros) |value| {
+                ptr += value.formatWriteBuf(ptr);
+            }
+        }
+        if (cmd.library) |library| {
+            ptr = fmt.strcpyEqu(ptr, "--library\x00");
+            ptr = fmt.strcpyEqu(ptr, library);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.needed_library) |needed_library| {
+            for (needed_library) |value| {
+                ptr = fmt.strcpyEqu(ptr, "-needed-library\x00");
+                ptr = fmt.strcpyEqu(ptr, value);
+                ptr[0] = 0;
+                ptr += 1;
+            }
+        }
+        if (cmd.weak_library) |weak_library| {
+            for (weak_library) |value| {
+                ptr = fmt.strcpyEqu(ptr, "-weak_library\x00");
+                ptr = fmt.strcpyEqu(ptr, value);
+                ptr[0] = 0;
+                ptr += 1;
+            }
+        }
+        if (cmd.library_directory) |library_directory| {
+            for (library_directory) |value| {
+                ptr = fmt.strcpyEqu(ptr, "--library-directory\x00");
+                ptr = fmt.strcpyEqu(ptr, value);
+                ptr[0] = 0;
+                ptr += 1;
+            }
+        }
+        ptr = fmt.strcpyEqu(ptr, "--mod\x00");
+        ptr = fmt.strcpyEqu(ptr, cmd.name);
+        ptr[0] = 0;
+        ptr += 1;
+        ptr = fmt.strcpyEqu(ptr, cmd.path);
+        ptr[0] = 0;
+        ptr += 1;
+        return ptr;
+    }
+    pub fn length(cmd: *BuildModuleCommand) usize {
+        @setRuntimeSafety(false);
+        var len: usize = 0;
+        if (cmd.target) |target| {
+            len +%= 9 +% target.len;
+        }
+        if (cmd.mode) |mode| {
+            len +%= 4 +% @tagName(mode).len;
+        }
+        if (cmd.format) |format| {
+            len +%= 7 +% @tagName(format).len;
+        }
+        if (cmd.mcpu) |mcpu| {
+            len +%= 8 +% mcpu.len;
+        }
+        if (cmd.code_model) |code_model| {
+            len +%= 10 +% @tagName(code_model).len;
+        }
+        if (cmd.red_zone) |red_zone| {
+            if (red_zone) {
+                len +%= 11;
+            } else {
+                len +%= 14;
+            }
+        }
+        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
+            if (omit_frame_pointer) {
+                len +%= 21;
+            } else {
+                len +%= 24;
+            }
+        }
+        if (cmd.pic) |pic| {
+            if (pic) {
+                len +%= 6;
+            } else {
+                len +%= 9;
+            }
+        }
+        if (cmd.stack_check) |stack_check| {
+            if (stack_check) {
+                len +%= 14;
+            } else {
+                len +%= 17;
+            }
+        }
+        if (cmd.stack_protector) |stack_protector| {
+            if (stack_protector) {
+                len +%= 18;
+            } else {
+                len +%= 21;
+            }
+        }
+        if (cmd.sanitize_c) |sanitize_c| {
+            if (sanitize_c) {
+                len +%= 13;
+            } else {
+                len +%= 16;
+            }
+        }
+        if (cmd.valgrind) |valgrind| {
+            if (valgrind) {
+                len +%= 11;
+            } else {
+                len +%= 14;
+            }
+        }
+        if (cmd.sanitize_thread) |sanitize_thread| {
+            if (sanitize_thread) {
+                len +%= 18;
+            } else {
+                len +%= 21;
+            }
+        }
+        if (cmd.unwind_tables) |unwind_tables| {
+            if (unwind_tables) {
+                len +%= 16;
+            } else {
+                len +%= 19;
+            }
+        }
+        if (cmd.error_tracing) |error_tracing| {
+            if (error_tracing) {
+                len +%= 16;
+            } else {
+                len +%= 19;
+            }
+        }
+        if (cmd.single_threaded) |single_threaded| {
+            if (single_threaded) {
+                len +%= 18;
+            } else {
+                len +%= 21;
+            }
+        }
+        if (cmd.strip) |strip| {
+            if (strip) {
+                len +%= 8;
+            } else {
+                len +%= 11;
+            }
+        }
+        if (cmd.formatted_panics) |formatted_panics| {
+            if (formatted_panics) {
+                len +%= 19;
+            } else {
+                len +%= 22;
+            }
+        }
+        if (cmd.dirafter) |dirafter| {
+            len +%= 12 +% dirafter.len;
+        }
+        if (cmd.system) |system| {
+            len +%= 10 +% system.len;
+        }
+        if (cmd.include) |include| {
+            for (include) |value| {
+                len +%= 4 +% value.len;
+            }
+        }
+        if (cmd.cflags) |cflags| {
+            len = len +% types.ExtraFlags.formatLength(.{ .value = cflags });
+        }
+        if (cmd.rcflags) |rcflags| {
+            len = len +% types.ExtraFlags.formatLength(.{ .value = rcflags });
+        }
+        if (cmd.macros) |macros| {
+            for (macros) |value| {
+                len = len +% value.formatLength();
+            }
+        }
+        if (cmd.library) |library| {
+            len +%= 11 +% library.len;
+        }
+        if (cmd.needed_library) |needed_library| {
+            for (needed_library) |value| {
+                len +%= 17 +% value.len;
+            }
+        }
+        if (cmd.weak_library) |weak_library| {
+            for (weak_library) |value| {
+                len +%= 15 +% value.len;
+            }
+        }
+        if (cmd.library_directory) |library_directory| {
+            for (library_directory) |value| {
+                len +%= 21 +% value.len;
+            }
+        }
+        return len +% 8 +% cmd.name.len +% cmd.path.len;
+    }
+    pub fn formatWrite(cmd: *BuildModuleCommand, array: anytype) void {
+        @setRuntimeSafety(false);
+        if (cmd.target) |target| {
+            array.writeMany("-target\x00");
+            array.writeMany(target);
+            array.writeOne(0);
+        }
+        if (cmd.mode) |mode| {
+            array.writeMany("-O\x00");
+            array.writeMany(@tagName(mode));
+            array.writeOne(0);
+        }
+        if (cmd.format) |format| {
+            array.writeMany("-ofmt\x3d");
+            array.writeMany(@tagName(format));
+            array.writeOne(0);
+        }
+        if (cmd.mcpu) |mcpu| {
+            array.writeMany("--mcpu\x00");
+            array.writeMany(mcpu);
+            array.writeOne(0);
+        }
+        if (cmd.code_model) |code_model| {
+            array.writeMany("-mcmodel\x00");
+            array.writeMany(@tagName(code_model));
+            array.writeOne(0);
+        }
+        if (cmd.red_zone) |red_zone| {
+            if (red_zone) {
+                array.writeMany("-mred-zone\x00");
+            } else {
+                array.writeMany("-mno-red-zone\x00");
+            }
+        }
+        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
+            if (omit_frame_pointer) {
+                array.writeMany("-fomit-frame-pointer\x00");
+            } else {
+                array.writeMany("-fno-omit-frame-pointer\x00");
+            }
+        }
+        if (cmd.pic) |pic| {
+            if (pic) {
+                array.writeMany("-fPIC\x00");
+            } else {
+                array.writeMany("-fno-PIC\x00");
+            }
+        }
+        if (cmd.stack_check) |stack_check| {
+            if (stack_check) {
+                array.writeMany("-fstack-check\x00");
+            } else {
+                array.writeMany("-fno-stack-check\x00");
+            }
+        }
+        if (cmd.stack_protector) |stack_protector| {
+            if (stack_protector) {
+                array.writeMany("-fstack-protector\x00");
+            } else {
+                array.writeMany("-fno-stack-protector\x00");
+            }
+        }
+        if (cmd.sanitize_c) |sanitize_c| {
+            if (sanitize_c) {
+                array.writeMany("-fsanitize-c\x00");
+            } else {
+                array.writeMany("-fno-sanitize-c\x00");
+            }
+        }
+        if (cmd.valgrind) |valgrind| {
+            if (valgrind) {
+                array.writeMany("-fvalgrind\x00");
+            } else {
+                array.writeMany("-fno-valgrind\x00");
+            }
+        }
+        if (cmd.sanitize_thread) |sanitize_thread| {
+            if (sanitize_thread) {
+                array.writeMany("-fsanitize-thread\x00");
+            } else {
+                array.writeMany("-fno-sanitize-thread\x00");
+            }
+        }
+        if (cmd.unwind_tables) |unwind_tables| {
+            if (unwind_tables) {
+                array.writeMany("-funwind-tables\x00");
+            } else {
+                array.writeMany("-fno-unwind-tables\x00");
+            }
+        }
+        if (cmd.error_tracing) |error_tracing| {
+            if (error_tracing) {
+                array.writeMany("-ferror-tracing\x00");
+            } else {
+                array.writeMany("-fno-error-tracing\x00");
+            }
+        }
+        if (cmd.single_threaded) |single_threaded| {
+            if (single_threaded) {
+                array.writeMany("-fsingle-threaded\x00");
+            } else {
+                array.writeMany("-fno-single-threaded\x00");
+            }
+        }
+        if (cmd.strip) |strip| {
+            if (strip) {
+                array.writeMany("-fstrip\x00");
+            } else {
+                array.writeMany("-fno-strip\x00");
+            }
+        }
+        if (cmd.formatted_panics) |formatted_panics| {
+            if (formatted_panics) {
+                array.writeMany("-fformatted-panics\x00");
+            } else {
+                array.writeMany("-fno-formatted-panics\x00");
+            }
+        }
+        if (cmd.dirafter) |dirafter| {
+            array.writeMany("-idirafter\x00");
+            array.writeMany(dirafter);
+            array.writeOne(0);
+        }
+        if (cmd.system) |system| {
+            array.writeMany("-isystem\x00");
+            array.writeMany(system);
+            array.writeOne(0);
+        }
+        if (cmd.include) |include| {
+            for (include) |value| {
+                array.writeMany("-I\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.cflags) |cflags| {
+            array.writeFormat(types.ExtraFlags{ .value = cflags });
+        }
+        if (cmd.rcflags) |rcflags| {
+            array.writeFormat(types.ExtraFlags{ .value = rcflags });
+        }
+        if (cmd.macros) |macros| {
+            for (macros) |value| {
+                array.writeFormat(value);
+            }
+        }
+        if (cmd.library) |library| {
+            array.writeMany("--library\x00");
+            array.writeMany(library);
+            array.writeOne(0);
+        }
+        if (cmd.needed_library) |needed_library| {
+            for (needed_library) |value| {
+                array.writeMany("-needed-library\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.weak_library) |weak_library| {
+            for (weak_library) |value| {
+                array.writeMany("-weak_library\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.library_directory) |library_directory| {
+            for (library_directory) |value| {
+                array.writeMany("--library-directory\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        array.writeMany("--mod\x00");
+        array.writeMany(cmd.name);
+        array.writeOne(0);
+        array.writeMany(cmd.path);
+        array.writeOne(0);
+    }
+    pub fn formatParseArgs(cmd: *BuildModuleCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+        @setRuntimeSafety(builtin.is_safe);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+            if (mem.testEqualString("-target", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.target = mem.terminate(args[args_idx], 0);
+                } else {
+                    return;
+                }
+            } else if (mem.testEqualString("-O", arg[0..@min(arg.len, 2)])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mem.terminate(args[args_idx], 0);
+                } else {
+                    arg = arg[2..];
+                }
+                if (mem.testEqualString("Debug", arg)) {
+                    cmd.mode = .Debug;
+                } else if (mem.testEqualString("ReleaseSafe", arg)) {
+                    cmd.mode = .ReleaseSafe;
+                } else if (mem.testEqualString("ReleaseFast", arg)) {
+                    cmd.mode = .ReleaseFast;
+                } else if (mem.testEqualString("ReleaseSmall", arg)) {
+                    cmd.mode = .ReleaseSmall;
+                }
+            } else if (mem.testEqualString("-ofmt", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+                if (mem.testEqualString("coff", arg)) {
+                    cmd.format = .coff;
+                } else if (mem.testEqualString("dxcontainer", arg)) {
+                    cmd.format = .dxcontainer;
+                } else if (mem.testEqualString("elf", arg)) {
+                    cmd.format = .elf;
+                } else if (mem.testEqualString("macho", arg)) {
+                    cmd.format = .macho;
+                } else if (mem.testEqualString("spirv", arg)) {
+                    cmd.format = .spirv;
+                } else if (mem.testEqualString("wasm", arg)) {
+                    cmd.format = .wasm;
+                } else if (mem.testEqualString("c", arg)) {
+                    cmd.format = .c;
+                } else if (mem.testEqualString("hex", arg)) {
+                    cmd.format = .hex;
+                } else if (mem.testEqualString("raw", arg)) {
+                    cmd.format = .raw;
+                } else if (mem.testEqualString("plan9", arg)) {
+                    cmd.format = .plan9;
+                } else if (mem.testEqualString("nvptx", arg)) {
+                    cmd.format = .nvptx;
+                }
+            } else if (mem.testEqualString("--mcpu", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.mcpu = mem.terminate(args[args_idx], 0);
+                } else {
+                    return;
+                }
+            } else if (mem.testEqualString("-mcmodel", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+                if (mem.testEqualString("default", arg)) {
+                    cmd.code_model = .default;
+                } else if (mem.testEqualString("tiny", arg)) {
+                    cmd.code_model = .tiny;
+                } else if (mem.testEqualString("small", arg)) {
+                    cmd.code_model = .small;
+                } else if (mem.testEqualString("kernel", arg)) {
+                    cmd.code_model = .kernel;
+                } else if (mem.testEqualString("medium", arg)) {
+                    cmd.code_model = .medium;
+                } else if (mem.testEqualString("large", arg)) {
+                    cmd.code_model = .large;
+                }
+            } else if (mem.testEqualString("-mred-zone", arg)) {
+                cmd.red_zone = true;
+            } else if (mem.testEqualString("-mno-red-zone", arg)) {
+                cmd.red_zone = false;
+            } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
+                cmd.omit_frame_pointer = true;
+            } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
+                cmd.omit_frame_pointer = false;
+            } else if (mem.testEqualString("-fPIC", arg)) {
+                cmd.pic = true;
+            } else if (mem.testEqualString("-fno-PIC", arg)) {
+                cmd.pic = false;
+            } else if (mem.testEqualString("-fstack-check", arg)) {
+                cmd.stack_check = true;
+            } else if (mem.testEqualString("-fno-stack-check", arg)) {
+                cmd.stack_check = false;
+            } else if (mem.testEqualString("-fstack-protector", arg)) {
+                cmd.stack_protector = true;
+            } else if (mem.testEqualString("-fno-stack-protector", arg)) {
+                cmd.stack_protector = false;
+            } else if (mem.testEqualString("-fsanitize-c", arg)) {
+                cmd.sanitize_c = true;
+            } else if (mem.testEqualString("-fno-sanitize-c", arg)) {
+                cmd.sanitize_c = false;
+            } else if (mem.testEqualString("-fvalgrind", arg)) {
+                cmd.valgrind = true;
+            } else if (mem.testEqualString("-fno-valgrind", arg)) {
+                cmd.valgrind = false;
+            } else if (mem.testEqualString("-fsanitize-thread", arg)) {
+                cmd.sanitize_thread = true;
+            } else if (mem.testEqualString("-fno-sanitize-thread", arg)) {
+                cmd.sanitize_thread = false;
+            } else if (mem.testEqualString("-funwind-tables", arg)) {
+                cmd.unwind_tables = true;
+            } else if (mem.testEqualString("-fno-unwind-tables", arg)) {
+                cmd.unwind_tables = false;
+            } else if (mem.testEqualString("-ferror-tracing", arg)) {
+                cmd.error_tracing = true;
+            } else if (mem.testEqualString("-fno-error-tracing", arg)) {
+                cmd.error_tracing = false;
+            } else if (mem.testEqualString("-fsingle-threaded", arg)) {
+                cmd.single_threaded = true;
+            } else if (mem.testEqualString("-fno-single-threaded", arg)) {
+                cmd.single_threaded = false;
+            } else if (mem.testEqualString("-fstrip", arg)) {
+                cmd.strip = true;
+            } else if (mem.testEqualString("-fno-strip", arg)) {
+                cmd.strip = false;
+            } else if (mem.testEqualString("-fformatted-panics", arg)) {
+                cmd.formatted_panics = true;
+            } else if (mem.testEqualString("-fno-formatted-panics", arg)) {
+                cmd.formatted_panics = false;
+            } else if (mem.testEqualString("-idirafter", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.dirafter = mem.terminate(args[args_idx], 0);
+                } else {
+                    return;
+                }
+            } else if (mem.testEqualString("-isystem", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.system = mem.terminate(args[args_idx], 0);
+                } else {
+                    return;
+                }
+            } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mem.terminate(args[args_idx], 0);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.include) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.include = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.include = dest[0..1];
+                }
+            } else if (mem.testEqualString("-cflags", arg)) {
+                cmd.cflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
+            } else if (mem.testEqualString("-rcflags", arg)) {
+                cmd.rcflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
+            } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mem.terminate(args[args_idx], 0);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.macros) |src| {
+                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
+                        @sizeOf(types.Macro) *% (src.len +% 1),
+                        @alignOf(types.Macro),
+                    ));
+                    @memcpy(dest, src);
+                    dest[src.len] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
+                    cmd.macros = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
+                        @sizeOf(types.Macro),
+                        @alignOf(types.Macro),
+                    ));
+                    dest[0] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
+                    cmd.macros = dest[0..1];
+                }
+            } else if (mem.testEqualString("--library", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.library = mem.terminate(args[args_idx], 0);
+                } else {
+                    return;
+                }
+            } else if (mem.testEqualString("-needed-library", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+                if (cmd.needed_library) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.needed_library = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.needed_library = dest[0..1];
+                }
+            } else if (mem.testEqualString("-weak_library", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+                if (cmd.weak_library) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.weak_library = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.weak_library = dest[0..1];
+                }
+            } else if (mem.testEqualString("--library-directory", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+                if (cmd.library_directory) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.library_directory = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.library_directory = dest[0..1];
+                }
+            } else {
+                debug.write(module_help);
+            }
+        }
+    }
+};
 pub const ArchiveCommand = struct {
     /// Archive format to create
     format: ?enum(u3) {
@@ -3101,7 +4318,12 @@ pub const ArchiveCommand = struct {
     },
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
+    pub fn write(
+        buf: [*]u8,
+        cmd: *ArchiveCommand,
+        zig_exe: []const u8,
+        files: []const types.Path,
+    ) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
@@ -3125,8 +4347,7 @@ pub const ArchiveCommand = struct {
             ptr += 1;
         }
         if (cmd.thin) {
-            ptr[0..7].* = "--thin\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--thin\x00");
         }
         if (cmd.after) {
             ptr[0..1].* = "a".*;
@@ -3174,9 +4395,9 @@ pub const ArchiveCommand = struct {
         for (files) |value| {
             ptr += value.formatWriteBuf(ptr);
         }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return ptr;
     }
-    pub fn formatLength(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path) usize {
+    pub fn length(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 4 +% zig_exe.len;
         if (cmd.format) |format| {
@@ -3355,14 +4576,18 @@ pub const ObjcopyCommand = struct {
     extract_to: ?[]const u8 = null,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *ObjcopyCommand, zig_exe: []const u8, path: types.Path, buf: [*]u8) usize {
+    pub fn write(
+        buf: [*]u8,
+        cmd: *ObjcopyCommand,
+        zig_exe: []const u8,
+        path: types.Path,
+    ) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
         ptr[0] = 0;
         ptr += 1;
-        ptr[0..8].* = "objcopy\x00".*;
-        ptr += 8;
+        ptr = fmt.strcpyEqu(ptr, "objcopy\x00");
         if (cmd.output_target) |output_target| {
             ptr = fmt.strcpyEqu(ptr, "--output-target\x00");
             ptr = fmt.strcpyEqu(ptr, output_target);
@@ -3403,9 +4628,9 @@ pub const ObjcopyCommand = struct {
             ptr += 1;
         }
         ptr += path.formatWriteBuf(ptr);
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return ptr;
     }
-    pub fn formatLength(cmd: *ObjcopyCommand, zig_exe: []const u8, path: types.Path) usize {
+    pub fn length(cmd: *ObjcopyCommand, zig_exe: []const u8, path: types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 9 +% zig_exe.len;
         if (cmd.output_target) |output_target| {
@@ -3542,7 +4767,12 @@ pub const FormatCommand = struct {
     exclude: ?[]const u8 = null,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) usize {
+    pub fn write(
+        buf: [*]u8,
+        cmd: *FormatCommand,
+        zig_exe: []const u8,
+        pathname: types.Path,
+    ) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
@@ -3551,19 +4781,16 @@ pub const FormatCommand = struct {
         ptr[0..4].* = "fmt\x00".*;
         ptr += 4;
         if (cmd.color) |color| {
-            ptr[0..8].* = "--color\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--color\x00");
             ptr = fmt.strcpyEqu(ptr, @tagName(color));
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.stdin) {
-            ptr[0..8].* = "--stdin\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--stdin\x00");
         }
         if (cmd.check) {
-            ptr[0..8].* = "--check\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--check\x00");
         }
         if (cmd.ast_check) {
             ptr = fmt.strcpyEqu(ptr, "--ast-check\x00");
@@ -3575,9 +4802,9 @@ pub const FormatCommand = struct {
             ptr += 1;
         }
         ptr += pathname.formatWriteBuf(ptr);
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return ptr;
     }
-    pub fn formatLength(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path) usize {
+    pub fn length(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 5 +% zig_exe.len;
         if (cmd.color) |color| {
@@ -3661,170 +4888,203 @@ pub const FormatCommand = struct {
         }
     }
 };
-const build_help: [:0]const u8 =
-    \\    -femit-bin=<string>                     (default=yes) Output machine code
+const build_help: [:0]const u8 = 
+    \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
-    \\    -femit-asm=<string>                     (default=no) Output assembly code (.s)
+    \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
     \\    -fno-emit-asm
-    \\    -femit-llvm-ir=<string>                 (default=no) Output optimized LLVM IR (.ll)
+    \\    -femit-llvm-ir=<string>                             (default=no) Output optimized LLVM IR (.ll)
     \\    -fno-emit-llvm-ir
-    \\    -femit-llvm-bc=<string>                 (default=no) Output optimized LLVM BC (.bc)
+    \\    -femit-llvm-bc=<string>                             (default=no) Output optimized LLVM BC (.bc)
     \\    -fno-emit-llvm-bc
-    \\    -femit-h=<string>                       (default=no) Output a C header file (.h)
+    \\    -femit-h=<string>                                   (default=no) Output a C header file (.h)
     \\    -fno-emit-h
-    \\    -femit-docs=<string>                    (default=no) Output documentation (.html)
+    \\    -femit-docs=<string>                                (default=no) Output documentation (.html)
     \\    -fno-emit-docs
-    \\    -femit-analysis=<string>                (default=no) Output analysis (.json)
+    \\    -femit-analysis=<string>                            (default=no) Output analysis (.json)
     \\    -fno-emit-analysis
-    \\    -femit-implib=<string>                  (default=yes) Output an import when building a Windows DLL (.lib)
-    \\    -fno-emit-implib
-    \\    --cache-dir=<string>                    Override the local cache directory
-    \\    --global-cache-dir=<string>             Override the global cache directory
-    \\    --zig-lib-dir=<string>                  Override Zig installation lib directory
-    \\    --listen=<tag>                          [MISSING]
-    \\    -target=<string>                        <arch><sub>-<os>-<abi> see the targets command
-    \\    -mcpu=<tag>                             Specify target CPU and feature set
-    \\    -mcmodel=<tag>                          Limit range of code and data virtual addresses
-    \\    -m[no-]red-zone                         Enable the "red-zone"
-    \\    -f[no-]builtin                          Enable implicit builtin knowledge of functions
-    \\    -f[no-]panic-mismatched-arguments       Enables panic causes:
-    \\                                              memcpy_argument_aliasing
-    \\                                              memcpy_argument_lengths_mismatched
-    \\                                              for_loop_capture_lengths_mismatched
-    \\    -f[no-]panic-reached-unreachable        Enables panic causes:
-    \\                                              message
-    \\                                              discarded_error
-    \\                                              corrupt_switch
-    \\                                              returned_noreturn
-    \\                                              reached_unreachable
-    \\                                              accessed_null_value
-    \\    -f[no-]panic-accessed-invalid-memory    Enables panic causes:
-    \\                                              accessed_out_of_bounds
-    \\                                              accessed_out_of_order
-    \\                                              accessed_inactive_field
-    \\    -f[no-]panic-mismatched-sentinel        Enables panic causes:
-    \\                                              mismatched_sentinel
-    \\                                              mismatched_non_scalar_sentinel
-    \\    -f[no-]panic-arith-lost-precision       Enables panic causes:
-    \\                                              div_with_remainder
-    \\                                              shl_overflowed
-    \\                                              shr_overflowed
-    \\                                              shift_amt_overflowed
-    \\    -f[no-]panic-arith-overflowed           Enables panic causes:
-    \\                                              mul_overflowed
-    \\                                              add_overflowed
-    \\                                              sub_overflowed
-    \\    -f[no-]panic-cast-from-invalid          Enables panic causes:
-    \\                                              cast_to_int_from_invalid
-    \\                                              cast_truncated_data
-    \\                                              cast_to_unsigned_from_negative
-    \\                                              cast_to_pointer_from_invalid
-    \\                                              cast_to_enum_from_invalid
-    \\                                              cast_to_error_from_invalid
-    \\    -f[no-]omit-frame-pointer               Omit the stack frame pointer
-    \\    -mexec-model=<string>                   (WASI) Execution model
-    \\    --name=<string>                         Override root name
-    \\    -fsoname=<string>                       Override the default SONAME value
+    \\    --cache-dir=<string>                                Override the local cache directory
+    \\    --global-cache-dir=<string>                         Override the global cache directory
+    \\    --zig-lib-dir=<string>                              Override Zig installation lib directory
+    \\    --listen=<tag>                                      [MISSING]
+    \\    -target=<string>                                    <arch><sub>-<os>-<abi> see the targets command
+    \\    -mcpu=<tag>                                         Specify target CPU and feature set
+    \\    -mcmodel=<tag>                                      Limit range of code and data virtual addresses
+    \\    -f[no-]runtime-safety                               Toggle definition of `PanicData` parameter
+    \\    -f[no-]panic-data                                   Toggle definition of `PanicData` parameter
+    \\    -f[no-]check-unwrapped-error                        Toggle check for returning from a noreturn function
+    \\    -f[no-]check-unwrapped-null                         Toggle check for unwrapping (.?) null optional values
+    \\    -f[no-]check-returned-noreturn                      Toggle check for returning from a noreturn function
+    \\    -f[no-]check-reached-unreachable                    Toggle check for reaching unreachable code
+    \\    -f[no-]check-accessed-out-of-bounds                 Toggle check for slice[idx] st. idx < slice.len
+    \\    -f[no-]check-accessed-out-of-order                  Toggle check for slice[start..finish] st. start <= finish
+    \\    -f[no-]check-accessed-inactive-field                Toggle check for tagged union field accesses
+    \\    -f[no-]check-divided-by-zero                        Toggle check for division by zero
+    \\    -f[no-]check-memcpy-argument-aliasing               Toggle check for pointer aliasing
+    \\    -f[no-]check-mismatched-memcpy-argument-lengths     Toggle check for @memcpy argument lengths
+    \\    -f[no-]check-mismatched-for-loop-capture-lengths    Toggle check for for loop capture lengths
+    \\    -f[no-]check-mismatched-sentinel                    Toggle check for sentinel value
+    \\    -f[no-]check-shift-amt-overflowed                   Toggle check for shift amount for non power-of-two integer bit sizes
+    \\    -f[no-]check-arith-exact                            Toggle checks for inexact arithmetic by @shlExact, @shrExact, and @divExact
+    \\    -f[no-]check-arith-overflowed                       Toggle checks for integer overflow by addition, subtraction, and multiplication
+    \\    -f[no-]check-cast-truncated-data                    Toggle check for @intCast to smaller from larger
+    \\    -f[no-]check-cast-to-enum-from-invalid              Toggle check for @enumFromInt
+    \\    -f[no-]check-cast-to-error-from-invalid             Toggle checks for @errorCast and @errorFromInt
+    \\    -f[no-]check-cast-to-pointer-from-invalid           Toggle checks for @ptrCast and @ptrFromInt
+    \\    -f[no-]check-cast-to-int-from-invalid               Toggle check for @intFromFloat
+    \\    -f[no-]check-cast-to-unsigned-from-negative         Toggle check for @intCast to unsigned from signed
+    \\    -m[no-]red-zone                                     Enable or disable the "red-zone"
+    \\    -f[no-]builtin                                      Enable or disable implicit builtin knowledge of functions
+    \\    -f[no-]omit-frame-pointer                           Omit the stack frame pointer
+    \\    -mexec-model=<string>                               (WASI) Execution model
+    \\    --name=<string>                                     Override root name
+    \\    -fsoname=<string>                                   Override the default SONAME value
     \\    -fno-soname
-    \\    -O<tag>                                 Choose what to optimize for:
-    \\                                              Debug          Optimizations off, safety on
-    \\                                              ReleaseSafe    Optimizations on, safety on
-    \\                                              ReleaseFast    Optimizations on, safety off
-    \\                                              ReleaseSmall   Size optimizations on, safety off
-    \\    -fopt-bisect-limit=<integer>            Only run [limit] first LLVM optimization passes
-    \\    --main-mod-path=<string>                Set the directory of the root package
-    \\    -f[no-]PIC                              Enable Position Independent Code
-    \\    -f[no-]PIE                              Enable Position Independent Executable
-    \\    -f[no-]lto                              Enable Link Time Optimization
-    \\    -f[no-]stack-check                      Enable stack probing in unsafe builds
-    \\    -f[no-]stack-protector                  Enable stack protection in unsafe builds
-    \\    -f[no-]sanitize-c                       Enable C undefined behaviour detection in unsafe builds
-    \\    -f[no-]valgrind                         Include valgrind client requests in release builds
-    \\    -f[no-]sanitize-thread                  Enable thread sanitizer
-    \\    -f[no-]unwind-tables                    Always produce unwind table entries for all functions
-    \\    -f[no-]reference-trace                  How many lines of reference trace should be shown per compile error
-    \\    -f[no-]error-tracing                    Enable error tracing in `ReleaseFast` mode
-    \\    -f[no-]single-threaded                  Code assumes there is only one thread
-    \\    -f[no-]function-sections                Places each function in a separate section
-    \\    -f[no-]data-sections                    Places data in separate sections
-    \\    -f[no-]strip                            Omit debug symbols
-    \\    -f[no-]formatted-panics                 Enable formatted safety panics
-    \\    -ofmt=<tag>                             Override target object format:
-    \\                                              elf                    Executable and Linking Format
-    \\                                              c                      C source code
-    \\                                              wasm                   WebAssembly
-    \\                                              coff                   Common Object File Format (Windows)
-    \\                                              macho                  macOS relocatables
-    \\                                              spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
-    \\                                              plan9                  Plan 9 from Bell Labs object format
-    \\                                              hex (planned feature)  Intel IHEX
-    \\                                              raw (planned feature)  Dump machine code directly
-    \\    -idirafter=<string>                     Add directory to AFTER include search path
-    \\    -isystem=<string>                       Add directory to SYSTEM include search path
-    \\    --libc=<string>                         Provide a file which specifies libc paths
-    \\    --library=<string>                      Link against system library (only if actually used)
-    \\    -I<string>                              Add directories to include search path
-    \\    --needed-library=<string>               Link against system library (even if unused)
-    \\    --library-directory=<string>            Add a directory to the library search path
-    \\    --script=<string>                       Use a custom linker script
-    \\    --version-script=<string>               Provide a version .map file
-    \\    --dynamic-linker=<string>               Set the dynamic interpreter path
-    \\    --sysroot=<string>                      Set the system root directory
-    \\    -fentry=<string>                        Override the default entry symbol name
+    \\    -O<tag>                                             Choose what to optimize for:
+    \\                                                          Debug          Optimizations off, safety on
+    \\                                                          ReleaseSafe    Optimizations on, safety on
+    \\                                                          ReleaseFast    Optimizations on, safety off
+    \\                                                          ReleaseSmall   Size optimizations on, safety off
+    \\    -fopt-bisect-limit=<integer>                        Only run [limit] first LLVM optimization passes
+    \\    --main-mod-path=<string>                            Set the directory of the root package
+    \\    -f[no-]PIC                                          Enable Position Independent Code
+    \\    -f[no-]PIE                                          Enable Position Independent Executable
+    \\    -f[no-]lto                                          Enable Link Time Optimization
+    \\    -f[no-]stack-check                                  Enable stack probing in unsafe builds
+    \\    -f[no-]stack-protector                              Enable stack protection in unsafe builds
+    \\    -f[no-]sanitize-c                                   Enable C undefined behaviour detection in unsafe builds
+    \\    -f[no-]valgrind                                     Include valgrind client requests in release builds
+    \\    -f[no-]sanitize-thread                              Enable thread sanitizer
+    \\    -f[no-]unwind-tables                                Always produce unwind table entries for all functions
+    \\    -f[no-]reference-trace                              How many lines of reference trace should be shown per compile error
+    \\    -f[no-]error-tracing                                Enable error tracing in `ReleaseFast` mode
+    \\    -f[no-]single-threaded                              Code assumes there is only one thread
+    \\    -f[no-]function-sections                            Places each function in a separate section
+    \\    -f[no-]data-sections                                Places data in separate sections
+    \\    -f[no-]strip                                        Omit debug symbols
+    \\    -f[no-]formatted-panics                             Enable formatted safety panics
+    \\    -ofmt=<tag>                                         Override target object format:
+    \\                                                          elf                    Executable and Linking Format
+    \\                                                          c                      C source code
+    \\                                                          wasm                   WebAssembly
+    \\                                                          coff                   Common Object File Format (Windows)
+    \\                                                          macho                  macOS relocatables
+    \\                                                          spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    \\                                                          plan9                  Plan 9 from Bell Labs object format
+    \\                                                          hex (planned feature)  Intel IHEX
+    \\                                                          raw (planned feature)  Dump machine code directly
+    \\    -idirafter=<string>                                 Add directory to AFTER include search path
+    \\    -isystem=<string>                                   Add directory to SYSTEM include search path
+    \\    --libc=<string>                                     Provide a file which specifies libc paths
+    \\    --library=<string>                                  Link against system library (only if actually used)
+    \\    -I<string>                                          Add directories to include search path
+    \\    --needed-library=<string>                           Link against system library (even if unused)
+    \\    --library-directory=<string>                        Add a directory to the library search path
+    \\    --script=<string>                                   Use a custom linker script
+    \\    --version-script=<string>                           Provide a version .map file
+    \\    --dynamic-linker=<string>                           Set the dynamic interpreter path
+    \\    --sysroot=<string>                                  Set the system root directory
+    \\    -fentry=<string>                                    Override the default entry symbol name
     \\    -fno-entry
-    \\    -f[no-]lld                              Use LLD as the linker
-    \\    -f[no-]llvm                             Use LLVM as the codegen backend
-    \\    -f[no-]compiler-rt                      (default) Include compiler-rt symbols in output
-    \\    -rpath=<string>                         Add directory to the runtime library search path
-    \\    -f[no-]each-lib-rpath                   Ensure adding rpath for each used dynamic library
-    \\    -f[no-]allow-shlib-undefined            Allow undefined symbols in shared libraries
-    \\    --build-id=<tag>                        Help coordinate stripped binaries with debug symbols
-    \\    --eh-frame-hdr                          Enable C++ exception handling by passing --eh-frame-hdr to linker
-    \\    --emit-relocs                           Enable output of relocation sections for post build tools
-    \\    --[no-]gc-sections                      Force removal of functions and data that are unreachable by the entry point or exported symbols
-    \\    --stack=<integer>                       Override default stack size
-    \\    --image-base=<integer>                  Set base address for executable image
-    \\    -D<string>                              Define C macros available within the `@cImport` namespace
-    \\    --mod=<string>                          Define modules available as dependencies for the current target
-    \\    --deps=<string>                         Define module dependencies for the current target
-    \\    -cflags=<string>                        Set extra flags for the next position C source files
-    \\    -rcflags=<string>                       Set extra flags for the next positional .rc source files
-    \\    -lc                                     Link libc
-    \\    -rdynamic                               Add all symbols to the dynamic symbol table
-    \\    -dynamic                                Force output to be dynamically linked
-    \\    -static                                 Force output to be statically linked
-    \\    -Bsymbolic                              Bind global references locally
-    \\    -z<string>                              Set linker extension flags:
-    \\                                              nodelete                   Indicate that the object cannot be deleted from a process
-    \\                                              notext                     Permit read-only relocations in read-only segments
-    \\                                              defs                       Force a fatal error if any undefined symbols remain
-    \\                                              undefs                     Reverse of -z defs
-    \\                                              origin                     Indicate that the object must have its origin processed
-    \\                                              nocopyreloc                Disable the creation of copy relocations
-    \\                                              now (default)              Force all relocations to be processed on load
-    \\                                              lazy                       Don't force all relocations to be processed on load
-    \\                                              relro (default)            Force all relocations to be read-only after processing
-    \\                                              norelro                    Don't force all relocations to be read-only after processing
-    \\                                              common-page-size=[bytes]   Set the common page size for ELF binaries
-    \\                                              max-page-size=[bytes]      Set the max page size for ELF binaries
-    \\    --color=<tag>                           Enable or disable colored error messages
-    \\    --debug-incremental                     Enable experimental feature: incremental compilation
-    \\    -ftime-report                           Print timing diagnostics
-    \\    -fstack-report                          Print stack size diagnostics
-    \\    --verbose-link                          Display linker invocations
-    \\    --verbose-cc                            Display C compiler invocations
-    \\    --verbose-air                           Enable compiler debug output for Zig AIR
-    \\    --verbose-mir                           Enable compiler debug output for Zig MIR
-    \\    --verbose-llvm-ir                       Enable compiler debug output for LLVM IR
-    \\    --verbose-cimport                       Enable compiler debug output for C imports
-    \\    --verbose-llvm-cpu-features             Enable compiler debug output for LLVM CPU features
-    \\    --debug-log=<string>                    Enable printing debug/info log messages for scope
-    \\    --debug-compile-errors                  Crash with helpful diagnostics at the first compile error
-    \\    --debug-link-snapshot                   Enable dumping of the linker's state in JSON
+    \\    -f[no-]lld                                          Use LLD as the linker
+    \\    -f[no-]llvm                                         Use LLVM as the codegen backend
+    \\    -f[no-]compiler-rt                                  (default) Include compiler-rt symbols in output
+    \\    -rpath=<string>                                     Add directory to the runtime library search path
+    \\    -f[no-]each-lib-rpath                               Ensure adding rpath for each used dynamic library
+    \\    -f[no-]allow-shlib-undefined                        Allow undefined symbols in shared libraries
+    \\    --build-id=<tag>                                    Help coordinate stripped binaries with debug symbols
+    \\    --eh-frame-hdr                                      Enable C++ exception handling by passing --eh-frame-hdr to linker
+    \\    --emit-relocs                                       Enable output of relocation sections for post build tools
+    \\    --[no-]gc-sections                                  Force removal of functions and data that are unreachable by the entry point or exported symbols
+    \\    --stack=<integer>                                   Override default stack size
+    \\    --image-base=<integer>                              Set base address for executable image
+    \\    -D<string>                                          Define C macros available within the `@cImport` namespace
+    \\    --mod=<string>                                      Define modules available as dependencies for the current target
+    \\    --deps=<string>                                     Define module dependencies for the current target
+    \\    --dep=<string>                                      Define module dependencies for the current target
+    \\    -cflags=<string>                                    Set extra flags for the next position C source files
+    \\    -rcflags=<string>                                   Set extra flags for the next positional .rc source files
+    \\    -lc                                                 Link libc
+    \\    -rdynamic                                           Add all symbols to the dynamic symbol table
+    \\    -dynamic                                            Force output to be dynamically linked
+    \\    -static                                             Force output to be statically linked
+    \\    -Bsymbolic                                          Bind global references locally
+    \\    -z<string>                                          Set linker extension flags:
+    \\                                                          nodelete                   Indicate that the object cannot be deleted from a process
+    \\                                                          notext                     Permit read-only relocations in read-only segments
+    \\                                                          defs                       Force a fatal error if any undefined symbols remain
+    \\                                                          undefs                     Reverse of -z defs
+    \\                                                          origin                     Indicate that the object must have its origin processed
+    \\                                                          nocopyreloc                Disable the creation of copy relocations
+    \\                                                          now (default)              Force all relocations to be processed on load
+    \\                                                          lazy                       Don't force all relocations to be processed on load
+    \\                                                          relro (default)            Force all relocations to be read-only after processing
+    \\                                                          norelro                    Don't force all relocations to be read-only after processing
+    \\                                                          common-page-size=[bytes]   Set the common page size for ELF binaries
+    \\                                                          max-page-size=[bytes]      Set the max page size for ELF binaries
+    \\    --color=<tag>                                       Enable or disable colored error messages
+    \\    --debug-incremental                                 Enable experimental feature: incremental compilation
+    \\    -ftime-report                                       Print timing diagnostics
+    \\    -fstack-report                                      Print stack size diagnostics
+    \\    --verbose-link                                      Display linker invocations
+    \\    --verbose-cc                                        Display C compiler invocations
+    \\    --verbose-air                                       Enable compiler debug output for Zig AIR
+    \\    --verbose-mir                                       Enable compiler debug output for Zig MIR
+    \\    --verbose-llvm-ir                                   Enable compiler debug output for LLVM IR
+    \\    --verbose-cimport                                   Enable compiler debug output for C imports
+    \\    --verbose-llvm-cpu-features                         Enable compiler debug output for LLVM CPU features
+    \\    --debug-log=<string>                                Enable printing debug/info log messages for scope
+    \\    --debug-compile-errors                              Crash with helpful diagnostics at the first compile error
+    \\    --debug-link-snapshot                               Enable dumping of the linker's state in JSON
     \\
     \\
 ;
-const archive_help: [:0]const u8 =
+const module_help: [:0]const u8 = 
+    \\    -target=<string>                <arch><sub>-<os>-<abi> see the targets command
+    \\    -O<tag>                         Choose what to optimize for:
+    \\                                      Debug          Optimizations off, safety on
+    \\                                      ReleaseSafe    Optimizations on, safety on
+    \\                                      ReleaseFast    Optimizations on, safety off
+    \\                                      ReleaseSmall   Size optimizations on, safety off
+    \\    -ofmt=<tag>                     Override target object format:
+    \\                                      elf                    Executable and Linking Format
+    \\                                      c                      C source code
+    \\                                      wasm                   WebAssembly
+    \\                                      coff                   Common Object File Format (Windows)
+    \\                                      macho                  macOS relocatables
+    \\                                      spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    \\                                      plan9                  Plan 9 from Bell Labs object format
+    \\                                      hex (planned feature)  Intel IHEX
+    \\                                      raw (planned feature)  Dump machine code directly
+    \\    --mcpu=<string>                 Target a specific cpu type (-mcpu=help for details)
+    \\    -mcmodel=<tag>                  Limit range of code and data virtual addresses
+    \\    -m[no-]red-zone                 Enable or disable the "red-zone"
+    \\    -f[no-]omit-frame-pointer       Omit the stack frame pointer
+    \\    -f[no-]PIC                      Enable Position Independent Code
+    \\    -f[no-]stack-check              Enable stack probing in unsafe builds
+    \\    -f[no-]stack-protector          Enable stack protection in unsafe builds
+    \\    -f[no-]sanitize-c               Enable C undefined behaviour detection in unsafe builds
+    \\    -f[no-]valgrind                 Include valgrind client requests in release builds
+    \\    -f[no-]sanitize-thread          Enable thread sanitizer
+    \\    -f[no-]unwind-tables            Always produce unwind table entries for all functions
+    \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
+    \\    -f[no-]single-threaded          Code assumes there is only one thread
+    \\    -f[no-]strip                    Omit debug symbols
+    \\    -f[no-]formatted-panics         Enable formatted safety panics
+    \\    -idirafter=<string>             Add directory to AFTER include search path
+    \\    -isystem=<string>               Add directory to SYSTEM include search path
+    \\    -I<string>                      Add directories to include search path
+    \\    -cflags=<string>                Set extra flags for the next position C source files
+    \\    -rcflags=<string>               Set extra flags for the next positional .rc source files
+    \\    -D<string>                      Define C macros available within the `@cImport` namespace
+    \\    --library=<string>              Link against system library (only if actually used)
+    \\    -needed-library=<string>        Link against system library (even if unused)
+    \\    -weak_library=<string>          Link against system library marking it and all referenced symbols as weak
+    \\    --library-directory=<string>    Add a directory to the library search path
+    \\
+    \\
+;
+const archive_help: [:0]const u8 = 
     \\    --format=<tag>          Archive format to create
     \\    --plugin                Ignored for compatibility
     \\    --output=<string>       Extraction target directory
@@ -3842,7 +5102,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    --output-target=<string>
     \\    --only-section=<string>
     \\    --pad-to=<integer>
@@ -3854,7 +5114,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    --color=<tag>           Enable or disable colored error messages
     \\    --stdin                 Format code from stdin; output to stdout
     \\    --check                 List non-conforming files and exit with an error if the list is non-empty
@@ -3865,6 +5125,7 @@ const format_help: [:0]const u8 =
 ;
 pub const Command = struct {
     build: *BuildCommand,
+    module: *BuildModuleCommand,
     archive: *ArchiveCommand,
     objcopy: *ObjcopyCommand,
     format: *FormatCommand,
