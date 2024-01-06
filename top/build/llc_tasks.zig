@@ -4343,7 +4343,11 @@ pub const LLCCommand = struct {
     xcore_max_threads: ?usize = null,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *LLCCommand, llc_exe: []const u8, buf: [*]u8) usize {
+    pub fn write(
+        buf: [*]u8,
+        cmd: *LLCCommand,
+        llc_exe: []const u8,
+    ) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, llc_exe);
@@ -5754,8 +5758,7 @@ pub const LLCCommand = struct {
             ptr += 1;
         }
         if (cmd.color) {
-            ptr[0..8].* = "--color\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--color\x00");
         }
         if (cmd.combiner_global_alias_analysis) {
             ptr = fmt.strcpyEqu(ptr, "--combiner-global-alias-analysis\x00");
@@ -7659,8 +7662,7 @@ pub const LLCCommand = struct {
             ptr = fmt.strcpyEqu(ptr, "--hash-based-counter-split\x00");
         }
         if (cmd.help) {
-            ptr[0..7].* = "--help\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--help\x00");
         }
         if (cmd.help_hidden) {
             ptr = fmt.strcpyEqu(ptr, "--help-hidden\x00");
@@ -8656,8 +8658,7 @@ pub const LLCCommand = struct {
             ptr += 1;
         }
         if (cmd.load) |load| {
-            ptr[0..7].* = "--load\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--load\x00");
             ptr = fmt.strcpyEqu(ptr, load);
             ptr[0] = 0;
             ptr += 1;
@@ -8930,8 +8931,7 @@ pub const LLCCommand = struct {
             ptr = fmt.strcpyEqu(ptr, "--mandatory-inlining-first\x00");
         }
         if (cmd.march) |march| {
-            ptr[0..8].* = "--march\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--march\x00");
             ptr = fmt.strcpyEqu(ptr, march);
             ptr[0] = 0;
             ptr += 1;
@@ -9153,15 +9153,13 @@ pub const LLCCommand = struct {
             ptr = fmt.strcpyEqu(ptr, "--mcp-use-is-copy-instr\x00");
         }
         if (cmd.mcpu) |mcpu| {
-            ptr[0..7].* = "--mcpu\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mcpu\x00");
             ptr = fmt.strcpyEqu(ptr, mcpu);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.meabi) |meabi| {
-            ptr[0..8].* = "--meabi\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--meabi\x00");
             ptr = fmt.strcpyEqu(ptr, @tagName(meabi));
             ptr[0] = 0;
             ptr += 1;
@@ -9329,8 +9327,7 @@ pub const LLCCommand = struct {
             ptr = fmt.strcpyEqu(ptr, "--mgpopt\x00");
         }
         if (cmd.mhvx) |mhvx| {
-            ptr[0..7].* = "--mhvx\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mhvx\x00");
             ptr = fmt.strcpyEqu(ptr, @tagName(mhvx));
             ptr[0] = 0;
             ptr += 1;
@@ -9687,56 +9684,43 @@ pub const LLCCommand = struct {
             ptr = fmt.strcpyEqu(ptr, "--mul-constant-optimization\x00");
         }
         if (cmd.mv5) {
-            ptr[0..6].* = "--mv5\x00".*;
-            ptr += 6;
+            ptr = fmt.strcpyEqu(ptr, "--mv5\x00");
         }
         if (cmd.mv55) {
-            ptr[0..7].* = "--mv55\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv55\x00");
         }
         if (cmd.mv60) {
-            ptr[0..7].* = "--mv60\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv60\x00");
         }
         if (cmd.mv62) {
-            ptr[0..7].* = "--mv62\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv62\x00");
         }
         if (cmd.mv65) {
-            ptr[0..7].* = "--mv65\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv65\x00");
         }
         if (cmd.mv66) {
-            ptr[0..7].* = "--mv66\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv66\x00");
         }
         if (cmd.mv67) {
-            ptr[0..7].* = "--mv67\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv67\x00");
         }
         if (cmd.mv67t) {
-            ptr[0..8].* = "--mv67t\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--mv67t\x00");
         }
         if (cmd.mv68) {
-            ptr[0..7].* = "--mv68\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv68\x00");
         }
         if (cmd.mv69) {
-            ptr[0..7].* = "--mv69\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv69\x00");
         }
         if (cmd.mv71) {
-            ptr[0..7].* = "--mv71\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv71\x00");
         }
         if (cmd.mv71t) {
-            ptr[0..8].* = "--mv71t\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--mv71t\x00");
         }
         if (cmd.mv73) {
-            ptr[0..7].* = "--mv73\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--mv73\x00");
         }
         if (cmd.mve_max_interleave_factor) |mve_max_interleave_factor| {
             ptr = fmt.strcpyEqu(ptr, "--mve-max-interleave-factor\x00");
@@ -10150,8 +10134,7 @@ pub const LLCCommand = struct {
             ptr = fmt.strcpyEqu(ptr, "--pgo-warn-missing-function\x00");
         }
         if (cmd.pgso) {
-            ptr[0..7].* = "--pgso\x00".*;
-            ptr += 7;
+            ptr = fmt.strcpyEqu(ptr, "--pgso\x00");
         }
         if (cmd.pgso_cold_code_only) {
             ptr = fmt.strcpyEqu(ptr, "--pgso-cold-code-only\x00");
@@ -11801,8 +11784,7 @@ pub const LLCCommand = struct {
             ptr += 1;
         }
         if (cmd.stats) {
-            ptr[0..8].* = "--stats\x00".*;
-            ptr += 8;
+            ptr = fmt.strcpyEqu(ptr, "--stats\x00");
         }
         if (cmd.stats_json) {
             ptr = fmt.strcpyEqu(ptr, "--stats-json\x00");
@@ -12764,9 +12746,9 @@ pub const LLCCommand = struct {
             ptr[0] = 0;
             ptr += 1;
         }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return ptr;
     }
-    pub fn formatLength(cmd: *LLCCommand, llc_exe: []const u8) usize {
+    pub fn length(cmd: *LLCCommand, llc_exe: []const u8) usize {
         @setRuntimeSafety(false);
         var len: usize = 1 +% llc_exe.len;
         if (cmd.aarch64_a57_fp_load_balancing_force_all) {
@@ -33860,7 +33842,7 @@ pub const LLCCommand = struct {
         }
     }
 };
-const llc_help: [:0]const u8 =
+const llc_help: [:0]const u8 = 
     \\    --aarch64-a57-fp-load-balancing-force-all                               Always modify dest registers regardless of color
     \\    --aarch64-a57-fp-load-balancing-override=<integer>                      Ignore balance information, always return (1: Even, 2: Odd).
     \\    --aarch64-bcc-offset-bits=<integer>                                     Restrict range of Bcc instructions (DEBUG)
