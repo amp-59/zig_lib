@@ -59,6 +59,9 @@ pub const StackIterator = struct {
             }
             itr.first_addr = null;
         }
+        if (addr > ~@as(u32, 0)) {
+            return null;
+        }
         return addr;
     }
     fn next_internal(itr: *StackIterator) ?usize {
@@ -776,7 +779,7 @@ fn maximumSideBarWidth(itr: StackIterator) usize {
     var tmp: StackIterator = itr;
     var max_len: usize = 0;
     while (tmp.next()) |addr| {
-        max_len = @max(max_len, fmt.ux64(addr).formatLength());
+        max_len = @max(max_len, fmt.Uxsize.length(addr));
     }
     return max_len +% 1;
 }
@@ -879,6 +882,7 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
+
     while (itr.next()) |addr| {
         if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, ptr, width, addr)) |addr_info| {
             ptr = addr_info.finish;
