@@ -8,13 +8,12 @@ const types = @import("types.zig");
 const config = @import("config.zig");
 const common = @import("common_impls.zig");
 const safety = @import("../../safety.zig");
+const builtin = @import("../../builtin.zig");
 const testing = @import("../../testing.zig");
-
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
 const wip_llc: bool = true;
 pub const context = .Exe;
-
 fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
     var len: usize = try gen.readFile(.{ .return_type = usize }, switch (language) {
         .Zig => config.tasks_template_path,
@@ -47,31 +46,32 @@ fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
     }
     types.BGTypeDescr.scope = &.{};
     array.undefineAll();
-    if (wip_llc) {
-        len = try gen.readFile(.{ .return_type = usize }, switch (language) {
-            .Zig => config.tasks_template_path,
-            .C => config.tasks_c_template_path,
-        }, array.referAllUndefined());
-        array.define(len);
-        for (attr.scope) |decl| {
-            array.writeFormat(types.BGTypeDescr{ .type_decl = decl });
+    if (!wip_llc) {
+        return;
+    }
+    len = try gen.readFile(.{ .return_type = usize }, switch (language) {
+        .Zig => config.tasks_template_path,
+        .C => config.tasks_c_template_path,
+    }, array.referAllUndefined());
+    array.define(len);
+    for (attr.scope) |decl| {
+        array.writeFormat(types.BGTypeDescr{ .type_decl = decl });
+    }
+    types.BGTypeDescr.scope = attr.scope;
+    common.writeOpenStruct(array, language, attr.llvm_llc_command_attributes);
+    common.writeFields(array, language, attr.llvm_llc_command_attributes);
+    common.writeDeclarations(array, language, attr.llvm_llc_command_attributes);
+    common.writeWriterFunctions(array, attr.llvm_llc_command_attributes);
+    common.writeParserFunction(array, language, attr.llvm_llc_command_attributes);
+    common.writeCloseContainer(array);
+    common.writeParserFunctionHelp(array, attr.llvm_llc_command_attributes);
+    if (config.commit) {
+        switch (language) {
+            .C => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_c_path, array.readAll()),
+            .Zig => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_path, array.readAll()),
         }
-        types.BGTypeDescr.scope = attr.scope;
-        common.writeOpenStruct(array, language, attr.llvm_llc_command_attributes);
-        common.writeFields(array, language, attr.llvm_llc_command_attributes);
-        common.writeDeclarations(array, language, attr.llvm_llc_command_attributes);
-        common.writeWriterFunctions(array, attr.llvm_llc_command_attributes);
-        common.writeParserFunction(array, language, attr.llvm_llc_command_attributes);
-        common.writeCloseContainer(array);
-        common.writeParserFunctionHelp(array, attr.llvm_llc_command_attributes);
-        if (config.commit) {
-            switch (language) {
-                .C => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_c_path, array.readAll()),
-                .Zig => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_path, array.readAll()),
-            }
-        } else {
-            debug.write(array.readAll());
-        }
+    } else {
+        debug.write(array.readAll());
     }
 }
 pub fn main() !void {
