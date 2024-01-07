@@ -535,6 +535,25 @@ fn testGenericChangedRangeFormat() !void {
         array.writeFormat(range_fmt);
     }
 }
+fn testGenericChangedPercentFormat() !void {
+    zl.testing.announce(@src());
+    const pcnt_fmt: zl.fmt.PercentFormatSpec = .{
+        .bits = 64,
+        .signedness = .unsigned,
+        .decimal_places = 3,
+    };
+    const ChangedPercentFormat = zl.fmt.GenericChangedPercentFormat(.{
+        .old_fmt_spec = pcnt_fmt,
+        .new_fmt_spec = pcnt_fmt,
+        .del_fmt_spec = pcnt_fmt,
+    });
+    var buf: [4096]u8 = undefined;
+    for (0..3) |_| {
+        const ptr: [*]u8 = ChangedPercentFormat.write(&buf, 1, 4, 1, 2);
+
+        zl.fmt.print(ptr, &buf);
+    }
+}
 fn testIntToStringWithSeparators() !void {
     var buf: [4096]u8 = undefined;
     const len: usize = zl.fmt.udh(10_000_000).formatWriteBuf(&buf);
@@ -681,5 +700,6 @@ pub fn main() !void {
     //try testEquivalentIntToStringFormat();
     try @import("fmt/utf8.zig").testUtf8();
     try @import("fmt/ascii.zig").testAscii();
+    try testGenericChangedPercentFormat();
     //try @import("fmt/float.zig").testFloat();
 }
