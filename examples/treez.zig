@@ -82,12 +82,12 @@ const Filter = zl.meta.EnumBitField(zl.file.Kind);
 const Names = zl.mem.array.StaticArray([:0]const u8, max_pathname_args);
 const Status = packed struct {
     flag: zl.meta.maybe(print_in_second_thread, u32) = 0,
-    file_count: zl.meta.maybe(count_files, u64) = 0,
-    dir_count: zl.meta.maybe(count_dirs, u64) = 0,
-    link_count: zl.meta.maybe(count_links, u64) = 0,
-    max_depth: zl.meta.maybe(track_max_depth, u64) = 0,
-    size: zl.meta.maybe(sum_file_size, u64) = 0,
-    errors: zl.meta.maybe(count_errors, u64) = 0,
+    file_count: zl.meta.maybe(count_files, usize) = 0,
+    dir_count: zl.meta.maybe(count_dirs, usize) = 0,
+    link_count: zl.meta.maybe(count_links, usize) = 0,
+    max_depth: zl.meta.maybe(track_max_depth, usize) = 0,
+    size: zl.meta.maybe(sum_file_size, usize) = 0,
+    errors: zl.meta.maybe(count_errors, usize) = 0,
 };
 fn done(status: *const volatile Status) bool {
     return status.flag != 0;
@@ -193,7 +193,7 @@ noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: 
 }
 fn getNames(args: [][*:0]u8) Names {
     var names: Names = .{};
-    var i: u64 = 1;
+    var i: usize = 1;
     while (i != args.len) : (i +%= 1) {
         names.writeOne(zl.meta.manyToSlice(args[i]));
     }
@@ -236,6 +236,84 @@ fn getSymbol(kind: zl.file.Kind) [:0]const u8 {
         .unknown => return "? ",
     }
 }
+fn writeAndWalkNamed(
+    allocator_0: *Allocator0,
+    allocator_1: *Allocator1,
+    array: *Array,
+    alts_buf: *PrintArray,
+    link_buf: *PrintArray,
+    status: *volatile Status,
+    dir_fd: ?usize,
+    name: [:0]const u8,
+    depth: usize,
+    require: [:0]const u8,
+) !void {
+    const save: usize = allocator_0.save();
+    defer allocator_0.restore(save);
+    var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
+    defer dir.deinit(allocator_0);
+    var list: DirStream.ListView = dir.list();
+    var index: usize = 1;
+    var st: zl.file.Status = zl.builtin.zero(zl.file.Status);
+    while (list.at(index)) |entry| : (index +%= 1) {
+        const basename: [:0]const u8 = entry.name();
+        const last: bool = index == list.count -% 1;
+        const indent: []const u8 = if (last) spc_s else bar_s;
+        alts_buf.writeMany(indent);
+        defer alts_buf.undefine(indent.len);
+        switch (entry.kind()) {
+            .symbolic_link => {
+                if (count_links) {
+                    status.link_count +%= 1;
+                }
+                const arrow_s: [:0]const u8 = if (last) last_link_arrow_s else link_arrow_s;
+                const kind_s: [:0]const u8 = getSymbol(.symbolic_link);
+                array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
+                try writeReadLink(allocator_1, array, link_buf, status, dir.fd, basename);
+            },
+            .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
+                if (!zl.mem.testEqualManyIn(u8, require, basename)) {
+                    continue;
+                }
+                if (count_files) {
+                    status.file_count +%= 1;
+                }
+                if (sum_file_size) {
+                    try zl.file.statusAt(.{}, .{}, dir.fd, basename, &st);
+                    status.size +%= st.size;
+                }
+                const arrow_s: [:0]const u8 = if (last) last_file_arrow_s else file_arrow_s;
+                const kind_s: [:0]const u8 = getSymbol(kind);
+                array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
+            },
+            .directory => {
+                if (count_dirs) {
+                    status.dir_count +%= 1;
+                }
+                const arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
+                const kind_s: [:0]const u8 = getSymbol(.directory);
+                const len: usize = array.len(allocator_1.*);
+                try zl.meta.wrap(array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
+                if (track_max_depth) {
+                    status.max_depth = @max(usize, status.max_depth, depth +% 1);
+                }
+                const count: usize = status.file_count;
+                writeAndWalkNamed(allocator_0, allocator_1, array, alts_buf, link_buf, status, dir.fd, basename, depth +% 1, require) catch |any_error| {
+                    if (quit_on_error) {
+                        return any_error;
+                    }
+                    if (count_errors) {
+                        status.errors +%= 1;
+                    }
+                };
+                if (status.file_count == count) {
+                    array.undefine(array.len(allocator_1.*) -% len);
+                }
+            },
+            .unknown => {},
+        }
+    }
+}
 fn writeAndWalk(
     allocator_0: *Allocator0,
     allocator_1: *Allocator1,
@@ -243,16 +321,16 @@ fn writeAndWalk(
     alts_buf: *PrintArray,
     link_buf: *PrintArray,
     status: *volatile Status,
-    dir_fd: ?u64,
+    dir_fd: ?usize,
     name: [:0]const u8,
-    depth: u64,
+    depth: usize,
 ) !void {
     const save: usize = allocator_0.save();
     defer allocator_0.restore(save);
     var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
-    var index: u64 = 1;
+    var index: usize = 1;
     var st: zl.file.Status = zl.builtin.zero(zl.file.Status);
     while (list.at(index)) |entry| : (index +%= 1) {
         const basename: [:0]const u8 = entry.name();
@@ -290,7 +368,7 @@ fn writeAndWalk(
                 const kind_s: [:0]const u8 = getSymbol(.directory);
                 try zl.meta.wrap(array.appendAny(zl.mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
                 if (track_max_depth) {
-                    status.max_depth = @max(u64, status.max_depth, depth +% 1);
+                    status.max_depth = @max(usize, status.max_depth, depth +% 1);
                 }
                 writeAndWalk(allocator_0, allocator_1, array, alts_buf, link_buf, status, dir.fd, basename, depth +% 1) catch |any_error| {
                     if (quit_on_error) {
@@ -330,12 +408,14 @@ pub fn main(args: [][*:0]u8) !void {
         @memset(alts_buf.referManyAt(0), ' ');
         if (print_in_second_thread) {
             var ret: void = {};
-            var tid: u64 = undefined;
+            var tid: usize = undefined;
             var stack_buf: [16384]u8 align(16) = undefined;
-            const stack_addr: u64 = @intFromPtr(&stack_buf);
+            const stack_addr: usize = @intFromPtr(&stack_buf);
             tid = zl.proc.clone(clone_spec, .{}, stack_addr, stack_buf.len, &ret, printAlong, .{ &status, &allocator_1, &array });
-            writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
-                status.errors +%= 1;
+            writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch {
+                if (count_errors) {
+                    status.errors +%= 1;
+                }
             };
             status.flag = 255;
             zl.proc.futexWait(.{ .errors = .{} }, &status.flag, 255, &.{ .sec = 86400 });
