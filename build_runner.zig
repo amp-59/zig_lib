@@ -48,12 +48,20 @@ pub const signal_handlers = .{
     .SegmentationFault = enable_debugging,
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    @setRuntimeSafety(false);
     if (args.len < 5) {
         zl.proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    var allocator: zl.build.types.Allocator = zl.build.types.Allocator.fromArena(
-        Builder.AddressSpace.arena(Builder.specification.options.max_thread_count),
-    );
+    const arena = Builder.AddressSpace.arena(Builder.specification.options.max_thread_count);
+    zl.mem.map(.{
+        .errors = .{},
+        .logging = .{ .Acquire = false },
+    }, .{}, .{}, arena.lb_addr, 4096);
+    var allocator: zl.build.types.Allocator = .{
+        .start = arena.lb_addr,
+        .next = arena.lb_addr,
+        .finish = arena.lb_addr +% 4096,
+    };
     var address_space: Builder.AddressSpace = .{};
     var thread_space: Builder.ThreadSpace = .{};
     const top: *Builder.Node = Builder.Node.init(&allocator, args, vars);
