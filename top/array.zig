@@ -37,7 +37,7 @@ pub fn GenericSimpleArray(comptime T: type) type {
         const Array = @This();
         const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
         pub fn appendOne(array: *Array, allocator: *Allocator, value: T) void {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             if (array.values_len == array.values.len) {
                 array.values = allocator.reallocate(T, array.values, array.values_len *% 2);
             }
@@ -45,7 +45,7 @@ pub fn GenericSimpleArray(comptime T: type) type {
             array.values_len +%= 1;
         }
         pub fn appendSlice(array: *Array, allocator: *Allocator, values: []const T) void {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             if (array.values_len +% values.len > array.values.len) {
                 array.values = allocator.reallocate(T, array.values, (array.values_len +% values.len) *% 2);
             }
@@ -55,6 +55,7 @@ pub fn GenericSimpleArray(comptime T: type) type {
             }
         }
         pub fn readAll(array: *const Array) []const T {
+            @setRuntimeSafety(builtin.is_safe);
             return array.values[0..array.values_len];
         }
         pub fn referAll(array: *Array) []T {
