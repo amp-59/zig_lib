@@ -1,4 +1,5 @@
 const builtin = @import("../../builtin.zig");
+const common = @import("common_impls.zig");
 const types = struct {
     pub usingnamespace @import("types.zig");
     pub usingnamespace @import("../types.zig");
@@ -48,6 +49,16 @@ const optional_dependencies_slice_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?[]const types.ModuleDependency" } },
     .write = &.{ .type_decl = .{ .name = "types.ModuleDependencies" } },
     .parse = &.{ .type_decl = .{ .name = "types.ModuleDependencies" } },
+};
+const optional_dependencies_slice_type2: types.BGTypeDescrMap = .{
+    .store = &.{ .type_decl = .{ .name = "?[]const types.ModuleDependency" } },
+    .write = &.{ .type_decl = .{ .name = "types.ModuleDependency" } },
+    .parse = &.{ .type_decl = .{ .name = "types.ModuleDependency" } },
+};
+const build_command_module_type: types.BGTypeDescrMap = .{
+    .store = &.{ .type_decl = .{ .name = "[]*tasks.BuildModuleCommand" } },
+    .write = &.{ .type_decl = .{ .name = "tasks.BuildModuleCommand" } },
+    .parse = &.{ .type_decl = .{ .name = "tasks.BuildModuleCommand" } },
 };
 const build_id_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?types.BuildId" } },
