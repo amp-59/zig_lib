@@ -3,7 +3,7 @@ pub usingnamespace zl.start;
 export fn load(fp: *zl.builtin.root.Builder.FunctionPointers) void {
     fp.build = .{
         .write = zl.build.BuildCommand.write,
-        .formatLength = zl.build.BuildCommand.formatLength,
+        .length = zl.build.BuildCommand.length,
         .formatParseArgs = zl.build.BuildCommand.formatParseArgs,
     };
 }
