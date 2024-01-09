@@ -515,9 +515,8 @@ fn writeLastLine(buf: [*]u8, trace: *const debug.Trace, width: u64) [*]u8 {
     ptr -= 1;
     if (ptr[0] != '\n') {
         ptr[4] = '\n';
-        return ptr + 5;
     }
-    return ptr + 4;
+    return ptr + 5;
 }
 fn writeSideBar(buf: [*]u8, trace: *const debug.Trace, width: u64, number: Number) [*]u8 {
     @setRuntimeSafety(false);
@@ -722,21 +721,30 @@ fn writeNTimes(buf: [*]u8, count: usize) [*]u8 {
     ptr += 12;
     return ptr;
 }
-fn printMessage(allocator: *mem.SimpleAllocator, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
+fn printNTimes(count: usize) void {
     @setRuntimeSafety(false);
-    const msg: []u8 = fmt.slice(addr_info.finish, addr_info.start);
-    if (addr_info.count != 0) {
-        const save: usize = allocator.next;
-        const new: [*]u8 = @ptrFromInt(allocator.allocateRaw(msg.len +% 32, 64));
-        var end: usize = 0;
-        while (msg[end] != '\n') : (end +%= 1) new[end] = msg[end];
-        var ptr: [*]u8 = writeNTimes(new + end, addr_info.count);
-        ptr = fmt.strcpyEqu(ptr, msg[end..]);
-        debug.write(new[0..fmt.strlen(ptr, new)]);
-        allocator.next = save;
-    } else {
-        debug.write(msg);
+    var buf: [64]u8 = undefined;
+    buf[0..2].* = " (".*;
+    var ptr: [*]u8 = buf[2..];
+    if (count > 16) {
+        ptr[0..4].* = "\x1b[1m".*;
+        ptr += 4;
     }
+    ptr = fmt.Udsize.write(ptr, count +% 1);
+    ptr[0..11].* = "\x1b[0m times)".*;
+    ptr += 11;
+    debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
+}
+fn printMessage(addr_info: *dwarf.DwarfInfo.AddressInfo) void {
+    @setRuntimeSafety(false);
+    var msg: []u8 = fmt.slice(addr_info.finish, addr_info.start);
+    if (addr_info.count != 0) {
+        msg = mem.terminate(msg.ptr, '\n');
+        debug.write(msg);
+        printNTimes(addr_info.count);
+        msg = fmt.slice(addr_info.finish, addr_info.start + msg.len);
+    }
+    debug.write(msg);
 }
 fn allocateFile(allocator: *mem.SimpleAllocator, pathname: [:0]const u8) [:0]u8 {
     @setRuntimeSafety(false);
@@ -882,7 +890,6 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
-
     while (itr.next()) |addr| {
         if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, ptr, width, addr)) |addr_info| {
             ptr = addr_info.finish;
@@ -890,7 +897,7 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
         }
     }
     for (dwarf_info.addr_info[0..dwarf_info.addr_info_len], 1..) |*addr_info, idx| {
-        printMessage(&allocator, addr_info);
+        printMessage(addr_info);
         if (idx == trace.options.max_depth) {
             break;
         }
