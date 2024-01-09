@@ -114,6 +114,12 @@ pub const zig_modules_attributes: types.Attributes = .{
     .type_fn_name = "GenericBuildModuleCommand",
     .params = &.{
         .{
+            .name = "deps",
+            .tag = .{ .optional_field = .repeatable_formatter },
+            .type = optional_dependencies_slice_type2,
+            .descr = &.{"Define module dependencies for the current target"},
+        },
+        .{
             .name = "target",
             .string = "-target",
             .tag = .{ .optional_field = .string },
@@ -133,12 +139,6 @@ pub const zig_modules_attributes: types.Attributes = .{
                 "  ReleaseSmall   Size optimizations on, safety off",
             },
             .flags = .{ .do_parse = true },
-        },
-        .{
-            .name = "deps",
-            .tag = .{ .optional_field = .repeatable_formatter },
-            .type = optional_dependencies_slice_type2,
-            .descr = &.{"Define module dependencies for the current target"},
         },
         .{
             .name = "format",
@@ -293,7 +293,6 @@ pub const zig_modules_attributes: types.Attributes = .{
             .descr = &.{"Define C macros available within the `@cImport` namespace"},
             .string = "-D",
         },
-
         .{
             .name = "library",
             .string = "--library",
@@ -446,13 +445,6 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .descr = &.{"[MISSING]"},
         },
         .{
-            .name = "target",
-            .string = "-target",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"<arch><sub>-<os>-<abi> see the targets command"},
-        },
-        .{
             .name = "cpu",
             .string = "-mcpu",
             .tag = .{ .optional_field = .tag },
@@ -461,13 +453,6 @@ pub const zig_build_command_attributes2: types.Attributes = .{
                 .parse = &types.BGTypeDescr.init(types.CPU),
             },
             .descr = &.{"Specify target CPU and feature set"},
-        },
-        .{
-            .name = "code_model",
-            .string = "-mcmodel",
-            .tag = .{ .optional_field = .tag },
-            .type = code_model_type,
-            .descr = &.{"Limit range of code and data virtual addresses"},
         },
         .{
             .name = "runtime_safety",
@@ -608,22 +593,10 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .descr = &.{"Toggle check for @intCast to unsigned from signed"},
         },
         .{
-            .name = "red_zone",
-            .string = "-mred-zone",
-            .and_no = .{ .string = "-mno-red-zone" },
-            .descr = &.{"Enable or disable the \"red-zone\""},
-        },
-        .{
             .name = "implicit_builtins",
             .string = "-fbuiltin",
             .and_no = .{ .string = "-fno-builtin" },
             .descr = &.{"Enable or disable implicit builtin knowledge of functions"},
-        },
-        .{
-            .name = "omit_frame_pointer",
-            .string = "-fomit-frame-pointer",
-            .and_no = .{ .string = "-fno-omit-frame-pointer" },
-            .descr = &.{"Omit the stack frame pointer"},
         },
         .{
             .name = "exec_model",
@@ -656,12 +629,6 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .descr = &.{"Set the directory of the root package"},
         },
         .{
-            .name = "pic",
-            .string = "-fPIC",
-            .and_no = .{ .string = "-fno-PIC" },
-            .descr = &.{"Enable Position Independent Code"},
-        },
-        .{
             .name = "pie",
             .string = "-fPIE",
             .and_no = .{ .string = "-fno-PIE" },
@@ -674,58 +641,10 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .descr = &.{"Enable Link Time Optimization"},
         },
         .{
-            .name = "stack_check",
-            .string = "-fstack-check",
-            .and_no = .{ .string = "-fno-stack-check" },
-            .descr = &.{"Enable stack probing in unsafe builds"},
-        },
-        .{
-            .name = "stack_protector",
-            .string = "-fstack-protector",
-            .and_no = .{ .string = "-fno-stack-protector" },
-            .descr = &.{"Enable stack protection in unsafe builds"},
-        },
-        .{
-            .name = "sanitize_c",
-            .string = "-fsanitize-c",
-            .and_no = .{ .string = "-fno-sanitize-c" },
-            .descr = &.{"Enable C undefined behaviour detection in unsafe builds"},
-        },
-        .{
-            .name = "valgrind",
-            .string = "-fvalgrind",
-            .and_no = .{ .string = "-fno-valgrind" },
-            .descr = &.{"Include valgrind client requests in release builds"},
-        },
-        .{
-            .name = "sanitize_thread",
-            .string = "-fsanitize-thread",
-            .and_no = .{ .string = "-fno-sanitize-thread" },
-            .descr = &.{"Enable thread sanitizer"},
-        },
-        .{
-            .name = "unwind_tables",
-            .string = "-funwind-tables",
-            .and_no = .{ .string = "-fno-unwind-tables" },
-            .descr = &.{"Always produce unwind table entries for all functions"},
-        },
-        .{
             .name = "reference_trace",
             .string = "-freference-trace",
             .and_no = .{ .string = "-fno-reference-trace" },
             .descr = &.{"How many lines of reference trace should be shown per compile error"},
-        },
-        .{
-            .name = "error_tracing",
-            .string = "-ferror-tracing",
-            .and_no = .{ .string = "-fno-error-tracing" },
-            .descr = &.{"Enable error tracing in `ReleaseFast` mode"},
-        },
-        .{
-            .name = "single_threaded",
-            .string = "-fsingle-threaded",
-            .and_no = .{ .string = "-fno-single-threaded" },
-            .descr = &.{"Code assumes there is only one thread"},
         },
         .{
             .name = "function_sections",
@@ -740,84 +659,11 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .descr = &.{"Places data in separate sections"},
         },
         .{
-            .name = "strip",
-            .string = "-fstrip",
-            .and_no = .{ .string = "-fno-strip" },
-            .descr = &.{"Omit debug symbols"},
-        },
-        .{
-            .name = "formatted_panics",
-            .string = "-fformatted-panics",
-            .and_no = .{ .string = "-fno-formatted-panics" },
-            .descr = &.{"Enable formatted safety panics"},
-        },
-        .{
-            .name = "format",
-            .string = "-ofmt",
-            .char = '=',
-            .tag = .{ .optional_field = .tag },
-            .type = output_format_type,
-            .descr = &.{
-                "Override target object format:",
-                "  elf                    Executable and Linking Format",
-                "  c                      C source code",
-                "  wasm                   WebAssembly",
-                "  coff                   Common Object File Format (Windows)",
-                "  macho                  macOS relocatables",
-                "  spirv                  Standard, Portable Intermediate Representation V (SPIR-V)",
-                "  plan9                  Plan 9 from Bell Labs object format",
-                "  hex (planned feature)  Intel IHEX",
-                "  raw (planned feature)  Dump machine code directly",
-            },
-        },
-        .{
-            .name = "dirafter",
-            .string = "-idirafter",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"Add directory to AFTER include search path"},
-        },
-        .{
-            .name = "system",
-            .string = "-isystem",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"Add directory to SYSTEM include search path"},
-        },
-        .{
             .name = "libc",
             .string = "--libc",
             .tag = .{ .optional_field = .string },
             .type = optional_string_type,
             .descr = &.{"Provide a file which specifies libc paths"},
-        },
-        .{
-            .name = "library",
-            .string = "--library",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"Link against system library (only if actually used)"},
-        },
-        .{
-            .name = "include",
-            .string = "-I",
-            .tag = .{ .optional_field = .repeatable_string },
-            .type = optional_repeatable_string_type,
-            .descr = &.{"Add directories to include search path"},
-        },
-        .{
-            .name = "needed_library",
-            .string = "--needed-library",
-            .tag = .{ .optional_field = .repeatable_string },
-            .type = optional_repeatable_string_type,
-            .descr = &.{"Link against system library (even if unused)"},
-        },
-        .{
-            .name = "library_directory",
-            .string = "--library-directory",
-            .tag = .{ .optional_field = .repeatable_string },
-            .type = optional_repeatable_string_type,
-            .descr = &.{"Add a directory to the library search path"},
         },
         .{
             .name = "link_script",
@@ -934,38 +780,6 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .descr = &.{"Set base address for executable image"},
         },
         .{
-            .name = "macros",
-            .tag = .{ .optional_field = .repeatable_formatter },
-            .type = optional_macro_slice_type,
-            .descr = &.{"Define C macros available within the `@cImport` namespace"},
-            .string = "-D",
-        },
-        .{
-            .name = "mods",
-            .tag = .{ .field = .{ .repeatable_task = &zig_modules_attributes } },
-            .type = build_command_module_type,
-            .special = .{
-                .write = common.writeWriteModules,
-                .parse = common.writeParseModules,
-            },
-            .descr = &.{"Define modules available as dependencies for the current target"},
-            .default = "&.{}",
-        },
-        .{
-            .name = "cflags",
-            .string = "-cflags",
-            .tag = .{ .optional_field = .mapped },
-            .type = flags_type,
-            .descr = &.{"Set extra flags for the next position C source files"},
-        },
-        .{
-            .name = "rcflags",
-            .string = "-rcflags",
-            .tag = .{ .optional_field = .mapped },
-            .type = flags_type,
-            .descr = &.{"Set extra flags for the next positional .rc source files"},
-        },
-        .{
             .name = "link_libc",
             .string = "-lc",
             .descr = &.{"Link libc"},
@@ -1013,10 +827,21 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .flags = .{ .do_parse = false },
         },
         .{
+            .name = "mods",
+            .tag = .{ .field = .{ .repeatable_task = &zig_modules_attributes } },
+            .type = build_command_module_type,
+            .special = .{
+                .write = common.writeWriteModules,
+                .parse = common.writeParseModules,
+            },
+            .descr = &.{"Define modules available as dependencies for the current target"},
+            .default = "&.{}",
+        },
+        .{
             .name = "files",
             .tag = .{ .param = .repeatable_formatter },
             .type = paths_type,
-            .descr = &.{"Add auxiliary files to the current target"},
+            .descr = &.{"Add auxiliary non-Zig files to the current target"},
         },
         // Other options
         .{
