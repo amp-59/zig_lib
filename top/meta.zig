@@ -351,7 +351,14 @@ pub fn BestNum(comptime Number: type) type {
         .ComptimeInt, .Int => return BestInt(Number),
         .ComptimeFloat, .Float => return BestFloat(Number),
         .Vector => return Number,
+        .Pointer => return usize,
         else => @compileError(@typeName(Number)),
+    }
+}
+pub fn bestNum(any: anytype) BestNum(@TypeOf(any)) {
+    switch (@typeInfo(@TypeOf(any))) {
+        .Pointer => return @intFromPtr(any),
+        else => return any,
     }
 }
 pub fn signedRealBitSize(value: isize) u16 {
@@ -1663,6 +1670,24 @@ pub fn isValidErrorCode(comptime E: type, err: E) bool {
     if (@typeInfo(E).ErrorSet) |error_set| {
         inline for (error_set) |elem| {
             if (@intFromError(@field(E, elem.name)) == @intFromError(err)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+pub fn isValidEnumInt(comptime E: type, int: @typeInfo(E).Enum.tag_type.?) bool {
+    inline for (@typeInfo(E).Enum.fields) |field| {
+        if (field.value == int) {
+            return true;
+        }
+    }
+    return false;
+}
+pub fn isValidErrorCodeInt(comptime E: type, int: u16) bool {
+    if (@typeInfo(E).ErrorSet) |error_set| {
+        inline for (error_set) |elem| {
+            if (@intFromError(@field(E, elem.name)) == int) {
                 return true;
             }
         }
