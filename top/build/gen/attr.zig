@@ -1048,6 +1048,24 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Limit range of code and data virtual addresses"},
         },
         .{
+            .name = "runtime_safety",
+            .string = "-fruntime-safety",
+            .and_no = .{ .string = "-fno-runtime-safety" },
+            .descr = &.{"Toggle usage of "},
+        },
+        .{
+            .name = "panic_data",
+            .string = "-fpanic-data",
+            .and_no = .{ .string = "-fno-panic-data" },
+            .descr = &.{"Reduces code size at the expense of panic details"},
+        },
+        .{
+            .name = "extra_slice_analysis",
+            .string = "-fextra-slice-analysis",
+            .and_no = .{ .string = "-fno-extra-slice-analysis" },
+            .descr = &.{"Toggle usage of `analyzeSlice2`"},
+        },
+        .{
             .name = "check_unwrapped_error",
             .string = "-fcheck-unwrapped-error",
             .and_no = .{ .string = "-fno-check-unwrapped-error" },
