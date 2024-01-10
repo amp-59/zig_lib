@@ -52,6 +52,7 @@ pub const test_safety_dir: [:0]const u8 = test_dir ++ "/safety";
 pub const test_safety_slice_dir: [:0]const u8 = test_safety_dir ++ "/slice";
 
 pub const test_safety_slice_common_path: [:0]const u8 = test_safety_slice_dir ++ "/common.zig";
+pub const test_safety_slice_group_path: [:0]const u8 = builtin.lib_root ++ "/slice_test.zig";
 
 /// Currently all containers are written to this file. Later, each container
 /// will be given its own file.
@@ -79,8 +80,6 @@ pub const allocator_file_path: [:0]const u8 = primarySourceFile("allocator.zig")
 pub const container_template_path: [:0]const u8 = primarySourceFile("container-template.zig");
 /// Contains the hand-written part of the reference end-product.
 pub const reference_template_path: [:0]const u8 = primarySourceFile("reference-template.zig");
-/// Contains the hand-written part of the allocator end-product.
-pub const allocator_template_path: [:0]const u8 = primarySourceFile("allocator-template.zig");
 
 pub const slice_kinds_path: [:0]const u8 = auxiliarySourceFile("slice_attr.zig");
 pub const container_kinds_path: [:0]const u8 = secondarySourceFile("ctn_kinds.zig");
