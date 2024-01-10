@@ -14,33 +14,45 @@ pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
 const wip_llc: bool = true;
 pub const context = .Exe;
-fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
-    var len: usize = try gen.readFile(.{ .return_type = usize }, switch (language) {
-        .Zig => config.tasks_template_path,
-        .C => config.tasks_c_template_path,
-    }, array.referAllUndefined());
+pub const logging_override = debug.spec.logging.override.silent;
+pub fn main() !void {
+    var allocator: mem.SimpleAllocator = .{};
+    defer allocator.unmapAll();
+    const array: *types.Array = allocator.create(types.Array);
+    const extra: *types.Extra = allocator.create(types.Extra);
+    extra.* = .{ .language = .Zig };
+    var len: usize = try gen.readFile(.{ .return_type = usize }, config.tasks_template_path, array.referAllUndefined());
     array.define(len);
     for (attr.scope) |decl| {
         array.writeFormat(types.BGTypeDescr{ .type_decl = decl });
     }
     types.BGTypeDescr.scope = attr.scope;
     for (attr.all) |attributes| {
-        common.writeOpenStruct(array, language, attributes);
-        common.writeFields(array, language, attributes);
-        common.writeDeclarations(array, language, attributes);
-        common.writeWriterFunctions(array, attributes);
-        common.writeParserFunction(array, language, attributes);
+        common.writeOpenStruct(array, .Zig, attributes);
+        common.writeFields(array, .Zig, attributes);
+        common.writeDeclarations(array, .Zig, attributes);
+        extra.* = .{
+            .function = .write,
+            .notation = .slice,
+        };
+        common.writeWriterFunction(array, attributes, extra);
+        extra.* = .{
+            .function = .length,
+            .notation = .slice,
+        };
+        common.writeWriterFunction(array, attributes, extra);
+        extra.* = .{
+            .notation = .slice,
+        };
+        common.writeParserFunction(array, attributes, extra);
         common.writeCloseContainer(array);
     }
     for (attr.all) |attributes| {
         common.writeParserFunctionHelp(array, attributes);
     }
-    common.writeCommandStruct(array, language, attr.all);
+    common.writeCommandStruct(array, .Zig, attr.all);
     if (config.commit) {
-        switch (language) {
-            .C => try gen.truncateFile(.{ .return_type = void }, config.tasks_c_path, array.readAll()),
-            .Zig => try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll()),
-        }
+        try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
     } else {
         debug.write(array.readAll());
     }
@@ -49,34 +61,33 @@ fn writeTasks(array: *common.Array, language: common.Variant.Language) !void {
     if (!wip_llc) {
         return;
     }
-    len = try gen.readFile(.{ .return_type = usize }, switch (language) {
-        .Zig => config.tasks_template_path,
-        .C => config.tasks_c_template_path,
-    }, array.referAllUndefined());
+    len = try gen.readFile(.{ .return_type = usize }, config.tasks_template_path, array.referAllUndefined());
     array.define(len);
     for (attr.scope) |decl| {
         array.writeFormat(types.BGTypeDescr{ .type_decl = decl });
     }
     types.BGTypeDescr.scope = attr.scope;
-    common.writeOpenStruct(array, language, attr.llvm_llc_command_attributes);
-    common.writeFields(array, language, attr.llvm_llc_command_attributes);
-    common.writeDeclarations(array, language, attr.llvm_llc_command_attributes);
-    common.writeWriterFunctions(array, attr.llvm_llc_command_attributes);
-    common.writeParserFunction(array, language, attr.llvm_llc_command_attributes);
+    common.writeOpenStruct(array, .Zig, attr.llvm_llc_command_attributes);
+    common.writeFields(array, .Zig, attr.llvm_llc_command_attributes);
+    common.writeDeclarations(array, .Zig, attr.llvm_llc_command_attributes);
+    extra.* = .{
+        .function = .write,
+        .notation = .slice,
+    };
+    common.writeWriterFunction(array, attr.llvm_llc_command_attributes, extra);
+    extra.* = .{
+        .function = .length,
+        .notation = .slice,
+    };
+    common.writeWriterFunction(array, attr.llvm_llc_command_attributes, extra);
+    extra.* = .{
+        .notation = .slice,
+    };
+    common.writeParserFunction(array, attr.llvm_llc_command_attributes, extra);
     common.writeCloseContainer(array);
-    common.writeParserFunctionHelp(array, attr.llvm_llc_command_attributes);
     if (config.commit) {
-        switch (language) {
-            .C => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_c_path, array.readAll()),
-            .Zig => try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_path, array.readAll()),
-        }
+        try gen.truncateFile(.{ .return_type = void }, config.llc_tasks_path, array.readAll());
     } else {
         debug.write(array.readAll());
     }
-}
-pub fn main() !void {
-    var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmapAll();
-    const array: *common.Array = allocator.create(common.Array);
-    try writeTasks(array, .Zig);
 }
