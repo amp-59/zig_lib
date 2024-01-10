@@ -635,53 +635,46 @@ pub const Option = struct {
 
 pub const SlicesFormat = fmt.AnyFormat(.{ .omit_trailing_comma = true }, []const Slice);
 
-pub const Slice = union(Slice.Kind) {
-    slice_start: SliceStart,
-    slice_end: SliceEnd,
-    slice_sentinel: SliceSentinel,
-    slice_length: SliceLength,
+pub const Slice = packed struct(u12) {
+    op: Tag,
+    ptr: State1,
+    args: Parameters,
 
-    pub const SliceStart = packed struct {
-        ptr: State = .variable,
-        max: State3 = .unknown,
-        start: State = .variable,
-    };
-    pub const SliceEnd = packed struct {
-        ptr: State = .variable,
-        max: State3 = .unknown,
-        start: State = .variable,
-        end: State = .variable,
-    };
-    pub const SliceSentinel = packed struct {
-        ptr: State = .variable,
-        max: State3 = .unknown,
-        start: State = .variable,
-        end: State = .variable,
-    };
-    pub const SliceLength = packed struct {
-        ptr: State = .variable,
-        max: State3 = .unknown,
-        start: State = .variable,
-        len: State = .variable,
-        sent: State2 = .unknown,
-    };
-    pub const Kind = enum {
+    pub const Tag = enum(u2) {
         slice_start,
         slice_end,
         slice_sentinel,
         slice_length,
     };
+    pub const Parameters = packed union {
+        slice_start: SliceStart,
+        slice_end: SliceEnd,
+        slice_sentinel: SliceSentinel,
+        slice_length: SliceLength,
+
+        pub const SliceStart = packed struct(u4) {
+            max: State3 = .unknown,
+            start: State1 = .variable,
+        };
+        pub const SliceEnd = packed struct(u6) {
+            max: State3 = .unknown,
+            start: State1 = .variable,
+            end: State1 = .variable,
+        };
+        pub const SliceSentinel = packed struct(u6) {
+            max: State3 = .unknown,
+            start: State1 = .variable,
+            end: State1 = .variable,
+        };
+        pub const SliceLength = packed struct(u8) {
+            max: State3 = .unknown,
+            start: State1 = .variable,
+            len: State1 = .variable,
+            sent: State2 = .unknown,
+        };
+    };
 };
-pub const State = enum(u2) {
-    variable = 1,
-    known = 2,
-};
-pub const State2 = enum(u2) {
-    unknown = 0,
-    known = 2,
-};
-pub const State3 = enum(u2) {
-    unknown = 0,
-    variable = 1,
-    known = 2,
-};
+
+pub const State1 = enum(u2) { variable = 1, known = 2 };
+pub const State2 = enum(u2) { unknown = 0, known = 2 };
+pub const State3 = enum(u2) { unknown = 0, variable = 1, known = 2 };
