@@ -347,8 +347,7 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .name = "zig_mod_paths",
             .tag = .{ .param = .repeatable_formatter },
             .type = paths_type,
-            .descr = &.{"Zig module paths"},
-            .flags = .{ .do_write = false, .do_parse = false },
+            .flags = .{ .do_parse = false },
         },
         .{
             .string = "build-",
