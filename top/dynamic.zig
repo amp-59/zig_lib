@@ -1012,7 +1012,6 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
                     return r_next_addr;
                 }
             }
-            unreachable;
         }
         fn freeConsolidate(s_next_addr: u64, s_allocation_addr: u64) u64 {
             @setRuntimeSafety(builtin.is_safe);
