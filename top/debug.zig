@@ -2052,7 +2052,7 @@ pub const safety = struct {
     fn panicMismatchedSentinel(
         comptime Number: type,
         type_name: []const u8,
-        comptime expected: Number,
+        expected: Number,
         found: Number,
         ret_addr: usize,
     ) noreturn {
@@ -2410,9 +2410,9 @@ pub const safety = struct {
                 .div_with_remainder => |num_type| @call(.never_inline, safety.panicExactDivisionWithRemainder, .{
                     meta.BestNum(num_type), data.lhs, data.rhs, @returnAddress(),
                 }),
-                .mismatched_sentinel => |ptr_type| @call(.never_inline, safety.panicMismatchedSentinel, .{
-                    meta.BestNum(meta.Element(ptr_type)), @typeName(meta.Element(ptr_type)),
-                    meta.sentinel(ptr_type).?,            data,
+                .mismatched_sentinel => |elem_type| @call(.never_inline, safety.panicMismatchedSentinel, .{
+                    meta.BestNum(elem_type),     @typeName(elem_type),
+                    meta.bestNum(data.expected), meta.bestNum(data.actual),
                     @returnAddress(),
                 }),
                 .cast_to_ptr_from_invalid => |alignment| @call(.never_inline, safety.panicCastToPointerFromInvalid, .{
