@@ -19,6 +19,7 @@ const Syscall = struct {
     ret2: ?[]const u8 = null,
     err: ?[]const u8 = null,
     regs: []const []const u8 = &.{},
+    clobbers: []const []const u8 = &.{},
 };
 const Fn = struct {
     name: []const u8,
@@ -319,7 +320,15 @@ fn writeInlineAsm(buf: [*]u8, fn_spec: *const Fn) [*]u8 {
         ptr[0..3].* = "),\n".*;
         ptr += 3;
     }
-    ptr[0..25].* = ": \"rcx\", \"r11\", \"memory\"\n".*;
+    ptr[0..11].* = ": \"memory\",".*;
+    ptr += 11;
+    for (cpu_arch.clobbers) |where| {
+        ptr = zl.fmt.StringLiteralFormat.write(ptr, where);
+        ptr[0] = ',';
+        ptr += 1;
+    }
+    ptr[0] = '\n';
+    ptr += 1;
     ptr[0..3].* = ");\n".*;
     return ptr + 3;
 }
@@ -453,6 +462,7 @@ const archs: []const Syscall = &.{ .{
     .ret = "rax",
     .ret2 = "rdx",
     .regs = &.{ "rdi", "rsi", "rdx", "r10", "r8", "r9" },
+    .clobbers = &.{ "rcx", "r11" },
 }, .{
     .arch = .xtensa,
     .syscall = "syscall",

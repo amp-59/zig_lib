@@ -63,7 +63,7 @@ pub const Advice = enum(usize) {
 pub const MapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.mmap.errors.all },
     return_type: type = void,
-    logging: debug.Logging.AcquireError = .{},
+    logging: debug.Logging.AcquireErrorFault = .{},
 };
 pub const SyncSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.msync.errors.all },
@@ -358,22 +358,25 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     }
     return ret;
 }
-pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags.MemMap, addr: usize, len: usize) sys.ErrorUnion(
-    map_spec.errors,
-    map_spec.return_type,
-) {
-    @setRuntimeSafety(builtin.is_safe);
-    const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
-    const ret: isize = asm volatile ("syscall # mmap"
+pub fn map(
+    comptime map_spec: MapSpec,
+    prot: sys.flags.MemProt,
+    flags: sys.flags.MemMap,
+    addr: usize,
+    len: usize,
+) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
+    const logging: debug.Logging.AcquireErrorFault = comptime map_spec.logging.override();
+    const ret: isize = asm volatile (
+        \\syscall #mmap
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (@intFromEnum(sys.Fn.mmap)),
           [_] "{rdi}" (addr),
           [_] "{rsi}" (len),
           [_] "{rdx}" (prot),
           [_] "{r10}" (flags),
-          [_] "{r8}" (0),
+          [_] "{r8}" (18446744073709551615),
           [_] "{r9}" (0),
-        : "rcx", "r11", "memory"
+        : "memory", "rcx", "r11"
     );
     if (map_spec.errors.throw.len != 0) {
         builtin.throw(sys.ErrorCode, map_spec.errors.throw, ret) catch |map_error| {
@@ -385,7 +388,7 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
     }
     if (map_spec.errors.abort.len != 0) {
         builtin.throw(sys.ErrorCode, map_spec.errors.abort, ret) catch |map_error| {
-            if (logging.Error) {
+            if (logging.Fault) {
                 about.aboutAddrLenFlagsError(about.map_s, @errorName(map_error), addr, len, flags);
             }
             proc.exitError(map_error, 2);
