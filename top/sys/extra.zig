@@ -1830,3 +1830,22 @@ pub const FS = struct {
     };
     pub const backing_integer = usize;
 };
+pub const Rename2 = struct {
+    pub const default_values = struct {
+        pub const NOREPLACE = false;
+        pub const EXCHANGE = false;
+        pub const WHITEOUT = false;
+    };
+    const _field_names = struct {
+        pub const NOREPLACE =
+            \\noreplace
+        ;
+        pub const EXCHANGE =
+            \\exchange
+        ;
+        pub const WHITEOUT =
+            \\whiteout
+        ;
+    };
+    pub const backing_integer = usize;
+};
