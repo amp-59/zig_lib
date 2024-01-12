@@ -1288,15 +1288,22 @@ pub const LoaderSpec = struct {
         show_size_above: usize = 15,
         show_insignificant: bool = false,
         show_step_back_failed: bool = false,
+
+        show_increases: bool = true,
+        show_decreases: bool = true,
+        show_additions: bool = true,
+        show_deletions: bool = true,
+
         show_insignificant_increases: bool = true,
         show_insignificant_decreases: bool = true,
         show_insignificant_additions: bool = true,
         show_insignificant_deletions: bool = true,
+
         open: debug.Logging.AttemptAcquireError = .{},
         seek: debug.Logging.SuccessError = .{},
         stat: debug.Logging.SuccessErrorFault = .{},
         read: debug.Logging.SuccessError = .{},
-        map: debug.Logging.AcquireError = .{},
+        map: debug.Logging.AcquireErrorFault = .{},
         unmap: debug.Logging.ReleaseError = .{},
         close: debug.Logging.ReleaseError = .{},
     };
@@ -1531,33 +1538,31 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
             }
             for (1..ei.ehdr.shnum) |shndx| {
-                algo.shellSort(Elf64_Sym_Idx, compare.Sort.sortSymbolSize, slices[shndx]);
+                algo.shellSort(Elf64_Sym_Idx, Compare.Sort.sortSymbolSize, slices[shndx]);
             }
             return slices;
         }
-        pub const compare = struct {
-            pub const Cmp = struct {
-                /// Match status for the before ELF
-                mats1: [*]Matches,
-                /// Match status for the after ELF
-                mats2: [*]Matches,
-                /// Sorted symbols by section and size for the before ELF
-                syms1: ?[*][]Elf64_Sym_Idx = null,
-                /// Sorted symbols by section and size for the after ELF
-                syms2: ?[*][]Elf64_Sym_Idx = null,
-                sizes: [*]SizeDiff,
-                const Matches = struct {
-                    /// Match (if any) against other section.
-                    mat: Match = .{ .tag = .unknown },
-                    /// Matches of all symbols against matched section.
-                    mats: []Match = &.{},
-                };
-                const SizeDiff = struct {
-                    /// Total
-                    sizes_r1: Sizes = .{},
-                    /// Omitted
-                    sizes_r2: Sizes = .{},
-                };
+        pub const Compare = struct {
+            /// Match status for the before ELF
+            mats1: [*]Matches,
+            /// Match status for the after ELF
+            mats2: [*]Matches,
+            /// Sorted symbols by section and size for the before ELF
+            syms1: ?[*][]Elf64_Sym_Idx = null,
+            /// Sorted symbols by section and size for the after ELF
+            syms2: ?[*][]Elf64_Sym_Idx = null,
+            sizes: [*]SizeDiff,
+            const Matches = struct {
+                /// Match (if any) against other section.
+                mat: Match = .{ .tag = .unknown },
+                /// Matches of all symbols against matched section.
+                mats: []Match = &.{},
+            };
+            const SizeDiff = struct {
+                /// Total
+                sizes_r1: Sizes = .{},
+                /// Omitted
+                sizes_r2: Sizes = .{},
             };
             const Sizes = extern struct {
                 old: usize = 0,
@@ -1732,7 +1737,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 mat2: Match,
                 sizes: *Sizes,
             ) bool {
-                const diff = @max(sym1.size, sym2.size) -% @min(sym1.size, sym2.size);
+                const diff: usize = @max(sym1.size, sym2.size) -% @min(sym1.size, sym2.size);
                 if (!loader_spec.logging.show_unnamed_symbols and
                     mat2.name.len == 0)
                 {
@@ -1752,13 +1757,15 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 if (mat2.flags.is_insignificant and
                     mat1.flags.is_insignificant)
                 {
-                    if (!loader_spec.logging.show_insignificant_increases and
+                    if (loader_spec.logging.show_increases and
+                        !loader_spec.logging.show_insignificant_increases and
                         mat2.tag == .increase)
                     {
                         sizes.increases +%= diff;
                         return true;
                     }
-                    if (!loader_spec.logging.show_insignificant_decreases and
+                    if (loader_spec.logging.show_decreases and
+                        !loader_spec.logging.show_insignificant_decreases and
                         mat2.tag == .decrease)
                     {
                         sizes.decreases +%= diff;
@@ -1803,7 +1810,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ret;
             }
             pub fn compareElfInfo(
-                cmp: *Cmp,
+                cmp: *Compare,
                 allocator: *mem.SimpleAllocator,
                 ei1: *ElfInfo,
                 ei2: *ElfInfo,
@@ -1816,22 +1823,22 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 if (ei2.bestSymbolTable()) |st_shdr2| {
                     cmp.syms2 = sortSymtab(allocator, ei2, st_shdr2);
                 }
-                cmp.mats1 = @ptrFromInt(allocator.allocateRaw(ei1.ehdr.shnum * @sizeOf(Cmp.Matches), @alignOf(Cmp.Matches)));
+                cmp.mats1 = @ptrFromInt(allocator.allocateRaw(ei1.ehdr.shnum * @sizeOf(Compare.Matches), @alignOf(Compare.Matches)));
                 @memset(cmp.mats1[0..ei1.ehdr.shnum], .{});
-                cmp.mats2 = @ptrFromInt(allocator.allocateRaw(ei2.ehdr.shnum * @sizeOf(Cmp.Matches), @alignOf(Cmp.Matches)));
+                cmp.mats2 = @ptrFromInt(allocator.allocateRaw(ei2.ehdr.shnum * @sizeOf(Compare.Matches), @alignOf(Compare.Matches)));
                 @memset(cmp.mats2[0..ei2.ehdr.shnum], .{});
-                cmp.sizes = @ptrFromInt(allocator.allocateRaw(@max(ei1.ehdr.shnum, ei2.ehdr.shnum) * @sizeOf(Cmp.SizeDiff), @alignOf(Cmp.SizeDiff)));
+                cmp.sizes = @ptrFromInt(allocator.allocateRaw(@max(ei1.ehdr.shnum, ei2.ehdr.shnum) *% @sizeOf(Compare.SizeDiff), @alignOf(Compare.SizeDiff)));
                 @memset(cmp.sizes[0..@max(ei1.ehdr.shnum, ei2.ehdr.shnum)], .{});
                 if (cmp.syms1) |symtab1| {
                     for (cmp.mats1[1..ei1.ehdr.shnum], 1..) |*sect_mat1, shndx1| {
-                        const mats1: [*]Match = @ptrFromInt(allocator.allocateRaw(symtab1[shndx1].len * @sizeOf(Match), @alignOf(Match)));
+                        const mats1: [*]Match = @ptrFromInt(allocator.allocateRaw(symtab1[shndx1].len *% @sizeOf(Match), @alignOf(Match)));
                         sect_mat1.mats = mats1[0..symtab1[shndx1].len];
                         @memset(sect_mat1.mats, .{});
                     }
                 }
                 if (cmp.syms2) |symtab2| {
                     for (cmp.mats2[1..ei2.ehdr.shnum], 1..) |*sect_mat2, shndx2| {
-                        const mats2: [*]Match = @ptrFromInt(allocator.allocateRaw(symtab2[shndx2].len * @sizeOf(Match), @alignOf(Match)));
+                        const mats2: [*]Match = @ptrFromInt(allocator.allocateRaw(symtab2[shndx2].len *% @sizeOf(Match), @alignOf(Match)));
                         sect_mat2.mats = mats2[0..symtab2[shndx2].len];
                         @memset(sect_mat2.mats, .{});
                     }
@@ -1893,6 +1900,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                                             continue;
                                         }
                                         var diff: usize = ~@as(usize, 0);
+                                        var same: usize = 0;
                                         if (mat1.isMangled()) {
                                             for (cmp.mats2[shndx2].mats, cmp.syms2.?[shndx2], 0..) |*mat2, *sym2, sym_idx2| {
                                                 if (mat2.idx != Match.no_idx) {
@@ -1901,9 +1909,21 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                                                 const name2: [:0]u8 = symbolName(ei2, symtab_shdr2, sym2, mat2) orelse {
                                                     continue;
                                                 };
+                                                const space1: []const u8 = mat1.name.space(name1);
+                                                const space2: []const u8 = mat2.name.space(name2);
+                                                const space_min: usize = @min(space1.len, space2.len);
+                                                const space_max: usize = @max(space1.len, space2.len);
+                                                var tmp: usize = 0;
+                                                for (space1[0..space_min], space2[0..space_min]) |byte1, byte2| {
+                                                    if (byte1 == byte2) {
+                                                        tmp +%= 1;
+                                                    }
+                                                }
+                                                tmp -|= space_max -% space_min;
                                                 if (mem.testEqualString(mat1.name.short(name1), mat2.name.short(name2)) and
-                                                    mem.testEqualString(mat1.name.space(name1), mat2.name.space(name2)))
+                                                    tmp > same)
                                                 {
+                                                    same = tmp;
                                                     if (mem.testEqualString(ei1.symbolBytes(sym1), ei2.symbolBytes(sym2))) {
                                                         mat1.tag = .matched;
                                                         mat1.idx = @intCast(sym_idx2);
@@ -2031,7 +2051,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return len;
             }
             pub fn lengthElf(
-                cmp: *Cmp,
+                cmp: *Compare,
                 allocator: *mem.SimpleAllocator,
                 ei: *ElfInfo,
                 width1: usize,
@@ -2040,9 +2060,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 if (ei.bestSymbolTable()) |st_shdr| {
                     cmp.syms2 = sortSymtab(allocator, ei, st_shdr);
                 }
-                cmp.mats2 = @ptrFromInt(allocator.allocateRaw(ei.ehdr.shnum * @sizeOf(Cmp.Matches), @alignOf(Cmp.Matches)));
+                cmp.mats2 = @ptrFromInt(allocator.allocateRaw(ei.ehdr.shnum * @sizeOf(Compare.Matches), @alignOf(Compare.Matches)));
                 @memset(cmp.mats2[0..ei.ehdr.shnum], .{ .mat = .{ .tag = .identical } });
-                cmp.sizes = @ptrFromInt(allocator.allocateRaw(ei.ehdr.shnum * @sizeOf(Cmp.SizeDiff), @alignOf(Cmp.SizeDiff)));
+                cmp.sizes = @ptrFromInt(allocator.allocateRaw(ei.ehdr.shnum * @sizeOf(Compare.SizeDiff), @alignOf(Compare.SizeDiff)));
                 @memset(cmp.sizes[0..ei.ehdr.shnum], .{});
                 if (cmp.syms2) |symtab2| {
                     for (cmp.mats2[1..ei.ehdr.shnum], 1..) |*sect_mat2, shndx2| {
@@ -2089,8 +2109,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return len;
             }
             pub fn writeElf(
-                cmp: *const Cmp,
                 buf: [*]u8,
+                cmp: *const Compare,
                 ei: *const ElfInfo,
                 width1: usize,
             ) [*]u8 {
@@ -2120,8 +2140,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ptr;
             }
             pub fn writeElfDifferences(
-                cmp: *const Cmp,
                 buf: [*]u8,
+                cmp: *const Compare,
                 ei1: *const ElfInfo,
                 ei2: *const ElfInfo,
                 width1: usize,
@@ -2258,6 +2278,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
         };
         pub const about = struct {
+            const load_s = fmt.about("load");
+            const reloc_s = fmt.about("reloc");
             fn aboutReadMetadataSection(name: [:0]const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
@@ -2314,8 +2336,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
-            const load_s = fmt.about("load");
-            const reloc_s = fmt.about("reloc");
             fn aboutLoad(info: *const ElfInfo, pathname: [:0]const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
@@ -2341,14 +2361,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
-            fn lengthPercentage(size: usize, mat: compare.Match, sizes: *const compare.Sizes) usize {
+            fn lengthPercentage(size: usize, mat: Compare.Match, sizes: *const Compare.Sizes) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 if (size *% sizes.new == 0 or mat.flags.is_insignificant) {
                     return 0;
                 }
                 return PercentFormat.length(size, sizes.new) +% 2;
             }
-            fn writePercentage(buf: [*]u8, size: usize, mat: compare.Match, sizes: *const compare.Sizes) [*]u8 {
+            fn writePercentage(buf: [*]u8, size: usize, mat: Compare.Match, sizes: *const Compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (size *% sizes.new == 0 or mat.flags.is_insignificant) {
                     return buf;
@@ -2357,14 +2377,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0..2].* = ", ".*;
                 return ptr + 2;
             }
-            fn lengthPercentages(size1: usize, size2: usize, mat: compare.Match, sizes: *const compare.Sizes) usize {
+            fn lengthPercentages(size1: usize, size2: usize, mat: Compare.Match, sizes: *const Compare.Sizes) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 if (size1 *% size2 == 0 or mat.flags.is_insignificant) {
                     return 0;
                 }
                 return ChangedPercentFormat.length(size1, sizes.old, size2, sizes.new) +% 2;
             }
-            fn writePercentages(buf: [*]u8, size1: usize, size2: usize, mat: compare.Match, sizes: *const compare.Sizes) [*]u8 {
+            fn writePercentages(buf: [*]u8, size1: usize, size2: usize, mat: Compare.Match, sizes: *const Compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (size1 *% size2 == 0 or mat.flags.is_insignificant) {
                     return buf;
@@ -2526,7 +2546,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr;
             }
-            fn eventString(event: compare.Match.Tag) []const u8 {
+            fn eventString(event: Compare.Match.Tag) []const u8 {
                 @setRuntimeSafety(false);
                 switch (event) {
                     .unknown => return "!",
@@ -2541,7 +2561,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn lengthSymbolIntro(
                 value: usize,
-                event: compare.Match.Tag,
+                event: Compare.Match.Tag,
                 width2: usize,
             ) usize {
                 return eventString(event).len +% (builtin.message_indent +% width2) -%
@@ -2552,7 +2572,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn writeSymbolIntro(
                 buf: [*]u8,
                 value: usize,
-                event: compare.Match.Tag,
+                event: Compare.Match.Tag,
                 width1: usize,
                 width2: usize,
             ) [*]u8 {
@@ -2595,7 +2615,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr;
             }
-            fn lengthExcluded(width2: usize, sizes_r2: *const compare.Sizes) usize {
+            fn lengthExcluded(width2: usize, sizes_r2: *const Compare.Sizes) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 var len: usize = lengthSymbolGeneric(&tab.fx.color.fg.magenta, width2);
                 len +%= tab.fx.style.faint.len;
@@ -2609,7 +2629,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return len +% tab.fx.none.len +% 1;
             }
-            fn writeExcluded(buf: [*]u8, width1: usize, width2: usize, sizes_r2: *const compare.Sizes) [*]u8 {
+            fn writeExcluded(buf: [*]u8, width1: usize, width2: usize, sizes_r2: *const Compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = writeSymbolGeneric(buf, &tab.fx.color.fg.magenta, '?', width1, width2);
                 ptr[0..4].* = tab.fx.style.faint;
@@ -2628,7 +2648,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr + 5;
             }
-            fn lengthSymbol(sym: *const Elf64_Sym_Idx, mat: compare.Match, name: [:0]u8, sizes_r1: *const compare.Sizes) usize {
+            fn lengthSymbol(sym: *const Elf64_Sym_Idx, mat: Compare.Match, name: [:0]u8, sizes_r1: *const Compare.Sizes) usize {
                 return lengthAddressOrOffset(sym.value, 0) +% 15 +% @tagName(sym.info).len +%
                     switch (mat.tag) {
                     .addition => fmt.BloatDiff.length(0, sym.size),
@@ -2636,7 +2656,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     else => fmt.Bytes.length(sym.size),
                 } +% lengthPercentage(sym.size, mat, sizes_r1) +% lengthCompoundNameHalf(mat, name);
             }
-            fn writeSymbol(buf: [*]u8, sym: *const Elf64_Sym_Idx, mat: compare.Match, name: [:0]u8, sizes_r1: *const compare.Sizes) [*]u8 {
+            fn writeSymbol(buf: [*]u8, sym: *const Elf64_Sym_Idx, mat: Compare.Match, name: [:0]u8, sizes_r1: *const Compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = writeAddressOrOffset(buf, sym.value, 0);
                 ptr = fmt.strcpyEqu(ptr, @tagName(sym.info));
@@ -2659,11 +2679,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn lengthSymbolDifference(
                 sym1: *const Elf64_Sym_Idx,
-                mat1: compare.Match,
+                mat1: Compare.Match,
                 name1: [:0]u8,
-                sizes: *const compare.Sizes,
+                sizes: *const Compare.Sizes,
                 sym2: *const Elf64_Sym_Idx,
-                mat2: compare.Match,
+                mat2: Compare.Match,
                 name2: [:0]u8,
             ) usize {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2676,11 +2696,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn writeSymbolDifference(
                 buf: [*]u8,
                 sym1: *const Elf64_Sym_Idx,
-                mat1: compare.Match,
+                mat1: Compare.Match,
                 name1: [:0]u8,
-                sizes: *const compare.Sizes,
+                sizes: *const Compare.Sizes,
                 sym2: *const Elf64_Sym_Idx,
-                mat2: compare.Match,
+                mat2: Compare.Match,
                 name2: [:0]u8,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2744,7 +2764,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr;
             }
-            fn lengthCompoundNameHalf(mat: compare.Match, name: [:0]u8) usize {
+            fn lengthCompoundNameHalf(mat: Compare.Match, name: [:0]u8) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 if (mat.isToplevel()) {
                     return lengthName(&.{}, name);
@@ -2755,7 +2775,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return len;
             }
-            fn writeCompoundNameHalf(buf: [*]u8, mat: compare.Match, name: [:0]u8) [*]u8 {
+            fn writeCompoundNameHalf(buf: [*]u8, mat: Compare.Match, name: [:0]u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (mat.isToplevel()) {
                     return writeName(buf, &.{}, name);
@@ -2793,16 +2813,35 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 name1: []const u8,
                 style2: []const u8,
                 name2: []const u8,
+                is_space: bool,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
                 if (mem.testEqualString(name1, name2)) {
                     ptr = writeName(ptr, style, name2);
                 } else {
+                    var tmp: usize = 0;
+                    if (is_space) {
+                        const name_min: usize = @min(name1.len, name2.len);
+                        for (name1[0..name_min], name2[0..name_min], 0..) |byte1, byte2, idx| {
+                            if (byte1 != byte2) {
+                                break;
+                            }
+                            if (byte1 == '.') {
+                                tmp = idx;
+                            }
+                        }
+                        if (tmp != name_min) {
+                            tmp +%= 1;
+                        }
+                        ptr = writeName(ptr, style, name1[0..tmp]);
+                    }
+                    const name12: []const u8 = name1[tmp..];
+                    const name22: []const u8 = name2[tmp..];
                     ptr[0] = '[';
-                    ptr = writeName(ptr + 1, style1, name1);
+                    ptr = writeName(ptr + 1, style1, name12);
                     ptr[0..2].* = "=>".*;
-                    ptr = writeName(ptr + 2, style2, name2);
+                    ptr = writeName(ptr + 2, style2, name22);
                     ptr[0] = ']';
                     ptr += 1;
                 }
@@ -2812,9 +2851,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ptr;
             }
             fn lengthCompoundName(
-                mat1: compare.Match,
+                mat1: Compare.Match,
                 name1: [:0]u8,
-                mat2: compare.Match,
+                mat2: Compare.Match,
                 name2: [:0]u8,
             ) usize {
                 if (mat1.isToplevel() and mat2.isToplevel()) {
@@ -2855,9 +2894,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn writeCompoundName(
                 buf: [*]u8,
-                mat1: compare.Match,
+                mat1: Compare.Match,
                 name1: [:0]u8,
-                mat2: compare.Match,
+                mat2: Compare.Match,
                 name2: [:0]u8,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2875,6 +2914,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         mat1.name.space(name1),
                         &tab.fx.color.fg.hi_blue,
                         mat2.name.space(name2),
+                        true,
                     );
                     ptr[0] = '.';
                     ptr += 1;
@@ -2885,6 +2925,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         mat1.name.short(name1),
                         &tab.fx.color.fg.hi_blue,
                         mat2.name.short(name2),
+                        false,
                     );
                     if (mat1.isMangled() and
                         mat2.isMangled())
@@ -2896,6 +2937,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                             mat1.name.mangler(name1),
                             &tab.fx.color.fg.hi_blue,
                             mat2.name.mangler(name2),
+                            false,
                         );
                     }
                 }
