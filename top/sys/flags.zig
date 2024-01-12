@@ -391,11 +391,12 @@ pub const MAdvise = packed struct(usize) {
     zb7: u57 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -740,11 +741,12 @@ pub const Id = packed struct(usize) {
     zb2: u62 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -1051,11 +1053,12 @@ pub const IPPROTO = packed struct(usize) {
     zb9: u55 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -1230,11 +1233,12 @@ pub const Signal = packed struct(usize) {
     zb5: u59 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -1298,11 +1302,12 @@ pub const TIOC = packed struct(usize) {
     zb15: u49 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -1779,11 +1784,12 @@ pub const SI = packed struct(usize) {
     zb32: u32 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -1851,11 +1857,12 @@ pub const RWH_WRITE_LIFE = packed struct(usize) {
     zb3: u61 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -1877,11 +1884,12 @@ pub const POSIX_FADV = packed struct(usize) {
     zb3: u61 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        const tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
+        _ = &tmp;
         return len;
     }
     pub fn formatLength(format: @This()) usize {
@@ -1998,6 +2006,48 @@ pub const FS = packed struct(usize) {
             .{ 12, 1 }, .{ 9, 1 },  .{ 9, 1 },  .{ 10, 1 },
             .{ 15, 7 }, .{ 9, 1 },  .{ 10, 1 }, .{ 9, 1 },
             .{ 8, 6 },  .{ 14, 6 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                len +%= @intFromBool(len != 0) +% pair[0];
+            }
+        }
+        return len;
+    }
+};
+pub const Rename2 = packed struct(usize) {
+    NOREPLACE: bool = false,
+    EXCHANGE: bool = false,
+    WHITEOUT: bool = false,
+    zb3: u61 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        for ([_]struct { []const u8, u8 }{
+            .{ "NOREPLACE", 0 },
+            .{ "EXCHANGE", 1 },
+            .{ "WHITEOUT", 1 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                buf[len] = ',';
+                len += @intFromBool(len != 6);
+                len += fmt.strcpy(buf + len, pair[0]);
+            }
+        }
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        var tmp: usize = @bitCast(format);
+        for ([_]struct { u8, u8 }{
+            .{ 9, 0 }, .{ 8, 1 },
+            .{ 8, 1 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {
