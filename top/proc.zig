@@ -15,8 +15,8 @@ pub const SignalAction = extern struct {
     mask: u64 = 0,
     const Handler = packed union {
         set: enum(usize) { ignore = 1, default = 0 },
-        handler: *const fn (sys.SignalCode) void,
-        action: *const fn (sys.SignalCode, *const SignalInfo, ?*const anyopaque) void,
+        handler: *const fn (sys.SignalCode) callconv(.C) void,
+        action: *const fn (sys.SignalCode, *const SignalInfo, ?*const anyopaque) callconv(.C) void,
     };
 };
 pub const SignalStack = extern struct {
@@ -711,7 +711,8 @@ pub noinline fn clone(
 /// Replaces argument at `index` with argument at `index` +% 1
 /// This is useful for extracting information from the program arguments in
 /// rounds.
-pub fn shift(args: *[][*:0]u8, index: u64) void {
+pub fn shift(args: *[][*:0]u8, index: usize) void {
+    @setRuntimeSafety(builtin.is_safe);
     if (args.len > index +% 1) {
         var this: *[*:0]u8 = &args.*[index];
         for (args.*[index +% 1 ..]) |*next| {
@@ -721,6 +722,23 @@ pub fn shift(args: *[][*:0]u8, index: u64) void {
     }
     args.* = args.*[0 .. args.len -% 1];
 }
+
+pub fn writeArgPtrs(buf: [*][*:0]u8, args: []const u8) [*][*:0]u8 {
+    @setRuntimeSafety(builtin.is_safe);
+    var ptrs: [*]usize = @ptrCast(buf);
+    var idx: usize = 0;
+    var pos: usize = 0;
+    while (idx != args.len) : (idx +%= 1) {
+        if (args[idx] == 0 or args[idx] == '\n') {
+            ptrs[0] = @intFromPtr(args.ptr + pos);
+            ptrs += 1;
+            pos = idx +% 1;
+        }
+    }
+    ptrs[0] = 0;
+    return @ptrCast(ptrs);
+}
+
 /// init: ArgsIterator{ .args = args }
 pub const ArgsIterator = struct {
     args: [][*:0]u8,
@@ -804,7 +822,7 @@ pub fn restoreRuntime() callconv(.Naked) void {
         ),
         else => asm volatile ("syscall # rt_sigreturn"
             :
-            : [number] "{rax}" (15),
+            : [number] "{rax}" (@intFromEnum(sys.Fn.rt_sigreturn)),
             : "rcx", "r11", "memory"
         ),
     }
@@ -1120,16 +1138,16 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) noreturn {
-        @setRuntimeSafety(false);
+    pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) callconv(.C) noreturn {
         updateExceptionHandlers(null);
         const pid: u32 = getProcessId();
         const tid: u32 = getThreadId();
         var buf: [4224]u8 = undefined;
-        buf[0..3].* = "SIG".*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf[3..], @tagName(sig));
+        var ptr: [*]u8 = &buf;
+        ptr[0..3].* = "SIG".*;
+        ptr = fmt.strcpyEqu(ptr[3..], @tagName(sig));
         ptr[0..12].* = " at address ".*;
-        ptr = fmt.Ux64.write(ptr + 12, info.fields.fault.addr);
+        ptr = fmt.Uxsize.write(ptr + 12, info.fields.fault.addr);
         ptr[0..6].* = ", pid=".*;
         ptr = fmt.Ud64.write(ptr + 6, pid);
         if (pid != tid) {
@@ -1137,7 +1155,8 @@ pub const about = opaque {
             ptr = fmt.Ud64.write(ptr + 6, tid);
         }
         ptr[0..2].* = ", ".*;
-        ptr += about.exe(ptr[2..4098]);
+        ptr += 2;
+        ptr += about.exe(ptr[0..4096]);
         debug.panic_extra.panicSignal(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], ctx.?);
     }
     pub fn sampleAllReports() void {
