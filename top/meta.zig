@@ -1676,7 +1676,7 @@ pub fn isValidErrorCode(comptime E: type, err: E) bool {
     }
     return false;
 }
-pub fn isValidEnumInt(comptime E: type, int: @typeInfo(E).Enum.tag_type.?) bool {
+pub fn isValidEnumInt(comptime E: type, int: @typeInfo(E).Enum.tag_type) bool {
     inline for (@typeInfo(E).Enum.fields) |field| {
         if (field.value == int) {
             return true;
