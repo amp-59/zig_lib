@@ -337,6 +337,7 @@ pub const Module = struct {
         return len +% 1 +% mod.path.len +% 1;
     }
     pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Module {
+        @setRuntimeSafety(false);
         var idx: usize = 0;
         var len: usize = 0;
         while (idx != arg.len) : (idx +%= 1) {
@@ -381,6 +382,35 @@ pub const Module = struct {
 pub const ModuleDependency = struct {
     import: []const u8 = &.{},
     name: []const u8,
+
+    pub fn formatWriteBuf(mod_dep: ModuleDependency, buf: [*]u8) u64 {
+        @setRuntimeSafety(builtin.is_safe);
+        buf[0..6].* = "--dep\x00".*;
+        var ptr: [*]u8 = buf + 7;
+        if (mod_dep.import.len != 0) {
+            ptr = fmt.strcpyEqu(ptr, mod_dep.import);
+            ptr[0] = '=';
+            ptr += 1;
+        }
+        ptr = fmt.strcpyEqu(ptr, mod_dep.name);
+        ptr[0] = ',';
+        ptr += 1;
+        const len: usize = @intFromPtr(ptr) -% @intFromPtr(buf);
+        buf[len -% 1] = 0;
+        return len;
+    }
+    pub fn formatLength(mod_dep: ModuleDependency) u64 {
+        if (mod_dep.value.len == 0) {
+            return 0;
+        }
+        var len: u64 = 6;
+        len +%= mod_dep.import.len +% @intFromBool(mod_dep.import.len != 0);
+        len +%= mod_dep.name.len +% 1;
+        return len;
+    }
+    pub fn formatParseArgs(_: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) ModuleDependency {
+        return .{ .name = arg };
+    }
 };
 pub const ModuleDependencies = struct {
     value: []const ModuleDependency,
