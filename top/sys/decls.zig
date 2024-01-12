@@ -614,3 +614,9 @@ pub const FS = struct {
     pub const PROJINHERIT_FL = 536870912;
     pub usingnamespace extra.FS;
 };
+pub const Rename2 = struct {
+    pub const NOREPLACE = 1;
+    pub const EXCHANGE = 2;
+    pub const WHITEOUT = 4;
+    pub usingnamespace extra.Rename2;
+};
