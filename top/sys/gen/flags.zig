@@ -245,6 +245,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             var shr_amt: usize = 0;
             var shl_rem: usize = 0;
             var enum_idx: usize = 0;
+            var tmp_mod: bool = false;
             if (isEnum(format)) return;
             if (prefer_gst) {
                 for (format.value.sets, 0..) |set, idx| {
@@ -333,6 +334,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                         array.writeMany("]);\n");
                         array.writeMany("}\n");
                     } else {
+                        tmp_mod = true;
                         array.writeMany("for([_]struct{[]const u8,u8}{\n");
                         var start: usize = array.len();
                         for (set.pairs, 0..) |pair, item| {
@@ -365,6 +367,9 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     array.writeMany("}\n");
                     shr_amt +%= shl_rem +% 1;
                 }
+            }
+            if (!tmp_mod) {
+                array.writeMany("_=&tmp;");
             }
             array.writeMany("return len;\n");
             array.writeMany("}\n");
@@ -512,7 +517,7 @@ pub fn main() !void {
         const format: Format = Format.init(value, decl.name);
         max_len = @max(max_len, format.defineGlobalStringTable(gst_array));
     }
-    var gst: GST = .{
+    const gst: GST = .{
         .array = gst_array,
         .max_len_bits = meta.unsignedRealBitSize(max_len),
         .max_off_bits = meta.unsignedRealBitSize(gst_array.len()),
