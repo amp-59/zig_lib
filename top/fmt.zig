@@ -2421,8 +2421,47 @@ pub inline fn toStringLiteral(comptime str: []const u8) []const u8 {
         return ret;
     }
 }
-pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
+pub fn strip(dest: [*]u8, src: []const u8, byte: u8) usize {
+    var idx: usize = 0;
+    var ptr: [*]u8 = dest;
+    while (idx < src.len) : (idx +%= 1) {
+        if (src[idx] != byte) {
+            ptr[0] = src[idx];
+            ptr += 1;
+        }
+    }
+    return strlen(ptr, dest);
+}
+pub fn squeeze(dest: [*]u8, src: []const u8, byte: u8) usize {
+    var eq2: bool = src[0] == byte;
+    var idx: usize = 0;
     var len: usize = 0;
+    var ptr: [*]u8 = dest;
+    while (idx < src.len) : (idx +%= 1) {
+        const eq: bool = src[idx] == byte;
+        if (!eq2 or !eq) {
+            ptr[0] = src[idx];
+            ptr += 1;
+        } else {
+            len -%= 1;
+        }
+        eq2 = eq;
+    }
+    return len -% @intFromBool(eq2);
+}
+
+pub fn nameToString(comptime name: []const u8) [name.len]u8 {
+    var buf: [name.len]u8 = undefined;
+    for (name, 0..) |byte, idx| {
+        buf[idx] = switch (byte) {
+            '_' => '-',
+            else => byte,
+        };
+    }
+    return buf;
+}
+pub fn writeToCamelCases(buf: [*]u8, names: []const []const u8) [*]u8 {
+    var ptr: [*]u8 = buf;
     var state: bool = false;
     for (names) |name| {
         for (name) |c| {
