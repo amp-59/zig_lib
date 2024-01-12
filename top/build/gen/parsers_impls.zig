@@ -12,10 +12,12 @@ pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmapAll();
     const array: *types.Array = allocator.create(types.Array);
+    const extra: *types.Extra = allocator.create(types.Extra);
+    extra.* = .{ .language = .C };
     const len: usize = try gen.readFile(.{ .return_type = usize }, config.parsers_template_path, array.referAllUndefined());
     array.define(len);
     for (attr.all) |attributes| {
-        common.writeParserFunction(array, .{ .language = .C }, attributes);
+        common.writeParserFunction(array, attributes, extra);
     }
     for (attr.all) |attributes| {
         common.writeParserFunctionHelp(array, attributes);
