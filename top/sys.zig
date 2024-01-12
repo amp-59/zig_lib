@@ -1568,7 +1568,7 @@ pub const SignalCode = enum(usize) {
     }
 };
 pub const SignalPolicy = builtin.ExternalError(SignalCode);
-pub const Fn = enum(comptime_int) {
+pub const Fn = enum(usize) {
     read = 0,
     write = 1,
     open = 2,
@@ -2014,6 +2014,7 @@ pub const Fn = enum(comptime_int) {
             .name_to_handle_at,
             .linkat,
             .perf_event_open,
+            .renameat2,
             => return 5,
             .preadv2,
             .pwritev2,

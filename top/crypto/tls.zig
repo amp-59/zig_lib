@@ -373,3 +373,4 @@ pub fn init(host: []const u8, seed: *[192]u8, buf: [*]u8) !void {
         ptr = write16(ptr, host_len);
     }
 }
+pub fn main() void {}
