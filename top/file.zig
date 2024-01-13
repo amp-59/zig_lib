@@ -730,20 +730,20 @@ pub const CopySpec = struct {
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
+pub const MoveSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = spec.copy_file_range.errors.all },
+    return_type: type = void,
+    logging: debug.Logging.SuccessError = .{},
+};
 pub const SendSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.sendfile.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const LinkSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.link.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
-    const Options = struct {
-        follow: bool = false,
-        empty_path: bool = false,
-    };
 };
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.close.errors.all },
