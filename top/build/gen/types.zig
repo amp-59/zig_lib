@@ -1,6 +1,41 @@
 const fmt = @import("../../fmt.zig");
 const mem = @import("../../mem.zig");
 const config = @import("config.zig");
+pub const Array = mem.array.StaticString(64 * 1024 * 1024);
+pub const Array2 = mem.array.StaticString(64 * 1024);
+pub const Array256 = mem.array.StaticString(256);
+pub const Extra = struct {
+    function: Function = .write,
+    language: Language = .Zig,
+    notation: Notation = .slice,
+    ptr_name: []const u8 = "cmd",
+    len: Length = .{},
+    flags: Flags = .{},
+    comptime memcpy: Memcpy = .fmt,
+    pub const Language = enum { C, Zig };
+    pub const Memcpy = enum { builtin, fmt };
+    pub const Function = enum {
+        length,
+        write,
+        /// Legacy
+        formatWrite,
+    };
+    pub const Notation = enum {
+        slice,
+        ptrcast,
+        memcpy,
+    };
+    pub const Length = struct {
+        strings: Array2 = .{},
+        val: usize = 0,
+        decl: bool = false,
+    };
+    pub const Flags = struct {
+        want_fn_intro: bool = true,
+        want_fn_body: bool = true,
+        want_fn_exit: bool = true,
+    };
+};
 pub const Context = enum { Lib, Exe };
 pub const Attributes = struct {
     /// Name of task command data structure
@@ -31,17 +66,23 @@ pub const BGTypeDescrMap = struct {
     write: ?*const BGTypeDescr = null,
     parse: ?*const BGTypeDescr = null,
 };
+pub const SpecialDefn = struct {
+    store: ?*const fn (*Array, ParamSpec, *Extra) void = null,
+    parse: ?*const fn (*Array, ParamSpec, *Extra) void = null,
+    write: ?*const fn (*Array, ParamSpec, *Extra) void = null,
+};
 pub const boolean: BGTypeDescr = BGTypeDescr.init(bool);
 const Tag = union(enum) {
-    field: enum {
+    field: union(enum) {
         string,
         tag,
         boolean,
         integer,
         formatter,
         mapped,
+        repeatable_task: *const Attributes,
     },
-    optional_field: enum {
+    optional_field: union(enum) {
         string,
         tag,
         boolean,
@@ -51,6 +92,7 @@ const Tag = union(enum) {
         repeatable_string,
         repeatable_tag,
         repeatable_formatter,
+        repeatable_task: *const Attributes,
     },
     param: enum {
         string,
@@ -77,27 +119,21 @@ pub const ParamSpec = struct {
     /// can be `*const BGTypeDescr` or `*const [2]BGTypeDescr` depending
     /// on the kind of parameter.
     type: BGTypeDescrMap = .{},
+    /// Bespoke writer functions for either writing, parsing, or struct definition.
+    special: SpecialDefn = .{},
     /// Specifies whether option arguments are separated with '\x00' or '='
     /// If `null` the separator is determined by context
     /// If `immediate` (255) no separator is written
     char: ?u8 = null,
     /// Miscellaneous controls
     flags: packed struct {
-        /// Do not include in task struct definitions or writer functions
+        /// Include in task struct definitions or writer functions
         do_write: bool = true,
-        /// Do not include in parser functions
+        /// Include in parser functions
         do_parse: bool = true,
     } = .{},
+    default: ?[]const u8 = null,
     pub const immediate: u8 = 255;
-    pub fn isField(param_spec: ParamSpec) bool {
-        return param_spec.tag == .field;
-    }
-    pub fn isLiteral(param_spec: ParamSpec) bool {
-        return param_spec.tag == .literal;
-    }
-    pub fn isFnParam(param_spec: ParamSpec) bool {
-        return param_spec.tag == .param;
-    }
 };
 pub const InverseParamSpec = struct {
     /// Command line flag/switch
