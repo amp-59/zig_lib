@@ -3441,7 +3441,9 @@ fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: IdentifierFormat, fie
 }
 pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     if (spec.decls.forward_formatter) {
-        if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
+        if ((@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) or
+            (@hasDecl(Struct, "write") and @hasDecl(Struct, "length")))
+        {
             return FormatFormat(Struct);
         }
     }
@@ -3688,7 +3690,9 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
 }
 pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     if (spec.decls.forward_formatter) {
-        if (@hasDecl(Union, "formatWrite") and @hasDecl(Union, "formatLength")) {
+        if ((@hasDecl(Union, "formatWrite") and @hasDecl(Union, "formatLength")) or
+            (@hasDecl(Union, "write") and @hasDecl(Union, "length")))
+        {
             return FormatFormat(Union);
         }
     }
