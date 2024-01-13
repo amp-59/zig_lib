@@ -1593,13 +1593,14 @@ pub fn pathStatus(comptime stat_spec: StatusSpec, pathname: [:0]const u8, st: *S
         return stat_error;
     }
 }
+
 pub fn setTimesAt(comptime utimes_spec: TimesSpec, dir_fd: usize, name: [:0]const u8, times: ?*const [2]time.TimeSpec) sys.ErrorUnion(
     utimes_spec.errors,
     utimes_spec.return_type,
 ) {
     @setRuntimeSafety(builtin.is_safe);
     const logging: debug.Logging.SuccessErrorFault = comptime utimes_spec.logging.override();
-    const ret: isize = asm volatile ("syscall # mmap"
+    const ret: isize = asm volatile ("syscall # utimensat"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (@intFromEnum(sys.Fn.utimensat)),
           [_] "{rdi}" (dir_fd),
@@ -1723,7 +1724,7 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: sys.flags.FileProt, flags: sys.
     map_spec.errors,
     map_spec.return_type,
 ) {
-    const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime map_spec.logging.override();
     const ret: isize = asm volatile ("syscall # mmap"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (@intFromEnum(sys.Fn.mmap)),
@@ -1777,6 +1778,27 @@ pub fn send(comptime send_spec: SendSpec, dest_fd: usize, src_fd: usize, offset:
             about.sendError(sendfile_error, dest_fd, src_fd, offset, count);
         }
         return sendfile_error;
+    }
+}
+pub fn move(comptime move_spec: MoveSpec, flags: sys.flags.Rename2, dest_dir_fd: usize, dest_name: [:0]const u8, src_dir_fd: usize, src_name: [:0]const u8) sys.ErrorUnion(
+    move_spec.errors,
+    move_spec.return_type,
+) {
+    const logging: debug.Logging.SuccessError = comptime move_spec.logging.override();
+    if (meta.wrap(sys.call(.renameat2, move_spec.errors, usize, .{
+        src_dir_fd, @intFromPtr(src_name.ptr), dest_dir_fd, @intFromPtr(dest_name.ptr), @bitCast(flags),
+    }))) |ret| {
+        if (logging.Success) {
+            about.aboutDirFdNameDirFdNameNotice(about.move_s, "dest_dir_fd=", "=>", "src_dir_fd=", dest_dir_fd, dest_name, src_dir_fd, src_name);
+        }
+        if (move_spec.return_type != void) {
+            return ret;
+        }
+    } else |move_error| {
+        if (logging.Error) {
+            about.aboutDirFdNameDirFdNameError(about.move_s, @errorName(move_error), "dest_dir_fd=", "=>", "src_dir_fd=", dest_dir_fd, dest_name, src_dir_fd, src_name);
+        }
+        return move_error;
     }
 }
 pub fn copy(comptime copy_spec: CopySpec, dest_fd: usize, dest_offset: ?*usize, src_fd: usize, src_offset: ?*usize, count: usize) sys.ErrorUnion(
@@ -2567,6 +2589,7 @@ pub const about = struct {
     const copy_s: fmt.AboutSrc = fmt.about("copy");
     const send_s: fmt.AboutSrc = fmt.about("send");
     const stat_s: fmt.AboutSrc = fmt.about("stat");
+    const move_s: fmt.AboutSrc = fmt.about("move");
     const open_s: fmt.AboutSrc = fmt.about("open");
     const file_s: fmt.AboutSrc = fmt.about("file");
     const read_s: fmt.AboutSrc = fmt.about("read");
