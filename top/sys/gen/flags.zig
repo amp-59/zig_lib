@@ -274,7 +274,6 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     } else {
                         continue;
                     }
-
                     tmp_mod = true;
                     array.writeMany("for([_]struct{[]const u8,u8,bool}{\n");
                     var start: usize = array.len();
@@ -301,7 +300,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     }
                     array.writeMany(",})|pair|{\n");
                     array.writeMany("tmp>>=@truncate(pair[1]);\n");
-                    array.writeMany("if(tmp&1!=@intFromBool(pair[2])){\n");
+                    array.writeMany("if(tmp&1!=@intFromBool(if(builtin.show_default_flags) true else pair[2])){\n");
                     array.writeMany("ptr[0]=',';\n");
                     array.writeMany("ptr=fmt.strcpyEqu(ptr+@intFromBool(ptr!=buf+6),pair[0]);\n");
                     array.writeMany("}\n");
@@ -363,7 +362,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     }
                     array.writeMany(",})|pair|{\n");
                     array.writeMany("tmp>>=@truncate(pair[1]);\n");
-                    array.writeMany("if(tmp&1!=pair[2]){\n");
+                    array.writeMany("if(tmp&1!=@intFromBool(if(builtin.show_default_flags) true else pair[2])){\n");
                     array.writeMany("len+%=@intFromBool(len!=0)+%pair[0];\n");
                     array.writeMany("}\n");
                     shr_amt +%= shl_rem +% 1;
@@ -386,7 +385,6 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             }
             return max;
         }
-
         fn isEnum(format: Format) bool {
             return format.value.sets.len == 1 and
                 format.value.sets[0].tag == .E;
