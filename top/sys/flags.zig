@@ -25,51 +25,50 @@ pub const MemMap = packed struct(usize) {
     sync: bool = false,
     fixed_noreplace: bool = true,
     zb21: u43 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.visibility));
-        for ([_]struct { []const u8, u8 }{
-            .{ "fixed", 4 },
-            .{ "anonymous", 1 },
-            .{ "grows_down", 3 },
-            .{ "deny_write", 3 },
-            .{ "executable", 1 },
-            .{ "locked", 1 },
-            .{ "no_reserve", 1 },
-            .{ "populate", 1 },
-            .{ "non_block", 1 },
-            .{ "stack", 1 },
-            .{ "hugetlb", 1 },
-            .{ "sync", 1 },
-            .{ "fixed_noreplace", 1 },
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.visibility));
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "fixed", 4, false },
+            .{ "anonymous", 1, true },
+            .{ "grows_down", 3, false },
+            .{ "deny_write", 3, false },
+            .{ "executable", 1, false },
+            .{ "locked", 1, false },
+            .{ "no_reserve", 1, false },
+            .{ "populate", 1, false },
+            .{ "non_block", 1, false },
+            .{ "stack", 1, false },
+            .{ "hugetlb", 1, false },
+            .{ "sync", 1, false },
+            .{ "fixed_noreplace", 1, true },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.visibility).len;
-        var tmp: usize = @bitCast(format);
+        len +%= @tagName(flags.visibility).len;
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 5, 4 },  .{ 9, 1 }, .{ 9, 3 }, .{ 9, 3 },
-            .{ 10, 1 }, .{ 6, 1 }, .{ 9, 1 }, .{ 8, 1 },
-            .{ 8, 1 },  .{ 5, 1 }, .{ 7, 1 }, .{ 4, 1 },
-            .{ 15, 1 },
+            .{ 5, 4, false },  .{ 9, 1, true },  .{ 9, 3, false }, .{ 9, 3, false },
+            .{ 10, 1, false }, .{ 6, 1, false }, .{ 9, 1, false }, .{ 8, 1, false },
+            .{ 8, 1, false },  .{ 5, 1, false }, .{ 7, 1, false }, .{ 4, 1, false },
+            .{ 15, 1, true },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -99,51 +98,50 @@ pub const FileMap = packed struct(usize) {
     sync: bool = false,
     fixed_noreplace: bool = false,
     zb21: u43 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.visibility));
-        for ([_]struct { []const u8, u8 }{
-            .{ "fixed", 4 },
-            .{ "anonymous", 1 },
-            .{ "grows_down", 3 },
-            .{ "deny_write", 3 },
-            .{ "executable", 1 },
-            .{ "locked", 1 },
-            .{ "no_reserve", 1 },
-            .{ "populate", 1 },
-            .{ "non_block", 1 },
-            .{ "stack", 1 },
-            .{ "hugetlb", 1 },
-            .{ "sync", 1 },
-            .{ "fixed_noreplace", 1 },
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.visibility));
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "fixed", 4, true },
+            .{ "anonymous", 1, false },
+            .{ "grows_down", 3, false },
+            .{ "deny_write", 3, false },
+            .{ "executable", 1, false },
+            .{ "locked", 1, false },
+            .{ "no_reserve", 1, false },
+            .{ "populate", 1, false },
+            .{ "non_block", 1, false },
+            .{ "stack", 1, false },
+            .{ "hugetlb", 1, false },
+            .{ "sync", 1, false },
+            .{ "fixed_noreplace", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.visibility).len;
-        var tmp: usize = @bitCast(format);
+        len +%= @tagName(flags.visibility).len;
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 5, 4 },  .{ 9, 1 }, .{ 9, 3 }, .{ 9, 3 },
-            .{ 10, 1 }, .{ 6, 1 }, .{ 9, 1 }, .{ 8, 1 },
-            .{ 8, 1 },  .{ 5, 1 }, .{ 7, 1 }, .{ 4, 1 },
-            .{ 15, 1 },
+            .{ 5, 4, true },   .{ 9, 1, false }, .{ 9, 3, false }, .{ 9, 3, false },
+            .{ 10, 1, false }, .{ 6, 1, false }, .{ 9, 1, false }, .{ 8, 1, false },
+            .{ 8, 1, false },  .{ 5, 1, false }, .{ 7, 1, false }, .{ 4, 1, false },
+            .{ 15, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -155,37 +153,36 @@ pub const MemFd = packed struct(usize) {
     allow_sealing: bool = false,
     hugetlb: bool = false,
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "close_on_exec", 0 },
-            .{ "allow_sealing", 1 },
-            .{ "hugetlb", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "close_on_exec", 0, false },
+            .{ "allow_sealing", 1, false },
+            .{ "hugetlb", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 7, 0 }, .{ 13, 1 },
-            .{ 7, 1 },
+            .{ 7, 0, false }, .{ 13, 1, false },
+            .{ 7, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -197,37 +194,36 @@ pub const MemSync = packed struct(usize) {
     invalidate: bool = false,
     sync: bool = false,
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "async", 0 },
-            .{ "invalidate", 1 },
-            .{ "sync", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "async", 0, false },
+            .{ "invalidate", 1, false },
+            .{ "sync", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 5, 0 }, .{ 10, 1 },
-            .{ 4, 1 },
+            .{ 5, 0, false }, .{ 10, 1, false },
+            .{ 4, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -242,40 +238,39 @@ pub const MemProt = packed struct(usize) {
     grows_down: bool = false,
     grows_up: bool = false,
     zb26: u38 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "read", 0 },
-            .{ "write", 1 },
-            .{ "exec", 1 },
-            .{ "grows_down", 22 },
-            .{ "grows_up", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "read", 0, true },
+            .{ "write", 1, true },
+            .{ "exec", 1, false },
+            .{ "grows_down", 22, false },
+            .{ "grows_up", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 4, 0 }, .{ 5, 1 },
-            .{ 4, 1 }, .{ 9, 22 },
-            .{ 7, 1 },
+            .{ 4, 0, true },  .{ 5, 1, true },
+            .{ 4, 1, false }, .{ 9, 22, false },
+            .{ 7, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -287,37 +282,36 @@ pub const FileProt = packed struct(usize) {
     write: bool = true,
     exec: bool = false,
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "read", 0 },
-            .{ "write", 1 },
-            .{ "exec", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "read", 0, true },
+            .{ "write", 1, true },
+            .{ "exec", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 4, 0 }, .{ 5, 1 },
-            .{ 4, 1 },
+            .{ 4, 0, true },  .{ 5, 1, true },
+            .{ 4, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -329,37 +323,36 @@ pub const Remap = packed struct(usize) {
     fixed: bool = false,
     no_unmap: bool = false,
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "may_move", 0 },
-            .{ "fixed", 1 },
-            .{ "no_unmap", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "may_move", 0, false },
+            .{ "fixed", 1, false },
+            .{ "no_unmap", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 7, 0 }, .{ 5, 1 },
-            .{ 9, 1 },
+            .{ 7, 0, false }, .{ 5, 1, false },
+            .{ 9, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -389,21 +382,21 @@ pub const MAdvise = packed struct(usize) {
         hw_poison = 0x64,
     },
     zb7: u57 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -412,37 +405,36 @@ pub const MCL = packed struct(usize) {
     future: bool = false,
     on_fault: bool = false,
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "current", 0 },
-            .{ "future", 1 },
-            .{ "on_fault", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "current", 0, false },
+            .{ "future", 1, false },
+            .{ "on_fault", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 7, 0 }, .{ 6, 1 },
-            .{ 7, 1 },
+            .{ 7, 0, false }, .{ 6, 1, false },
+            .{ 7, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -471,54 +463,53 @@ pub const Open = packed struct(usize) {
     path: bool = false,
     tmpfile: bool = false,
     zb23: u41 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "write_only", 0 },
-            .{ "read_write", 1 },
-            .{ "create", 5 },
-            .{ "exclusive", 1 },
-            .{ "no_ctty", 1 },
-            .{ "truncate", 1 },
-            .{ "append", 1 },
-            .{ "non_block", 1 },
-            .{ "data_sync", 1 },
-            .{ "async", 1 },
-            .{ "direct", 1 },
-            .{ "directory", 2 },
-            .{ "no_follow", 1 },
-            .{ "no_atime", 1 },
-            .{ "close_on_exec", 1 },
-            .{ "path", 2 },
-            .{ "tmpfile", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "write_only", 0, false },
+            .{ "read_write", 1, false },
+            .{ "create", 5, false },
+            .{ "exclusive", 1, false },
+            .{ "no_ctty", 1, false },
+            .{ "truncate", 1, false },
+            .{ "append", 1, false },
+            .{ "non_block", 1, false },
+            .{ "data_sync", 1, false },
+            .{ "async", 1, false },
+            .{ "direct", 1, false },
+            .{ "directory", 2, false },
+            .{ "no_follow", 1, false },
+            .{ "no_atime", 1, false },
+            .{ "close_on_exec", 1, false },
+            .{ "path", 2, false },
+            .{ "tmpfile", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 6, 0 }, .{ 4, 1 }, .{ 5, 5 }, .{ 4, 1 },
-            .{ 6, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 8, 1 },
-            .{ 5, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 9, 2 },
-            .{ 8, 1 }, .{ 7, 1 }, .{ 7, 1 }, .{ 4, 2 },
-            .{ 7, 1 },
+            .{ 6, 0, false }, .{ 4, 1, false }, .{ 5, 5, false }, .{ 4, 1, false },
+            .{ 6, 1, false }, .{ 5, 1, false }, .{ 6, 1, false }, .{ 8, 1, false },
+            .{ 5, 1, false }, .{ 5, 1, false }, .{ 6, 1, false }, .{ 9, 2, false },
+            .{ 8, 1, false }, .{ 7, 1, false }, .{ 7, 1, false }, .{ 4, 2, false },
+            .{ 7, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -546,52 +537,51 @@ pub const Create = packed struct(usize) {
     path: bool = false,
     tmpfile: bool = false,
     zb23: u41 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "write_only", 0 },
-            .{ "read_write", 1 },
-            .{ "create", 5 },
-            .{ "exclusive", 1 },
-            .{ "no_ctty", 1 },
-            .{ "truncate", 1 },
-            .{ "append", 1 },
-            .{ "non_block", 1 },
-            .{ "data_sync", 1 },
-            .{ "async", 1 },
-            .{ "direct", 1 },
-            .{ "no_follow", 3 },
-            .{ "no_atime", 1 },
-            .{ "close_on_exec", 1 },
-            .{ "path", 2 },
-            .{ "tmpfile", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "write_only", 0, false },
+            .{ "read_write", 1, true },
+            .{ "create", 5, true },
+            .{ "exclusive", 1, false },
+            .{ "no_ctty", 1, false },
+            .{ "truncate", 1, true },
+            .{ "append", 1, false },
+            .{ "non_block", 1, false },
+            .{ "data_sync", 1, false },
+            .{ "async", 1, false },
+            .{ "direct", 1, false },
+            .{ "no_follow", 3, false },
+            .{ "no_atime", 1, false },
+            .{ "close_on_exec", 1, false },
+            .{ "path", 2, false },
+            .{ "tmpfile", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 6, 0 }, .{ 4, 1 }, .{ 5, 5 }, .{ 4, 1 },
-            .{ 6, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 8, 1 },
-            .{ 5, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 8, 3 },
-            .{ 7, 1 }, .{ 7, 1 }, .{ 4, 2 }, .{ 7, 1 },
+            .{ 6, 0, false }, .{ 4, 1, true },  .{ 5, 5, true },  .{ 4, 1, false },
+            .{ 6, 1, false }, .{ 5, 1, true },  .{ 6, 1, false }, .{ 8, 1, false },
+            .{ 5, 1, false }, .{ 5, 1, false }, .{ 6, 1, false }, .{ 8, 3, false },
+            .{ 7, 1, false }, .{ 7, 1, false }, .{ 4, 2, false }, .{ 7, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -604,38 +594,37 @@ pub const Lock = packed struct(usize) {
     NB: bool = false,
     UN: bool = false,
     zb4: u60 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "SH", 0 },
-            .{ "EX", 1 },
-            .{ "NB", 1 },
-            .{ "UN", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "SH", 0, false },
+            .{ "EX", 1, false },
+            .{ "NB", 1, false },
+            .{ "UN", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 2, 0 }, .{ 2, 1 }, .{ 2, 1 },
-            .{ 2, 1 },
+            .{ 2, 0, false }, .{ 2, 1, false }, .{ 2, 1, false },
+            .{ 2, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -670,62 +659,61 @@ pub const Clone = packed struct(usize) {
     new_net: bool = false,
     io: bool = false,
     zb32: u32 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "new_time", 7 },
-            .{ "vm", 1 },
-            .{ "fs", 1 },
-            .{ "files", 1 },
-            .{ "signal_handlers", 1 },
-            .{ "pid_fd", 1 },
-            .{ "trace_child", 1 },
-            .{ "vfork", 1 },
-            .{ "thread", 2 },
-            .{ "new_namespace", 1 },
-            .{ "sysvsem", 1 },
-            .{ "set_thread_local_storage", 1 },
-            .{ "set_parent_thread_id", 1 },
-            .{ "clear_child_thread_id", 1 },
-            .{ "detached", 1 },
-            .{ "untraced", 1 },
-            .{ "set_child_thread_id", 1 },
-            .{ "new_cgroup", 1 },
-            .{ "new_uts", 1 },
-            .{ "new_ipc", 1 },
-            .{ "new_user", 1 },
-            .{ "new_pid", 1 },
-            .{ "new_net", 1 },
-            .{ "io", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "new_time", 7, false },
+            .{ "vm", 1, true },
+            .{ "fs", 1, true },
+            .{ "files", 1, true },
+            .{ "signal_handlers", 1, true },
+            .{ "pid_fd", 1, false },
+            .{ "trace_child", 1, false },
+            .{ "vfork", 1, false },
+            .{ "thread", 2, true },
+            .{ "new_namespace", 1, false },
+            .{ "sysvsem", 1, true },
+            .{ "set_thread_local_storage", 1, false },
+            .{ "set_parent_thread_id", 1, true },
+            .{ "clear_child_thread_id", 1, true },
+            .{ "detached", 1, false },
+            .{ "untraced", 1, false },
+            .{ "set_child_thread_id", 1, true },
+            .{ "new_cgroup", 1, false },
+            .{ "new_uts", 1, false },
+            .{ "new_ipc", 1, false },
+            .{ "new_user", 1, false },
+            .{ "new_pid", 1, false },
+            .{ "new_net", 1, false },
+            .{ "io", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 7, 7 },  .{ 2, 1 },  .{ 2, 1 }, .{ 5, 1 },
-            .{ 7, 1 },  .{ 5, 1 },  .{ 6, 1 }, .{ 5, 1 },
-            .{ 6, 2 },  .{ 5, 1 },  .{ 7, 1 }, .{ 6, 1 },
-            .{ 13, 1 }, .{ 14, 1 }, .{ 8, 1 }, .{ 8, 1 },
-            .{ 12, 1 }, .{ 9, 1 },  .{ 6, 1 }, .{ 6, 1 },
-            .{ 7, 1 },  .{ 6, 1 },  .{ 6, 1 }, .{ 2, 1 },
+            .{ 7, 7, false }, .{ 2, 1, true },  .{ 2, 1, true },  .{ 5, 1, true },
+            .{ 7, 1, true },  .{ 5, 1, false }, .{ 6, 1, false }, .{ 5, 1, false },
+            .{ 6, 2, true },  .{ 5, 1, false }, .{ 7, 1, true },  .{ 6, 1, false },
+            .{ 13, 1, true }, .{ 14, 1, true }, .{ 8, 1, false }, .{ 8, 1, false },
+            .{ 12, 1, true }, .{ 9, 1, false }, .{ 6, 1, false }, .{ 6, 1, false },
+            .{ 7, 1, false }, .{ 6, 1, false }, .{ 6, 1, false }, .{ 2, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -739,21 +727,21 @@ pub const Id = packed struct(usize) {
         pidfd = 0x3,
     },
     zb2: u62 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -769,43 +757,42 @@ pub const Wait = packed struct(usize) {
     all: bool = false,
     clone: bool = false,
     zb32: u32 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "no_hang", 0 },
-            .{ "stopped", 1 },
-            .{ "exited", 1 },
-            .{ "continued", 1 },
-            .{ "no_wait", 21 },
-            .{ "no_thread", 5 },
-            .{ "all", 1 },
-            .{ "clone", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "no_hang", 0, false },
+            .{ "stopped", 1, false },
+            .{ "exited", 1, false },
+            .{ "continued", 1, false },
+            .{ "no_wait", 21, false },
+            .{ "no_thread", 5, false },
+            .{ "all", 1, false },
+            .{ "clone", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 6, 0 }, .{ 7, 1 },  .{ 6, 1 },
-            .{ 9, 1 }, .{ 6, 21 }, .{ 8, 5 },
-            .{ 3, 1 }, .{ 5, 1 },
+            .{ 6, 0, false }, .{ 7, 1, false },  .{ 6, 1, false },
+            .{ 9, 1, false }, .{ 6, 21, false }, .{ 8, 5, false },
+            .{ 3, 1, false }, .{ 5, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -816,36 +803,35 @@ pub const Shut = packed struct(usize) {
     write: bool = false,
     read_write: bool = false,
     zb2: u62 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "write", 0 },
-            .{ "read_write", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "write", 0, false },
+            .{ "read_write", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 2, 0 },
-            .{ 4, 1 },
+            .{ 2, 0, false },
+            .{ 4, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -864,43 +850,42 @@ pub const MountAttr = packed struct(usize) {
     zb8: u12 = 0,
     id_map: bool = false,
     zb21: u43 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "read_only", 0 },
-            .{ "no_suid", 1 },
-            .{ "no_dev", 1 },
-            .{ "no_exec", 1 },
-            .{ "no_atime", 1 },
-            .{ "strict_atime", 1 },
-            .{ "no_dir_atime", 2 },
-            .{ "id_map", 13 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "read_only", 0, false },
+            .{ "no_suid", 1, false },
+            .{ "no_dev", 1, false },
+            .{ "no_exec", 1, false },
+            .{ "no_atime", 1, false },
+            .{ "strict_atime", 1, false },
+            .{ "no_dir_atime", 2, false },
+            .{ "id_map", 13, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 6, 0 },  .{ 6, 1 },  .{ 5, 1 },
-            .{ 6, 1 },  .{ 7, 1 },  .{ 11, 1 },
-            .{ 10, 2 }, .{ 5, 13 },
+            .{ 6, 0, false },  .{ 6, 1, false },  .{ 5, 1, false },
+            .{ 6, 1, false },  .{ 7, 1, false },  .{ 11, 1, false },
+            .{ 10, 2, false }, .{ 5, 13, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -926,38 +911,37 @@ pub const AF = packed struct(usize) {
     INET6: bool = false,
     NETLINK: bool = false,
     zb5: u59 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "UNIX", 0 },
-            .{ "INET", 1 },
-            .{ "INET6", 0 },
-            .{ "NETLINK", 3 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "UNIX", 0, false },
+            .{ "INET", 1, false },
+            .{ "INET6", 0, false },
+            .{ "NETLINK", 3, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 4, 0 }, .{ 4, 1 }, .{ 5, 0 },
-            .{ 7, 3 },
+            .{ 4, 0, false }, .{ 4, 1, false }, .{ 5, 0, false },
+            .{ 7, 3, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -975,38 +959,37 @@ pub const SOCK = packed struct(usize) {
     zb12: u7 = 0,
     CLOEXEC: bool = false,
     zb20: u44 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        for ([_]struct { []const u8, u8 }{
-            .{ "NONBLOCK", 11 },
-            .{ "CLOEXEC", 8 },
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "NONBLOCK", 11, false },
+            .{ "CLOEXEC", 8, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        var tmp: usize = @bitCast(format);
+        len +%= @tagName(flags.e0).len;
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 8, 11 },
-            .{ 7, 8 },
+            .{ 8, 11, false },
+            .{ 7, 8, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1051,21 +1034,21 @@ pub const IPPROTO = packed struct(usize) {
         MAX = 0x107,
     },
     zb9: u55 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -1109,45 +1092,44 @@ pub const SignalAction = packed struct(usize) {
     no_defer: bool = false,
     reset_handler: bool = true,
     zb32: u32 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "no_child_stop", 0 },
-            .{ "no_child_wait", 1 },
-            .{ "siginfo", 1 },
-            .{ "unsupported", 8 },
-            .{ "expose_tagbits", 1 },
-            .{ "restorer", 15 },
-            .{ "on_stack", 1 },
-            .{ "restart", 1 },
-            .{ "no_defer", 2 },
-            .{ "reset_handler", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "no_child_stop", 0, false },
+            .{ "no_child_wait", 1, false },
+            .{ "siginfo", 1, true },
+            .{ "unsupported", 8, false },
+            .{ "expose_tagbits", 1, false },
+            .{ "restorer", 15, true },
+            .{ "on_stack", 1, false },
+            .{ "restart", 1, true },
+            .{ "no_defer", 2, false },
+            .{ "reset_handler", 1, true },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 9, 0 },  .{ 9, 1 },  .{ 7, 1 }, .{ 11, 8 },
-            .{ 14, 1 }, .{ 8, 15 }, .{ 7, 1 }, .{ 7, 1 },
-            .{ 7, 2 },  .{ 9, 1 },
+            .{ 9, 0, false },  .{ 9, 1, false }, .{ 7, 1, true },  .{ 11, 8, false },
+            .{ 14, 1, false }, .{ 8, 15, true }, .{ 7, 1, false }, .{ 7, 1, true },
+            .{ 7, 2, false },  .{ 9, 1, true },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1159,37 +1141,36 @@ pub const SignalStack = packed struct(u32) {
     disable: bool = false,
     zb2: u29 = 0,
     auto_disarm: bool = false,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: u32 = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: u32 = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "on_stack", 0 },
-            .{ "disable", 1 },
-            .{ "auto_disarm", 30 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "on_stack", 0, false },
+            .{ "disable", 1, false },
+            .{ "auto_disarm", 30, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(u32, @bitCast(format)) == 0) return 0;
+        if (@as(u32, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: u32 = @bitCast(format);
+        var tmp: u32 = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 7, 0 },   .{ 7, 1 },
-            .{ 10, 30 },
+            .{ 7, 0, false },   .{ 7, 1, false },
+            .{ 10, 30, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1231,21 +1212,21 @@ pub const Signal = packed struct(usize) {
         SYS = 0x1f,
     },
     zb5: u59 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -1300,21 +1281,21 @@ pub const TIOC = packed struct(usize) {
         GICOUNT = 0x545d,
     },
     zb15: u49 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -1337,36 +1318,35 @@ pub const Seek = packed struct(usize) {
     },
     hole: bool = false,
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
-        for ([_]struct { []const u8, u8 }{
-            .{ "hole", 2 },
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "hole", 2, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
-        var tmp: usize = @bitCast(format);
+        len +%= @tagName(flags.e0).len;
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 4, 2 },
+            .{ 4, 2, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1388,49 +1368,48 @@ pub const StatX = packed struct(usize) {
     btime: bool = false,
     mount_id: bool = false,
     zb13: u51 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "type", 0 },
-            .{ "mode", 1 },
-            .{ "nlink", 1 },
-            .{ "uid", 1 },
-            .{ "gid", 1 },
-            .{ "atime", 1 },
-            .{ "mtime", 1 },
-            .{ "ctime", 1 },
-            .{ "ino", 1 },
-            .{ "size", 1 },
-            .{ "blocks", 1 },
-            .{ "btime", 1 },
-            .{ "mount_id", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "type", 0, false },
+            .{ "mode", 1, false },
+            .{ "nlink", 1, false },
+            .{ "uid", 1, false },
+            .{ "gid", 1, false },
+            .{ "atime", 1, false },
+            .{ "mtime", 1, false },
+            .{ "ctime", 1, false },
+            .{ "ino", 1, false },
+            .{ "size", 1, false },
+            .{ "blocks", 1, false },
+            .{ "btime", 1, false },
+            .{ "mount_id", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 4, 0 }, .{ 4, 1 }, .{ 5, 1 }, .{ 3, 1 },
-            .{ 3, 1 }, .{ 5, 1 }, .{ 5, 1 }, .{ 5, 1 },
-            .{ 3, 1 }, .{ 4, 1 }, .{ 6, 1 }, .{ 5, 1 },
-            .{ 6, 1 },
+            .{ 4, 0, false }, .{ 4, 1, false }, .{ 5, 1, false }, .{ 3, 1, false },
+            .{ 3, 1, false }, .{ 5, 1, false }, .{ 5, 1, false }, .{ 5, 1, false },
+            .{ 3, 1, false }, .{ 4, 1, false }, .{ 6, 1, false }, .{ 5, 1, false },
+            .{ 6, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1452,44 +1431,43 @@ pub const STATX_ATTR = packed struct(usize) {
     verity: bool = false,
     dax: bool = false,
     zb22: u42 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "compressed", 2 },
-            .{ "immutable", 2 },
-            .{ "append", 1 },
-            .{ "nodump", 1 },
-            .{ "encrypted", 5 },
-            .{ "automount", 1 },
-            .{ "mount_root", 1 },
-            .{ "verity", 7 },
-            .{ "dax", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "compressed", 2, false },
+            .{ "immutable", 2, false },
+            .{ "append", 1, false },
+            .{ "nodump", 1, false },
+            .{ "encrypted", 5, false },
+            .{ "automount", 1, false },
+            .{ "mount_root", 1, false },
+            .{ "verity", 7, false },
+            .{ "dax", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 10, 2 }, .{ 9, 2 }, .{ 6, 1 },  .{ 6, 1 },
-            .{ 9, 5 },  .{ 9, 1 }, .{ 10, 1 }, .{ 6, 7 },
-            .{ 3, 1 },
+            .{ 10, 2, false }, .{ 9, 2, false }, .{ 6, 1, false },  .{ 6, 1, false },
+            .{ 9, 5, false },  .{ 9, 1, false }, .{ 10, 1, false }, .{ 6, 7, false },
+            .{ 3, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1504,39 +1482,38 @@ pub const At = packed struct(usize) {
     no_automount: bool = false,
     empty_path: bool = false,
     zb13: u51 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "symlink_no_follow", 8 },
-            .{ "remove_dir", 1 },
-            .{ "symlink_follow", 1 },
-            .{ "no_automount", 1 },
-            .{ "empty_path", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "symlink_no_follow", 8, false },
+            .{ "remove_dir", 1, false },
+            .{ "symlink_follow", 1, false },
+            .{ "no_automount", 1, false },
+            .{ "empty_path", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 16, 8 }, .{ 9, 1 },  .{ 14, 1 },
-            .{ 12, 1 }, .{ 10, 1 },
+            .{ 16, 8, false }, .{ 9, 1, false },  .{ 14, 1, false },
+            .{ 12, 1, false }, .{ 10, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1552,40 +1529,39 @@ pub const AtStatX = packed struct(usize) {
     FORCE_SYNC: bool = false,
     DONT_SYNC: bool = false,
     zb15: u49 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "symlink_no_follow", 8 },
-            .{ "no_automount", 3 },
-            .{ "empty_path", 1 },
-            .{ "FORCE_SYNC", 1 },
-            .{ "DONT_SYNC", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "symlink_no_follow", 8, false },
+            .{ "no_automount", 3, false },
+            .{ "empty_path", 1, false },
+            .{ "FORCE_SYNC", 1, false },
+            .{ "DONT_SYNC", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 16, 8 }, .{ 12, 3 },
-            .{ 10, 1 }, .{ 10, 1 },
-            .{ 9, 1 },
+            .{ 16, 8, false }, .{ 12, 3, false },
+            .{ 10, 1, false }, .{ 10, 1, false },
+            .{ 9, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1597,36 +1573,35 @@ pub const AtAccess = packed struct(usize) {
     symlink_no_follow: bool = false,
     effective_access: bool = false,
     zb10: u54 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "symlink_no_follow", 8 },
-            .{ "effective_access", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "symlink_no_follow", 8, false },
+            .{ "effective_access", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 19, 8 },
-            .{ 10, 1 },
+            .{ 19, 8, false },
+            .{ 10, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1643,42 +1618,41 @@ pub const DN = packed struct(usize) {
     zb6: u25 = 0,
     MULTISHOT: bool = false,
     zb32: u32 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "ACCESS", 0 },
-            .{ "MODIFY", 1 },
-            .{ "CREATE", 1 },
-            .{ "DELETE", 1 },
-            .{ "RENAME", 1 },
-            .{ "ATTRIB", 1 },
-            .{ "MULTISHOT", 26 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "ACCESS", 0, false },
+            .{ "MODIFY", 1, false },
+            .{ "CREATE", 1, false },
+            .{ "DELETE", 1, false },
+            .{ "RENAME", 1, false },
+            .{ "ATTRIB", 1, false },
+            .{ "MULTISHOT", 26, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 6, 0 },  .{ 6, 1 }, .{ 6, 1 },
-            .{ 6, 1 },  .{ 6, 1 }, .{ 6, 1 },
-            .{ 9, 26 },
+            .{ 6, 0, false },  .{ 6, 1, false }, .{ 6, 1, false },
+            .{ 6, 1, false },  .{ 6, 1, false }, .{ 6, 1, false },
+            .{ 9, 26, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1723,36 +1697,35 @@ pub const FLOCK = packed struct(usize) {
     WRLCK: bool = false,
     UNLCK: bool = false,
     zb2: u62 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "WRLCK", 0 },
-            .{ "UNLCK", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "WRLCK", 0, false },
+            .{ "UNLCK", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 5, 0 },
-            .{ 5, 1 },
+            .{ 5, 0, false },
+            .{ 5, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1782,21 +1755,21 @@ pub const SI = packed struct(usize) {
         QUEUE = 0xffffffff,
     },
     zb32: u32 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -1807,39 +1780,38 @@ pub const ReadWrite = packed struct(usize) {
     no_wait: bool = false,
     append: bool = false,
     zb5: u59 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "high_priority", 0 },
-            .{ "data_sync", 1 },
-            .{ "file_sync", 1 },
-            .{ "no_wait", 1 },
-            .{ "append", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "high_priority", 0, false },
+            .{ "data_sync", 1, false },
+            .{ "file_sync", 1, false },
+            .{ "no_wait", 1, false },
+            .{ "append", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 5, 0 }, .{ 5, 1 }, .{ 4, 1 },
-            .{ 6, 1 }, .{ 6, 1 },
+            .{ 5, 0, false }, .{ 5, 1, false }, .{ 4, 1, false },
+            .{ 6, 1, false }, .{ 6, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1855,21 +1827,21 @@ pub const RWH_WRITE_LIFE = packed struct(usize) {
         EXTREME = 0x5,
     },
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -1882,21 +1854,21 @@ pub const POSIX_FADV = packed struct(usize) {
         NOREUSE = 0x5,
     },
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        var ptr: [*]u8 = buf[6..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.e0));
         _ = &tmp;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        len +%= @tagName(format.e0).len;
+        len +%= @tagName(flags.e0).len;
         return len;
     }
 };
@@ -1904,36 +1876,35 @@ pub const ITIMER = packed struct(usize) {
     VIRTUAL: bool = false,
     PROF: bool = false,
     zb2: u62 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "VIRTUAL", 0 },
-            .{ "PROF", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "VIRTUAL", 0, false },
+            .{ "PROF", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 7, 0 },
-            .{ 4, 1 },
+            .{ 7, 0, false },
+            .{ 4, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -1965,50 +1936,49 @@ pub const FS = packed struct(usize) {
     zb24: u5 = 0,
     PROJINHERIT_FL: bool = false,
     zb30: u34 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "SECRM_FL", 0 },
-            .{ "UNRM_FL", 1 },
-            .{ "COMPR_FL", 1 },
-            .{ "SYNC_FL", 1 },
-            .{ "IMMUTABLE_FL", 1 },
-            .{ "APPEND_FL", 1 },
-            .{ "NODUMP_FL", 1 },
-            .{ "NOATIME_FL", 1 },
-            .{ "JOURNAL_DATA_FL", 7 },
-            .{ "NOTAIL_FL", 1 },
-            .{ "DIRSYNC_FL", 1 },
-            .{ "TOPDIR_FL", 1 },
-            .{ "NOCOW_FL", 6 },
-            .{ "PROJINHERIT_FL", 6 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "SECRM_FL", 0, false },
+            .{ "UNRM_FL", 1, false },
+            .{ "COMPR_FL", 1, false },
+            .{ "SYNC_FL", 1, false },
+            .{ "IMMUTABLE_FL", 1, false },
+            .{ "APPEND_FL", 1, false },
+            .{ "NODUMP_FL", 1, false },
+            .{ "NOATIME_FL", 1, false },
+            .{ "JOURNAL_DATA_FL", 7, false },
+            .{ "NOTAIL_FL", 1, false },
+            .{ "DIRSYNC_FL", 1, false },
+            .{ "TOPDIR_FL", 1, false },
+            .{ "NOCOW_FL", 6, false },
+            .{ "PROJINHERIT_FL", 6, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 8, 0 },  .{ 7, 1 },  .{ 8, 1 },  .{ 7, 1 },
-            .{ 12, 1 }, .{ 9, 1 },  .{ 9, 1 },  .{ 10, 1 },
-            .{ 15, 7 }, .{ 9, 1 },  .{ 10, 1 }, .{ 9, 1 },
-            .{ 8, 6 },  .{ 14, 6 },
+            .{ 8, 0, false },  .{ 7, 1, false },  .{ 8, 1, false },  .{ 7, 1, false },
+            .{ 12, 1, false }, .{ 9, 1, false },  .{ 9, 1, false },  .{ 10, 1, false },
+            .{ 15, 7, false }, .{ 9, 1, false },  .{ 10, 1, false }, .{ 9, 1, false },
+            .{ 8, 6, false },  .{ 14, 6, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
@@ -2020,37 +1990,36 @@ pub const Rename2 = packed struct(usize) {
     EXCHANGE: bool = false,
     WHITEOUT: bool = false,
     zb3: u61 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, flags: @This()) [*]u8 {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
-        if (tmp == 0) return 0;
+        var tmp: usize = @bitCast(flags);
+        if (tmp == 0) return buf;
         buf[0..6].* = "flags=".*;
-        var len: usize = 6;
-        for ([_]struct { []const u8, u8 }{
-            .{ "NOREPLACE", 0 },
-            .{ "EXCHANGE", 1 },
-            .{ "WHITEOUT", 1 },
+        var ptr: [*]u8 = buf[6..];
+        for ([_]struct { []const u8, u8, bool }{
+            .{ "NOREPLACE", 0, false },
+            .{ "EXCHANGE", 1, false },
+            .{ "WHITEOUT", 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
-                buf[len] = ',';
-                len += @intFromBool(len != 6);
-                len += fmt.strcpy(buf + len, pair[0]);
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
+                ptr[0] = ',';
+                ptr = fmt.strcpyEqu(ptr + @intFromBool(ptr != buf + 6), pair[0]);
             }
         }
-        return len;
+        return ptr;
     }
-    pub fn formatLength(format: @This()) usize {
+    pub fn length(flags: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(flags)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: usize = @bitCast(flags);
         for ([_]struct { u8, u8 }{
-            .{ 9, 0 }, .{ 8, 1 },
-            .{ 8, 1 },
+            .{ 9, 0, false }, .{ 8, 1, false },
+            .{ 8, 1, false },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
-            if (tmp & 1 != 0) {
+            if (tmp & 1 != @intFromBool(if (builtin.show_default_flags) true else pair[2])) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
