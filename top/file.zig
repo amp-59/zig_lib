@@ -3718,10 +3718,8 @@ pub const about = struct {
             var arg_len: usize = 0;
             while (args[idx][arg_len] != 0) arg_len +%= 1;
             if (arg_len == 0) {
-                ptr[0] = '\'';
-                ptr += 1;
-                ptr[0] = '\'';
-                ptr += 1;
+                ptr[0..2].* = "''".*;
+                ptr += 2;
             }
             if ((@intFromPtr(ptr) -% @intFromPtr(buf)) +% arg_len >= 32768 -% 37) {
                 break;
@@ -3732,8 +3730,7 @@ pub const about = struct {
         }
         if (idx != args.len) {
             ptr[0..9].* = " ... and ".*;
-            ptr += 9;
-            ptr = fmt.Ud64.write(ptr, args.len -% idx);
+            ptr = fmt.Ud64.write(ptr + 9, args.len -% idx);
             ptr[0..16].* = " more args ... \n".*;
             ptr += 16;
         }
