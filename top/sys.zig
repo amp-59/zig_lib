@@ -1568,7 +1568,7 @@ pub const SignalCode = enum(usize) {
     }
 };
 pub const SignalPolicy = builtin.ExternalError(SignalCode);
-pub const Fn = enum(usize) {
+pub const Fn = enum(comptime_int) {
     read = 0,
     write = 1,
     open = 2,
@@ -1931,7 +1931,7 @@ pub const Fn = enum(usize) {
     fn Args(comptime function: Fn) type {
         return [args(function)]usize;
     }
-    fn args(comptime function: Fn) comptime_int {
+    pub fn args(comptime function: Fn) usize {
         switch (function) {
             .getpid,
             .gettid,
@@ -1972,6 +1972,7 @@ pub const Fn = enum(usize) {
             .symlink,
             .link,
             .access,
+            .shutdown,
             => return 2,
             .dup3,
             .read,
@@ -1996,6 +1997,8 @@ pub const Fn = enum(usize) {
             .symlinkat,
             .sigaltstack,
             .futimesat,
+            .msync,
+            .accept,
             => return 3,
             .newfstatat,
             .mknodat,
@@ -2004,6 +2007,7 @@ pub const Fn = enum(usize) {
             .rt_sigaction,
             .sendfile,
             .faccessat2,
+            .socketpair,
             => return 4,
             .mremap,
             .statx,
@@ -2024,7 +2028,10 @@ pub const Fn = enum(usize) {
             .recvfrom,
             .sendto,
             => return 6,
-            else => @compileError(@tagName(function)),
+            else => if (@inComptime())
+                @compileError(@tagName(function))
+            else
+                @panic(@tagName(function)),
         }
     }
 };
@@ -2196,7 +2203,7 @@ const syscalls = .{
 };
 pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
     @setRuntimeSafety(false);
-    const ret: isize = syscalls[tag.args()](tag, args);
+    const ret: isize = syscalls[comptime tag.args()](tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
@@ -2215,7 +2222,7 @@ pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime retu
 }
 pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: Fn.Args(tag)) return_type {
     @setRuntimeSafety(false);
-    const ret: isize = syscalls[tag.args()](tag, args);
+    const ret: isize = syscalls[comptime tag.args()](tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
