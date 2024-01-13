@@ -2449,7 +2449,6 @@ pub fn squeeze(dest: [*]u8, src: []const u8, byte: u8) usize {
     }
     return len -% @intFromBool(eq2);
 }
-
 pub fn nameToString(comptime name: []const u8) [name.len]u8 {
     var buf: [name.len]u8 = undefined;
     for (name, 0..) |byte, idx| {
@@ -4332,15 +4331,57 @@ pub const NullFormat = struct {
 };
 pub const VoidFormat = struct {
     comptime value: void = {},
+    comptime formatWriteBuf: fn ([*]u8) usize = write,
+    comptime formatLength: fn () usize = length,
+    const Format = @This();
+    const max_len: ?comptime_int = 2;
+    pub fn write(buf: [*]u8) usize {
+        buf[0..2].* = "{}".*;
+        return 2;
+    }
+    pub fn length() usize {
+        return 2;
+    }
+};
+pub const UndefinedFormat = struct {
+    comptime value: @TypeOf(undefined) = undefined,
     comptime formatWrite: fn (anytype) void = formatWrite,
     comptime formatLength: fn () usize = formatLength,
     const Format = @This();
-    const max_len: ?comptime_int = 2;
+    const max_len: ?comptime_int = 9;
     pub fn formatWrite(array: anytype) void {
-        array.writeCount(2, "{}".*);
+        array.writeMany("undefined");
     }
     pub fn formatLength() usize {
-        return 2;
+        return 9;
+    }
+};
+pub const AnyFrameFormat = struct {
+    value: @Type(.Undefined) = undefined,
+    //value: anyframe = undefined,
+    comptime formatWrite: fn (anytype) void = formatWrite,
+    comptime formatLength: fn () usize = formatLength,
+    const Format = @This();
+    const max_len: ?comptime_int = 10;
+    pub fn formatWrite(array: anytype) void {
+        array.writeMany("(anyframe)");
+    }
+    pub fn formatLength() usize {
+        return 10;
+    }
+};
+pub const FrameFormat = struct {
+    value: @Type(.Undefined) = undefined,
+    //value: @Type(.Frame) = undefined,
+    comptime formatWrite: fn (anytype) void = formatWrite,
+    comptime formatLength: fn () usize = formatLength,
+    const Format = @This();
+    const max_len: ?comptime_int = 7;
+    pub fn formatWrite(array: anytype) void {
+        array.writeMany("(frame)");
+    }
+    pub fn formatLength() usize {
+        return 7;
     }
 };
 pub const NoReturnFormat = struct {
