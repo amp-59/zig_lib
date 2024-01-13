@@ -137,7 +137,7 @@ pub const BuildCommand = struct {
     } = null,
     /// Limit range of code and data virtual addresses
     code_model: ?builtin.CodeModel = null,
-    /// Toggle usage of
+    /// Toggle usage of runtime safety
     runtime_safety: ?bool = null,
     /// Reduces code size at the expense of panic details
     panic_data: ?bool = null,
