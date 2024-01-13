@@ -2943,7 +2943,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime T: type) type {
         .Enum => return EnumFormat(spec, T),
         .EnumLiteral => return EnumLiteralFormat,
         .Int => return IntFormat(spec, T),
-        .Float => return FloatFormat(spec, T),
+        .Float => return FloatFormat(T),
         .ComptimeInt, .ComptimeFloat => return ComptimeNumFormat,
         .Pointer => |pointer_info| switch (pointer_info.size) {
             .One => return PointerOneFormat(spec, T),
@@ -3907,31 +3907,58 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
         }
     }
 }
-pub fn FloatFormat(comptime spec: RenderSpec, comptime Float: type) type {
+pub fn FloatFormat(comptime Float: type) type {
     comptime var dec_fmt_spec = Udsize.specification;
-    dec_fmt_spec.width = .{ .fixed = spec.render_float_places };
+    dec_fmt_spec.width = .{ .fixed = 3 };
     const T = struct {
         value: Float,
         const Format = @This();
-        const Decimal = GenericPolynomialFormat(dec_fmt_spec);
-        const fixed_mul: comptime_int = math.sigFigList(usize, 10).?[spec.render_float_places] +% 1;
+        const errol = @import("fmt/errol.zig");
         pub fn write(buf: [*]u8, value: Float) [*]u8 {
             const abs: Float = @abs(value);
             var ptr: [*]u8 = buf;
-            ptr[0] = '-';
-            const int: Float = @trunc(abs);
-            ptr = Udsize.write(ptr + @intFromBool(value < 0), @intFromFloat(int));
+            if (math.float.isNegative(Float, value)) {
+                ptr[0] = '-';
+                ptr += 1;
+            }
+            if (math.float.isNan(abs)) {
+                ptr[0..3].* = "nan".*;
+                return ptr + 3;
+            }
+            if (math.float.isInf(abs)) {
+                ptr[0..3].* = "inf".*;
+                return ptr + 3;
+            }
+            if (abs == 0.0) {
+                ptr[0] = '0';
+                return ptr + 1;
+            }
+            var tmp: [32]u8 = undefined;
+            const res: errol.FloatDecimal = errol.writeErrol3(&tmp, abs);
+            ptr = strcpyEqu(ptr, tmp[0..@intCast(res.exp)]);
             ptr[0] = '.';
-            return Decimal.write(ptr + 1, @intFromFloat((abs * fixed_mul - int * fixed_mul)));
+            if (res.exp < res.len) {
+                ptr = strcpyEqu(ptr + 1, tmp[@intCast(res.exp)..res.len]);
+            }
+            return ptr;
         }
         pub fn length(value: Float) usize {
             const abs: Float = @abs(value);
-            var len: usize = @intFromBool(value < 0);
-            const int: Float = @trunc(abs);
-            len +%= Udsize.length(@intFromFloat(int));
-            len +%= 1;
-            len +%= Decimal.length(@intFromFloat(abs * fixed_mul - int * fixed_mul));
-            return len;
+            var len: usize = 0;
+            if (math.float.isNegative(Float, value)) {
+                len +%= 1;
+            }
+            if (math.float.isNan(Float, abs)) {
+                return len +% 3;
+            }
+            if (math.float.isInf(Float, abs)) {
+                return len +% 3;
+            }
+            if (abs == 0.0) {
+                return len +% 1;
+            }
+            var tmp: [32]u8 = undefined;
+            return len + errol.writeErrol3(&tmp, abs).len;
         }
         pub usingnamespace Interface(Format);
     };
