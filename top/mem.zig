@@ -3209,18 +3209,13 @@ pub const about = struct {
         var buf: [4096]u8 = undefined;
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr = fmt.Uxsize.write(ptr + 2, addr);
         ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr = fmt.Uxsize.write(ptr + 2, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr = fmt.Bytes.write(ptr + 2, len);
-        const fmt_len: usize = flags.formatWriteBuf(ptr + 2);
-        if (fmt_len != 0) {
-            ptr[0..2].* = ", ".*;
-            ptr += 2 +% fmt_len;
-        }
+        ptr[0..2].* = ", ".*;
+        ptr = sys.flags.MemMap.write(ptr + 2, flags);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
@@ -3250,16 +3245,16 @@ pub const about = struct {
         var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr = fmt.Uxsize.write(ptr, addr);
         ptr[0..2].* = "..".*;
         ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr = fmt.Uxsize.write(ptr, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.ud64(len).formatWriteBuf(ptr);
+        ptr = fmt.Udsize.write(ptr, len);
         ptr[0..8].* = " bytes, ".*;
         ptr += 8;
-        ptr += prot.formatWriteBuf(ptr);
+        ptr = sys.flags.MemProt.write(ptr, prot);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
