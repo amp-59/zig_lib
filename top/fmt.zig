@@ -2957,7 +2957,11 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime T: type) type {
         .Vector => return VectorFormat(spec, T),
         .ErrorUnion => return ErrorUnionFormat(spec, T),
         .ErrorSet => return ErrorSetFormat(T),
-        else => @compileError(@typeName(T)),
+        .Opaque => return StructFormat(spec, struct {}),
+        .Fn => return PointerOneFormat(spec, *const T),
+        .AnyFrame => return AnyFrameFormat,
+        .Frame => return FrameFormat,
+        .Undefined => return UndefinedFormat,
     }
 }
 // These are required by the absence of comptime pointer subtract.
