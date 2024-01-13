@@ -2956,7 +2956,7 @@ pub const BuildCommand2 = struct {
         norelro = 8,
     } = null,
     /// Define modules available as dependencies for the current target
-    mods: []*tasks.BuildModuleCommand = &.{},
+    mods: []*tasks.BuildModule = &.{},
     /// Enable or disable colored error messages
     color: ?types.AutoOnOff = null,
     /// Enable experimental feature: incremental compilation
@@ -5305,7 +5305,7 @@ pub const BuildCommand2 = struct {
         }
     }
 };
-pub const BuildModuleCommand = struct {
+pub const BuildModule = struct {
     /// Define module dependencies for the current target
     deps: ?[]const types.ModuleDependency = null,
     /// <arch><sub>-<os>-<abi> see the targets command
@@ -5382,7 +5382,7 @@ pub const BuildModuleCommand = struct {
     pub const align_of: comptime_int = @alignOf(@This());
     pub fn write(
         buf: [*]u8,
-        cmd: *BuildModuleCommand,
+        cmd: *BuildModule,
     ) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
@@ -5578,7 +5578,7 @@ pub const BuildModuleCommand = struct {
         ptr = fmt.strcpyEqu(ptr, "--mod\x00");
         return ptr;
     }
-    pub fn length(cmd: *BuildModuleCommand) usize {
+    pub fn length(cmd: *BuildModule) usize {
         @setRuntimeSafety(false);
         var len: usize = 0;
         if (cmd.deps) |deps| {
@@ -5734,7 +5734,7 @@ pub const BuildModuleCommand = struct {
         }
         return len +% 6;
     }
-    pub fn formatParseArgs(cmd: *BuildModuleCommand, allocator: *types.Allocator, args_in: [][*:0]u8) void {
+    pub fn formatParseArgs(cmd: *BuildModule, allocator: *types.Allocator, args_in: [][*:0]u8) void {
         @setRuntimeSafety(false);
         var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
         var args_idx: usize = 0;
@@ -6529,7 +6529,7 @@ const build_help: [:0]const u8 =
     \\    -target=<string>                                    <arch><sub>-<os>-<abi> see the targets command
     \\    -mcpu=<tag>                                         Specify target CPU and feature set
     \\    -mcmodel=<tag>                                      Limit range of code and data virtual addresses
-    \\    -f[no-]runtime-safety                               Toggle usage of 
+    \\    -f[no-]runtime-safety                               Toggle usage of runtime safety
     \\    -f[no-]panic-data                                   Reduces code size at the expense of panic details
     \\    -f[no-]extra-slice-analysis                         Toggle usage of `analyzeSlice2`
     \\    -f[no-]check-unwrapped-error                        Toggle check for returning from a noreturn function
@@ -6852,8 +6852,6 @@ const format_help: [:0]const u8 =
 ;
 pub const Command = struct {
     build: *BuildCommand,
-    build2: *BuildCommand2,
-    module: *BuildModuleCommand,
     archive: *ArchiveCommand,
     objcopy: *ObjcopyCommand,
     format: *FormatCommand,
