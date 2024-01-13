@@ -1800,7 +1800,7 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
         proc.shift(&args, args_idx);
     }
 }
-export fn formatParseArgsBuildModuleCommand(cmd: *tasks.BuildModuleCommand, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsBuildModule(cmd: *tasks.BuildModule, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
     var args_idx: usize = 0;
@@ -2227,7 +2227,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         proc.shift(&args, args_idx);
     }
 }
-const build_help: [:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
     \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
@@ -2378,7 +2378,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const build2_help: [:0]const u8 = 
+const build2_help: [:0]const u8 =
     \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
     \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
@@ -2486,7 +2486,7 @@ const build2_help: [:0]const u8 =
     \\
     \\
 ;
-const module_help: [:0]const u8 = 
+const module_help: [:0]const u8 =
     \\    -target=<string>                <arch><sub>-<os>-<abi> see the targets command
     \\    -O<tag>                         Choose what to optimize for:
     \\                                      Debug          Optimizations off, safety on
@@ -2531,7 +2531,7 @@ const module_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    --format=<tag>          Archive format to create
     \\    --plugin                Ignored for compatibility
     \\    --output=<string>       Extraction target directory
@@ -2549,7 +2549,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    --output-target=<string>
     \\    --only-section=<string>
     \\    --pad-to=<integer>
@@ -2561,7 +2561,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    --color=<tag>           Enable or disable colored error messages
     \\    --stdin                 Format code from stdin; output to stdout
     \\    --check                 List non-conforming files and exit with an error if the list is non-empty
