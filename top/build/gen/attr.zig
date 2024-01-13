@@ -56,9 +56,9 @@ const optional_dependencies_slice_type2: types.BGTypeDescrMap = .{
     .parse = &.{ .type_decl = .{ .name = "types.ModuleDependency" } },
 };
 const build_command_module_type: types.BGTypeDescrMap = .{
-    .store = &.{ .type_decl = .{ .name = "[]*tasks.BuildModuleCommand" } },
-    .write = &.{ .type_decl = .{ .name = "tasks.BuildModuleCommand" } },
-    .parse = &.{ .type_decl = .{ .name = "tasks.BuildModuleCommand" } },
+    .store = &.{ .type_decl = .{ .name = "[]*tasks.BuildModule" } },
+    .write = &.{ .type_decl = .{ .name = "tasks.BuildModule" } },
+    .parse = &.{ .type_decl = .{ .name = "tasks.BuildModule" } },
 };
 const build_id_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?types.BuildId" } },
@@ -109,9 +109,9 @@ pub const scope: []const types.BGTypeDescr.Declaration = &.{
     } },
 };
 pub const zig_modules_attributes: types.Attributes = .{
-    .type_name = "BuildModuleCommand",
+    .type_name = "BuildModule",
     .fn_name = "module",
-    .type_fn_name = "GenericBuildModuleCommand",
+    .type_fn_name = "GenericBuildModule",
     .params = &.{
         .{
             .name = "deps",
@@ -1051,7 +1051,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .name = "runtime_safety",
             .string = "-fruntime-safety",
             .and_no = .{ .string = "-fno-runtime-safety" },
-            .descr = &.{"Toggle usage of "},
+            .descr = &.{"Toggle usage of runtime safety"},
         },
         .{
             .name = "panic_data",
@@ -13962,6 +13962,8 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
 };
 pub const all: []const types.Attributes = &.{
     zig_build_command_attributes,
+    zig_build_command_attributes2,
+    zig_modules_attributes,
     zig_ar_command_attributes,
     zig_objcopy_command_attributes,
     //llvm_tblgen_command_attributes,
