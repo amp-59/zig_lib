@@ -1094,6 +1094,7 @@ pub fn GenericLinkedAllocator(comptime allocator_spec: LinkedAllocatorSpec) type
                 }
             }
             unreachable;
+            // about.aboutImpossiblePlacementFault();
         }
         pub usingnamespace Types(Allocator);
         pub usingnamespace Specs(Allocator);
@@ -4581,6 +4582,17 @@ const about = opaque {
         }
         proc.exit(2);
     }
+    fn aboutNodeAddrFault(addr: usize, val: usize) void {
+        var buf: [256]u8 = undefined;
+        buf[0..34].* = "corrupt metadata node at address: ".*;
+        var ptr: [*]u8 = buf[34..];
+        ptr = fmt.Uxsize.write(ptr, addr);
+        ptr[0..7].* = "value: ".*;
+        ptr = fmt.Udsize.write(ptr, val);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
+        proc.exit(2);
+    }
 };
 fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
     const T = struct {
@@ -4921,7 +4933,9 @@ fn GenericLinkedAllocatorGraphics(comptime Allocator: type) type {
                             print_array.writeMany(tab.div_s);
                             l_node_addr = r_node_addr;
                         },
-                        else => unreachable,
+                        else => {
+                            about.aboutNodeAddrFault(l_node_addr, l_node_kind);
+                        },
                     }
                 }
             }
@@ -5033,7 +5047,7 @@ pub const spec = struct {
             .metadata = true,
             .branches = true,
             .illegal = true,
-            .map = debug.spec.logging.acquire_error.verbose,
+            .map = debug.spec.logging.acquire_error_fault.verbose,
             .unmap = debug.spec.logging.release_error.verbose,
             .remap = debug.spec.logging.success_error.verbose,
             .advise = debug.spec.logging.success_error.verbose,
@@ -5048,7 +5062,7 @@ pub const spec = struct {
             .metadata = false,
             .branches = false,
             .illegal = false,
-            .map = debug.spec.logging.acquire_error.silent,
+            .map = debug.spec.logging.acquire_error_fault.silent,
             .unmap = debug.spec.logging.release_error.silent,
             .remap = debug.spec.logging.success_error.silent,
             .advise = debug.spec.logging.success_error.silent,
