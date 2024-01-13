@@ -2469,51 +2469,51 @@ pub fn writeToCamelCases(buf: [*]u8, names: []const []const u8) [*]u8 {
                 state = true;
             } else {
                 if (state) {
-                    buf[len] = c -% ('a' -% 'A');
+                    ptr[0] = c -% ('a' -% 'A');
                     state = false;
                 } else {
-                    buf[len] = c;
+                    ptr[0] = c;
                 }
-                len +%= 1;
+                ptr += 1;
             }
         }
         state = true;
     }
-    return buf[0..len];
+    return ptr;
 }
-pub fn toCamelCase(noalias buf: []u8, name: []const u8) []u8 {
+pub fn writeToCamelCase(buf: [*]u8, name: []const u8) [*]u8 {
+    var ptr: [*]u8 = buf;
     var state: bool = false;
-    var len: usize = 0;
     for (name) |c| {
         if (c == '_' or c == '.') {
             state = true;
         } else {
             if (state) {
-                buf[len] = c -% ('a' -% 'A');
+                ptr[0] = c -% ('a' -% 'A');
                 state = false;
             } else {
-                buf[len] = c;
+                ptr[0] = c;
             }
-            len +%= 1;
+            ptr += 1;
         }
     }
-    return buf[0..len];
+    return ptr;
 }
-pub fn toTitlecases(noalias buf: []u8, names: []const []const u8) []u8 {
-    const rename: []u8 = toCamelCases(buf, names);
-    if (rename[0] >= 'a') {
-        rename[0] -%= ('a' -% 'A');
+pub fn writeToTitlecases(buf: [*]u8, names: []const []const u8) [*]u8 {
+    const ptr: [*]u8 = writeToCamelCases(buf, names);
+    if (buf[0] >= 'a') {
+        buf[0] -%= ('a' -% 'A');
     }
-    return rename;
+    return ptr;
 }
-pub fn toTitlecase(noalias buf: []u8, name: []const u8) []u8 {
-    const rename: []u8 = toCamelCase(buf, name);
-    if (rename[0] >= 'a') {
-        rename[0] -%= ('a' -% 'A');
+pub fn writeToTitlecase(buf: [*]u8, name: []const u8) [*]u8 {
+    const ptr: [*]u8 = writeToCamelCase(buf, name);
+    if (buf[0] >= 'a') {
+        buf[0] -%= ('a' -% 'A');
     }
-    return rename;
+    return ptr;
 }
-pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
+pub fn untitle(buf: []u8, name: []const u8) []u8 {
     @memcpy(buf.ptr, name);
     if (buf[0] >= 'a') {
         buf[0] +%= ('a' -% 'A');
