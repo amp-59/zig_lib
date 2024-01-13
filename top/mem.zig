@@ -1085,6 +1085,9 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
             return testEqualMemory([]const array_info.child, &arg1, &arg2);
         },
         .Pointer => |pointer_info| {
+            if (@typeInfo(pointer_info.child) == .Fn) {
+                return arg1 == arg2;
+            }
             switch (pointer_info.size) {
                 .Many => {
                     const len1: usize = indexOfSentinel(arg1);
