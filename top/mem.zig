@@ -3066,48 +3066,45 @@ pub const about = struct {
     const resize_s: fmt.AboutSrc = fmt.about("resize");
     const advice_s: fmt.AboutSrc = fmt.about("advice");
     const protect_s: fmt.AboutSrc = fmt.about("protect");
+
     pub fn aboutAddrLenNotice(about_s: fmt.AboutSrc, addr: usize, len: usize) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        var ptr: [*]u8 = fmt.Uxsize.write(buf[about_s.len..], addr);
         ptr[0..2].* = "..".*;
         ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr = fmt.Uxsize.write(ptr, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.Bytes.write(ptr, len);
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn aboutAddrLenFlagsNotice(about_s: fmt.AboutSrc, addr: usize, len: usize, flags: sys.flags.MemMap) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        var ptr: [*]u8 = fmt.Uxsize.write(buf[about_s.len..], addr);
         ptr[0..2].* = "..".*;
         ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr = fmt.Uxsize.write(ptr, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.Bytes.write(ptr, len);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += flags.formatWriteBuf(ptr);
+        ptr = sys.flags.MemMap.write(ptr + 2, flags);
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: usize, len: usize, description_s: []const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        var ptr: [*]u8 = fmt.Uxsize.write(buf[about_s.len..], addr);
         ptr[0..2].* = "..".*;
         ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr = fmt.Uxsize.write(ptr, addr +% len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.Bytes.write(ptr, len);
