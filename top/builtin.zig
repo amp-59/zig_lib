@@ -33,6 +33,7 @@ pub const message_indent: u8 = define("message_indent", u8, 16);
 pub const message_no_style: [:0]const u8 = "\x1b[0m";
 pub const never_exit_group: bool = define("never_exit_group", bool, false);
 pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
+pub const show_default_flags: bool = define("show_default_flags", bool, false);
 pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const permit_discard_errors: bool = define("discard_errors", bool, true);
@@ -229,7 +230,9 @@ pub inline fn setErrorPolicy(
     comptime S: type,
     comptime new: InternalError(S.Error),
 ) void {
-    debug.assert(@hasDecl(S, "error_policy"));
+    if (comptime_assertions or runtime_assertions) {
+        debug.assert(@hasDecl(S, "error_policy"));
+    }
     S.error_policy.* = new;
 }
 pub fn BitCount(comptime T: type) type {
@@ -674,6 +677,7 @@ pub const parse = struct {
         const null_val: u32 = @as(*const u32, @alignCast(@ptrCast("null"))).*;
 
         fn identifierExtra(itr: *TokenIterator, prev: *const Token, next: Token) Token.Tag {
+            @setRuntimeSafety(false);
             const str: []const u8 = itr.buf[next.loc.start..next.loc.finish];
             if (prev.tag == .keyword_var or
                 prev.tag == .keyword_const)
@@ -963,6 +967,7 @@ pub const parse = struct {
                     .identifier => switch (byte) {
                         'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
                         else => {
+                            @setRuntimeSafety(false);
                             if (keyword(itr.buf[ret.loc.start..itr.buf_pos])) |tag| {
                                 ret.tag = tag;
                             }
@@ -1725,6 +1730,9 @@ fn libraryRoot() [:0]const u8 {
         if (idx == 0) {
             return ".";
         }
+        if (mem.testEqualMany(u8, "zig-build/build_root", pathname[0..idx])) {
+            return ".";
+        }
         return pathname[0..idx] ++ [0:0]u8{};
     }
 }
@@ -2269,7 +2277,7 @@ pub usingnamespace if (builtin.zig_backend == .stage2_llvm) struct {
         );
     }
 } else struct {
-    pub fn memcpy(noalias dest_bytes: [*]u8, noalias src_bytes: [*]const u8, len: u64) void {
+    pub fn memcpy(noalias dest_bytes: [*]u8, noalias src_bytes: [*]const u8, len: u64) callconv(.C) void {
         @setRuntimeSafety(false);
         for (dest_bytes[0..len], src_bytes[0..len]) |*ptr, val| {
             ptr.* = val;
