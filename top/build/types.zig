@@ -349,10 +349,10 @@ pub const Module = struct {
                 }
             }
         } else {
-            @panic(arg);
+            unreachable;
         }
         if (idx +% 1 == arg.len) {
-            @panic(arg);
+            unreachable;
         }
         const ret: Module = .{ .name = arg[0..len], .path = arg[idx +% 1 ..] };
         if (idx != len +% 1) {
@@ -459,7 +459,7 @@ pub const ModuleDependencies = struct {
         return len;
     }
     pub fn formatParseArgs(_: anytype, _: [][*:0]u8, _: *usize, _: [:0]const u8) []const ModuleDependency {
-        @panic("Not yet implemented");
+        return undefined;
     }
 };
 pub const Macro = struct {
