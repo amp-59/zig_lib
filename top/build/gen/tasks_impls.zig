@@ -1,18 +1,13 @@
 const mem = @import("../../mem.zig");
 const gen = @import("../../gen.zig");
-const fmt = @import("../../fmt.zig");
-const meta = @import("../../meta.zig");
 const debug = @import("../../debug.zig");
 const attr = @import("attr.zig");
 const types = @import("types.zig");
 const config = @import("config.zig");
 const common = @import("common_impls.zig");
-const safety = @import("../../safety.zig");
-const builtin = @import("../../builtin.zig");
-const testing = @import("../../testing.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
-const wip_llc: bool = true;
+const wip_llc: bool = false;
 pub const context = .Exe;
 pub const logging_override = debug.spec.logging.override.silent;
 pub fn main() !void {
