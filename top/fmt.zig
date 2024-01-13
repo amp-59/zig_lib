@@ -3869,15 +3869,15 @@ pub const EnumLiteralFormat = struct {
     value: @Type(.EnumLiteral),
     const Format = @This();
     const max_len: ?comptime_int = null;
-    pub fn write(buf: [*]u8, comptime value: Format) [*]u8 {
+    pub fn write(buf: [*]u8, comptime value: @Type(.EnumLiteral)) [*]u8 {
         return strcpyEqu(buf, fieldTagName(@tagName(value)));
     }
-    pub fn length(comptime value: Format) usize {
+    pub fn length(comptime value: @Type(.EnumLiteral)) usize {
         return fieldTagName(@tagName(value)).len;
     }
     pub usingnamespace Interface(Format);
 };
-pub const ComptimeIntFormat = struct {
+pub const ComptimeNumFormat = struct {
     value: comptime_int,
     const Format = @This();
     pub fn write(buf: [*]u8, comptime value: comptime_int) [*]u8 {
