@@ -10,7 +10,7 @@ const Allocator1 = zl.mem.dynamic.GenericArenaAllocator(.{
     .arena_index = 1,
     .AddressSpace = zl.mem.spec.address_space.exact_8,
 });
-pub const Builder = zl.build.GenericBuilder(.{});
+pub const Builder = zl.builder.GenericBuilder(.{});
 const List = zl.mem.list.GenericLinkedList(.{
     .child = u8,
     .low_alignment = 1,
