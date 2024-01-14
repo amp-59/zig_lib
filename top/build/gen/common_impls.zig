@@ -2306,47 +2306,50 @@ pub fn writeDeclarations(array: *types.Array, language: types.Extra.Language, at
     }
     writeAllocateRawDecls(array, language);
 }
-pub fn writeWriterFunctions(array: *types.Array, attributes: types.Attributes) void {
-    writeWriterFunction(array, attributes, .{ .function = .write, .language = .Zig, .notation = .slice });
-    writeWriterFunction(array, attributes, .{ .function = .length, .language = .Zig });
-    if (context == .Exe) {
-        writeWriterFunction(array, attributes, .{ .function = .formatWrite, .language = .Zig });
-    }
-}
-pub fn writeFunctionExternSignatures(array: *types.Array, attribute: types.Attributes) void {
-    writeParserFunctionExternSignature(array, attribute);
-    writeWriterFunctionExternSignature(array, attribute, .write);
-    writeWriterFunctionExternSignature(array, attribute, .length);
-}
 pub fn writeWriteModules(array: *types.Array, param_spec: types.ParamSpec, extra: *types.Extra) void {
     if (combine_len) {
         writeCombinedLength(array, extra);
     }
-    array.writeMany("for(");
-    writeFieldAccess(array, "mods", extra);
-    array.writeMany(",0..)|mod,mod_idx|{\n");
     const ptr_name: []const u8 = extra.ptr_name;
     const flags: types.Extra.Flags = extra.flags;
-    extra.ptr_name = "mod";
     extra.flags = .{
         .want_fn_exit = false,
         .want_fn_intro = false,
     };
-    writeWriterFunctionBody(array, param_spec.tag.field.repeatable_task.*, extra);
+    array.writeMany("var fs_idx:usize=0;\n");
+    switch (param_spec.tag) {
+        .field => |field| {
+            array.writeMany("mods:for(");
+            writeFieldAccess(array, "mods", extra);
+            array.writeMany(")|mod|{\n");
+            extra.ptr_name = "mod";
+            writeWriterFunctionBody(array, field.repeatable_task.*, extra);
+        },
+        .param => |param| {
+            array.writeMany("mods:for(mods)|mod|{\n");
+            extra.ptr_name = "mod";
+            writeWriterFunctionBody(array, param.repeatable_task.*, extra);
+        },
+        else => unhandledCommandField(param_spec, @src()),
+    }
     writeFieldString(array, "name", extra);
     writeNull(array, extra);
     writeCombinedLength(array, extra);
+    array.writeMany(
+        \\for(files[fs_idx..],fs_idx..)|fs,next|{
+        \\if(fs.key.tag==.input_zig){
+    );
     switch (extra.function) {
-        .write => {
-            array.writeMany("ptr=file.CompoundPath.write(ptr, zig_mod_paths[mod_idx]);\n");
-        },
-        .length => {
-            array.writeMany("len+%=file.CompoundPath.length(zig_mod_paths[mod_idx]);\n");
-        },
-        .formatWrite => {
-            array.writeMany("zig_mod_paths[mod_idx]].formatWrite(array);\n");
-        },
+        .write => array.writeMany("ptr=file.CompoundPath.write(ptr,paths[fs.path_idx]);\n"),
+        .length => array.writeMany("len+%=file.CompoundPath.length(paths[fs.path_idx]);\n"),
+        .formatWrite => array.writeMany("paths[fs.path_idx].formatWrite(array);\n"),
     }
+    array.writeMany(
+        \\fs_idx=next+%1;
+        \\continue :mods;
+        \\}
+        \\}
+    );
     extra.ptr_name = ptr_name;
     extra.flags = flags;
     writeCloseIf(array, extra);
@@ -2354,12 +2357,21 @@ pub fn writeWriteModules(array: *types.Array, param_spec: types.ParamSpec, extra
 pub fn writeParseModules(array: *types.Array, param_spec: types.ParamSpec, extra: *types.Extra) void {
     const ptr_name: []const u8 = extra.ptr_name;
     const flags: types.Extra.Flags = extra.flags;
-    extra.ptr_name = "cmd.mods[0]";
     extra.flags = .{
         .want_fn_exit = false,
         .want_fn_intro = false,
     };
-    writeParserFunctionBody(array, param_spec.tag.field.repeatable_task.*, extra);
+    switch (param_spec.tag) {
+        .field => |field| {
+            extra.ptr_name = "cmd.mods[0]";
+            writeParserFunctionBody(array, field.repeatable_task.*, extra);
+        },
+        .param => |param| {
+            extra.ptr_name = "mods[0]";
+            writeParserFunctionBody(array, param.repeatable_task.*, extra);
+        },
+        else => unhandledCommandField(param_spec, @src()),
+    }
     extra.ptr_name = ptr_name;
     extra.flags = flags;
 }
