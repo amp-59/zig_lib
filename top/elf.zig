@@ -2366,35 +2366,52 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 if (size *% sizes.new == 0 or mat.flags.is_insignificant) {
                     return 0;
                 }
-                return PercentFormat.length(size, sizes.new) +% 2;
+                var len: usize = PercentFormat.length(size, sizes.new);
+                if (len != 0) {
+                    len +%= 2;
+                }
+                return len;
             }
             fn writePercentage(buf: [*]u8, size: usize, mat: Compare.Match, sizes: *const Compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (size *% sizes.new == 0 or mat.flags.is_insignificant) {
                     return buf;
                 }
-                const ptr: [*]u8 = PercentFormat.write(buf, size, sizes.new);
-                ptr[0..2].* = ", ".*;
-                return ptr + 2;
+                var ptr: [*]u8 = PercentFormat.write(buf, size, sizes.new);
+                if (ptr != buf) {
+                    ptr[0..2].* = ", ".*;
+                    ptr += 2;
+                }
+                if (loader_spec.options.verify_lengths) {
+                    verify(ptr, buf, lengthPercentage, .{ size, mat, sizes });
+                }
+                return ptr;
             }
             fn lengthPercentages(size1: usize, size2: usize, mat: Compare.Match, sizes: *const Compare.Sizes) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 if (size1 *% size2 == 0 or mat.flags.is_insignificant) {
                     return 0;
                 }
-                return ChangedPercentFormat.length(size1, sizes.old, size2, sizes.new) +% 2;
+                var len: usize = ChangedPercentFormat.length(size1, sizes.old, size2, sizes.new);
+                if (len != 0) {
+                    len += 2;
+                }
+                return len;
             }
             fn writePercentages(buf: [*]u8, size1: usize, size2: usize, mat: Compare.Match, sizes: *const Compare.Sizes) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (size1 *% size2 == 0 or mat.flags.is_insignificant) {
                     return buf;
                 }
-                const ptr: [*]u8 = ChangedPercentFormat.write(buf, size1, sizes.old, size2, sizes.new);
-                ptr[0..2].* = ", ".*;
-                if (loader_spec.options.verify_lengths) {
-                    verify(ptr + 2, buf, lengthPercentages, .{ size1, size2, mat, sizes });
+                var ptr: [*]u8 = ChangedPercentFormat.write(buf, size1, sizes.old, size2, sizes.new);
+                if (ptr != buf) {
+                    ptr[0..2].* = ", ".*;
+                    ptr += 2;
                 }
-                return ptr + 2;
+                if (loader_spec.options.verify_lengths) {
+                    verify(ptr, buf, lengthPercentages, .{ size1, size2, mat, sizes });
+                }
+                return ptr;
             }
             fn writeSection2(
                 buf: [*]u8,
