@@ -9,7 +9,7 @@ const clone_spec = .{
         *zl.builtin.root.Builder.AddressSpace,
         *zl.builtin.root.Builder.ThreadSpace,
         *zl.builtin.root.Builder.Node,
-        zl.build.Task,
+        zl.builder.Task,
         zl.builtin.root.Builder.AddressSpace.Index,
     ) void,
 };
@@ -17,7 +17,7 @@ noinline fn executeCommandClone(
     address_space: *zl.builtin.root.Builder.AddressSpace,
     thread_space: *zl.builtin.root.Builder.ThreadSpace,
     node: *zl.builtin.root.Builder.Node,
-    task: zl.build.Task,
+    task: zl.builder.Task,
     arena_index: zl.builtin.root.Builder.AddressSpace.Index,
     executeCommandThreaded: clone_spec.function_type,
     addr: usize,
