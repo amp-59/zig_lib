@@ -1020,8 +1020,8 @@ fn writeBuildGroupFunctionBody(
     ptr = zl.fmt.strcpyEqu(ptr, "const zl=@import(\"zig_lib.zig\");\n");
     ptr = zl.fmt.strcpyEqu(ptr,
         \\pub fn test_slices(
-        \\allocator:*zl.build.types.Allocator,
-        \\build_cmd:zl.build.BuildCommand,
+        \\allocator:*zl.builder.types.Allocator,
+        \\build_cmd:zl.builder.BuildCommand,
         \\group:anytype)void{
         \\
     );
