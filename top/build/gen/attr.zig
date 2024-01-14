@@ -35,6 +35,10 @@ const paths_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "[]const types.Path" } },
     .write = &.{ .type_decl = .{ .name = "types.Path" } },
 };
+const files_type: types.BGTypeDescrMap = .{
+    .store = &.{ .type_decl = .{ .name = "[]const types.File" } },
+    .write = &.{ .type_decl = .{ .name = "types.File" } },
+};
 const optional_macro_slice_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?[]const types.Macro" } },
     .write = &.{ .type_decl = .{ .name = "types.Macros" } },
