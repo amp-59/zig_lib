@@ -65,7 +65,7 @@ fn writeCombinedLength(array: *types.Array, extra: *types.Extra) void {
                 array.writeFormat(fmt.udsize(extra.len.val));
                 array.writeMany(";\n");
             } else if (extra.len.strings.len() != 0) {
-                array.writeMany("len=len");
+                array.writeMany("ptr=ptr");
                 array.writeMany(extra.len.strings.readAll());
                 array.writeMany(";\n");
             }
