@@ -1,7 +1,7 @@
 //! Example build program:
 pub const zl = @import("zig_lib/zig_lib.zig");
 
-const build = zl.build;
+const build = zl.builder;
 const Node = build.GenericNode(.{});
 
 const build_cmd: build.BuildCommand = .{
