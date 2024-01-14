@@ -1,6 +1,6 @@
 pub const zl = @import("../../zig_lib.zig");
 const spec = zl.spec;
-const build = zl.build;
+const build = zl.builder;
 const Node = build.GenericNode(.{ .options = .{
     .max_thread_count = 2,
 } });
@@ -24,7 +24,7 @@ const format_cmd: build.FormatCommand = .{
     .ast_check = true,
 };
 pub fn langGroup(allocator: *build.Allocator, group: *Node) void {
-    var group_build_cmd: build.BuildCommand = build_cmd;
+    const group_build_cmd: build.BuildCommand = build_cmd;
     const slice_layout: *Node = group.addBuild(allocator, group_build_cmd, "slice_layout", "test/lang/slice_layout.zig");
     slice_layout.descr = "Verify slice layout";
 }
@@ -201,7 +201,7 @@ pub fn memgenGroup(allocator: *build.Allocator, group: *Node) void {
     var group_format_cmd: build.FormatCommand = format_cmd;
     group_format_cmd.ast_check = false;
     const impls = group.addGroup(allocator, "impls");
-    var impls_build_cmd: build.BuildCommand = build_cmd;
+    const impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_specs: *Node = impls.addBuild(allocator, impls_build_cmd, "specs", "top/mem/gen/specs.zig");
     const impls_ptr: *Node = impls.addBuild(allocator, impls_build_cmd, "ptr", "top/mem/gen/ptr_impls.zig");
     const impls_ctn: *Node = impls.addBuild(allocator, impls_build_cmd, "ctn", "top/mem/gen/ctn_impls.zig");
@@ -219,7 +219,7 @@ pub fn memgenGroup(allocator: *build.Allocator, group: *Node) void {
     generate.dependOnFull(allocator, .format, impls_alloc, .run);
 }
 pub fn regenGroup(allocator: *build.Allocator, group: *Node) void {
-    var group_format_cmd: build.FormatCommand = format_cmd;
+    const group_format_cmd: build.FormatCommand = format_cmd;
     const impls = group.addGroup(allocator, "impls");
     var impls_build_cmd: build.BuildCommand = build_cmd;
     impls_build_cmd.kind = .obj;
@@ -244,9 +244,9 @@ pub fn regenGroup(allocator: *build.Allocator, group: *Node) void {
     format.dependOnFull(allocator, .format, impls_rebuild, .run);
 }
 pub fn buildgenGroup(allocator: *build.Allocator, group: *Node) void {
-    var group_format_cmd: build.FormatCommand = format_cmd;
+    const group_format_cmd: build.FormatCommand = format_cmd;
     const impls = group.addGroup(allocator, "impls");
-    var impls_build_cmd: build.BuildCommand = build_cmd;
+    const impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_tasks: *Node = impls.addBuild(allocator, impls_build_cmd, "tasks", "top/build/gen/tasks_impls.zig");
     const impls_hist_tasks: *Node = impls.addBuild(allocator, impls_build_cmd, "hist_tasks", "top/build/gen/hist_tasks_impls.zig");
     const impls_parsers: *Node = impls.addBuild(allocator, impls_build_cmd, "parsers", "top/build/gen/parsers_impls.zig");
@@ -266,9 +266,9 @@ pub fn buildgenGroup(allocator: *build.Allocator, group: *Node) void {
     format.dependOnFull(allocator, .format, impls_libs, .run);
 }
 pub fn targetgenGroup(allocator: *build.Allocator, group: *Node) void {
-    var group_format_cmd: build.FormatCommand = format_cmd;
+    const group_format_cmd: build.FormatCommand = format_cmd;
     const impls = group.addGroup(allocator, "impls");
-    var impls_build_cmd: build.BuildCommand = build_cmd;
+    const impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_arch: *Node = impls.addBuild(allocator, impls_build_cmd, "arch", "top/target/gen/arch_impls.zig");
     const impls_target: *Node = impls.addBuild(allocator, impls_build_cmd, "target", "top/target/gen/target_impl.zig");
     const format: *Node = group.addFormat(allocator, group_format_cmd, "format", "top/target");
