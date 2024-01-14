@@ -2688,10 +2688,10 @@ pub const about = struct {
         ptr = fmt.Bytes.write(ptr + 2, len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += prot.formatWriteBuf(ptr);
+        ptr = sys.flags.FileProt.write(ptr, prot);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += flags.formatWriteBuf(ptr);
+        ptr = sys.flags.FileMap.write(ptr, flags);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
@@ -3219,10 +3219,10 @@ pub const about = struct {
         ptr = fmt.Bytes.write(ptr + 2, len);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += prot.formatWriteBuf(ptr);
+        ptr = sys.flags.FileProt.write(ptr, prot);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += flags.formatWriteBuf(ptr);
+        ptr = sys.flags.FileMap.write(ptr, flags);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
