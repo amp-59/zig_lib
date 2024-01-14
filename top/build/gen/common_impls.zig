@@ -1017,6 +1017,7 @@ fn writeWriterFunctionBody(array: *types.Array, attributes: types.Attributes, ex
                     writeFormatter(array, &.{}, "value", param_spec.char orelse '\x00', extra);
                     writeCloseIf(array, extra);
                 },
+                else => unhandledCommandField(param_spec, @src()),
             },
             .literal => |literal| switch (literal) {
                 .string => writeOptStringExtra(array, param_spec.string, param_spec.char orelse '\x00', extra),
@@ -1142,7 +1143,6 @@ fn writeWriterFunctionSignature(array: *types.Array, attributes: types.Attribute
             .length => array.writeMany(")callconv(.C)usize{\n"),
             .write => array.writeMany(")callconv(.C)[*]u8{\n"),
             .formatWrite => array.writeMany("array:anytype)callconv(.C)void{\n"),
-            .formatLength => array.writeMany(")callconv(.C)usize{\n"),
         }
     } else {
         switch (extra.function) {
@@ -2045,54 +2045,6 @@ fn writeFlagWithInverse(array: *types.Array, param_spec: types.ParamSpec, no_par
         array.writeOne(char);
         array.writeOne(']');
     }
-}
-fn writeParserFunctionExternSignature(array: *types.Array, attributes: types.Attributes) void {
-    array.writeMany("formatParseArgs");
-    array.writeMany(attributes.type_name);
-    array.writeMany(":*fn(*types.");
-    array.writeMany(attributes.type_name);
-    array.writeMany(",*types.Allocator,[*][*:0]u8,usize)void = @ptrFromInt(8),\n");
-}
-fn writeWriterFunctionExternSignature(array: *types.Array, attributes: types.Attributes, extra: *types.Extra) void {
-    if (extra.function == .formatWriteBuf) {
-        array.writeMany("formatWriteBuf");
-    } else {
-        array.writeMany("formatLength");
-    }
-    array.writeMany(attributes.type_name);
-    array.writeMany(":*fn(*types.");
-    array.writeMany(attributes.type_name);
-    array.writeMany(",");
-    for (attributes.params) |param_spec| {
-        if (param_spec.tag == .param) {
-            switch (param_spec.tag.param) {
-                .string, .repeatable_formatter => {
-                    array.writeMany("[*]const ");
-                    if (param_spec.type.write) |wrty| {
-                        wrty.formatWrite(array);
-                    } else {
-                        array.writeMany("u8");
-                    }
-                    array.writeMany(",usize");
-                },
-                else => {
-                    param_spec.type.store.formatWrite(array);
-                },
-            }
-            array.writeMany(",");
-        }
-    }
-    if (extra.function == .formatLength or
-        extra.function == .length)
-    {
-        array.undefine(1);
-    }
-    switch (extra.function) {
-        .formatWrite => array.writeMany("anytype)void"),
-        .length => array.writeMany(")callconv(.C)usize{\n"),
-        .write => array.writeMany(")callconv(.C)[*]u8{\n"),
-    }
-    array.writeMany(" = @ptrFromInt(8),\n");
 }
 fn generatePanicCauseParameters() []const u8 {
     const fields = @typeInfo(safety.RuntimeSafetyCheck).Struct.fields;
