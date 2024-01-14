@@ -94,10 +94,11 @@ const Tag = union(enum) {
         repeatable_formatter,
         repeatable_task: *const Attributes,
     },
-    param: enum {
+    param: union(enum) {
         string,
         formatter,
         repeatable_formatter,
+        repeatable_task: *const Attributes,
     },
     literal: enum {
         string,
