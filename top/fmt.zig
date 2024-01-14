@@ -90,6 +90,10 @@ pub inline fn cx(comptime value: anytype) *const [@typeName(@TypeOf(.{ ._ = valu
         return type_name[22 +% @typeName(Value).len .. type_name.len -% 1];
     }
 }
+pub fn tupleFieldName(comptime int: comptime_int) [:0]const u8 {
+    const s: []const u8 = (ci(int) ++ "\x00");
+    return s[0 .. s.len - 1 :0];
+}
 pub fn aboutEqu(dest: [*]u8, src: AboutSrc) [*]u8 {
     @setRuntimeSafety(false);
     dest[0..src.len].* = src.*;
