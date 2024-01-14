@@ -1363,7 +1363,7 @@ pub const ErrorCode = enum(comptime_int) {
     // WOULDBLOCK = -11, // Resource temporarily unavailable
     // DEADLOCK = -35, // Resource deadlock avoided
     // NOTSUP = -95, // Operation not supported
-    pub inline fn errorName(comptime error_code: ErrorCode) []const u8 {
+    pub inline fn errorName(comptime error_code: ErrorCode) [:0]const u8 {
         switch (error_code) {
             .NULL => return "NotAnError",
             .PERM => return "OperationNotPermitted",
