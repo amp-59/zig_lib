@@ -386,7 +386,7 @@ pub const ModuleDependency = struct {
     pub fn formatWriteBuf(mod_dep: ModuleDependency, buf: [*]u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
         buf[0..6].* = "--dep\x00".*;
-        var ptr: [*]u8 = buf + 7;
+        var ptr: [*]u8 = buf + 6;
         if (mod_dep.import.len != 0) {
             ptr = fmt.strcpyEqu(ptr, mod_dep.import);
             ptr[0] = '=';
