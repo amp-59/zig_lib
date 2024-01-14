@@ -195,7 +195,7 @@ pub fn TypeName(comptime T: type) type {
     return @TypeOf(@constCast(@typeName(T)));
 }
 /// Return a simple struct field
-pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value_opt: ?T) builtin.Type.StructField {
+pub fn structField(comptime T: type, comptime field_name: [:0]const u8, comptime default_value_opt: ?T) builtin.Type.StructField {
     if (default_value_opt) |default_value| {
         return .{
             .name = field_name,
