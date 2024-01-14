@@ -2425,7 +2425,8 @@ pub inline fn toStringLiteral(comptime str: []const u8) []const u8 {
         return ret;
     }
 }
-pub fn strip(dest: [*]u8, src: []const u8, byte: u8) usize {
+pub fn strip(dest: [*]u8, src: []const u8, byte: u8) [*]u8 {
+    @setRuntimeSafety(builtin.is_safe);
     var idx: usize = 0;
     var ptr: [*]u8 = dest;
     while (idx < src.len) : (idx +%= 1) {
@@ -2434,9 +2435,10 @@ pub fn strip(dest: [*]u8, src: []const u8, byte: u8) usize {
             ptr += 1;
         }
     }
-    return strlen(ptr, dest);
+    return ptr;
 }
-pub fn squeeze(dest: [*]u8, src: []const u8, byte: u8) usize {
+pub fn squeeze(dest: [*]u8, src: []const u8, byte: u8) [*]u8 {
+    @setRuntimeSafety(builtin.is_safe);
     var eq2: bool = src[0] == byte;
     var idx: usize = 0;
     var len: usize = 0;
@@ -2451,7 +2453,7 @@ pub fn squeeze(dest: [*]u8, src: []const u8, byte: u8) usize {
         }
         eq2 = eq;
     }
-    return len -% @intFromBool(eq2);
+    return ptr - @intFromBool(eq2);
 }
 pub fn nameToString(comptime name: []const u8) [name.len]u8 {
     var buf: [name.len]u8 = undefined;
