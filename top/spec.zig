@@ -76,7 +76,7 @@ pub const builder = struct {
         .logging = builder.logging.default,
     };
     pub const errors = struct {
-        pub const noexcept: zl.build.BuilderSpec.Errors = .{
+        pub const noexcept: zl.builder.BuilderSpec.Errors = .{
             .fork = .{},
             .write = .{},
             .read = .{},
@@ -101,7 +101,7 @@ pub const builder = struct {
             .seek = .{},
             .perf_event_open = .{},
         };
-        pub const kill: zl.build.BuilderSpec.Errors = .{
+        pub const kill: zl.builder.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
             .read = .{ .abort = sys.read.errors.all },
             .mknod = .{ .abort = sys.mknod.errors.all },
@@ -126,7 +126,7 @@ pub const builder = struct {
             .seek = .{ .abort = sys.seek.errors.all },
             .perf_event_open = .{ .abort = sys.perf_event_open.errors.all },
         };
-        pub const zen: zl.build.BuilderSpec.Errors = .{
+        pub const zen: zl.builder.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
             .read = .{ .abort = sys.read.errors.all },
             .mknod = .{ .throw = sys.mknod.errors.all },
@@ -149,7 +149,7 @@ pub const builder = struct {
             .close = .{ .abort = sys.close.errors.all },
             .unlink = .{ .abort = sys.unlink.errors.all },
         };
-        pub const critical: zl.build.BuilderSpec.Errors = add(zen, .{
+        pub const critical: zl.builder.BuilderSpec.Errors = add(zen, .{
             .close = .{ .throw = sys.close.errors.all },
             .unmap = .{ .throw = sys.munmap.errors.all },
         });
@@ -169,7 +169,7 @@ pub const builder = struct {
             tmp.hide_special = true;
             break :blk silent;
         };
-        pub const default: zl.build.BuilderSpec.Logging = .{
+        pub const default: zl.builder.BuilderSpec.Logging = .{
             .write = .{},
             .read = .{},
             .mknod = .{},
@@ -189,8 +189,8 @@ pub const builder = struct {
             .close = .{},
             .unlink = .{},
         };
-        pub const verbose: zl.build.BuilderSpec.Logging = zl.builtin.all(zl.build.BuilderSpec.Logging);
-        pub const silent: zl.build.BuilderSpec.Logging = zl.builtin.zero(zl.build.BuilderSpec.Logging);
+        pub const verbose: zl.builder.BuilderSpec.Logging = zl.builtin.all(zl.builder.BuilderSpec.Logging);
+        pub const silent: zl.builder.BuilderSpec.Logging = zl.builtin.zero(zl.builder.BuilderSpec.Logging);
     };
 };
 pub const file = struct {
