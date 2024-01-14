@@ -20,19 +20,16 @@ pub fn exit(code: u8) noreturn {
     );
     unreachable;
 }
-
-const main = @import("root").main;
-
 const start = switch (@typeInfo(@TypeOf(main)).Fn.params.len) {
     0 => startSimple,
     1 => startArgs,
     2 => startArgsEnviron,
     3 => startArgsEnvironAuxvec,
-    else => unreachable,
+    else => @compileError("invalid function parameters for `main`: valid signatures: " ++ valid_mains),
 };
 const finish = switch (@typeInfo(@TypeOf(main)).Fn.return_type.?) {
     void => finishSimple,
-    u8 => finishCode,
+    u8 => exit,
     else => |return_type| blk: {
         if (@typeInfo(return_type) == .ErrorUnion and
             @typeInfo(return_type).ErrorUnion.payload == void)
@@ -44,7 +41,7 @@ const finish = switch (@typeInfo(@TypeOf(main)).Fn.return_type.?) {
         {
             break :blk finishCodeError;
         }
-        unreachable;
+        @compileError("invalid function parameters for `main`: valid signatures: " ++ valid_mains);
     },
 };
 fn startSimple() void {
@@ -86,16 +83,31 @@ fn startArgsEnvironAuxvec() noreturn {
 fn finishSimple(_: void) noreturn {
     exit(0);
 }
-fn finishCode(ret: anytype) noreturn {
+fn finishCode(ret: u8) noreturn {
     exit(ret);
 }
-fn finishSimpleError(ret: anytype) noreturn {
+fn finishSimpleError(ret: anyerror!void) noreturn {
     if (ret) {
         exit(0);
     } else |_| {}
 }
-fn finishCodeError(ret: anytype) noreturn {
+fn finishCodeError(ret: anyerror!u8) noreturn {
     if (ret) |code| {
         exit(code);
     } else |_| {}
 }
+const main = @import("root").main;
+const valid_mains =
+    \\pub fn () void;
+    \\pub fn () !void;
+    \\pub fn () !u8;
+    \\pub fn ([][*:0]u8) void;
+    \\pub fn ([][*:0]u8) !void;
+    \\pub fn ([][*:0]u8) !u8;
+    \\pub fn ([][*:0]u8, [][*:0]u8) void;
+    \\pub fn ([][*:0]u8, [][*:0]u8) !void;
+    \\pub fn ([][*:0]u8, [][*:0]u8) !u8;
+    \\pub fn ([][*:0]u8, [][*:0]u8, *const anyopaque) void;
+    \\pub fn ([][*:0]u8, [][*:0]u8, *const anyopaque) !void;
+    \\pub fn ([][*:0]u8, [][*:0]u8, *const anyopaque) !u8;
+;
