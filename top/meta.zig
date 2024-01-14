@@ -260,8 +260,10 @@ pub fn Args(comptime Fn: type) type {
         return Args(@typeInfo(Fn).Pointer.child);
     }
     var tuple_info: builtin.Type.Struct = tuple_info_base;
-    for (@typeInfo(Fn).Fn.params, 0..) |arg, i| {
-        tuple_info.fields = tuple_info.fields ++ [1]builtin.Type.StructField{structField(arg.type.?, fmt.ci(i), null)};
+    for (@typeInfo(Fn).Fn.params, @typeInfo(@TypeOf(.{{}} **
+        @typeInfo(Fn).Fn.params.len)).Struct.fields) |arg, field|
+    {
+        tuple_info.fields = tuple_info.fields ++ [1]builtin.Type.StructField{structField(arg.type.?, field.name, null)};
     }
     return @Type(.{ .Struct = tuple_info });
 }
