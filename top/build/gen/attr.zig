@@ -348,10 +348,16 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             .type = string_type,
         },
         .{
-            .name = "zig_mod_paths",
+            .name = "files",
+            .tag = .{ .param = .repeatable_formatter },
+            .type = files_type,
+            .flags = .{ .do_parse = false, .do_write = false },
+        },
+        .{
+            .name = "paths",
             .tag = .{ .param = .repeatable_formatter },
             .type = paths_type,
-            .flags = .{ .do_parse = false },
+            .flags = .{ .do_parse = false, .do_write = false },
         },
         .{
             .string = "build-",
@@ -831,7 +837,7 @@ pub const zig_build_command_attributes2: types.Attributes = .{
         },
         .{
             .name = "mods",
-            .tag = .{ .field = .{ .repeatable_task = &zig_modules_attributes } },
+            .tag = .{ .param = .{ .repeatable_task = &zig_modules_attributes } },
             .type = build_command_module_type,
             .special = .{
                 .write = common.writeWriteModules,
@@ -839,12 +845,6 @@ pub const zig_build_command_attributes2: types.Attributes = .{
             },
             .descr = &.{"Define modules available as dependencies for the current target"},
             .default = "&.{}",
-        },
-        .{
-            .name = "files",
-            .tag = .{ .param = .repeatable_formatter },
-            .type = paths_type,
-            .descr = &.{"Add auxiliary non-Zig files to the current target"},
         },
         // Other options
         .{
