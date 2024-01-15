@@ -8,26 +8,25 @@ const OtherAllocator = mem.dynamic.GenericRtArenaAllocator(.{
     .AddressSpace = builtin.root.Builder.AddressSpace,
     .errors = mem.dynamic.spec.errors.noexcept,
 });
-pub const File = struct {
+pub const File = packed struct {
     /// What this file represents to the node.
     key: Key,
+    /// File descriptor.
+    fd: u16,
     /// The index of the path this file corresponds to in the node
     /// `paths` list.
-    path_idx: u16 = undefined,
-    /// File descriptor.
-    fd: u32 = 0,
-    /// Status for this file. Whether this pointer is valid is lazily
-    /// determined. It will never be valid within the main phase.
+    path_idx: u32,
+    /// Status for this file.
     st: *file.Status,
-    pub const Key = extern union { tag: Tag, flags: Flags, id: u8 };
-    pub const Flags = packed struct(u8) {
-        idx: u4 = 0,
+    pub const Key = packed union { tag: Tag, flags: Flags, id: u16 };
+    pub const Flags = packed struct(u16) {
+        idx: u12 = 0,
         is_cached: bool = false,
         is_output: bool = false,
         is_input: bool = false,
         is_source: bool = false,
     };
-    pub const Tag = enum(u8) {
+    pub const Tag = enum(u16) {
         // zig fmt: off
         /// All names relative to this absolute path.
         /// Root group nodes store a path and file handle to this directory.
@@ -98,7 +97,7 @@ pub const File = struct {
         // zig fmt: on
         pub fn toggle(tag: *Tag, flags: Flags) bool {
             @setRuntimeSafety(builtin.is_safe);
-            const new_tag: File.Tag = @enumFromInt(@intFromEnum(tag.*) ^ @as(u8, @bitCast(flags)));
+            const new_tag: File.Tag = @enumFromInt(@intFromEnum(tag.*) ^ @as(u16, @bitCast(flags)));
             const ret: bool = @bitCast(@intFromBool(@popCount(@intFromEnum(new_tag)) ==
                 @popCount(@intFromEnum(tag.*))) & @intFromBool(new_tag != tag.*));
             if (ret) tag.* = new_tag;
@@ -106,7 +105,7 @@ pub const File = struct {
         }
     };
 };
-pub const BinaryOutput = enum(u8) {
+pub const BinaryOutput = enum(u16) {
     exe = @intFromEnum(File.Tag.output_exe),
     lib = @intFromEnum(File.Tag.output_lib),
     obj = @intFromEnum(File.Tag.output_obj),
