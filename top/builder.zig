@@ -1031,7 +1031,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 zb: u8 = 0,
             };
             pub const BinaryAnalysis = struct {
-                cmp: DynamicLoader.compare.Cmp,
+                cmp: DynamicLoader.Compare,
                 before: ?DynamicLoader.ElfInfo = null,
                 after: ?DynamicLoader.ElfInfo = null,
             };
