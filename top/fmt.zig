@@ -897,13 +897,6 @@ pub fn PathFormat(comptime Path: type) type {
             }
             return len;
         }
-        pub fn formatWriteBufDisplayLiteral(format: Format, buf: [*]u8) usize {
-            @setRuntimeSafety(fmt_is_safe);
-            var tmp: [4096]u8 = undefined;
-            var len: usize = format.formatWriteBufDisplay(&tmp);
-            len -%= 1;
-            return stringLiteral(tmp[0..len]).formatWriteBuf(buf);
-        }
         pub fn write(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(fmt_is_safe);
             var ptr: [*]u8 = buf;
@@ -1221,9 +1214,20 @@ pub fn GenericChangedPercentFormat(comptime fmt_spec: ChangedPercentFormatSpec) 
             ptr[0] = ')';
             return strcpyEqu(ptr + 1, fmt_spec.arrow_style);
         }
+        fn writeStyledInsignificantChange(buf: [*]u8, style_s: []const u8) [*]u8 {
+            @setRuntimeSafety(fmt_is_safe);
+            buf[0] = '(';
+            const ptr: [*]u8 = strcpyEqu(strcpyEqu(buf + 1, style_s), fmt_spec.no_style);
+            ptr[0] = ')';
+            return strcpyEqu(ptr + 1, fmt_spec.arrow_style);
+        }
         fn lengthStyledChange(int: Int, dec: Int, style_s: []const u8) usize {
             @setRuntimeSafety(fmt_is_safe);
-            return 1 +% style_s.len +% DeltaPercentFormat.length2(int, dec) +% fmt_spec.no_style.len +% 1 +% fmt_spec.arrow_style.len;
+            return 2 +% fmt_spec.no_style.len +% fmt_spec.arrow_style.len +% style_s.len +% DeltaPercentFormat.length2(int, dec);
+        }
+        fn lengthStyledInsignificantChange(style_s: []const u8) usize {
+            @setRuntimeSafety(fmt_is_safe);
+            return 2 +% fmt_spec.no_style.len +% style_s.len;
         }
         const old_factor = OldPercentFormat.factor;
         const new_factor = NewPercentFormat.factor;
