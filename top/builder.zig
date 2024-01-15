@@ -911,12 +911,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 on_task: Task,
                 /// In this state ...
                 on_state: State,
-
-                on: u8 = 0,
+                zb: u8 = 0,
             };
             pub const Conf = extern struct {
                 data: u64,
-                pub fn formatWriteBuf(cfg: Conf, buf: [*]u8) u64 {
+                pub fn write(buf: [*]u8, cfg: Conf) [*]u8 {
                     @setRuntimeSafety(builtin.is_safe);
                     const addr: usize = cfg.data & ((1 << (@bitSizeOf(usize) -% 8)) -% 1);
                     const disp: usize = cfg.data >> (@bitSizeOf(usize) -% 8);
