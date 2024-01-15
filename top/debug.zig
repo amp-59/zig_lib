@@ -630,7 +630,7 @@ pub fn write(buf: []const u8) void {
             \\syscall # write
             :
             : [_] "{rax}" (1), // linux sys_write
-              [_] "{rdi}" (2), // stderr
+              [_] "{rdi}" (builtin.debug_write_fd orelse @compileError("debug.write disabled")), // stderr
               [_] "{rsi}" (buf.ptr),
               [_] "{rdx}" (buf.len),
             : "rcx", "r11", "memory", "rax"
