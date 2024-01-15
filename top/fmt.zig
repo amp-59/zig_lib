@@ -1956,9 +1956,7 @@ pub const FieldIdentifierFormat = struct {
     value: []const u8,
     const Format: type = @This();
     pub fn write(buf: [*]u8, comptime name: []const u8) [*]u8 {
-        const field_name: []const u8 = comptime fieldIdentifier(name);
-        buf[0..field_name.len].* = field_name[0..field_name.len].*;
-        return buf + field_name.len;
+        return strcpyEqu(buf, comptime fieldIdentifier(name));
     }
     pub fn length(comptime name: []const u8) usize {
         return comptime fieldIdentifier(name).len;
@@ -2890,12 +2888,12 @@ pub const RenderSpec = struct {
         /// Represents a statically sized buffer  where only `field_name_len` values are to be shown.
         /// field_name: [n]T
         /// field_name_len: usize,
-        static_resizeable: bool = false,
+        static_resizeable: bool = true,
         /// Represents a buffer with length and capacity, maybe used in extern structs.
         /// field_name: [*]T,
         /// field_name_max_len: usize,
         /// field_name_len: usize,
-        extern_resizeable: bool = false,
+        extern_resizeable: bool = true,
         /// Represents a union with length and capacity, maybe used in extern structs.
         /// field_name: U,
         /// field_name_tag: E,
