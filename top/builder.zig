@@ -311,6 +311,8 @@ pub const BuilderSpec = struct {
         poll: debug.Logging.AttemptSuccessError = .{},
         /// Report `link` Success and Error.
         link: debug.Logging.SuccessError = .{},
+        /// Report `copy_file_range` Success and Error.
+        copy: debug.Logging.SuccessError = .{},
         /// Report `unlink` Success and Error.
         unlink: debug.Logging.SuccessError = .{},
         /// Report `getcwd` Success and Error.
@@ -361,6 +363,8 @@ pub const BuilderSpec = struct {
         clock: sys.ErrorPolicy = .{},
         /// Error values for `link` system function.
         link: sys.ErrorPolicy = .{},
+        /// Error values for `copy_file_range` system function.
+        copy: sys.ErrorPolicy = .{},
         /// Error values for `unlink` system function.
         unlink: sys.ErrorPolicy = .{},
         /// Error values for `getcwd` system function.
