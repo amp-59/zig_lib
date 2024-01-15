@@ -2397,6 +2397,7 @@ pub const DiscreteMultiArena = struct {
         if (builtin.comptime_assertions) {
             debug.assertNotEqual(u64, multi_arena.list.len, 0);
         }
+        const empty_fields: []const builtin.Type.StructField = @typeInfo(@TypeOf(.{{}} ** multi_arena.list.len)).Struct.fields;
         var directory: Directory(multi_arena) = undefined;
         var fields: []const builtin.Type.StructField = meta.empty;
         var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;
@@ -2404,23 +2405,23 @@ pub const DiscreteMultiArena = struct {
         for (multi_arena.list, 0..) |super_arena, index| {
             if (thread_safe_state and !super_arena.options.thread_safe) {
                 const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.value_type, multi_arena.index_type);
-                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
-                directory[index] = .{ .arena_index = 0, .field_name = fmt.ci(fields.len) };
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, empty_fields[fields.len].name, .{})};
+                directory[index] = .{ .arena_index = 0, .field_name = empty_fields[fields.len].name };
                 arena_index = 1;
             } else if (!thread_safe_state and super_arena.options.thread_safe) {
                 const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.value_type, multi_arena.index_type);
-                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
-                directory[index] = .{ .arena_index = 0, .field_name = fmt.ci(fields.len) };
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, empty_fields[fields.len].name, .{})};
+                directory[index] = .{ .arena_index = 0, .field_name = empty_fields[fields.len].name };
                 arena_index = 1;
             } else {
-                directory[index] = .{ .arena_index = arena_index, .field_name = fmt.ci(fields.len) };
+                directory[index] = .{ .arena_index = arena_index, .field_name = empty_fields[fields.len].name };
                 arena_index +%= 1;
             }
             thread_safe_state = super_arena.options.thread_safe;
         }
         const GenericSet = if (thread_safe_state) ThreadSafeSet else DiscreteBitSet;
         const T: type = GenericSet(arena_index +% 1, multi_arena.value_type, multi_arena.index_type);
-        fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
+        fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, empty_fields[fields.len].name, .{})};
         if (fields.len == 1) {
             return fields[0].type;
         }
