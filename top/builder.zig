@@ -129,14 +129,14 @@ pub const BuilderSpec = struct {
     /// Logging for system calls called by the builder.
     logging: Logging = .{},
     /// Errors for system calls called by builder.
-    errors: Errors = .{},
+    errors: Errors = if (builtin.is_safe) spec.errors.kill() else .{},
     pub const Options = struct {
         /// The maximum number of threads in addition to main.
         /// max_thread_count=0 is single-threaded.
         max_thread_count: u8 = 8,
         /// Allow this many errors before exiting the thread group.
         /// A value of `null` will attempt to report all errors and exit from main.
-        max_error_count: ?u8 = 0,
+        max_error_count: ?usize = 0,
         /// Lowest allocated byte address.
         lb_addr: usize = 0x10000000000,
         /// Bytes allowed per thread arena (default=8MiB)
