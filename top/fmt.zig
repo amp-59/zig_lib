@@ -3485,7 +3485,12 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             }
             break :blk len;
         };
-        pub fn write(buf: [*]u8, value: anytype) [*]u8 {
+        pub const write: if (builtin.requireComptime(Struct))
+            *const fn (buf: [*]u8, comptime Struct) [*]u8
+        else
+            *const fn (buf: [*]u8, Struct) [*]u8 = @ptrCast(&writeAny);
+
+        fn writeAny(buf: [*]u8, value: anytype) [*]u8 {
             @setRuntimeSafety(fmt_is_safe);
             buf[0..type_name.len].* = type_name.*;
             var ptr: [*]u8 = buf + type_name.len;
@@ -3523,7 +3528,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
                             if (@hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(value, len_field_name)];
-                                ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
+                                ptr = strcpyEqu(ptr, comptime fieldInitializer(field.name));
                                 ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                                 ptr[0..2].* = ", ".*;
                                 ptr += 2;
@@ -3535,7 +3540,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
                             if (@hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(value, len_field_name)];
-                                ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
+                                ptr = strcpyEqu(ptr, comptime fieldInitializer(field.name));
                                 ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                                 ptr[0..2].* = ", ".*;
                                 ptr += 2;
@@ -3549,7 +3554,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
                             if (@hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(value, len_field_name)];
-                                ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
+                                ptr = strcpyEqu(ptr, comptime fieldInitializer(field.name));
                                 ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                                 ptr[0..2].* = ", ".*;
                                 ptr += 2;
@@ -3563,7 +3568,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
                         if (@hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(value, len_field_name)];
-                            ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
+                            ptr = strcpyEqu(ptr, comptime fieldInitializer(field.name));
                             ptr = AnyFormat(field_spec, @TypeOf(view)).write(ptr, view);
                             ptr[0..2].* = ", ".*;
                             ptr += 2;
@@ -3574,14 +3579,14 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 }
                 if (spec.omit_default_fields and field.default_value != null and !field.is_comptime) {
                     if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                        ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
+                        ptr = strcpyEqu(ptr, comptime fieldInitializer(field.name));
                         ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
                         ptr[0..2].* = ", ".*;
                         ptr += 2;
                         fields_len +%= 1;
                     }
                 } else {
-                    ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
+                    ptr = strcpyEqu(ptr, comptime fieldInitializer(field.name));
                     ptr = AnyFormat(field_spec, field.type).write(ptr, field_value);
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
@@ -3590,7 +3595,12 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             }
             return writeTrailingCommaPtr(ptr + neg2, omit_trailing_comma, fields_len);
         }
-        pub fn length(value: anytype) usize {
+        pub const length: if (builtin.requireComptime(Struct))
+            *const fn (comptime Struct) usize
+        else
+            *const fn (Struct) usize = @ptrCast(&lengthAny);
+
+        fn lengthAny(value: anytype) usize {
             @setRuntimeSafety(fmt_is_safe);
             var len: usize = type_name.len +% 2;
             var fields_len: usize = 0;
@@ -3770,9 +3780,9 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 if (value == @field(tag_type.?, field.name)) {
                     if (field.type == void) {
                         ptr += neg2;
-                        ptr = strcpyEqu(ptr, fieldIdentifier(field.name));
+                        ptr = strcpyEqu(ptr, comptime fieldIdentifier(field.name));
                     } else {
-                        ptr = strcpyEqu2(ptr, fieldInitializer(field.name));
+                        ptr = strcpyEqu(ptr, comptime fieldInitializer(field.name));
                         ptr = AnyFormat(spec, field.type).write(ptr, @field(value, field.name));
                     }
                 }
