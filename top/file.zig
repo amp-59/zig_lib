@@ -2777,12 +2777,10 @@ pub const about = struct {
         ptr[0..9].* = ", offset=".*;
         ptr = fmt.Ud64.write(ptr + 9, offset);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        const len: usize = flags.formatWriteBuf(ptr);
-        if (len != 0) {
-            ptr += len;
-            ptr[0..2].* = ", ".*;
-            ptr += 2;
+        const end: [*]u8 = sys.flags.ReadWrite.write(ptr + 2, flags);
+        if (end != ptr) {
+            end[0..2].* = ", ".*;
+            ptr = end + 2;
         }
         ptr = fmt.Ud64.write(ptr, act_len);
         ptr[0] = '/';
@@ -3220,11 +3218,16 @@ pub const about = struct {
         ptr[0..2].* = ", ".*;
         ptr = fmt.Bytes.write(ptr + 2, len);
         ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = sys.flags.FileProt.write(ptr, prot);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr = sys.flags.FileMap.write(ptr, flags);
+        var end: [*]u8 = sys.flags.FileProt.write(ptr + 2, prot);
+        if (end != ptr) {
+            end[0..2].* = ", ".*;
+            ptr = end + 2;
+        }
+        end = sys.flags.FileMap.write(ptr, flags);
+        if (end != ptr) {
+            end[0..2].* = ", ".*;
+            ptr = end + 2;
+        }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3292,7 +3295,11 @@ pub const about = struct {
         ptr[0..5].* = ", fd=".*;
         ptr = fmt.Ud64.write(ptr + 5, fd);
         ptr[0..2].* = ", ".*;
-        ptr += flags.formatWriteBuf(ptr + 2);
+        const end: [*]u8 = sys.flags.ReadWrite.write(ptr + 2, flags);
+        if (end != ptr) {
+            end[0..2].* = ", ".*;
+            ptr = end + 2;
+        }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3441,7 +3448,11 @@ pub const about = struct {
         ptr = fmt.Ud64.write(ptr, offset);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += flags.formatWriteBuf(ptr);
+        const end: [*]u8 = sys.flags.ReadWrite.write(ptr + 2, flags);
+        if (end != ptr) {
+            end[0..2].* = ", ".*;
+            ptr = end + 2;
+        }
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
