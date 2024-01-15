@@ -2252,23 +2252,25 @@ pub const CompoundPath = extern struct {
         cp.names_len +%= 1;
         return ret;
     }
-    pub fn hasExtension(cp: *const CompoundPath, ext: [:0]const u8) bool {
+    pub fn hasExtension(cp: CompoundPath, ext: [:0]const u8) bool {
         @setRuntimeSafety(builtin.is_safe);
         const name: [:0]const u8 = cp.names[cp.names_len -% 1];
         return mem.testEqualString(ext, name[name.len -% ext.len ..]);
     }
-    pub fn status(cp: *const CompoundPath, comptime stat_spec: StatusSpec, st: *Status) void {
+    pub fn status(cp: CompoundPath, comptime stat_spec: StatusSpec, st: *Status) void {
         @setRuntimeSafety(builtin.is_safe);
         var buf: [4096:0]u8 = undefined;
-        statusAt(stat_spec, .{}, cwd, buf[0 .. cp.formatWriteBuf(&buf) -% 1 :0], st);
+        const end: [*]u8 = CompoundPath.write(&buf, cp);
+        statusAt(stat_spec, .{}, cwd, buf[0 .. @intFromPtr(end) -% @intFromPtr(&buf) :0], st);
     }
-    pub fn concatenate(cp: *const CompoundPath, allocator: anytype) [:0]u8 {
+    pub fn concatenate(cp: CompoundPath, allocator: anytype) [:0]u8 {
         @setRuntimeSafety(builtin.is_safe);
-        var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(cp.formatLength(), 1));
-        const len: usize = cp.formatWriteBuf(buf) -% 1;
-        buf[len] = 0;
-        return buf[0..len :0];
+        const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(@This().length(cp), 1));
+        const end: [*]u8 = CompoundPath.write(buf, cp) - 1;
+        end[0] = 0;
+        return buf[0 .. @intFromPtr(end) -% @intFromPtr(buf) :0];
     }
+
     pub usingnamespace fmt.PathFormat(CompoundPath);
 };
 pub const DirStreamSpec = struct {
