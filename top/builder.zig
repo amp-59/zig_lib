@@ -722,19 +722,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .stat = builder_spec.errors.stat,
             .futex = builder_spec.errors.futex,
         };
+        const trace_strip = builtin.zig_backend == .stage2_llvm;
         const trace_build_cmd = .{
             .kind = .obj,
             .dynamic = true,
+            .reference_trace = true,
+            .compiler_rt = false,
+            .function_sections = false,
+            .image_base = 65536,
+        };
+        const trace_build_mod = .{
             .omit_frame_pointer = false,
             .mode = .ReleaseSmall,
             .stack_check = false,
             .stack_protector = false,
-            .reference_trace = true,
             .single_threaded = true,
-            .function_sections = false,
-            .strip = true,
-            .compiler_rt = false,
-            .image_base = 65536,
+            .strip = trace_strip,
         };
         const extn_flags = .{
             .is_special = true,
