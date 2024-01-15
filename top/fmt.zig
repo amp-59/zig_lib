@@ -3956,10 +3956,10 @@ pub fn FloatFormat(comptime Float: type) type {
             if (math.float.isNegative(Float, value)) {
                 len +%= 1;
             }
-            if (math.float.isNan(Float, abs)) {
+            if (math.float.isNan(abs)) {
                 return len +% 3;
             }
-            if (math.float.isInf(Float, abs)) {
+            if (math.float.isInf(abs)) {
                 return len +% 3;
             }
             if (abs == 0.0) {
@@ -3975,31 +3975,14 @@ pub fn FloatFormat(comptime Float: type) type {
 const AddressFormat = struct {
     value: usize,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        const addr_format = uxsize(format.value);
-        array.writeMany("@(");
-        writeFormat(addr_format, array);
-        array.writeMany(")");
+    pub fn write(buf: [*]u8, addr: usize) [*]u8 {
+        buf[0] = '@';
+        return Uxsize.write(buf + 1, addr);
     }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-        @setRuntimeSafety(fmt_is_safe);
-        var len: usize = 0;
-        const addr_format = uxsize(format.value);
-        @as(*[2]u8, @ptrCast(buf)).* = "@(".*;
-        len +%= 2;
-        len +%= addr_format.formatWriteBuf(buf + len);
-        buf[len] = ')';
-        len +%= 1;
-        return len;
+    pub fn length(addr: usize) usize {
+        return 1 +% Uxsize.length(addr);
     }
-    pub fn formatLength(format: Format) usize {
-        var len: usize = 0;
-        const addr_format = uxsize(format.value);
-        len +%= 2;
-        len +%= addr_format.formatLength();
-        len +%= 1;
-        return len;
-    }
+    pub usingnamespace Interface(Format);
 };
 pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
     const T = struct {
