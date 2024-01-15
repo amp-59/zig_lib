@@ -1152,7 +1152,7 @@ pub const BuildCommand1 = struct {
             switch (emit_bin) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 11 +% arg.formatLength();
+                        len +%= 11 +% types.Path.length(arg);
                     } else {
                         len +%= 11;
                     }
@@ -1166,7 +1166,7 @@ pub const BuildCommand1 = struct {
             switch (emit_asm) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 11 +% arg.formatLength();
+                        len +%= 11 +% types.Path.length(arg);
                     } else {
                         len +%= 11;
                     }
@@ -1180,7 +1180,7 @@ pub const BuildCommand1 = struct {
             switch (emit_llvm_ir) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 15 +% arg.formatLength();
+                        len +%= 15 +% types.Path.length(arg);
                     } else {
                         len +%= 15;
                     }
@@ -1194,7 +1194,7 @@ pub const BuildCommand1 = struct {
             switch (emit_llvm_bc) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 15 +% arg.formatLength();
+                        len +%= 15 +% types.Path.length(arg);
                     } else {
                         len +%= 15;
                     }
@@ -1208,7 +1208,7 @@ pub const BuildCommand1 = struct {
             switch (emit_h) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 9 +% arg.formatLength();
+                        len +%= 9 +% types.Path.length(arg);
                     } else {
                         len +%= 9;
                     }
@@ -1222,7 +1222,7 @@ pub const BuildCommand1 = struct {
             switch (emit_docs) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 12 +% arg.formatLength();
+                        len +%= 12 +% types.Path.length(arg);
                     } else {
                         len +%= 12;
                     }
@@ -1236,7 +1236,7 @@ pub const BuildCommand1 = struct {
             switch (emit_analysis) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 16 +% arg.formatLength();
+                        len +%= 16 +% types.Path.length(arg);
                     } else {
                         len +%= 16;
                     }
@@ -1707,12 +1707,12 @@ pub const BuildCommand1 = struct {
         }
         if (cmd.macros) |macros| {
             for (macros) |value| {
-                len = len +% value.formatLength();
+                len = len +% types.Macro.length(value);
             }
         }
         if (cmd.modules) |modules| {
             for (modules) |value| {
-                len = len +% value.formatLength();
+                len = len +% types.Modules.length(value);
             }
         }
         if (cmd.dependencies) |dependencies| {
@@ -1745,7 +1745,7 @@ pub const BuildCommand1 = struct {
             }
         }
         for (files) |value| {
-            len = len +% value.formatLength();
+            len = len +% types.Path.length(value);
         }
         if (cmd.color) |color| {
             len +%= 9 +% @tagName(color).len;
@@ -1801,8 +1801,8 @@ pub const BuildCommand1 = struct {
         var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
-        @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args_in.len) {
+        @memcpy(args, args_in.ptr);
+        while (args_idx != args.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
                 if (arg.len > 11 and arg[10] == '=') {
@@ -3961,7 +3961,7 @@ pub const BuildCommand = struct {
             switch (emit_bin) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 11 +% arg.formatLength();
+                        len +%= 11 +% types.Path.length(arg);
                     } else {
                         len +%= 11;
                     }
@@ -3975,7 +3975,7 @@ pub const BuildCommand = struct {
             switch (emit_asm) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 11 +% arg.formatLength();
+                        len +%= 11 +% types.Path.length(arg);
                     } else {
                         len +%= 11;
                     }
@@ -3989,7 +3989,7 @@ pub const BuildCommand = struct {
             switch (emit_llvm_ir) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 15 +% arg.formatLength();
+                        len +%= 15 +% types.Path.length(arg);
                     } else {
                         len +%= 15;
                     }
@@ -4003,7 +4003,7 @@ pub const BuildCommand = struct {
             switch (emit_llvm_bc) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 15 +% arg.formatLength();
+                        len +%= 15 +% types.Path.length(arg);
                     } else {
                         len +%= 15;
                     }
@@ -4017,7 +4017,7 @@ pub const BuildCommand = struct {
             switch (emit_h) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 9 +% arg.formatLength();
+                        len +%= 9 +% types.Path.length(arg);
                     } else {
                         len +%= 9;
                     }
@@ -4031,7 +4031,7 @@ pub const BuildCommand = struct {
             switch (emit_docs) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 12 +% arg.formatLength();
+                        len +%= 12 +% types.Path.length(arg);
                     } else {
                         len +%= 12;
                     }
@@ -4045,7 +4045,7 @@ pub const BuildCommand = struct {
             switch (emit_analysis) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        len +%= 16 +% arg.formatLength();
+                        len +%= 16 +% types.Path.length(arg);
                     } else {
                         len +%= 16;
                     }
@@ -4401,7 +4401,7 @@ pub const BuildCommand = struct {
         mods: for (mods) |mod| {
             if (mod.deps) |deps| {
                 for (deps) |value| {
-                    len = len +% value.formatLength();
+                    len = len +% types.ModuleDependency.length(value);
                 }
             }
             if (mod.target) |target| {
@@ -4529,7 +4529,7 @@ pub const BuildCommand = struct {
             }
             if (mod.macros) |macros| {
                 for (macros) |value| {
-                    len = len +% value.formatLength();
+                    len = len +% types.Macro.length(value);
                 }
             }
             if (mod.library) |library| {
@@ -4616,8 +4616,8 @@ pub const BuildCommand = struct {
         var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
-        @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args_in.len) {
+        @memcpy(args, args_in.ptr);
+        while (args_idx != args.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
                 if (arg.len > 11 and arg[10] == '=') {
@@ -5686,7 +5686,7 @@ pub const ArchiveCommand = struct {
         }
         len +%= 1 +% @tagName(cmd.operation).len;
         for (files) |value| {
-            len = len +% value.formatLength();
+            len = len +% types.Path.length(value);
         }
         return len;
     }
@@ -5700,8 +5700,8 @@ pub const ArchiveCommand = struct {
         var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
-        @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args_in.len) {
+        @memcpy(args, args_in.ptr);
+        while (args_idx != args.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--format", arg)) {
                 args_idx +%= 1;
@@ -5862,8 +5862,8 @@ pub const ObjcopyCommand = struct {
         var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
-        @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args_in.len) {
+        @memcpy(args, args_in.ptr);
+        while (args_idx != args.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--output-target", arg)) {
                 args_idx +%= 1;
@@ -5981,7 +5981,7 @@ pub const FormatCommand = struct {
         if (cmd.exclude) |exclude| {
             len +%= 11 +% exclude.len;
         }
-        return len +% pathname.formatLength();
+        return len +% types.Path.length(pathname);
     }
     pub fn formatParseArgs(
         cmd: *FormatCommand,
@@ -5993,8 +5993,8 @@ pub const FormatCommand = struct {
         var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
-        @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args_in.len) {
+        @memcpy(args, args_in.ptr);
+        while (args_idx != args.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--color", arg)) {
                 args_idx +%= 1;
