@@ -187,8 +187,6 @@ pub const BuilderSpec = struct {
         init_config_zig_sources: bool = true,
         /// Nodes with this name prefix are hidden in pre.
         init_hidden_by_name_prefix: ?u8 = '_',
-        /// (Recommended) Pass --main-mod-path=<build_root> for all compile commands.
-        init_main_mod_path: bool = true,
         /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
         init_cache_root: bool = true,
         /// (Recommended) Pass --global-cache-dir=<cache_root> for all compile commands.
