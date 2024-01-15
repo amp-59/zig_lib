@@ -956,7 +956,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         ptr += 1;
                     }
                     ptr[0..2].* = ";\n".*;
-                    return @intFromPtr(ptr + 2) -% @intFromPtr(buf);
+                    return ptr + 2;
                 }
             };
             pub const Iterator = struct {
@@ -1014,6 +1014,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 time: time.TimeSpec,
                 dir_fds: ?*DirFds = null,
                 execve_res: ExecveResults,
+                expect_res: ExecveResults,
                 perf_events: *PerfEvents,
                 binary_analysis: *BinaryAnalysis,
             };
@@ -1023,10 +1024,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 cache_root: [:0]const u8,
                 global_cache_root: [:0]const u8,
             };
-            pub const ExecveResults = struct {
-                server: u8,
-                status: u8,
-                signal: u8,
+            pub const ExecveResults = packed struct(u32) {
+                server: u8 = 255,
+                status: u8 = 255,
+                signal: u8 = 255,
+                zb: u8 = 0,
             };
             pub const BinaryAnalysis = struct {
                 cmp: DynamicLoader.compare.Cmp,
