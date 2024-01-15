@@ -720,7 +720,7 @@ pub fn shift(args: *[][*:0]u8, index: usize) void {
             this = next;
         }
     }
-    args.* = args.*[0 .. args.len -% 1];
+    args.len -%= 1;
 }
 
 pub fn writeArgPtrs(buf: [*][*:0]u8, args: []const u8) [*][*:0]u8 {
