@@ -1137,14 +1137,14 @@ pub fn valueList(comptime E: type) []const E {
     }
     return &ret;
 }
-pub fn tagNameList(comptime E: type, comptime tag_list: []const E) []const []const u8 {
-    var ret: [tag_list.len][]const u8 = undefined;
+pub fn tagNameList(comptime E: type, comptime tag_list: []const E) []const [:0]const u8 {
+    var ret: [tag_list.len][:0]const u8 = undefined;
     for (tag_list, 0..) |tag, index| {
         ret[index] = @tagName(tag);
     }
     return &ret;
 }
-pub fn tagNamesEnum(comptime names: []const []const u8) type {
+pub fn tagNamesEnum(comptime names: []const [:0]const u8) type {
     var enum_fields: []const builtin.Type.EnumField = &.{};
     for (names, 0..) |name, idx| {
         enum_fields = enum_fields ++ [1]builtin.Type.EnumField{.{
