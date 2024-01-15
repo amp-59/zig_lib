@@ -797,7 +797,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// List of related nodes. nodes[0] = group node.
                 nodes: []*Node,
                 nodes_max_len: usize,
-                /// List of dependencies. Each structure stores an index into
+                /// List of module dependencies. Update using `addModule`.
+                mods: []*tasks.BuildCommand.Module,
+                mods_max_len: usize,
+                /// List of general dependencies. Each structure stores an index into
                 /// `nodes`. Update using `dependOn` (noob) and `addDepn` (pro).
                 depns: []Depn,
                 depns_max_len: usize,
