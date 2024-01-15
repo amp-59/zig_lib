@@ -191,7 +191,7 @@ pub const BuilderSpec = struct {
         init_cache_root: bool = true,
         /// (Recommended) Pass --global-cache-dir=<cache_root> for all compile commands.
         init_global_cache_root: bool = true,
-        /// Nodes with hidden parent/group nodes are also hidden
+        /// Nodes with hidden parent/group nodes are also hidden.
         init_inherit_hidden: bool = true,
         /// Nodes belonging to special groups are also special.
         init_inherit_special: bool = true,
@@ -288,7 +288,7 @@ pub const BuilderSpec = struct {
         /// Report `fork` Attempt and Error.
         fork: debug.Logging.SuccessError = .{},
         /// Report `map` Success and Error.
-        map: debug.Logging.AcquireError = .{},
+        map: debug.Logging.AcquireErrorFault = .{},
         /// Report `mkdir` Success and Error.
         mkdir: debug.Logging.SuccessError = .{},
         /// Report `mknod` Success and Error.
