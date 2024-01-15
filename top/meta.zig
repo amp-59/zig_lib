@@ -220,11 +220,11 @@ pub fn structField(comptime T: type, comptime field_name: [:0]const u8, comptime
         };
     }
 }
-pub inline fn fieldNames(comptime T: type) []const []const u8 {
+pub inline fn fieldNames(comptime T: type) []const [:0]const u8 {
     comptime {
-        var symbols: []const []const u8 = &.{};
+        var symbols: []const [:0]const u8 = &.{};
         for (resolve(@typeInfo(T)).fields) |field| {
-            symbols = symbols ++ [1][]const u8{field.name};
+            symbols = symbols ++ [1][:0]const u8{field.name};
         }
         return symbols;
     }

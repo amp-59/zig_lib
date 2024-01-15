@@ -15,7 +15,7 @@ pub const StringUnion = union(enum) {
     yes: ?[]const u8,
     no,
 };
-pub const BuildCommand = struct {
+pub const BuildCommand1 = struct {
     kind: types.BinaryOutput,
     /// (default=yes) Output machine code
     emit_bin: ?PathUnion = null,
@@ -380,7 +380,7 @@ pub const BuildCommand = struct {
     pub const align_of: comptime_int = @alignOf(@This());
     pub fn write(
         buf: [*]u8,
-        cmd: *BuildCommand,
+        cmd: *BuildCommand1,
         zig_exe: []const u8,
         files: []const types.Path,
     ) [*]u8 {
@@ -397,7 +397,7 @@ pub const BuildCommand = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-bin\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-bin\x00");
                     }
@@ -412,7 +412,7 @@ pub const BuildCommand = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-asm\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-asm\x00");
                     }
@@ -427,7 +427,7 @@ pub const BuildCommand = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-ir\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-ir\x00");
                     }
@@ -442,7 +442,7 @@ pub const BuildCommand = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-bc\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-bc\x00");
                     }
@@ -457,7 +457,7 @@ pub const BuildCommand = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-h\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-h\x00");
                     }
@@ -472,7 +472,7 @@ pub const BuildCommand = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-docs\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-docs\x00");
                     }
@@ -487,7 +487,7 @@ pub const BuildCommand = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-analysis\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-analysis\x00");
                     }
@@ -1050,12 +1050,12 @@ pub const BuildCommand = struct {
         }
         if (cmd.macros) |macros| {
             for (macros) |value| {
-                ptr += value.formatWriteBuf(ptr);
+                ptr = types.Macro.write(ptr, value);
             }
         }
         if (cmd.modules) |modules| {
             for (modules) |value| {
-                ptr += value.formatWriteBuf(ptr);
+                ptr = types.Modules.write(ptr, value);
             }
         }
         if (cmd.dependencies) |dependencies| {
@@ -1093,7 +1093,7 @@ pub const BuildCommand = struct {
             }
         }
         for (files) |value| {
-            ptr += value.formatWriteBuf(ptr);
+            ptr = types.Path.write(ptr, value);
         }
         if (cmd.color) |color| {
             ptr = fmt.strcpyEqu(ptr, "--color\x00");
@@ -1145,7 +1145,7 @@ pub const BuildCommand = struct {
         }
         return ptr;
     }
-    pub fn length(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path) usize {
+    pub fn length(cmd: *BuildCommand1, zig_exe: []const u8, files: []const types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 8 +% zig_exe.len +% @tagName(cmd.kind).len;
         if (cmd.emit_bin) |emit_bin| {
@@ -1791,13 +1791,18 @@ pub const BuildCommand = struct {
         }
         return len;
     }
-    pub fn formatParseArgs(cmd: *BuildCommand, allocator: *types.Allocator, args_in: [][*:0]u8) void {
+    pub fn formatParseArgs(
+        cmd: *BuildCommand1,
+        allocator: *types.Allocator,
+        args_in: [][*:0]u8,
+    ) void {
         @setRuntimeSafety(false);
-        var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+        const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+        var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
         @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args.len) {
+        while (args_idx != args_in.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
                 if (arg.len > 11 and arg[10] == '=') {
@@ -2695,7 +2700,7 @@ pub const BuildCommand = struct {
         }
     }
 };
-pub const BuildCommand2 = struct {
+pub const BuildCommand = struct {
     kind: types.BinaryOutput,
     /// (default=yes) Output machine code
     emit_bin: ?PathUnion = null,
@@ -2955,8 +2960,6 @@ pub const BuildCommand2 = struct {
         relro = 7,
         norelro = 8,
     } = null,
-    /// Define modules available as dependencies for the current target
-    mods: []*tasks.BuildModule = &.{},
     /// Enable or disable colored error messages
     color: ?types.AutoOnOff = null,
     /// Enable experimental feature: incremental compilation
@@ -2985,24 +2988,205 @@ pub const BuildCommand2 = struct {
     debug_compiler_errors: bool = false,
     /// Enable dumping of the linker's state in JSON
     debug_link_snapshot: bool = false,
+    pub const Module = struct {
+        /// Define module dependencies for the current target
+        deps: ?[]const types.ModuleDependency = null,
+        /// <arch><sub>-<os>-<abi> see the targets command
+        target: ?[]const u8 = null,
+        /// Choose what to optimize for:
+        ///   Debug          Optimizations off, safety on
+        ///   ReleaseSafe    Optimizations on, safety on
+        ///   ReleaseFast    Optimizations on, safety off
+        ///   ReleaseSmall   Size optimizations on, safety off
+        mode: ?builtin.OptimizeMode = null,
+        /// Override target object format:
+        ///   elf                    Executable and Linking Format
+        ///   c                      C source code
+        ///   wasm                   WebAssembly
+        ///   coff                   Common Object File Format (Windows)
+        ///   macho                  macOS relocatables
+        ///   spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+        ///   plan9                  Plan 9 from Bell Labs object format
+        ///   hex (planned feature)  Intel IHEX
+        ///   raw (planned feature)  Dump machine code directly
+        format: ?builtin.ObjectFormat = null,
+        /// Target a specific cpu type (-mcpu=help for details)
+        mcpu: ?[]const u8 = null,
+        /// Limit range of code and data virtual addresses
+        code_model: ?builtin.CodeModel = null,
+        /// Enable or disable the "red-zone"
+        red_zone: ?bool = null,
+        /// Omit the stack frame pointer
+        omit_frame_pointer: ?bool = null,
+        /// Enable Position Independent Code
+        pic: ?bool = null,
+        /// Enable stack probing in unsafe builds
+        stack_check: ?bool = null,
+        /// Enable stack protection in unsafe builds
+        stack_protector: ?bool = null,
+        /// Enable C undefined behaviour detection in unsafe builds
+        sanitize_c: ?bool = null,
+        /// Include valgrind client requests in release builds
+        valgrind: ?bool = null,
+        /// Enable thread sanitizer
+        sanitize_thread: ?bool = null,
+        /// Always produce unwind table entries for all functions
+        unwind_tables: ?bool = null,
+        /// Enable error tracing in `ReleaseFast` mode
+        error_tracing: ?bool = null,
+        /// Code assumes there is only one thread
+        single_threaded: ?bool = null,
+        /// Omit debug symbols
+        strip: ?bool = null,
+        /// Enable formatted safety panics
+        formatted_panics: ?bool = null,
+        /// Add directory to AFTER include search path
+        dirafter: ?[]const u8 = null,
+        /// Add directory to SYSTEM include search path
+        system: ?[]const u8 = null,
+        /// Add directories to include search path
+        include: ?[]const []const u8 = null,
+        /// Set extra flags for the next position C source files
+        cflags: ?[]const []const u8 = null,
+        /// Set extra flags for the next positional .rc source files
+        rcflags: ?[]const []const u8 = null,
+        /// Define C macros available within the `@cImport` namespace
+        macros: ?[]const types.Macro = null,
+        /// Link against system library (only if actually used)
+        library: ?[]const u8 = null,
+        /// Link against system library (even if unused)
+        needed_library: ?[]const []const u8 = null,
+        /// Link against system library marking it and all referenced symbols as weak
+        weak_library: ?[]const []const u8 = null,
+        /// Add a directory to the library search path
+        library_directory: ?[]const []const u8 = null,
+        name: ?[]const u8 = null,
+        pub const size_of: comptime_int = @sizeOf(@This());
+        pub const align_of: comptime_int = @alignOf(@This());
+        const build_help: [:0]const u8 = 
+            \\    -femit-bin=<string>                                 (default=yes) Output machine code
+            \\    -fno-emit-bin
+            \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
+            \\    -fno-emit-asm
+            \\    -femit-llvm-ir=<string>                             (default=no) Output optimized LLVM IR (.ll)
+            \\    -fno-emit-llvm-ir
+            \\    -femit-llvm-bc=<string>                             (default=no) Output optimized LLVM BC (.bc)
+            \\    -fno-emit-llvm-bc
+            \\    -femit-h=<string>                                   (default=no) Output a C header file (.h)
+            \\    -fno-emit-h
+            \\    -femit-docs=<string>                                (default=no) Output documentation (.html)
+            \\    -fno-emit-docs
+            \\    -femit-analysis=<string>                            (default=no) Output analysis (.json)
+            \\    -fno-emit-analysis
+            \\    --cache-dir=<string>                                Override the local cache directory
+            \\    --global-cache-dir=<string>                         Override the global cache directory
+            \\    --zig-lib-dir=<string>                              Override Zig installation lib directory
+            \\    --listen=<tag>                                      [MISSING]
+            \\    -mcpu=<tag>                                         Specify target CPU and feature set
+            \\    -f[no-]runtime-safety                               Toggle definition of `PanicData` parameter
+            \\    -f[no-]panic-data                                   Toggle definition of `PanicData` parameter
+            \\    -f[no-]check-unwrapped-error                        Toggle check for returning from a noreturn function
+            \\    -f[no-]check-unwrapped-null                         Toggle check for unwrapping (.?) null optional values
+            \\    -f[no-]check-returned-noreturn                      Toggle check for returning from a noreturn function
+            \\    -f[no-]check-reached-unreachable                    Toggle check for reaching unreachable code
+            \\    -f[no-]check-accessed-out-of-bounds                 Toggle check for slice[idx] st. idx < slice.len
+            \\    -f[no-]check-accessed-out-of-order                  Toggle check for slice[start..finish] st. start <= finish
+            \\    -f[no-]check-accessed-inactive-field                Toggle check for tagged union field accesses
+            \\    -f[no-]check-divided-by-zero                        Toggle check for division by zero
+            \\    -f[no-]check-memcpy-argument-aliasing               Toggle check for pointer aliasing
+            \\    -f[no-]check-mismatched-memcpy-argument-lengths     Toggle check for @memcpy argument lengths
+            \\    -f[no-]check-mismatched-for-loop-capture-lengths    Toggle check for for loop capture lengths
+            \\    -f[no-]check-mismatched-sentinel                    Toggle check for sentinel value
+            \\    -f[no-]check-shift-amt-overflowed                   Toggle check for shift amount for non power-of-two integer bit sizes
+            \\    -f[no-]check-arith-exact                            Toggle checks for inexact arithmetic by @shlExact, @shrExact, and @divExact
+            \\    -f[no-]check-arith-overflowed                       Toggle checks for integer overflow by addition, subtraction, and multiplication
+            \\    -f[no-]check-cast-truncated-data                    Toggle check for @intCast to smaller from larger
+            \\    -f[no-]check-cast-to-enum-from-invalid              Toggle check for @enumFromInt
+            \\    -f[no-]check-cast-to-error-from-invalid             Toggle checks for @errorCast and @errorFromInt
+            \\    -f[no-]check-cast-to-pointer-from-invalid           Toggle checks for @ptrCast and @ptrFromInt
+            \\    -f[no-]check-cast-to-int-from-invalid               Toggle check for @intFromFloat
+            \\    -f[no-]check-cast-to-unsigned-from-negative         Toggle check for @intCast to unsigned from signed
+            \\    -f[no-]builtin                                      Enable or disable implicit builtin knowledge of functions
+            \\    -mexec-model=<string>                               (WASI) Execution model
+            \\    -fsoname=<string>                                   Override the default SONAME value
+            \\    -fno-soname
+            \\    -fopt-bisect-limit=<integer>                        Only run [limit] first LLVM optimization passes
+            \\    --main-mod-path=<string>                            Set the directory of the root package
+            \\    -f[no-]PIE                                          Enable Position Independent Executable
+            \\    -f[no-]lto                                          Enable Link Time Optimization
+            \\    -f[no-]reference-trace                              How many lines of reference trace should be shown per compile error
+            \\    -f[no-]function-sections                            Places each function in a separate section
+            \\    -f[no-]data-sections                                Places data in separate sections
+            \\    --libc=<string>                                     Provide a file which specifies libc paths
+            \\    --script=<string>                                   Use a custom linker script
+            \\    --version-script=<string>                           Provide a version .map file
+            \\    --dynamic-linker=<string>                           Set the dynamic interpreter path
+            \\    --sysroot=<string>                                  Set the system root directory
+            \\    -fentry=<string>                                    Override the default entry symbol name
+            \\    -fno-entry
+            \\    -f[no-]lld                                          Use LLD as the linker
+            \\    -f[no-]llvm                                         Use LLVM as the codegen backend
+            \\    -f[no-]compiler-rt                                  (default) Include compiler-rt symbols in output
+            \\    -rpath=<string>                                     Add directory to the runtime library search path
+            \\    -f[no-]each-lib-rpath                               Ensure adding rpath for each used dynamic library
+            \\    -f[no-]allow-shlib-undefined                        Allow undefined symbols in shared libraries
+            \\    --build-id=<tag>                                    Help coordinate stripped binaries with debug symbols
+            \\    --eh-frame-hdr                                      Enable C++ exception handling by passing --eh-frame-hdr to linker
+            \\    --emit-relocs                                       Enable output of relocation sections for post build tools
+            \\    --[no-]gc-sections                                  Force removal of functions and data that are unreachable by the entry point or exported symbols
+            \\    --stack=<integer>                                   Override default stack size
+            \\    --image-base=<integer>                              Set base address for executable image
+            \\    -lc                                                 Link libc
+            \\    -rdynamic                                           Add all symbols to the dynamic symbol table
+            \\    -dynamic                                            Force output to be dynamically linked
+            \\    -static                                             Force output to be statically linked
+            \\    -Bsymbolic                                          Bind global references locally
+            \\    -z<string>                                          Set linker extension flags:
+            \\                                                          nodelete                   Indicate that the object cannot be deleted from a process
+            \\                                                          notext                     Permit read-only relocations in read-only segments
+            \\                                                          defs                       Force a fatal error if any undefined symbols remain
+            \\                                                          undefs                     Reverse of -z defs
+            \\                                                          origin                     Indicate that the object must have its origin processed
+            \\                                                          nocopyreloc                Disable the creation of copy relocations
+            \\                                                          now (default)              Force all relocations to be processed on load
+            \\                                                          lazy                       Don't force all relocations to be processed on load
+            \\                                                          relro (default)            Force all relocations to be read-only after processing
+            \\                                                          norelro                    Don't force all relocations to be read-only after processing
+            \\                                                          common-page-size=[bytes]   Set the common page size for ELF binaries
+            \\                                                          max-page-size=[bytes]      Set the max page size for ELF binaries
+            \\    --color=<tag>                                       Enable or disable colored error messages
+            \\    --debug-incremental                                 Enable experimental feature: incremental compilation
+            \\    -ftime-report                                       Print timing diagnostics
+            \\    -fstack-report                                      Print stack size diagnostics
+            \\    --verbose-link                                      Display linker invocations
+            \\    --verbose-cc                                        Display C compiler invocations
+            \\    --verbose-air                                       Enable compiler debug output for Zig AIR
+            \\    --verbose-mir                                       Enable compiler debug output for Zig MIR
+            \\    --verbose-llvm-ir                                   Enable compiler debug output for LLVM IR
+            \\    --verbose-cimport                                   Enable compiler debug output for C imports
+            \\    --verbose-llvm-cpu-features                         Enable compiler debug output for LLVM CPU features
+            \\    --debug-log=<string>                                Enable printing debug/info log messages for scope
+            \\    --debug-compile-errors                              Crash with helpful diagnostics at the first compile error
+            \\    --debug-link-snapshot                               Enable dumping of the linker's state in JSON
+            \\
+            \\
+        ;
+    };
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
     pub fn write(
         buf: [*]u8,
-        cmd: *BuildCommand2,
+        cmd: *BuildCommand,
         zig_exe: []const u8,
-        zig_mod_paths: []const types.Path,
-        files: []const types.Path,
+        files: []const types.File,
+        paths: []const types.Path,
+        mods: []*tasks.BuildCommand.Module,
     ) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
         ptr[0] = 0;
-        ptr += 1;
-        for (zig_mod_paths) |value| {
-            ptr += value.formatWriteBuf(ptr);
-        }
-        ptr = fmt.strcpyEqu(ptr, "build-");
+        ptr = fmt.strcpyEqu(ptr + 1, "build-");
         ptr = fmt.strcpyEqu(ptr, @tagName(cmd.kind));
         ptr[0] = 0;
         ptr += 1;
@@ -3011,7 +3195,7 @@ pub const BuildCommand2 = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-bin\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-bin\x00");
                     }
@@ -3026,7 +3210,7 @@ pub const BuildCommand2 = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-asm\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-asm\x00");
                     }
@@ -3041,7 +3225,7 @@ pub const BuildCommand2 = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-ir\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-ir\x00");
                     }
@@ -3056,7 +3240,7 @@ pub const BuildCommand2 = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-bc\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-llvm-bc\x00");
                     }
@@ -3071,7 +3255,7 @@ pub const BuildCommand2 = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-h\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-h\x00");
                     }
@@ -3086,7 +3270,7 @@ pub const BuildCommand2 = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-docs\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-docs\x00");
                     }
@@ -3101,7 +3285,7 @@ pub const BuildCommand2 = struct {
                 .yes => |yes| {
                     if (yes) |arg| {
                         ptr = fmt.strcpyEqu(ptr, "-femit-analysis\x3d");
-                        ptr += arg.formatWriteBuf(ptr);
+                        ptr = types.Path.write(ptr, arg);
                     } else {
                         ptr = fmt.strcpyEqu(ptr, "-femit-analysis\x00");
                     }
@@ -3515,10 +3699,11 @@ pub const BuildCommand2 = struct {
                 ptr += 1;
             }
         }
-        for (cmd.mods, 0..) |mod, mod_idx| {
+        var fs_idx: usize = 0;
+        mods: for (mods) |mod| {
             if (mod.deps) |deps| {
                 for (deps) |value| {
-                    ptr += value.formatWriteBuf(ptr);
+                    ptr = types.ModuleDependency.write(ptr, value);
                 }
             }
             if (mod.target) |target| {
@@ -3672,7 +3857,7 @@ pub const BuildCommand2 = struct {
             }
             if (mod.macros) |macros| {
                 for (macros) |value| {
-                    ptr += value.formatWriteBuf(ptr);
+                    ptr = types.Macro.write(ptr, value);
                 }
             }
             if (mod.library) |library| {
@@ -3705,14 +3890,19 @@ pub const BuildCommand2 = struct {
                     ptr += 1;
                 }
             }
-            ptr = fmt.strcpyEqu(ptr, "--mod\x00");
-            ptr = fmt.strcpyEqu(ptr, mod.name);
-            ptr[0] = 0;
-            ptr += 1;
-            ptr = file.CompoundPath.write(ptr, zig_mod_paths[mod_idx]);
-        }
-        for (files) |value| {
-            ptr += value.formatWriteBuf(ptr);
+            if (mod.name) |name| {
+                ptr = fmt.strcpyEqu(ptr, "--mod\x00");
+                ptr = fmt.strcpyEqu(ptr, name);
+                ptr[0] = 0;
+                ptr += 1;
+            }
+            for (files[fs_idx..], fs_idx..) |fs, next| {
+                if (fs.key.tag == .input_zig) {
+                    ptr = file.CompoundPath.write(ptr, paths[fs.path_idx]);
+                    fs_idx = next +% 1;
+                    continue :mods;
+                }
+            }
         }
         if (cmd.color) |color| {
             ptr = fmt.strcpyEqu(ptr, "--color\x00");
@@ -3764,13 +3954,9 @@ pub const BuildCommand2 = struct {
         }
         return ptr;
     }
-    pub fn length(cmd: *BuildCommand2, zig_exe: []const u8, zig_mod_paths: []const types.Path, files: []const types.Path) usize {
+    pub fn length(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.File, paths: []const types.Path, mods: []*tasks.BuildCommand.Module) usize {
         @setRuntimeSafety(false);
-        var len: usize = 1 +% zig_exe.len;
-        for (zig_mod_paths) |value| {
-            len = len +% value.formatLength();
-        }
-        len +%= 7 +% @tagName(cmd.kind).len;
+        var len: usize = 8 +% zig_exe.len +% @tagName(cmd.kind).len;
         if (cmd.emit_bin) |emit_bin| {
             switch (emit_bin) {
                 .yes => |yes| {
@@ -4211,7 +4397,8 @@ pub const BuildCommand2 = struct {
                 len +%= 4 +% @tagName(value).len;
             }
         }
-        for (cmd.mods, 0..) |mod, mod_idx| {
+        var fs_idx: usize = 0;
+        mods: for (mods) |mod| {
             if (mod.deps) |deps| {
                 for (deps) |value| {
                     len = len +% value.formatLength();
@@ -4363,11 +4550,16 @@ pub const BuildCommand2 = struct {
                     len +%= 21 +% value.len;
                 }
             }
-            len +%= 7 +% mod.name.len;
-            len +%= file.CompoundPath.length(zig_mod_paths[mod_idx]);
-        }
-        for (files) |value| {
-            len = len +% value.formatLength();
+            if (mod.name) |name| {
+                len +%= 7 +% name.len;
+            }
+            for (files[fs_idx..], fs_idx..) |fs, next| {
+                if (fs.key.tag == .input_zig) {
+                    len +%= file.CompoundPath.length(paths[fs.path_idx]);
+                    fs_idx = next +% 1;
+                    continue :mods;
+                }
+            }
         }
         if (cmd.color) |color| {
             len +%= 9 +% @tagName(color).len;
@@ -4413,13 +4605,19 @@ pub const BuildCommand2 = struct {
         }
         return len;
     }
-    pub fn formatParseArgs(cmd: *BuildCommand2, allocator: *types.Allocator, args_in: [][*:0]u8) void {
+    pub fn formatParseArgs(
+        cmd: *BuildCommand,
+        allocator: *types.Allocator,
+        args_in: [][*:0]u8,
+        mods: []*tasks.BuildCommand.Module,
+    ) void {
         @setRuntimeSafety(false);
-        var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+        const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+        var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
         @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args.len) {
+        while (args_idx != args_in.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
                 if (arg.len > 11 and arg[10] == '=') {
@@ -5004,7 +5202,7 @@ pub const BuildCommand2 = struct {
             } else if (mem.testEqualString("-target", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.mods[0].target = mem.terminate(args[args_idx], 0);
+                    mods[0].target = mem.terminate(args[args_idx], 0);
                 } else {
                     return;
                 }
@@ -5019,13 +5217,13 @@ pub const BuildCommand2 = struct {
                     arg = arg[2..];
                 }
                 if (mem.testEqualString("Debug", arg)) {
-                    cmd.mods[0].mode = .Debug;
+                    mods[0].mode = .Debug;
                 } else if (mem.testEqualString("ReleaseSafe", arg)) {
-                    cmd.mods[0].mode = .ReleaseSafe;
+                    mods[0].mode = .ReleaseSafe;
                 } else if (mem.testEqualString("ReleaseFast", arg)) {
-                    cmd.mods[0].mode = .ReleaseFast;
+                    mods[0].mode = .ReleaseFast;
                 } else if (mem.testEqualString("ReleaseSmall", arg)) {
-                    cmd.mods[0].mode = .ReleaseSmall;
+                    mods[0].mode = .ReleaseSmall;
                 }
             } else if (mem.testEqualString("-ofmt", arg)) {
                 args_idx +%= 1;
@@ -5034,32 +5232,32 @@ pub const BuildCommand2 = struct {
                 }
                 arg = mem.terminate(args[args_idx], 0);
                 if (mem.testEqualString("coff", arg)) {
-                    cmd.mods[0].format = .coff;
+                    mods[0].format = .coff;
                 } else if (mem.testEqualString("dxcontainer", arg)) {
-                    cmd.mods[0].format = .dxcontainer;
+                    mods[0].format = .dxcontainer;
                 } else if (mem.testEqualString("elf", arg)) {
-                    cmd.mods[0].format = .elf;
+                    mods[0].format = .elf;
                 } else if (mem.testEqualString("macho", arg)) {
-                    cmd.mods[0].format = .macho;
+                    mods[0].format = .macho;
                 } else if (mem.testEqualString("spirv", arg)) {
-                    cmd.mods[0].format = .spirv;
+                    mods[0].format = .spirv;
                 } else if (mem.testEqualString("wasm", arg)) {
-                    cmd.mods[0].format = .wasm;
+                    mods[0].format = .wasm;
                 } else if (mem.testEqualString("c", arg)) {
-                    cmd.mods[0].format = .c;
+                    mods[0].format = .c;
                 } else if (mem.testEqualString("hex", arg)) {
-                    cmd.mods[0].format = .hex;
+                    mods[0].format = .hex;
                 } else if (mem.testEqualString("raw", arg)) {
-                    cmd.mods[0].format = .raw;
+                    mods[0].format = .raw;
                 } else if (mem.testEqualString("plan9", arg)) {
-                    cmd.mods[0].format = .plan9;
+                    mods[0].format = .plan9;
                 } else if (mem.testEqualString("nvptx", arg)) {
-                    cmd.mods[0].format = .nvptx;
+                    mods[0].format = .nvptx;
                 }
             } else if (mem.testEqualString("--mcpu", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.mods[0].mcpu = mem.terminate(args[args_idx], 0);
+                    mods[0].mcpu = mem.terminate(args[args_idx], 0);
                 } else {
                     return;
                 }
@@ -5070,81 +5268,81 @@ pub const BuildCommand2 = struct {
                 }
                 arg = mem.terminate(args[args_idx], 0);
                 if (mem.testEqualString("default", arg)) {
-                    cmd.mods[0].code_model = .default;
+                    mods[0].code_model = .default;
                 } else if (mem.testEqualString("tiny", arg)) {
-                    cmd.mods[0].code_model = .tiny;
+                    mods[0].code_model = .tiny;
                 } else if (mem.testEqualString("small", arg)) {
-                    cmd.mods[0].code_model = .small;
+                    mods[0].code_model = .small;
                 } else if (mem.testEqualString("kernel", arg)) {
-                    cmd.mods[0].code_model = .kernel;
+                    mods[0].code_model = .kernel;
                 } else if (mem.testEqualString("medium", arg)) {
-                    cmd.mods[0].code_model = .medium;
+                    mods[0].code_model = .medium;
                 } else if (mem.testEqualString("large", arg)) {
-                    cmd.mods[0].code_model = .large;
+                    mods[0].code_model = .large;
                 }
             } else if (mem.testEqualString("-mred-zone", arg)) {
-                cmd.mods[0].red_zone = true;
+                mods[0].red_zone = true;
             } else if (mem.testEqualString("-mno-red-zone", arg)) {
-                cmd.mods[0].red_zone = false;
+                mods[0].red_zone = false;
             } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
-                cmd.mods[0].omit_frame_pointer = true;
+                mods[0].omit_frame_pointer = true;
             } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
-                cmd.mods[0].omit_frame_pointer = false;
+                mods[0].omit_frame_pointer = false;
             } else if (mem.testEqualString("-fPIC", arg)) {
-                cmd.mods[0].pic = true;
+                mods[0].pic = true;
             } else if (mem.testEqualString("-fno-PIC", arg)) {
-                cmd.mods[0].pic = false;
+                mods[0].pic = false;
             } else if (mem.testEqualString("-fstack-check", arg)) {
-                cmd.mods[0].stack_check = true;
+                mods[0].stack_check = true;
             } else if (mem.testEqualString("-fno-stack-check", arg)) {
-                cmd.mods[0].stack_check = false;
+                mods[0].stack_check = false;
             } else if (mem.testEqualString("-fstack-protector", arg)) {
-                cmd.mods[0].stack_protector = true;
+                mods[0].stack_protector = true;
             } else if (mem.testEqualString("-fno-stack-protector", arg)) {
-                cmd.mods[0].stack_protector = false;
+                mods[0].stack_protector = false;
             } else if (mem.testEqualString("-fsanitize-c", arg)) {
-                cmd.mods[0].sanitize_c = true;
+                mods[0].sanitize_c = true;
             } else if (mem.testEqualString("-fno-sanitize-c", arg)) {
-                cmd.mods[0].sanitize_c = false;
+                mods[0].sanitize_c = false;
             } else if (mem.testEqualString("-fvalgrind", arg)) {
-                cmd.mods[0].valgrind = true;
+                mods[0].valgrind = true;
             } else if (mem.testEqualString("-fno-valgrind", arg)) {
-                cmd.mods[0].valgrind = false;
+                mods[0].valgrind = false;
             } else if (mem.testEqualString("-fsanitize-thread", arg)) {
-                cmd.mods[0].sanitize_thread = true;
+                mods[0].sanitize_thread = true;
             } else if (mem.testEqualString("-fno-sanitize-thread", arg)) {
-                cmd.mods[0].sanitize_thread = false;
+                mods[0].sanitize_thread = false;
             } else if (mem.testEqualString("-funwind-tables", arg)) {
-                cmd.mods[0].unwind_tables = true;
+                mods[0].unwind_tables = true;
             } else if (mem.testEqualString("-fno-unwind-tables", arg)) {
-                cmd.mods[0].unwind_tables = false;
+                mods[0].unwind_tables = false;
             } else if (mem.testEqualString("-ferror-tracing", arg)) {
-                cmd.mods[0].error_tracing = true;
+                mods[0].error_tracing = true;
             } else if (mem.testEqualString("-fno-error-tracing", arg)) {
-                cmd.mods[0].error_tracing = false;
+                mods[0].error_tracing = false;
             } else if (mem.testEqualString("-fsingle-threaded", arg)) {
-                cmd.mods[0].single_threaded = true;
+                mods[0].single_threaded = true;
             } else if (mem.testEqualString("-fno-single-threaded", arg)) {
-                cmd.mods[0].single_threaded = false;
+                mods[0].single_threaded = false;
             } else if (mem.testEqualString("-fstrip", arg)) {
-                cmd.mods[0].strip = true;
+                mods[0].strip = true;
             } else if (mem.testEqualString("-fno-strip", arg)) {
-                cmd.mods[0].strip = false;
+                mods[0].strip = false;
             } else if (mem.testEqualString("-fformatted-panics", arg)) {
-                cmd.mods[0].formatted_panics = true;
+                mods[0].formatted_panics = true;
             } else if (mem.testEqualString("-fno-formatted-panics", arg)) {
-                cmd.mods[0].formatted_panics = false;
+                mods[0].formatted_panics = false;
             } else if (mem.testEqualString("-idirafter", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.mods[0].dirafter = mem.terminate(args[args_idx], 0);
+                    mods[0].dirafter = mem.terminate(args[args_idx], 0);
                 } else {
                     return;
                 }
             } else if (mem.testEqualString("-isystem", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.mods[0].system = mem.terminate(args[args_idx], 0);
+                    mods[0].system = mem.terminate(args[args_idx], 0);
                 } else {
                     return;
                 }
@@ -5158,20 +5356,20 @@ pub const BuildCommand2 = struct {
                 } else {
                     arg = arg[2..];
                 }
-                if (cmd.mods[0].include) |src| {
+                if (mods[0].include) |src| {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                     for (dest, src) |*xx, yy| xx.* = yy;
                     dest[src.len] = arg;
-                    cmd.mods[0].include = dest[0 .. src.len +% 1];
+                    mods[0].include = dest[0 .. src.len +% 1];
                 } else {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                     dest[0] = arg;
-                    cmd.mods[0].include = dest[0..1];
+                    mods[0].include = dest[0..1];
                 }
             } else if (mem.testEqualString("-cflags", arg)) {
-                cmd.mods[0].cflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
+                mods[0].cflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
             } else if (mem.testEqualString("-rcflags", arg)) {
-                cmd.mods[0].rcflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
+                mods[0].rcflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
             } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
@@ -5182,26 +5380,26 @@ pub const BuildCommand2 = struct {
                 } else {
                     arg = arg[2..];
                 }
-                if (cmd.mods[0].macros) |src| {
+                if (mods[0].macros) |src| {
                     const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
                         @sizeOf(types.Macro) *% (src.len +% 1),
                         @alignOf(types.Macro),
                     ));
                     for (dest, src) |*xx, yy| xx.* = yy;
                     dest[src.len] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.mods[0].macros = dest[0 .. src.len +% 1];
+                    mods[0].macros = dest[0 .. src.len +% 1];
                 } else {
                     const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
                         @sizeOf(types.Macro),
                         @alignOf(types.Macro),
                     ));
                     dest[0] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.mods[0].macros = dest[0..1];
+                    mods[0].macros = dest[0..1];
                 }
             } else if (mem.testEqualString("--library", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
-                    cmd.mods[0].library = mem.terminate(args[args_idx], 0);
+                    mods[0].library = mem.terminate(args[args_idx], 0);
                 } else {
                     return;
                 }
@@ -5211,15 +5409,15 @@ pub const BuildCommand2 = struct {
                     return;
                 }
                 arg = mem.terminate(args[args_idx], 0);
-                if (cmd.mods[0].needed_library) |src| {
+                if (mods[0].needed_library) |src| {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                     for (dest, src) |*xx, yy| xx.* = yy;
                     dest[src.len] = arg;
-                    cmd.mods[0].needed_library = dest[0 .. src.len +% 1];
+                    mods[0].needed_library = dest[0 .. src.len +% 1];
                 } else {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                     dest[0] = arg;
-                    cmd.mods[0].needed_library = dest[0..1];
+                    mods[0].needed_library = dest[0..1];
                 }
             } else if (mem.testEqualString("-weak_library", arg)) {
                 args_idx +%= 1;
@@ -5227,15 +5425,15 @@ pub const BuildCommand2 = struct {
                     return;
                 }
                 arg = mem.terminate(args[args_idx], 0);
-                if (cmd.mods[0].weak_library) |src| {
+                if (mods[0].weak_library) |src| {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                     for (dest, src) |*xx, yy| xx.* = yy;
                     dest[src.len] = arg;
-                    cmd.mods[0].weak_library = dest[0 .. src.len +% 1];
+                    mods[0].weak_library = dest[0 .. src.len +% 1];
                 } else {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                     dest[0] = arg;
-                    cmd.mods[0].weak_library = dest[0..1];
+                    mods[0].weak_library = dest[0..1];
                 }
             } else if (mem.testEqualString("--library-directory", arg)) {
                 args_idx +%= 1;
@@ -5243,15 +5441,22 @@ pub const BuildCommand2 = struct {
                     return;
                 }
                 arg = mem.terminate(args[args_idx], 0);
-                if (cmd.mods[0].library_directory) |src| {
+                if (mods[0].library_directory) |src| {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                     for (dest, src) |*xx, yy| xx.* = yy;
                     dest[src.len] = arg;
-                    cmd.mods[0].library_directory = dest[0 .. src.len +% 1];
+                    mods[0].library_directory = dest[0 .. src.len +% 1];
                 } else {
                     const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                     dest[0] = arg;
-                    cmd.mods[0].library_directory = dest[0..1];
+                    mods[0].library_directory = dest[0..1];
+                }
+            } else if (mem.testEqualString("--mod", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    mods[0].name = mem.terminate(args[args_idx], 0);
+                } else {
+                    return;
                 }
             } else if (mem.testEqualString("--color", arg)) {
                 args_idx +%= 1;
@@ -5297,703 +5502,6 @@ pub const BuildCommand2 = struct {
                 cmd.debug_compiler_errors = true;
             } else if (mem.testEqualString("--debug-link-snapshot", arg)) {
                 cmd.debug_link_snapshot = true;
-            } else {
-                args_idx +%= 1;
-                continue;
-            }
-            proc.shift(&args, args_idx);
-        }
-    }
-};
-pub const BuildModule = struct {
-    /// Define module dependencies for the current target
-    deps: ?[]const types.ModuleDependency = null,
-    /// <arch><sub>-<os>-<abi> see the targets command
-    target: ?[]const u8 = null,
-    /// Choose what to optimize for:
-    ///   Debug          Optimizations off, safety on
-    ///   ReleaseSafe    Optimizations on, safety on
-    ///   ReleaseFast    Optimizations on, safety off
-    ///   ReleaseSmall   Size optimizations on, safety off
-    mode: ?builtin.OptimizeMode = null,
-    /// Override target object format:
-    ///   elf                    Executable and Linking Format
-    ///   c                      C source code
-    ///   wasm                   WebAssembly
-    ///   coff                   Common Object File Format (Windows)
-    ///   macho                  macOS relocatables
-    ///   spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
-    ///   plan9                  Plan 9 from Bell Labs object format
-    ///   hex (planned feature)  Intel IHEX
-    ///   raw (planned feature)  Dump machine code directly
-    format: ?builtin.ObjectFormat = null,
-    /// Target a specific cpu type (-mcpu=help for details)
-    mcpu: ?[]const u8 = null,
-    /// Limit range of code and data virtual addresses
-    code_model: ?builtin.CodeModel = null,
-    /// Enable or disable the "red-zone"
-    red_zone: ?bool = null,
-    /// Omit the stack frame pointer
-    omit_frame_pointer: ?bool = null,
-    /// Enable Position Independent Code
-    pic: ?bool = null,
-    /// Enable stack probing in unsafe builds
-    stack_check: ?bool = null,
-    /// Enable stack protection in unsafe builds
-    stack_protector: ?bool = null,
-    /// Enable C undefined behaviour detection in unsafe builds
-    sanitize_c: ?bool = null,
-    /// Include valgrind client requests in release builds
-    valgrind: ?bool = null,
-    /// Enable thread sanitizer
-    sanitize_thread: ?bool = null,
-    /// Always produce unwind table entries for all functions
-    unwind_tables: ?bool = null,
-    /// Enable error tracing in `ReleaseFast` mode
-    error_tracing: ?bool = null,
-    /// Code assumes there is only one thread
-    single_threaded: ?bool = null,
-    /// Omit debug symbols
-    strip: ?bool = null,
-    /// Enable formatted safety panics
-    formatted_panics: ?bool = null,
-    /// Add directory to AFTER include search path
-    dirafter: ?[]const u8 = null,
-    /// Add directory to SYSTEM include search path
-    system: ?[]const u8 = null,
-    /// Add directories to include search path
-    include: ?[]const []const u8 = null,
-    /// Set extra flags for the next position C source files
-    cflags: ?[]const []const u8 = null,
-    /// Set extra flags for the next positional .rc source files
-    rcflags: ?[]const []const u8 = null,
-    /// Define C macros available within the `@cImport` namespace
-    macros: ?[]const types.Macro = null,
-    /// Link against system library (only if actually used)
-    library: ?[]const u8 = null,
-    /// Link against system library (even if unused)
-    needed_library: ?[]const []const u8 = null,
-    /// Link against system library marking it and all referenced symbols as weak
-    weak_library: ?[]const []const u8 = null,
-    /// Add a directory to the library search path
-    library_directory: ?[]const []const u8 = null,
-    name: []const u8,
-    pub const size_of: comptime_int = @sizeOf(@This());
-    pub const align_of: comptime_int = @alignOf(@This());
-    pub fn write(
-        buf: [*]u8,
-        cmd: *BuildModule,
-    ) [*]u8 {
-        @setRuntimeSafety(false);
-        var ptr: [*]u8 = buf;
-        if (cmd.deps) |deps| {
-            for (deps) |value| {
-                ptr += value.formatWriteBuf(ptr);
-            }
-        }
-        if (cmd.target) |target| {
-            ptr = fmt.strcpyEqu(ptr, "-target\x00");
-            ptr = fmt.strcpyEqu(ptr, target);
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.mode) |mode| {
-            ptr[0..3].* = "-O\x00".*;
-            ptr += 3;
-            ptr = fmt.strcpyEqu(ptr, @tagName(mode));
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.format) |format| {
-            ptr = fmt.strcpyEqu(ptr, "-ofmt\x3d");
-            ptr = fmt.strcpyEqu(ptr, @tagName(format));
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.mcpu) |mcpu| {
-            ptr = fmt.strcpyEqu(ptr, "--mcpu\x00");
-            ptr = fmt.strcpyEqu(ptr, mcpu);
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.code_model) |code_model| {
-            ptr = fmt.strcpyEqu(ptr, "-mcmodel\x00");
-            ptr = fmt.strcpyEqu(ptr, @tagName(code_model));
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.red_zone) |red_zone| {
-            if (red_zone) {
-                ptr = fmt.strcpyEqu(ptr, "-mred-zone\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-mno-red-zone\x00");
-            }
-        }
-        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
-            if (omit_frame_pointer) {
-                ptr = fmt.strcpyEqu(ptr, "-fomit-frame-pointer\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-omit-frame-pointer\x00");
-            }
-        }
-        if (cmd.pic) |pic| {
-            if (pic) {
-                ptr = fmt.strcpyEqu(ptr, "-fPIC\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-PIC\x00");
-            }
-        }
-        if (cmd.stack_check) |stack_check| {
-            if (stack_check) {
-                ptr = fmt.strcpyEqu(ptr, "-fstack-check\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-stack-check\x00");
-            }
-        }
-        if (cmd.stack_protector) |stack_protector| {
-            if (stack_protector) {
-                ptr = fmt.strcpyEqu(ptr, "-fstack-protector\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-stack-protector\x00");
-            }
-        }
-        if (cmd.sanitize_c) |sanitize_c| {
-            if (sanitize_c) {
-                ptr = fmt.strcpyEqu(ptr, "-fsanitize-c\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-sanitize-c\x00");
-            }
-        }
-        if (cmd.valgrind) |valgrind| {
-            if (valgrind) {
-                ptr = fmt.strcpyEqu(ptr, "-fvalgrind\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-valgrind\x00");
-            }
-        }
-        if (cmd.sanitize_thread) |sanitize_thread| {
-            if (sanitize_thread) {
-                ptr = fmt.strcpyEqu(ptr, "-fsanitize-thread\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-sanitize-thread\x00");
-            }
-        }
-        if (cmd.unwind_tables) |unwind_tables| {
-            if (unwind_tables) {
-                ptr = fmt.strcpyEqu(ptr, "-funwind-tables\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-unwind-tables\x00");
-            }
-        }
-        if (cmd.error_tracing) |error_tracing| {
-            if (error_tracing) {
-                ptr = fmt.strcpyEqu(ptr, "-ferror-tracing\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-error-tracing\x00");
-            }
-        }
-        if (cmd.single_threaded) |single_threaded| {
-            if (single_threaded) {
-                ptr = fmt.strcpyEqu(ptr, "-fsingle-threaded\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-single-threaded\x00");
-            }
-        }
-        if (cmd.strip) |strip| {
-            if (strip) {
-                ptr = fmt.strcpyEqu(ptr, "-fstrip\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-strip\x00");
-            }
-        }
-        if (cmd.formatted_panics) |formatted_panics| {
-            if (formatted_panics) {
-                ptr = fmt.strcpyEqu(ptr, "-fformatted-panics\x00");
-            } else {
-                ptr = fmt.strcpyEqu(ptr, "-fno-formatted-panics\x00");
-            }
-        }
-        if (cmd.dirafter) |dirafter| {
-            ptr = fmt.strcpyEqu(ptr, "-idirafter\x00");
-            ptr = fmt.strcpyEqu(ptr, dirafter);
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.system) |system| {
-            ptr = fmt.strcpyEqu(ptr, "-isystem\x00");
-            ptr = fmt.strcpyEqu(ptr, system);
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.include) |include| {
-            for (include) |value| {
-                ptr[0..3].* = "-I\x00".*;
-                ptr += 3;
-                ptr = fmt.strcpyEqu(ptr, value);
-                ptr[0] = 0;
-                ptr += 1;
-            }
-        }
-        if (cmd.cflags) |cflags| {
-            ptr += types.ExtraFlags.formatWriteBuf(.{ .value = cflags }, ptr);
-        }
-        if (cmd.rcflags) |rcflags| {
-            ptr += types.ExtraFlags.formatWriteBuf(.{ .value = rcflags }, ptr);
-        }
-        if (cmd.macros) |macros| {
-            for (macros) |value| {
-                ptr += value.formatWriteBuf(ptr);
-            }
-        }
-        if (cmd.library) |library| {
-            ptr = fmt.strcpyEqu(ptr, "--library\x00");
-            ptr = fmt.strcpyEqu(ptr, library);
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.needed_library) |needed_library| {
-            for (needed_library) |value| {
-                ptr = fmt.strcpyEqu(ptr, "-needed-library\x00");
-                ptr = fmt.strcpyEqu(ptr, value);
-                ptr[0] = 0;
-                ptr += 1;
-            }
-        }
-        if (cmd.weak_library) |weak_library| {
-            for (weak_library) |value| {
-                ptr = fmt.strcpyEqu(ptr, "-weak_library\x00");
-                ptr = fmt.strcpyEqu(ptr, value);
-                ptr[0] = 0;
-                ptr += 1;
-            }
-        }
-        if (cmd.library_directory) |library_directory| {
-            for (library_directory) |value| {
-                ptr = fmt.strcpyEqu(ptr, "--library-directory\x00");
-                ptr = fmt.strcpyEqu(ptr, value);
-                ptr[0] = 0;
-                ptr += 1;
-            }
-        }
-        ptr = fmt.strcpyEqu(ptr, "--mod\x00");
-        return ptr;
-    }
-    pub fn length(cmd: *BuildModule) usize {
-        @setRuntimeSafety(false);
-        var len: usize = 0;
-        if (cmd.deps) |deps| {
-            for (deps) |value| {
-                len = len +% value.formatLength();
-            }
-        }
-        if (cmd.target) |target| {
-            len +%= 9 +% target.len;
-        }
-        if (cmd.mode) |mode| {
-            len +%= 4 +% @tagName(mode).len;
-        }
-        if (cmd.format) |format| {
-            len +%= 7 +% @tagName(format).len;
-        }
-        if (cmd.mcpu) |mcpu| {
-            len +%= 8 +% mcpu.len;
-        }
-        if (cmd.code_model) |code_model| {
-            len +%= 10 +% @tagName(code_model).len;
-        }
-        if (cmd.red_zone) |red_zone| {
-            if (red_zone) {
-                len +%= 11;
-            } else {
-                len +%= 14;
-            }
-        }
-        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
-            if (omit_frame_pointer) {
-                len +%= 21;
-            } else {
-                len +%= 24;
-            }
-        }
-        if (cmd.pic) |pic| {
-            if (pic) {
-                len +%= 6;
-            } else {
-                len +%= 9;
-            }
-        }
-        if (cmd.stack_check) |stack_check| {
-            if (stack_check) {
-                len +%= 14;
-            } else {
-                len +%= 17;
-            }
-        }
-        if (cmd.stack_protector) |stack_protector| {
-            if (stack_protector) {
-                len +%= 18;
-            } else {
-                len +%= 21;
-            }
-        }
-        if (cmd.sanitize_c) |sanitize_c| {
-            if (sanitize_c) {
-                len +%= 13;
-            } else {
-                len +%= 16;
-            }
-        }
-        if (cmd.valgrind) |valgrind| {
-            if (valgrind) {
-                len +%= 11;
-            } else {
-                len +%= 14;
-            }
-        }
-        if (cmd.sanitize_thread) |sanitize_thread| {
-            if (sanitize_thread) {
-                len +%= 18;
-            } else {
-                len +%= 21;
-            }
-        }
-        if (cmd.unwind_tables) |unwind_tables| {
-            if (unwind_tables) {
-                len +%= 16;
-            } else {
-                len +%= 19;
-            }
-        }
-        if (cmd.error_tracing) |error_tracing| {
-            if (error_tracing) {
-                len +%= 16;
-            } else {
-                len +%= 19;
-            }
-        }
-        if (cmd.single_threaded) |single_threaded| {
-            if (single_threaded) {
-                len +%= 18;
-            } else {
-                len +%= 21;
-            }
-        }
-        if (cmd.strip) |strip| {
-            if (strip) {
-                len +%= 8;
-            } else {
-                len +%= 11;
-            }
-        }
-        if (cmd.formatted_panics) |formatted_panics| {
-            if (formatted_panics) {
-                len +%= 19;
-            } else {
-                len +%= 22;
-            }
-        }
-        if (cmd.dirafter) |dirafter| {
-            len +%= 12 +% dirafter.len;
-        }
-        if (cmd.system) |system| {
-            len +%= 10 +% system.len;
-        }
-        if (cmd.include) |include| {
-            for (include) |value| {
-                len +%= 4 +% value.len;
-            }
-        }
-        if (cmd.cflags) |cflags| {
-            len = len +% types.ExtraFlags.formatLength(.{ .value = cflags });
-        }
-        if (cmd.rcflags) |rcflags| {
-            len = len +% types.ExtraFlags.formatLength(.{ .value = rcflags });
-        }
-        if (cmd.macros) |macros| {
-            for (macros) |value| {
-                len = len +% value.formatLength();
-            }
-        }
-        if (cmd.library) |library| {
-            len +%= 11 +% library.len;
-        }
-        if (cmd.needed_library) |needed_library| {
-            for (needed_library) |value| {
-                len +%= 17 +% value.len;
-            }
-        }
-        if (cmd.weak_library) |weak_library| {
-            for (weak_library) |value| {
-                len +%= 15 +% value.len;
-            }
-        }
-        if (cmd.library_directory) |library_directory| {
-            for (library_directory) |value| {
-                len +%= 21 +% value.len;
-            }
-        }
-        return len +% 6;
-    }
-    pub fn formatParseArgs(cmd: *BuildModule, allocator: *types.Allocator, args_in: [][*:0]u8) void {
-        @setRuntimeSafety(false);
-        var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
-        var args_idx: usize = 0;
-        var arg: [:0]u8 = undefined;
-        @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args.len) {
-            arg = mem.terminate(args[args_idx], 0);
-            if (mem.testEqualString("-target", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.target = mem.terminate(args[args_idx], 0);
-                } else {
-                    return;
-                }
-            } else if (mem.testEqualString("-O", arg[0..@min(arg.len, 2)])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = mem.terminate(args[args_idx], 0);
-                } else {
-                    arg = arg[2..];
-                }
-                if (mem.testEqualString("Debug", arg)) {
-                    cmd.mode = .Debug;
-                } else if (mem.testEqualString("ReleaseSafe", arg)) {
-                    cmd.mode = .ReleaseSafe;
-                } else if (mem.testEqualString("ReleaseFast", arg)) {
-                    cmd.mode = .ReleaseFast;
-                } else if (mem.testEqualString("ReleaseSmall", arg)) {
-                    cmd.mode = .ReleaseSmall;
-                }
-            } else if (mem.testEqualString("-ofmt", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-                if (mem.testEqualString("coff", arg)) {
-                    cmd.format = .coff;
-                } else if (mem.testEqualString("dxcontainer", arg)) {
-                    cmd.format = .dxcontainer;
-                } else if (mem.testEqualString("elf", arg)) {
-                    cmd.format = .elf;
-                } else if (mem.testEqualString("macho", arg)) {
-                    cmd.format = .macho;
-                } else if (mem.testEqualString("spirv", arg)) {
-                    cmd.format = .spirv;
-                } else if (mem.testEqualString("wasm", arg)) {
-                    cmd.format = .wasm;
-                } else if (mem.testEqualString("c", arg)) {
-                    cmd.format = .c;
-                } else if (mem.testEqualString("hex", arg)) {
-                    cmd.format = .hex;
-                } else if (mem.testEqualString("raw", arg)) {
-                    cmd.format = .raw;
-                } else if (mem.testEqualString("plan9", arg)) {
-                    cmd.format = .plan9;
-                } else if (mem.testEqualString("nvptx", arg)) {
-                    cmd.format = .nvptx;
-                }
-            } else if (mem.testEqualString("--mcpu", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.mcpu = mem.terminate(args[args_idx], 0);
-                } else {
-                    return;
-                }
-            } else if (mem.testEqualString("-mcmodel", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-                if (mem.testEqualString("default", arg)) {
-                    cmd.code_model = .default;
-                } else if (mem.testEqualString("tiny", arg)) {
-                    cmd.code_model = .tiny;
-                } else if (mem.testEqualString("small", arg)) {
-                    cmd.code_model = .small;
-                } else if (mem.testEqualString("kernel", arg)) {
-                    cmd.code_model = .kernel;
-                } else if (mem.testEqualString("medium", arg)) {
-                    cmd.code_model = .medium;
-                } else if (mem.testEqualString("large", arg)) {
-                    cmd.code_model = .large;
-                }
-            } else if (mem.testEqualString("-mred-zone", arg)) {
-                cmd.red_zone = true;
-            } else if (mem.testEqualString("-mno-red-zone", arg)) {
-                cmd.red_zone = false;
-            } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
-                cmd.omit_frame_pointer = true;
-            } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
-                cmd.omit_frame_pointer = false;
-            } else if (mem.testEqualString("-fPIC", arg)) {
-                cmd.pic = true;
-            } else if (mem.testEqualString("-fno-PIC", arg)) {
-                cmd.pic = false;
-            } else if (mem.testEqualString("-fstack-check", arg)) {
-                cmd.stack_check = true;
-            } else if (mem.testEqualString("-fno-stack-check", arg)) {
-                cmd.stack_check = false;
-            } else if (mem.testEqualString("-fstack-protector", arg)) {
-                cmd.stack_protector = true;
-            } else if (mem.testEqualString("-fno-stack-protector", arg)) {
-                cmd.stack_protector = false;
-            } else if (mem.testEqualString("-fsanitize-c", arg)) {
-                cmd.sanitize_c = true;
-            } else if (mem.testEqualString("-fno-sanitize-c", arg)) {
-                cmd.sanitize_c = false;
-            } else if (mem.testEqualString("-fvalgrind", arg)) {
-                cmd.valgrind = true;
-            } else if (mem.testEqualString("-fno-valgrind", arg)) {
-                cmd.valgrind = false;
-            } else if (mem.testEqualString("-fsanitize-thread", arg)) {
-                cmd.sanitize_thread = true;
-            } else if (mem.testEqualString("-fno-sanitize-thread", arg)) {
-                cmd.sanitize_thread = false;
-            } else if (mem.testEqualString("-funwind-tables", arg)) {
-                cmd.unwind_tables = true;
-            } else if (mem.testEqualString("-fno-unwind-tables", arg)) {
-                cmd.unwind_tables = false;
-            } else if (mem.testEqualString("-ferror-tracing", arg)) {
-                cmd.error_tracing = true;
-            } else if (mem.testEqualString("-fno-error-tracing", arg)) {
-                cmd.error_tracing = false;
-            } else if (mem.testEqualString("-fsingle-threaded", arg)) {
-                cmd.single_threaded = true;
-            } else if (mem.testEqualString("-fno-single-threaded", arg)) {
-                cmd.single_threaded = false;
-            } else if (mem.testEqualString("-fstrip", arg)) {
-                cmd.strip = true;
-            } else if (mem.testEqualString("-fno-strip", arg)) {
-                cmd.strip = false;
-            } else if (mem.testEqualString("-fformatted-panics", arg)) {
-                cmd.formatted_panics = true;
-            } else if (mem.testEqualString("-fno-formatted-panics", arg)) {
-                cmd.formatted_panics = false;
-            } else if (mem.testEqualString("-idirafter", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.dirafter = mem.terminate(args[args_idx], 0);
-                } else {
-                    return;
-                }
-            } else if (mem.testEqualString("-isystem", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.system = mem.terminate(args[args_idx], 0);
-                } else {
-                    return;
-                }
-            } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = mem.terminate(args[args_idx], 0);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.include) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    for (dest, src) |*xx, yy| xx.* = yy;
-                    dest[src.len] = arg;
-                    cmd.include = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.include = dest[0..1];
-                }
-            } else if (mem.testEqualString("-cflags", arg)) {
-                cmd.cflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
-            } else if (mem.testEqualString("-rcflags", arg)) {
-                cmd.rcflags = types.ExtraFlags.formatParseArgs(allocator, args, &args_idx, arg);
-            } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = mem.terminate(args[args_idx], 0);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.macros) |src| {
-                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
-                        @sizeOf(types.Macro) *% (src.len +% 1),
-                        @alignOf(types.Macro),
-                    ));
-                    for (dest, src) |*xx, yy| xx.* = yy;
-                    dest[src.len] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.macros = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
-                        @sizeOf(types.Macro),
-                        @alignOf(types.Macro),
-                    ));
-                    dest[0] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.macros = dest[0..1];
-                }
-            } else if (mem.testEqualString("--library", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.library = mem.terminate(args[args_idx], 0);
-                } else {
-                    return;
-                }
-            } else if (mem.testEqualString("-needed-library", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-                if (cmd.needed_library) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    for (dest, src) |*xx, yy| xx.* = yy;
-                    dest[src.len] = arg;
-                    cmd.needed_library = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.needed_library = dest[0..1];
-                }
-            } else if (mem.testEqualString("-weak_library", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-                if (cmd.weak_library) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    for (dest, src) |*xx, yy| xx.* = yy;
-                    dest[src.len] = arg;
-                    cmd.weak_library = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.weak_library = dest[0..1];
-                }
-            } else if (mem.testEqualString("--library-directory", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-                if (cmd.library_directory) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    for (dest, src) |*xx, yy| xx.* = yy;
-                    dest[src.len] = arg;
-                    cmd.library_directory = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.library_directory = dest[0..1];
-                }
             } else {
                 args_idx +%= 1;
                 continue;
@@ -6127,7 +5635,7 @@ pub const ArchiveCommand = struct {
         ptr[0] = 0;
         ptr += 1;
         for (files) |value| {
-            ptr += value.formatWriteBuf(ptr);
+            ptr = types.Path.write(ptr, value);
         }
         return ptr;
     }
@@ -6182,13 +5690,18 @@ pub const ArchiveCommand = struct {
         }
         return len;
     }
-    pub fn formatParseArgs(cmd: *ArchiveCommand, allocator: *types.Allocator, args_in: [][*:0]u8) void {
+    pub fn formatParseArgs(
+        cmd: *ArchiveCommand,
+        allocator: *types.Allocator,
+        args_in: [][*:0]u8,
+    ) void {
         @setRuntimeSafety(false);
-        var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+        const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+        var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
         @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args.len) {
+        while (args_idx != args_in.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--format", arg)) {
                 args_idx +%= 1;
@@ -6339,13 +5852,18 @@ pub const ObjcopyCommand = struct {
         }
         return len +% path.formatLength();
     }
-    pub fn formatParseArgs(cmd: *ObjcopyCommand, allocator: *types.Allocator, args_in: [][*:0]u8) void {
+    pub fn formatParseArgs(
+        cmd: *ObjcopyCommand,
+        allocator: *types.Allocator,
+        args_in: [][*:0]u8,
+    ) void {
         @setRuntimeSafety(false);
-        var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+        const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+        var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
         @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args.len) {
+        while (args_idx != args_in.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--output-target", arg)) {
                 args_idx +%= 1;
@@ -6442,7 +5960,7 @@ pub const FormatCommand = struct {
             ptr[0] = 0;
             ptr += 1;
         }
-        ptr += pathname.formatWriteBuf(ptr);
+        ptr = types.Path.write(ptr, pathname);
         return ptr;
     }
     pub fn length(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path) usize {
@@ -6465,13 +5983,18 @@ pub const FormatCommand = struct {
         }
         return len +% pathname.formatLength();
     }
-    pub fn formatParseArgs(cmd: *FormatCommand, allocator: *types.Allocator, args_in: [][*:0]u8) void {
+    pub fn formatParseArgs(
+        cmd: *FormatCommand,
+        allocator: *types.Allocator,
+        args_in: [][*:0]u8,
+    ) void {
         @setRuntimeSafety(false);
-        var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+        const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+        var args: [][*:0]u8 = ptr[0..args_in.len];
         var args_idx: usize = 0;
         var arg: [:0]u8 = undefined;
         @memcpy(args[0..args_in.len], args_in.ptr);
-        while (args_idx != args.len) {
+        while (args_idx != args_in.len) {
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--color", arg)) {
                 args_idx +%= 1;
@@ -6507,7 +6030,7 @@ pub const FormatCommand = struct {
         }
     }
 };
-const build_help: [:0]const u8 =
+const build1_help: [:0]const u8 = 
     \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
     \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
@@ -6658,7 +6181,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const build2_help: [:0]const u8 =
+const build_help: [:0]const u8 = 
     \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
     \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
@@ -6766,52 +6289,7 @@ const build2_help: [:0]const u8 =
     \\
     \\
 ;
-const module_help: [:0]const u8 =
-    \\    -target=<string>                <arch><sub>-<os>-<abi> see the targets command
-    \\    -O<tag>                         Choose what to optimize for:
-    \\                                      Debug          Optimizations off, safety on
-    \\                                      ReleaseSafe    Optimizations on, safety on
-    \\                                      ReleaseFast    Optimizations on, safety off
-    \\                                      ReleaseSmall   Size optimizations on, safety off
-    \\    -ofmt=<tag>                     Override target object format:
-    \\                                      elf                    Executable and Linking Format
-    \\                                      c                      C source code
-    \\                                      wasm                   WebAssembly
-    \\                                      coff                   Common Object File Format (Windows)
-    \\                                      macho                  macOS relocatables
-    \\                                      spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
-    \\                                      plan9                  Plan 9 from Bell Labs object format
-    \\                                      hex (planned feature)  Intel IHEX
-    \\                                      raw (planned feature)  Dump machine code directly
-    \\    --mcpu=<string>                 Target a specific cpu type (-mcpu=help for details)
-    \\    -mcmodel=<tag>                  Limit range of code and data virtual addresses
-    \\    -m[no-]red-zone                 Enable or disable the "red-zone"
-    \\    -f[no-]omit-frame-pointer       Omit the stack frame pointer
-    \\    -f[no-]PIC                      Enable Position Independent Code
-    \\    -f[no-]stack-check              Enable stack probing in unsafe builds
-    \\    -f[no-]stack-protector          Enable stack protection in unsafe builds
-    \\    -f[no-]sanitize-c               Enable C undefined behaviour detection in unsafe builds
-    \\    -f[no-]valgrind                 Include valgrind client requests in release builds
-    \\    -f[no-]sanitize-thread          Enable thread sanitizer
-    \\    -f[no-]unwind-tables            Always produce unwind table entries for all functions
-    \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
-    \\    -f[no-]single-threaded          Code assumes there is only one thread
-    \\    -f[no-]strip                    Omit debug symbols
-    \\    -f[no-]formatted-panics         Enable formatted safety panics
-    \\    -idirafter=<string>             Add directory to AFTER include search path
-    \\    -isystem=<string>               Add directory to SYSTEM include search path
-    \\    -I<string>                      Add directories to include search path
-    \\    -cflags=<string>                Set extra flags for the next position C source files
-    \\    -rcflags=<string>               Set extra flags for the next positional .rc source files
-    \\    -D<string>                      Define C macros available within the `@cImport` namespace
-    \\    --library=<string>              Link against system library (only if actually used)
-    \\    -needed-library=<string>        Link against system library (even if unused)
-    \\    -weak_library=<string>          Link against system library marking it and all referenced symbols as weak
-    \\    --library-directory=<string>    Add a directory to the library search path
-    \\
-    \\
-;
-const archive_help: [:0]const u8 =
+const archive_help: [:0]const u8 = 
     \\    --format=<tag>          Archive format to create
     \\    --plugin                Ignored for compatibility
     \\    --output=<string>       Extraction target directory
@@ -6829,7 +6307,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    --output-target=<string>
     \\    --only-section=<string>
     \\    --pad-to=<integer>
@@ -6841,7 +6319,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    --color=<tag>           Enable or disable colored error messages
     \\    --stdin                 Format code from stdin; output to stdout
     \\    --check                 List non-conforming files and exit with an error if the list is non-empty
@@ -6851,6 +6329,7 @@ const format_help: [:0]const u8 =
     \\
 ;
 pub const Command = struct {
+    build1: *BuildCommand1,
     build: *BuildCommand,
     archive: *ArchiveCommand,
     objcopy: *ObjcopyCommand,
