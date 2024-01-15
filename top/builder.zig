@@ -226,6 +226,8 @@ pub const BuilderSpec = struct {
         stat_dir: [:0]const u8 = "zig-stat",
         /// Basename of configuration directory. Relative to build root.
         config_dir: [:0]const u8 = "zig-build",
+        /// Basename of symbolic link to the build root in `config_dir`.
+        build_root_link: [:0]const u8 = "build_root",
         /// Basename of executables output directory. Relative to output
         /// directory.
         exe_out_dir: [:0]const u8 = "bin",
