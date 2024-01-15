@@ -1055,7 +1055,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var mat_idx: usize = 0;
                 var mat_pc: u16 = 0;
                 while (idx != files.len) : (idx +%= 1) {
-                    const tag_bits: u8 = @intFromEnum(files[idx].key.tag);
+                    const tag_bits: u16 = @intFromEnum(files[idx].key.tag);
                     if (tag_bits == key.id) {
                         return @ptrCast(files.ptr + idx);
                     } else {
@@ -1071,13 +1071,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return null;
             }
-            fn createFileList(node: *const Node, allocator: *types.Allocator, key: types.File.Key) []types.File {
+            pub fn createFileList(node: *const Node, allocator: *types.Allocator, key: types.File.Key) []types.File {
                 @setRuntimeSafety(builtin.is_safe);
                 const files: []types.File = node.lists.files;
                 var idx: usize = 0;
                 var len: usize = 0;
                 while (idx != files.len) : (idx +%= 1) {
-                    len +%= @intFromBool(@intFromEnum(files[idx].tag) & key.id != 0);
+                    len +%= @intFromBool(files[idx].key.id & key.id != 0);
                 }
                 var buf: [*]types.File = @ptrFromInt(allocator.allocateRaw(
                     len *% @sizeOf(types.File),
@@ -1092,13 +1092,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return buf[0..len];
             }
-            fn createPathList(node: *const Node, allocator: *types.Allocator, key: types.File.Key) []types.Path {
+            pub fn createPathList(node: *const Node, allocator: *types.Allocator, key: types.File.Key) []types.Path {
                 @setRuntimeSafety(builtin.is_safe);
                 const files: []types.File = node.lists.files;
                 var len: usize = 0;
                 var idx: usize = 0;
                 while (idx != files.len) : (idx +%= 1) {
-                    len +%= @intFromBool(@intFromEnum(files[idx].key.tag) & key.id != 0);
+                    len +%= @intFromBool(files[idx].key.id & key.id != 0);
                 }
                 var buf: [*]types.Path = @ptrFromInt(allocator.allocateRaw(
                     len *% @sizeOf(types.Path),
