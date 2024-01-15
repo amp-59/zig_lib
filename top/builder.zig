@@ -1300,6 +1300,26 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.addConfigString(allocator, "cache_root", node.cacheRoot());
                 node.addConfigString(allocator, "global_cache_root", node.cacheRoot());
             }
+            pub fn initStatic(allocator: *types.Allocator) *Node {
+                @setRuntimeSafety(builtin.is_safe);
+                const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
+                node.sh = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
+                node.sh.st = @ptrFromInt(allocator.allocateRaw(@sizeOf(usize), @sizeOf(usize)));
+                node.sh.top = node;
+                node.sh.args = &.{};
+                node.sh.vars = &.{};
+                node.flags = .{ .is_top = true, .is_group = true };
+                node.addNode(allocator).* = node;
+                node.addPath(allocator, .zig_compiler_exe).addName(allocator).* = builtin.root.zig_exe;
+                node.addPath(allocator, .build_root).addName(allocator).* = builtin.root.build_root;
+                node.addPath(allocator, .cache_root).addName(allocator).* = builtin.root.cache_root;
+                node.addPath(allocator, .global_cache_root).addName(allocator).* = builtin.root.global_cache_root;
+                node.name = basename(node.buildRoot());
+                initializeGroup(allocator, node);
+                initializeExtensions(allocator, node);
+                node.sh.mode = .Main;
+                return node;
+            }
             pub fn init(allocator: *types.Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
