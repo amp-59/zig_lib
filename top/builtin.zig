@@ -17,6 +17,9 @@ pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
 /// * Determine whether signals for floating point errors should be handled
 ///   verbosely.
 pub const is_debug: bool = define("is_debug", bool, builtin.mode == .Debug);
+/// Determines whether debug.write should be permitted, and if so the file
+/// descriptor of the destination file.
+pub const debug_write_fd: ?usize = define("debug_write_fd", ?usize, 2);
 /// The primary reason that these constants exist is to distinguish between
 /// reports from the build runner and reports from a run command.
 ///
