@@ -618,13 +618,26 @@ fn writeFieldString(array: *types.Array, field_name: []const u8, extra: *types.E
         },
     }
 }
-fn writeFormatterInternal(array: *types.Array, arg_string: []const u8, extra: *types.Extra) void {
+fn writeFormatterInternal(
+    array: *types.Array,
+    opt_type: ?*const types.BGTypeDescr,
+    arg_string: []const u8,
+    extra: *types.Extra,
+) void {
     switch (extra.function) {
         .write => {
             if (extra.notation == .slice) {
-                array.writeMany("ptr+=");
-                array.writeMany(arg_string);
-                array.writeMany(".formatWriteBuf(ptr);\n");
+                if (opt_type) |type_descr| {
+                    array.writeMany("ptr=");
+                    array.writeFormat(type_descr);
+                    array.writeMany(".write(ptr,");
+                    array.writeMany(arg_string);
+                    array.writeMany(");\n");
+                } else {
+                    array.writeMany("ptr+=");
+                    array.writeMany(arg_string);
+                    array.writeMany(".formatWriteBuf(ptr);\n");
+                }
             } else {
                 array.writeMany("len+%=");
                 array.writeMany(arg_string);
@@ -636,14 +649,30 @@ fn writeFormatterInternal(array: *types.Array, arg_string: []const u8, extra: *t
             array.writeMany(arg_string);
             array.writeMany(");\n");
         },
-        .length => if (combine_len) {
-            extra.len.strings.writeMany("+%");
-            extra.len.strings.writeMany(arg_string);
-            extra.len.strings.writeMany(".formatLength()");
+        .length => if (opt_type) |type_descr| {
+            if (combine_len) {
+                extra.len.strings.writeMany("+%");
+                extra.len.strings.writeFormat(type_descr);
+                extra.len.strings.writeMany(".length(");
+                extra.len.strings.writeMany(arg_string);
+                extra.len.strings.writeMany(")");
+            } else {
+                array.writeMany("len+%=");
+                array.writeFormat(type_descr);
+                array.writeMany(".length(");
+                array.writeMany(arg_string);
+                array.writeMany(");\n");
+            }
         } else {
-            array.writeMany("len+%=");
-            array.writeMany(arg_string);
-            array.writeMany(".formatLength();\n");
+            if (combine_len) {
+                extra.len.strings.writeMany("+%");
+                extra.len.strings.writeMany(arg_string);
+                extra.len.strings.writeMany(".formatLength()");
+            } else {
+                array.writeMany("len+%=");
+                array.writeMany(arg_string);
+                array.writeMany(".formatLength();\n");
+            }
         },
     }
 }
@@ -896,6 +925,7 @@ fn writeOptTagString(
 fn writeFormatter(
     array: *types.Array,
     opt_switch_string: []const u8,
+    opt_type: ?*const types.BGTypeDescr,
     arg_string: []const u8,
     char: u8,
     extra: *types.Extra,
@@ -903,11 +933,12 @@ fn writeFormatter(
     if (opt_switch_string.len != 0) {
         writeOptStringExtra(array, opt_switch_string, char, extra);
     }
-    writeFormatterInternal(array, arg_string, extra);
+    writeFormatterInternal(array, opt_type, arg_string, extra);
 }
 fn writeOptionalFormatter(
     array: *types.Array,
     opt_switch_string: []const u8,
+    opt_type: ?*const types.BGTypeDescr,
     arg_string: []const u8,
     char: u8,
     extra: *types.Extra,
@@ -915,7 +946,7 @@ fn writeOptionalFormatter(
     if (opt_switch_string.len != 0) {
         writeOptStringExtra(array, opt_switch_string, char, extra);
     }
-    writeFormatterInternal(array, arg_string, extra);
+    writeFormatterInternal(array, opt_type, arg_string, extra);
 }
 fn writeWriterFunctionBody(array: *types.Array, attributes: types.Attributes, extra: *types.Extra) void {
     if (extra.flags.want_fn_intro) {
@@ -971,7 +1002,7 @@ fn writeWriterFunctionBody(array: *types.Array, attributes: types.Attributes, ex
                             writeIfOptionalField(array, param_spec.name, param_spec.name, extra);
                             writeSwitch(array, param_spec.name, extra);
                             writeRequiredProng(array, "yes", "arg");
-                            writeFormatter(array, param_spec.string, "arg", param_spec.char orelse '\x00', extra);
+                            writeFormatter(array, param_spec.string, param_spec.type.write, "arg", param_spec.char orelse '\x00', extra);
                             writeCloseProng(array, extra);
                             writeProng(array, "no");
                             writeOptStringExtra(array, no_param_spec.string, no_param_spec.char orelse '\x00', extra);
@@ -992,7 +1023,7 @@ fn writeWriterFunctionBody(array: *types.Array, attributes: types.Attributes, ex
                         writeSwitch(array, param_spec.name, extra);
                         writeRequiredProng(array, "yes", "yes");
                         writeIfOptional(array, "yes", "arg", extra);
-                        writeOptionalFormatter(array, param_spec.string, "arg", param_spec.char orelse '=', extra);
+                        writeOptionalFormatter(array, param_spec.string, param_spec.type.write, "arg", param_spec.char orelse '=', extra);
                         writeElse(array, extra);
                         writeOptStringExtra(array, param_spec.string, param_spec.char orelse '\x00', extra);
                         writeCloseIf(array, extra);
@@ -1011,10 +1042,10 @@ fn writeWriterFunctionBody(array: *types.Array, attributes: types.Attributes, ex
         } else switch (param_spec.tag) {
             .param => |param| switch (param) {
                 .string => writeArgStringExtra(array, param_spec.name, param_spec.char orelse '\x00', extra),
-                .formatter => writeFormatter(array, &.{}, param_spec.name, param_spec.char orelse '\x00', extra),
+                .formatter => writeFormatter(array, &.{}, param_spec.type.write, param_spec.name, param_spec.char orelse '\x00', extra),
                 .repeatable_formatter => {
                     writeForEach(array, param_spec.name, "value", extra);
-                    writeFormatter(array, &.{}, "value", param_spec.char orelse '\x00', extra);
+                    writeFormatter(array, &.{}, param_spec.type.write, "value", param_spec.char orelse '\x00', extra);
                     writeCloseIf(array, extra);
                 },
                 else => unhandledCommandField(param_spec, @src()),
@@ -1059,7 +1090,7 @@ fn writeWriterFunctionBody(array: *types.Array, attributes: types.Attributes, ex
                     },
                     .formatter => {
                         writeIfOptionalField(array, param_spec.name, param_spec.name, extra);
-                        writeFormatter(array, &.{}, param_spec.name, param_spec.char orelse '\x00', extra);
+                        writeFormatter(array, &.{}, param_spec.type.write, param_spec.name, param_spec.char orelse '\x00', extra);
                         writeCloseIf(array, extra);
                     },
                     .mapped => if (param_spec.type.write) |w| {
@@ -1070,7 +1101,7 @@ fn writeWriterFunctionBody(array: *types.Array, attributes: types.Attributes, ex
                     .repeatable_formatter => {
                         writeIfOptionalField(array, param_spec.name, param_spec.name, extra);
                         writeForEach(array, param_spec.name, "value", extra);
-                        writeFormatter(array, &.{}, "value", param_spec.char orelse '\x00', extra);
+                        writeFormatter(array, &.{}, param_spec.type.write, "value", param_spec.char orelse '\x00', extra);
                         writeCloseIf(array, extra);
                         writeCloseIf(array, extra);
                     },
@@ -1702,10 +1733,11 @@ fn writeAssignSpecifierFormatParser(
 fn writeParserFunctionBody(array: *types.Array, attributes: types.Attributes, extra: *types.Extra) void {
     if (extra.flags.want_fn_intro) {
         writeSetRuntimeSafety(array);
-        array.writeMany("var args:[][*:0]u8=allocator.allocate([*:0]u8,args_in.len);\n");
+        array.writeMany("const ptr:[*][*:0]u8=@ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8)*%args_in.len,@alignOf([*:0]u8)));\n");
+        array.writeMany("var args:[][*:0]u8=ptr[0..args_in.len];\n");
         array.writeMany("var args_idx:usize=0;\n");
         array.writeMany("var arg:[:0]u8=undefined;\n");
-        array.writeMany("@memcpy(args[0..args_in.len], args_in.ptr);\n");
+        array.writeMany("@memcpy(args, args_in.ptr);\n");
         array.writeMany("while(args_idx!=args.len){\n");
         array.writeMany("arg=mem.terminate(args[args_idx],0);\n");
     }
@@ -1977,8 +2009,21 @@ fn writeParserFunctionSignature(array: *types.Array, attributes: types.Attribute
     }
     array.writeMany(attributes.type_name);
     switch (extra.language) {
-        .C => array.writeMany(",allocator:*types.Allocator,args_in:[*][*:0]u8,args_len:usize)void{\n"),
-        .Zig => array.writeMany(",allocator:*types.Allocator,args_in:[][*:0]u8)void{\n"),
+        .C => array.writeMany(",allocator:*types.Allocator,args_in:[*][*:0]u8,args_len:usize"),
+        .Zig => array.writeMany(",allocator:*types.Allocator,args_in:[][*:0]u8"),
+    }
+    array.writeMany(",");
+    for (attributes.params) |param_spec| {
+        if (param_spec.tag == .param and param_spec.flags.do_parse) {
+            array.writeMany(param_spec.name);
+            array.writeMany(":");
+            array.writeFormat(param_spec.type.store.*);
+            array.writeMany(",");
+        }
+    }
+    switch (extra.language) {
+        .C => array.writeMany(")void{\n"),
+        .Zig => array.writeMany(")void{\n"),
     }
 }
 fn writeFlagWithInverse(array: *types.Array, param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
@@ -2226,79 +2271,61 @@ pub fn writeCommandStruct(array: *types.Array, language: types.Extra.Language, a
         .C => {},
     }
 }
-pub fn writeFields(array: *types.Array, language: types.Extra.Language, attributes: types.Attributes) void {
+pub fn writeFields(array: *types.Array, attributes: types.Attributes) void {
     var types_array: types.Array2 = undefined;
-    switch (language) {
-        .Zig => {
-            types_array.undefineAll();
-            for (attributes.params) |param_spec| {
-                if (!param_spec.flags.do_write) {
-                    continue;
-                }
-                if (param_spec.name.len == 0) {
-                    continue;
-                }
-                if (param_spec.tag == .field or
-                    param_spec.tag == .optional_field)
-                {
-                    for (param_spec.descr) |line| {
-                        if (line.len != 0) {
-                            array.writeMany("/// ");
-                            array.writeMany(line);
-                            array.writeMany("\n");
-                        }
-                    }
-                    array.writeMany(param_spec.name);
-                    array.writeMany(":");
-                    writeType(array, param_spec);
-                    if (param_spec.tag == .field) {
-                        array.writeMany("=");
-                        if (param_spec.default) |default_value| {
-                            array.writeMany(default_value);
-                        } else if (param_spec.and_no != null) {
-                            array.writeMany("null");
-                        } else if (param_spec.tag.field == .boolean) {
-                            array.writeMany("false");
-                        } else {
-                            array.undefine(1);
-                        }
-                    }
-                    if (param_spec.tag == .optional_field) {
-                        array.writeMany("=null");
-                    }
-                    array.writeMany(",\n");
+    types_array.undefineAll();
+    for (attributes.params) |param_spec| {
+        if (!param_spec.flags.do_write) {
+            continue;
+        }
+        if (param_spec.name.len == 0) {
+            continue;
+        }
+        if (param_spec.tag == .field or
+            param_spec.tag == .optional_field)
+        {
+            for (param_spec.descr) |line| {
+                if (line.len != 0) {
+                    array.writeMany("/// ");
+                    array.writeMany(line);
+                    array.writeMany("\n");
                 }
             }
-            array.writeMany(types_array.readAll());
-        },
-        .C => {
-            types_array.undefineAll();
-            for (attributes.params) |param_spec| {
-                if (!param_spec.flags.do_write) {
-                    continue;
-                }
-                if (param_spec.name.len == 0) {
-                    continue;
-                }
-                if (param_spec.tag == .field or
-                    param_spec.tag == .optional_field)
-                {
-                    for (param_spec.descr) |line| {
-                        if (line.len != 0) {
-                            array.writeMany("/// ");
-                            array.writeMany(line);
-                            array.writeMany("\n");
-                        }
-                    }
-                    writeType(array, param_spec);
-                    array.writeMany(" ");
-                    array.writeMany(param_spec.name);
-                    array.writeMany(";\n");
+            array.writeMany(param_spec.name);
+            array.writeMany(":");
+            writeType(array, param_spec);
+            if (param_spec.tag == .field) {
+                array.writeMany("=");
+                if (param_spec.default) |default_value| {
+                    array.writeMany(default_value);
+                } else if (param_spec.and_no != null) {
+                    array.writeMany("null");
+                } else if (param_spec.tag.field == .boolean) {
+                    array.writeMany("false");
+                } else {
+                    array.undefine(1);
                 }
             }
-            array.writeMany(types_array.readAll());
-        },
+            if (param_spec.tag == .optional_field) {
+                array.writeMany("=null");
+            }
+            array.writeMany(",\n");
+        }
     }
+    for (attributes.params) |param_spec| {
+        switch (param_spec.tag) {
+            inline else => |tag| {
+                if (tag == .repeatable_task) {
+                    writeOpenStruct(array, .Zig, tag.repeatable_task.*);
+                    writeFields(array, tag.repeatable_task.*);
+                    writeDeclarations(array, .Zig, tag.repeatable_task.*);
+                    writeParserFunctionHelp(array, attributes);
+                    writeCloseContainer(array);
+                }
+            },
+        }
+    }
+    array.writeMany(types_array.readAll());
 }
 pub fn writeDeclarations(array: *types.Array, language: types.Extra.Language, attributes: types.Attributes) void {
     for (attributes.type_decls) |type_decl| {
@@ -2332,9 +2359,6 @@ pub fn writeWriteModules(array: *types.Array, param_spec: types.ParamSpec, extra
         },
         else => unhandledCommandField(param_spec, @src()),
     }
-    writeFieldString(array, "name", extra);
-    writeNull(array, extra);
-    writeCombinedLength(array, extra);
     array.writeMany(
         \\for(files[fs_idx..],fs_idx..)|fs,next|{
         \\if(fs.key.tag==.input_zig){
