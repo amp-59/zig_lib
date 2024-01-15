@@ -1088,7 +1088,7 @@ pub fn tagList(comptime E: type) [@typeInfo(E).Enum.fields.len]E {
     }
     return ret;
 }
-pub fn TagFromList(comptime names: []const []const u8) type {
+pub fn TagFromList(comptime names: []const [:0]const u8) type {
     const tag_type: type = @Type(.{ .Int = .{ .bits = unsignedRealBitSize(names.len), .signedness = .unsigned } });
     var fields: [names.len]builtin.Type.EnumField = undefined;
     for (names, 0..) |name, value| {
