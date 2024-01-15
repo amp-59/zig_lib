@@ -29,6 +29,7 @@ const auto_on_off_type: types.BGTypeDescrMap = .{
 };
 const optional_path_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?types.Path" } },
+    .write = &.{ .type_decl = .{ .name = "types.Path" } },
     .parse = &.{ .type_decl = .{ .name = "types.Path" } },
 };
 const paths_type: types.BGTypeDescrMap = .{
@@ -41,7 +42,7 @@ const files_type: types.BGTypeDescrMap = .{
 };
 const optional_macro_slice_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?[]const types.Macro" } },
-    .write = &.{ .type_decl = .{ .name = "types.Macros" } },
+    .write = &.{ .type_decl = .{ .name = "types.Macro" } },
     .parse = &.{ .type_decl = .{ .name = "types.Macro" } },
 };
 const optional_module_slice_type: types.BGTypeDescrMap = .{
@@ -60,9 +61,9 @@ const optional_dependencies_slice_type2: types.BGTypeDescrMap = .{
     .parse = &.{ .type_decl = .{ .name = "types.ModuleDependency" } },
 };
 const build_command_module_type: types.BGTypeDescrMap = .{
-    .store = &.{ .type_decl = .{ .name = "[]*tasks.BuildModule" } },
-    .write = &.{ .type_decl = .{ .name = "tasks.BuildModule" } },
-    .parse = &.{ .type_decl = .{ .name = "tasks.BuildModule" } },
+    .store = &.{ .type_decl = .{ .name = "[]*tasks.BuildCommand.Module" } },
+    .write = &.{ .type_decl = .{ .name = "tasks.BuildCommand.Module" } },
+    .parse = &.{ .type_decl = .{ .name = "tasks.BuildCommand.Module" } },
 };
 const build_id_type: types.BGTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?types.BuildId" } },
@@ -112,240 +113,16 @@ pub const scope: []const types.BGTypeDescr.Declaration = &.{
         } },
     } },
 };
-pub const zig_modules_attributes: types.Attributes = .{
-    .type_name = "BuildModule",
-    .fn_name = "module",
-    .type_fn_name = "GenericBuildModule",
-    .params = &.{
-        .{
-            .name = "deps",
-            .tag = .{ .optional_field = .repeatable_formatter },
-            .type = optional_dependencies_slice_type2,
-            .descr = &.{"Define module dependencies for the current target"},
-        },
-        .{
-            .name = "target",
-            .string = "-target",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"<arch><sub>-<os>-<abi> see the targets command"},
-        },
-        .{
-            .name = "mode",
-            .string = "-O",
-            .tag = .{ .optional_field = .tag },
-            .type = optimize_type,
-            .descr = &.{
-                "Choose what to optimize for:",
-                "  Debug          Optimizations off, safety on",
-                "  ReleaseSafe    Optimizations on, safety on",
-                "  ReleaseFast    Optimizations on, safety off",
-                "  ReleaseSmall   Size optimizations on, safety off",
-            },
-            .flags = .{ .do_parse = true },
-        },
-        .{
-            .name = "format",
-            .string = "-ofmt",
-            .char = '=',
-            .tag = .{ .optional_field = .tag },
-            .type = output_format_type,
-            .descr = &.{
-                "Override target object format:",
-                "  elf                    Executable and Linking Format",
-                "  c                      C source code",
-                "  wasm                   WebAssembly",
-                "  coff                   Common Object File Format (Windows)",
-                "  macho                  macOS relocatables",
-                "  spirv                  Standard, Portable Intermediate Representation V (SPIR-V)",
-                "  plan9                  Plan 9 from Bell Labs object format",
-                "  hex (planned feature)  Intel IHEX",
-                "  raw (planned feature)  Dump machine code directly",
-            },
-        },
-        .{
-            .name = "mcpu",
-            .string = "--mcpu",
-            .descr = &.{"Target a specific cpu type (-mcpu=help for details)"},
-            .tag = .{ .optional_field = .string },
-            .type = .{ .store = &types.BGTypeDescr.init(?[]const u8) },
-        },
-        .{
-            .name = "code_model",
-            .string = "-mcmodel",
-            .tag = .{ .optional_field = .tag },
-            .type = code_model_type,
-            .descr = &.{"Limit range of code and data virtual addresses"},
-        },
-        .{
-            .name = "red_zone",
-            .string = "-mred-zone",
-            .and_no = .{ .string = "-mno-red-zone" },
-            .descr = &.{"Enable or disable the \"red-zone\""},
-        },
-        .{
-            .name = "omit_frame_pointer",
-            .string = "-fomit-frame-pointer",
-            .and_no = .{ .string = "-fno-omit-frame-pointer" },
-            .descr = &.{"Omit the stack frame pointer"},
-        },
-        .{
-            .name = "pic",
-            .string = "-fPIC",
-            .and_no = .{ .string = "-fno-PIC" },
-            .descr = &.{"Enable Position Independent Code"},
-        },
-        .{
-            .name = "stack_check",
-            .string = "-fstack-check",
-            .and_no = .{ .string = "-fno-stack-check" },
-            .descr = &.{"Enable stack probing in unsafe builds"},
-        },
-        .{
-            .name = "stack_protector",
-            .string = "-fstack-protector",
-            .and_no = .{ .string = "-fno-stack-protector" },
-            .descr = &.{"Enable stack protection in unsafe builds"},
-        },
-        .{
-            .name = "sanitize_c",
-            .string = "-fsanitize-c",
-            .and_no = .{ .string = "-fno-sanitize-c" },
-            .descr = &.{"Enable C undefined behaviour detection in unsafe builds"},
-        },
-        .{
-            .name = "valgrind",
-            .string = "-fvalgrind",
-            .and_no = .{ .string = "-fno-valgrind" },
-            .descr = &.{"Include valgrind client requests in release builds"},
-        },
-        .{
-            .name = "sanitize_thread",
-            .string = "-fsanitize-thread",
-            .and_no = .{ .string = "-fno-sanitize-thread" },
-            .descr = &.{"Enable thread sanitizer"},
-        },
-        .{
-            .name = "unwind_tables",
-            .string = "-funwind-tables",
-            .and_no = .{ .string = "-fno-unwind-tables" },
-            .descr = &.{"Always produce unwind table entries for all functions"},
-        },
-        .{
-            .name = "error_tracing",
-            .string = "-ferror-tracing",
-            .and_no = .{ .string = "-fno-error-tracing" },
-            .descr = &.{"Enable error tracing in `ReleaseFast` mode"},
-        },
-        .{
-            .name = "single_threaded",
-            .string = "-fsingle-threaded",
-            .and_no = .{ .string = "-fno-single-threaded" },
-            .descr = &.{"Code assumes there is only one thread"},
-        },
-        .{
-            .name = "strip",
-            .string = "-fstrip",
-            .and_no = .{ .string = "-fno-strip" },
-            .descr = &.{"Omit debug symbols"},
-        },
-        .{
-            .name = "formatted_panics",
-            .string = "-fformatted-panics",
-            .and_no = .{ .string = "-fno-formatted-panics" },
-            .descr = &.{"Enable formatted safety panics"},
-        },
-        .{
-            .name = "dirafter",
-            .string = "-idirafter",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"Add directory to AFTER include search path"},
-        },
-        .{
-            .name = "system",
-            .string = "-isystem",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"Add directory to SYSTEM include search path"},
-        },
-        .{
-            .name = "include",
-            .string = "-I",
-            .tag = .{ .optional_field = .repeatable_string },
-            .type = optional_repeatable_string_type,
-            .descr = &.{"Add directories to include search path"},
-        },
-        .{
-            .name = "cflags",
-            .string = "-cflags",
-            .tag = .{ .optional_field = .mapped },
-            .type = flags_type,
-            .descr = &.{"Set extra flags for the next position C source files"},
-        },
-        .{
-            .name = "rcflags",
-            .string = "-rcflags",
-            .tag = .{ .optional_field = .mapped },
-            .type = flags_type,
-            .descr = &.{"Set extra flags for the next positional .rc source files"},
-        },
-        .{
-            .name = "macros",
-            .tag = .{ .optional_field = .repeatable_formatter },
-            .type = optional_macro_slice_type,
-            .descr = &.{"Define C macros available within the `@cImport` namespace"},
-            .string = "-D",
-        },
-        .{
-            .name = "library",
-            .string = "--library",
-            .tag = .{ .optional_field = .string },
-            .type = optional_string_type,
-            .descr = &.{"Link against system library (only if actually used)"},
-        },
-        .{
-            .name = "needed_library",
-            .string = "-needed-library",
-            .tag = .{ .optional_field = .repeatable_string },
-            .type = optional_repeatable_string_type,
-            .descr = &.{"Link against system library (even if unused)"},
-        },
-        .{
-            .name = "weak_library",
-            .string = "-weak_library",
-            .tag = .{ .optional_field = .repeatable_string },
-            .type = optional_repeatable_string_type,
-            .descr = &.{"Link against system library marking it and all referenced symbols as weak"},
-        },
-        .{
-            .name = "library_directory",
-            .string = "--library-directory",
-            .tag = .{ .optional_field = .repeatable_string },
-            .type = optional_repeatable_string_type,
-            .descr = &.{"Add a directory to the library search path"},
-        },
-        .{
-            .string = "--mod",
-            .tag = .{ .literal = .string },
-            .type = string_type,
-        },
-        .{
-            .name = "name",
-            .tag = .{ .field = .string },
-            .type = string_type,
-        },
-    },
-};
 pub const zig_build_command_attributes2: types.Attributes = .{
-    .type_name = "BuildCommand2",
-    .fn_name = "build2",
-    .type_fn_name = "GenericBuildCommand2",
+    .type_name = "BuildCommand",
+    .fn_name = "build",
+    .type_fn_name = "GenericBuildCommand",
     .params = &.{
         .{
             .name = "zig_exe",
             .tag = .{ .param = .string },
             .type = string_type,
+            .flags = .{ .do_parse = false },
         },
         .{
             .name = "files",
@@ -837,14 +614,233 @@ pub const zig_build_command_attributes2: types.Attributes = .{
         },
         .{
             .name = "mods",
-            .tag = .{ .param = .{ .repeatable_task = &zig_modules_attributes } },
             .type = build_command_module_type,
             .special = .{
                 .write = common.writeWriteModules,
                 .parse = common.writeParseModules,
             },
             .descr = &.{"Define modules available as dependencies for the current target"},
-            .default = "&.{}",
+            .tag = .{ .param = .{ .repeatable_task = &.{
+                .type_name = "Module",
+                .fn_name = "module",
+                .type_fn_name = "GenericModule",
+                .params = &.{
+                    .{
+                        .name = "deps",
+                        .tag = .{ .optional_field = .repeatable_formatter },
+                        .type = optional_dependencies_slice_type2,
+                        .descr = &.{"Define module dependencies for the current target"},
+                    },
+                    .{
+                        .name = "target",
+                        .string = "-target",
+                        .tag = .{ .optional_field = .string },
+                        .type = optional_string_type,
+                        .descr = &.{"<arch><sub>-<os>-<abi> see the targets command"},
+                    },
+                    .{
+                        .name = "mode",
+                        .string = "-O",
+                        .tag = .{ .optional_field = .tag },
+                        .type = optimize_type,
+                        .descr = &.{
+                            "Choose what to optimize for:",
+                            "  Debug          Optimizations off, safety on",
+                            "  ReleaseSafe    Optimizations on, safety on",
+                            "  ReleaseFast    Optimizations on, safety off",
+                            "  ReleaseSmall   Size optimizations on, safety off",
+                        },
+                        .flags = .{ .do_parse = true },
+                    },
+                    .{
+                        .name = "format",
+                        .string = "-ofmt",
+                        .char = '=',
+                        .tag = .{ .optional_field = .tag },
+                        .type = output_format_type,
+                        .descr = &.{
+                            "Override target object format:",
+                            "  elf                    Executable and Linking Format",
+                            "  c                      C source code",
+                            "  wasm                   WebAssembly",
+                            "  coff                   Common Object File Format (Windows)",
+                            "  macho                  macOS relocatables",
+                            "  spirv                  Standard, Portable Intermediate Representation V (SPIR-V)",
+                            "  plan9                  Plan 9 from Bell Labs object format",
+                            "  hex (planned feature)  Intel IHEX",
+                            "  raw (planned feature)  Dump machine code directly",
+                        },
+                    },
+                    .{
+                        .name = "mcpu",
+                        .string = "--mcpu",
+                        .descr = &.{"Target a specific cpu type (-mcpu=help for details)"},
+                        .tag = .{ .optional_field = .string },
+                        .type = .{ .store = &types.BGTypeDescr.init(?[]const u8) },
+                    },
+                    .{
+                        .name = "code_model",
+                        .string = "-mcmodel",
+                        .tag = .{ .optional_field = .tag },
+                        .type = code_model_type,
+                        .descr = &.{"Limit range of code and data virtual addresses"},
+                    },
+                    .{
+                        .name = "red_zone",
+                        .string = "-mred-zone",
+                        .and_no = .{ .string = "-mno-red-zone" },
+                        .descr = &.{"Enable or disable the \"red-zone\""},
+                    },
+                    .{
+                        .name = "omit_frame_pointer",
+                        .string = "-fomit-frame-pointer",
+                        .and_no = .{ .string = "-fno-omit-frame-pointer" },
+                        .descr = &.{"Omit the stack frame pointer"},
+                    },
+                    .{
+                        .name = "pic",
+                        .string = "-fPIC",
+                        .and_no = .{ .string = "-fno-PIC" },
+                        .descr = &.{"Enable Position Independent Code"},
+                    },
+                    .{
+                        .name = "stack_check",
+                        .string = "-fstack-check",
+                        .and_no = .{ .string = "-fno-stack-check" },
+                        .descr = &.{"Enable stack probing in unsafe builds"},
+                    },
+                    .{
+                        .name = "stack_protector",
+                        .string = "-fstack-protector",
+                        .and_no = .{ .string = "-fno-stack-protector" },
+                        .descr = &.{"Enable stack protection in unsafe builds"},
+                    },
+                    .{
+                        .name = "sanitize_c",
+                        .string = "-fsanitize-c",
+                        .and_no = .{ .string = "-fno-sanitize-c" },
+                        .descr = &.{"Enable C undefined behaviour detection in unsafe builds"},
+                    },
+                    .{
+                        .name = "valgrind",
+                        .string = "-fvalgrind",
+                        .and_no = .{ .string = "-fno-valgrind" },
+                        .descr = &.{"Include valgrind client requests in release builds"},
+                    },
+                    .{
+                        .name = "sanitize_thread",
+                        .string = "-fsanitize-thread",
+                        .and_no = .{ .string = "-fno-sanitize-thread" },
+                        .descr = &.{"Enable thread sanitizer"},
+                    },
+                    .{
+                        .name = "unwind_tables",
+                        .string = "-funwind-tables",
+                        .and_no = .{ .string = "-fno-unwind-tables" },
+                        .descr = &.{"Always produce unwind table entries for all functions"},
+                    },
+                    .{
+                        .name = "error_tracing",
+                        .string = "-ferror-tracing",
+                        .and_no = .{ .string = "-fno-error-tracing" },
+                        .descr = &.{"Enable error tracing in `ReleaseFast` mode"},
+                    },
+                    .{
+                        .name = "single_threaded",
+                        .string = "-fsingle-threaded",
+                        .and_no = .{ .string = "-fno-single-threaded" },
+                        .descr = &.{"Code assumes there is only one thread"},
+                    },
+                    .{
+                        .name = "strip",
+                        .string = "-fstrip",
+                        .and_no = .{ .string = "-fno-strip" },
+                        .descr = &.{"Omit debug symbols"},
+                    },
+                    .{
+                        .name = "formatted_panics",
+                        .string = "-fformatted-panics",
+                        .and_no = .{ .string = "-fno-formatted-panics" },
+                        .descr = &.{"Enable formatted safety panics"},
+                    },
+                    .{
+                        .name = "dirafter",
+                        .string = "-idirafter",
+                        .tag = .{ .optional_field = .string },
+                        .type = optional_string_type,
+                        .descr = &.{"Add directory to AFTER include search path"},
+                    },
+                    .{
+                        .name = "system",
+                        .string = "-isystem",
+                        .tag = .{ .optional_field = .string },
+                        .type = optional_string_type,
+                        .descr = &.{"Add directory to SYSTEM include search path"},
+                    },
+                    .{
+                        .name = "include",
+                        .string = "-I",
+                        .tag = .{ .optional_field = .repeatable_string },
+                        .type = optional_repeatable_string_type,
+                        .descr = &.{"Add directories to include search path"},
+                    },
+                    .{
+                        .name = "cflags",
+                        .string = "-cflags",
+                        .tag = .{ .optional_field = .mapped },
+                        .type = flags_type,
+                        .descr = &.{"Set extra flags for the next position C source files"},
+                    },
+                    .{
+                        .name = "rcflags",
+                        .string = "-rcflags",
+                        .tag = .{ .optional_field = .mapped },
+                        .type = flags_type,
+                        .descr = &.{"Set extra flags for the next positional .rc source files"},
+                    },
+                    .{
+                        .name = "macros",
+                        .tag = .{ .optional_field = .repeatable_formatter },
+                        .type = optional_macro_slice_type,
+                        .descr = &.{"Define C macros available within the `@cImport` namespace"},
+                        .string = "-D",
+                    },
+                    .{
+                        .name = "library",
+                        .string = "--library",
+                        .tag = .{ .optional_field = .string },
+                        .type = optional_string_type,
+                        .descr = &.{"Link against system library (only if actually used)"},
+                    },
+                    .{
+                        .name = "needed_library",
+                        .string = "-needed-library",
+                        .tag = .{ .optional_field = .repeatable_string },
+                        .type = optional_repeatable_string_type,
+                        .descr = &.{"Link against system library (even if unused)"},
+                    },
+                    .{
+                        .name = "weak_library",
+                        .string = "-weak_library",
+                        .tag = .{ .optional_field = .repeatable_string },
+                        .type = optional_repeatable_string_type,
+                        .descr = &.{"Link against system library marking it and all referenced symbols as weak"},
+                    },
+                    .{
+                        .name = "library_directory",
+                        .string = "--library-directory",
+                        .tag = .{ .optional_field = .repeatable_string },
+                        .type = optional_repeatable_string_type,
+                        .descr = &.{"Add a directory to the library search path"},
+                    },
+                    .{
+                        .name = "name",
+                        .string = "--mod",
+                        .tag = .{ .optional_field = .string },
+                        .type = optional_string_type,
+                    },
+                },
+            } } },
         },
         // Other options
         .{
@@ -924,14 +920,15 @@ pub const zig_build_command_attributes2: types.Attributes = .{
     },
 };
 pub const zig_build_command_attributes: types.Attributes = .{
-    .type_name = "BuildCommand",
-    .fn_name = "build",
-    .type_fn_name = "GenericBuildCommand",
+    .type_name = "BuildCommand1",
+    .fn_name = "build1",
+    .type_fn_name = "GenericBuildCommand1",
     .params = &.{
         .{
             .name = "zig_exe",
             .tag = .{ .param = .string },
             .type = string_type,
+            .flags = .{ .do_parse = false },
         },
         .{
             .string = "build-",
@@ -1629,6 +1626,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .tag = .{ .param = .repeatable_formatter },
             .type = paths_type,
             .descr = &.{"Add auxiliary files to the current target"},
+            .flags = .{ .do_parse = false },
         },
         // Other options
         .{
@@ -1747,6 +1745,7 @@ pub const zig_ar_command_attributes: types.Attributes = .{
             .name = "zig_exe",
             .tag = .{ .param = .string },
             .type = string_type,
+            .flags = .{ .do_parse = false },
         },
         .{
             .string = "ar",
@@ -1854,6 +1853,7 @@ pub const zig_ar_command_attributes: types.Attributes = .{
             .tag = .{ .param = .repeatable_formatter },
             .type = paths_type,
             .descr = &.{"Add auxiliary files to the current target"},
+            .flags = .{ .do_parse = false },
         },
     },
 };
@@ -1866,6 +1866,7 @@ pub const zig_fetch_command_attributes: types.Attributes = .{
             .name = "zig_exe",
             .tag = .{ .param = .string },
             .type = string_type,
+            .flags = .{ .do_parse = false },
         },
         .{
             .string = "fetch",
@@ -1889,6 +1890,7 @@ pub const zig_format_command_attributes: types.Attributes = .{
             .name = "zig_exe",
             .tag = .{ .param = .string },
             .type = string_type,
+            .flags = .{ .do_parse = false },
         },
         .{
             .string = "fmt",
@@ -1926,8 +1928,12 @@ pub const zig_format_command_attributes: types.Attributes = .{
         .{
             .name = "pathname",
             .tag = .{ .param = .formatter },
-            .type = .{ .store = &.{ .type_decl = .{ .name = "types.Path" } } },
+            .type = .{
+                .write = &.{ .type_decl = .{ .name = "types.Path" } },
+                .store = &.{ .type_decl = .{ .name = "types.Path" } },
+            },
             .descr = &.{"File system target for formatting operation. May be a file or a directory."},
+            .flags = .{ .do_parse = false },
         },
     },
 };
@@ -1940,6 +1946,7 @@ pub const zig_objcopy_command_attributes: types.Attributes = .{
             .name = "zig_exe",
             .tag = .{ .param = .string },
             .type = string_type,
+            .flags = .{ .do_parse = false },
         },
         .{
             .string = "objcopy",
@@ -1992,6 +1999,7 @@ pub const zig_objcopy_command_attributes: types.Attributes = .{
             .tag = .{ .param = .formatter },
             .type = .{ .store = &.{ .type_decl = .{ .name = "types.Path" } } },
             .descr = &.{"Target binary"},
+            .flags = .{ .do_parse = false },
         },
     },
 };
@@ -2239,6 +2247,7 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
             .name = "llc_exe",
             .tag = .{ .param = .string },
             .type = string_type,
+            .flags = .{ .do_parse = false },
         },
         .{
             .name = "aarch64_a57_fp_load_balancing_force_all",
@@ -13967,7 +13976,7 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
 pub const all: []const types.Attributes = &.{
     zig_build_command_attributes,
     zig_build_command_attributes2,
-    zig_modules_attributes,
+    //zig_modules_attributes,
     zig_ar_command_attributes,
     zig_objcopy_command_attributes,
     //llvm_tblgen_command_attributes,
