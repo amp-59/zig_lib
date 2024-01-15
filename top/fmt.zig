@@ -1253,7 +1253,7 @@ pub fn GenericChangedPercentFormat(comptime fmt_spec: ChangedPercentFormatSpec) 
             len +%= NewPercentFormat.length2(new_int, new_dec);
             return len;
         }
-        fn lengthIntEql(old_numerator: Old, old_int: Old, old_dec: Old, new_numerator: New, new_int: New, new_dec: New) usize {
+        fn lengthIntEql(_: Old, old_int: Old, old_dec: Old, _: New, new_int: New, new_dec: New) usize {
             @setRuntimeSafety(false);
             const old_dec_gt: bool = old_dec > new_dec;
             const old_dec_lt: bool = old_dec < new_dec;
@@ -1261,9 +1261,7 @@ pub fn GenericChangedPercentFormat(comptime fmt_spec: ChangedPercentFormatSpec) 
             const dec: Int = if (old_dec_gt) (old_dec -% new_dec) else 0 | if (old_dec_lt) (new_dec -% old_dec) else 0;
             const style: []const u8 = if (old_dec_gt) fmt_spec.dec_style else (if (old_dec_lt) fmt_spec.inc_style else fmt_spec.no_style);
             if (dec == 0) {
-                if (new_numerator != old_numerator) {
-                    return ChangedIntFormat.length(old_numerator, new_numerator);
-                }
+                return 0;
             }
             var len: usize = OldPercentFormat.length2(old_int, old_dec);
             len +%= lengthStyledChange(int, dec, style);
@@ -1292,7 +1290,7 @@ pub fn GenericChangedPercentFormat(comptime fmt_spec: ChangedPercentFormatSpec) 
             ptr = NewPercentFormat.write2(ptr, new_int, new_dec);
             return ptr;
         }
-        fn writeIntEql(buf: [*]u8, old_numerator: Old, old_int: Old, old_dec: Old, new_numerator: New, new_int: New, new_dec: New) [*]u8 {
+        fn writeIntEql(buf: [*]u8, _: Old, old_int: Old, old_dec: Old, _: New, new_int: New, new_dec: New) [*]u8 {
             @setRuntimeSafety(false);
             const old_dec_gt: bool = old_dec > new_dec;
             const old_dec_lt: bool = old_dec < new_dec;
@@ -1300,9 +1298,7 @@ pub fn GenericChangedPercentFormat(comptime fmt_spec: ChangedPercentFormatSpec) 
             const dec: Int = if (old_dec_gt) (old_dec -% new_dec) else 0 | if (old_dec_lt) (new_dec -% old_dec) else 0;
             const style: []const u8 = if (old_dec_gt) fmt_spec.dec_style else (if (old_dec_lt) fmt_spec.inc_style else fmt_spec.no_style);
             if (dec == 0) {
-                if (new_numerator != old_numerator) {
-                    return ChangedIntFormat.write(buf, old_numerator, new_numerator);
-                }
+                return buf;
             }
             var ptr: [*]u8 = OldPercentFormat.write2(buf, old_int, old_dec);
             ptr = writeStyledChange(ptr, int, dec, style);
