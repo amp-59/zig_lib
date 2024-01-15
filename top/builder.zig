@@ -1136,10 +1136,50 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 if (node.getFilePath(fs)) |path| {
                     path.status(stat, fs.st);
+                    return fs.st;
                 }
                 return null;
             }
-            /// Allocate a node pointer.
+            pub fn getModule(node: *const Node, name: [:0]const u8) ?*tasks.BuildCommand.Module {
+                for (node.lists.mods) |mod| {
+                    if (mem.testEqualString(name, mod.name)) {
+                        return mod;
+                    }
+                }
+                return null;
+            }
+            pub fn modulePathLists(node: *const Node, allocator: *types.Allocator) []*types.Path {
+                @setRuntimeSafety(builtin.is_safe);
+                const paths: [*]*types.Path = @ptrFromInt(allocator.allocateRaw(@sizeOf(*types.Path), @alignOf(*types.Path)));
+                var mod_idx: usize = 0;
+                var paths_len: usize = 0;
+                mods: while (mod_idx != node.lists.mods.len) : (mod_idx +%= 1) {
+                    for (node.lists.files[mod_idx..]) |*fs| {
+                        if (fs.key.tag == .input_zig) {
+                            paths[paths_len] = &node.lists.paths[fs.path_idx];
+                            paths_len +%= 1;
+                            continue :mods;
+                        }
+                    }
+                }
+                return paths[0..paths_len];
+            }
+            fn addPath(node: *Node, allocator: *types.Allocator, tag: types.File.Tag) *types.Path {
+                @setRuntimeSafety(builtin.is_safe);
+                const paths: []types.Path = node.lists.paths;
+                const fs: *types.File = node.addFile(allocator);
+                fs.* = .{
+                    .path_idx = @intCast(paths.len),
+                    .key = .{ .tag = tag },
+                    .st = @ptrFromInt(8),
+                    .fd = ~@as(u16, 0),
+                };
+                if (!fs.key.flags.is_cached) {
+                    fs.st = @ptrFromInt(allocator.allocateRaw(144, 8));
+                }
+                defer node.lists.paths.len +%= 1;
+                return @ptrFromInt(allocator.addGeneric(@sizeOf(types.Path), @alignOf(types.Path), 2, @ptrCast(&node.lists.paths.ptr), &node.lists.paths_max_len, node.lists.paths.len));
+            }
             fn addNode(node: *Node, allocator: *types.Allocator) **Node {
                 @setRuntimeSafety(builtin.is_safe);
                 defer node.lists.nodes.len +%= 1;
