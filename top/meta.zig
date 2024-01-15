@@ -430,7 +430,10 @@ pub fn AlignBitSizeAbove(comptime T: type) type {
 pub fn LeastBitSize(comptime value: anytype) type {
     const T: type = @TypeOf(value);
     if (T == type) {
-        return LeastBitSize(@as(value, undefined));
+        return @Type(.{ .Int = .{
+            .bits = @bitSizeOf(value),
+            .signedness = .unsigned,
+        } });
     }
     if (@sizeOf(T) == 0) {
         if (value < 0) {
@@ -464,7 +467,10 @@ pub fn LeastBitSize(comptime value: anytype) type {
 pub fn LeastRealBitSize(comptime value: anytype) type {
     const T: type = @TypeOf(value);
     if (T == type) {
-        return LeastBitSize(@as(value, undefined));
+        return @Type(.{ .Int = .{
+            .bits = alignBitSizeOfAbove(value),
+            .signedness = .unsigned,
+        } });
     }
     if (@sizeOf(T) == 0) {
         if (value < 0) {
