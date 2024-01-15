@@ -9,13 +9,10 @@ const file = zl.file;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
-
 const tab = @import("tab.zig");
-
-pub usingnamespace zl.start;
-
-pub const runtime_assertions: bool = true;
 pub const logging_default: debug.Logging.Default = debug.spec.logging.default.verbose;
+pub usingnamespace zl.start;
+pub const runtime_assertions: bool = true;
 pub const AddressSpace = mem.spec.address_space.regular_128;
 var rng: zl.file.DeviceRandomBytes(65536) = .{};
 const Impl = struct {
@@ -425,7 +422,6 @@ fn testSampleAllReports() !void {
     testing.announce(@src());
     mem.about.sampleAllReports();
 }
-
 fn testEqualMemorySSE() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmapAll();
@@ -456,6 +452,15 @@ pub fn main() !void {
     try meta.wrap(testTaggedSets());
     try meta.wrap(testDiscreteAddressSpace(tab.complex_list));
     try meta.wrap(testDiscreteAddressSpace(tab.simple_list));
+    try testImplementations();
+    try testMapGenericOverhead();
+    try testProtect();
+    try testLowSystemMemoryOperations();
+    try testAutomaticImplementation();
+    try testAllocatedImplementation();
+    try testRtAllocatedImplementation();
+    try testUtilityTestFunctions();
+    try testSampleAllReports();
     try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{
         .list = tab.complex_list,
         .subspace = &[_]meta.Generic{mem.generic(.{
@@ -469,13 +474,4 @@ pub fn main() !void {
         .{ .list = tab.simple_list },
         .{ .list = tab.rare_sub_list },
     ));
-    try testImplementations();
-    try testMapGenericOverhead();
-    try testProtect();
-    try testLowSystemMemoryOperations();
-    try testAutomaticImplementation();
-    try testAllocatedImplementation();
-    try testRtAllocatedImplementation();
-    try testUtilityTestFunctions();
-    try testSampleAllReports();
 }
