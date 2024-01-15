@@ -1340,14 +1340,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.sh.mode = .Main;
                 return node;
             }
-            fn basename(pathname: [:0]u8) [:0]u8 {
-                @setRuntimeSafety(builtin.is_safe);
-                var idx: usize = pathname.len -% 1;
-                while (pathname[idx] != '/') idx -%= 1;
-                return pathname[idx +% 1 .. :0];
-            }
             pub fn addGroup(group: *Node, allocator: *types.Allocator, name: [:0]const u8, env_paths: ?EnvPaths) *Node {
                 @setRuntimeSafety(builtin.is_safe);
+                debug.assert(group.flags.is_group);
                 const node: *Node = createNode(allocator, group, name, .{ .is_group = true }, .any, omni_lock);
                 if (env_paths) |paths| {
                     node.addPath(allocator, .zig_compiler_exe).addName(allocator).* = paths.zig_exe;
