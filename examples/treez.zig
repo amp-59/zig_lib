@@ -1,4 +1,4 @@
-const zl = @import("../zig_lib.zig");
+const zl = @import("zl");
 pub usingnamespace zl.start;
 pub const logging_default: zl.debug.Logging.Default = zl.debug.spec.logging.default.silent;
 pub const signal_handlers = .{
