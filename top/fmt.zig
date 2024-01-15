@@ -1921,21 +1921,28 @@ pub const LazyIdentifierFormat = struct {
     }
     pub usingnamespace Interface(Format);
 };
-pub inline fn fieldIdentifier(comptime field_name: []const u8) []const u8 {
+pub inline fn fieldIdentifier(comptime field_name: [:0]const u8) []const u8 {
     @setEvalBranchQuota(~@as(u32, 0));
     comptime {
         const field_init: []const u8 = fieldInitializer(field_name);
         return field_init[1 .. field_init.len -% 3];
     }
 }
-pub inline fn fieldTagName(comptime field_name: []const u8) []const u8 {
+pub inline fn fieldTagName(comptime field_name: [:0]const u8) []const u8 {
     @setEvalBranchQuota(~@as(u32, 0));
     comptime {
         const field_init: []const u8 = fieldInitializer(field_name);
         return field_init[0 .. field_init.len -% 3];
     }
 }
-pub inline fn fieldInitializer(comptime field_name: []const u8) []const u8 {
+fn FieldInitializer(comptime field_name: [:0]const u8) type {
+    var type_info = @typeInfo(union {});
+    type_info.Union.fields = &.{.{ .type = void, .name = field_name, .alignment = 1 }};
+    const Union = @Type(type_info);
+    const type_name: []const u8 = @typeName(@TypeOf(.{ ._ = @unionInit(Union, field_name, {}) }));
+    return *const [type_name.len -% (30 +% @typeName(Union).len)]u8;
+}
+pub inline fn fieldInitializer(comptime field_name: [:0]const u8) []const u8 {
     @setEvalBranchQuota(~@as(u32, 0));
     comptime {
         var type_info = @typeInfo(union {});
