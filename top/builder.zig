@@ -237,6 +237,10 @@ pub const BuilderSpec = struct {
         /// Basename of auxiliary output directory relative to output
         /// directory.
         aux_out_dir: [:0]const u8 = "aux",
+        /// Avoid unnecessary copying of output files from cache.
+        /// This is obviously beneficial for disk usage, but may reduce the
+        /// effectiveness of before-and-after comparisons (elfcmp).
+        hard_link_output: bool = false,
         /// Use library traces for compile error messages.
         trace_compile_errors: bool = true,
         /// (Devel.) Enable shallow cache, using `GenericMirrorCache`
