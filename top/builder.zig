@@ -1205,20 +1205,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 defer node.lists.confs.len +%= 1;
                 return @ptrFromInt(allocator.addGeneric(@sizeOf(Conf), @alignOf(Conf), 1, @ptrCast(&node.lists.confs.ptr), &node.lists.confs_max_len, node.lists.confs.len));
             }
-            fn addPath(node: *Node, allocator: *types.Allocator, tag: types.File.Tag) *types.Path {
+            pub fn addModule(node: *Node, allocator: *types.Allocator, mod: tasks.BuildCommand.Module, pathname: [:0]const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
-                const paths: []types.Path = node.lists.paths;
-                const fs: *types.File = node.addFile(allocator);
-                fs.* = .{
-                    .path_idx = @intCast(paths.len),
-                    .key = .{ .tag = tag },
-                    .st = @ptrFromInt(8),
-                };
-                if (!fs.key.flags.is_cached) {
-                    fs.st = @ptrFromInt(allocator.allocateRaw(144, 8));
+                defer node.lists.mods.len +%= 1;
+                node.addSourceInputPath(allocator, duplicate(allocator, pathname));
+                const ref: **tasks.BuildCommand.Module = @ptrFromInt(allocator.addGeneric(@sizeOf(*tasks.BuildCommand.Module), @alignOf(*tasks.BuildCommand.Module), 1, @ptrCast(&node.lists.mods.ptr), &node.lists.mods_max_len, node.lists.mods.len));
+                const ptr: *tasks.BuildCommand.Module = @ptrFromInt(allocator.allocateRaw(@sizeOf(tasks.BuildCommand.Module), @alignOf(tasks.BuildCommand.Module)));
+                ref.* = ptr;
+                ptr.* = mod;
+                if (ptr.name == null) {
+                    ptr.name = makeModuleName(allocator, pathname);
+                    if (builder_spec.logging.show_task_update) {
+                        about.aboutNode(node, null, null, .{ .modname = .{ .from = pathname, .to = ptr.name.? } });
+                    }
                 }
-                defer node.lists.paths.len +%= 1;
-                return @ptrFromInt(allocator.addGeneric(@sizeOf(types.Path), @alignOf(types.Path), 2, @ptrCast(&node.lists.paths.ptr), &node.lists.paths_max_len, node.lists.paths.len));
             }
             pub fn addConfigString(node: *Node, allocator: *types.Allocator, name: []const u8, value: []const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
