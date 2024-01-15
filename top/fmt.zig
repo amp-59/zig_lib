@@ -819,19 +819,7 @@ pub fn PathFormat(comptime Path: type) type {
                 array.writeOne(0);
             }
         }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            return strlen(write(buf, format), buf);
-        }
-        pub fn formatLength(format: Format) usize {
-            return length(format);
-        }
-        pub fn formatWriteBufLiteral(format: Format, buf: [*]u8) usize {
-            return strlen(writeLiteral(buf, format), buf);
-        }
-        pub fn formatWriteBufDisplay(format: Format, buf: [*]u8) usize {
-            return strlen(writeDisplay(buf, format), buf);
-        }
-        fn writeDisplay(buf: [*]u8, path: Path) [*]u8 {
+        pub fn writeDisplay(buf: [*]u8, path: Path) [*]u8 {
             @setRuntimeSafety(fmt_is_safe);
             const end: [*]u8 = Format.write(buf, path) - 1;
             const len: usize = @intFromPtr(end) -% @intFromPtr(buf);
