@@ -9,6 +9,8 @@ const OtherAllocator = mem.dynamic.GenericRtArenaAllocator(.{
     .errors = mem.dynamic.spec.errors.noexcept,
 });
 pub const File = packed struct {
+    /// Status for this file.
+    st: *file.Status,
     /// What this file represents to the node.
     key: Key,
     /// File descriptor.
@@ -16,8 +18,6 @@ pub const File = packed struct {
     /// The index of the path this file corresponds to in the node
     /// `paths` list.
     path_idx: u32,
-    /// Status for this file.
-    st: *file.Status,
     pub const Key = packed union { tag: Tag, flags: Flags, id: u16 };
     pub const Flags = packed struct(u16) {
         idx: u12 = 0,
@@ -382,7 +382,7 @@ pub const ModuleDependency = struct {
     import: []const u8 = &.{},
     name: []const u8,
 
-    pub fn formatWriteBuf(mod_dep: ModuleDependency, buf: [*]u8) u64 {
+    pub fn write(buf: [*]u8, mod_dep: ModuleDependency) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
         buf[0..6].* = "--dep\x00".*;
         var ptr: [*]u8 = buf + 6;
@@ -396,12 +396,9 @@ pub const ModuleDependency = struct {
         ptr += 1;
         const len: usize = @intFromPtr(ptr) -% @intFromPtr(buf);
         buf[len -% 1] = 0;
-        return len;
+        return ptr;
     }
-    pub fn formatLength(mod_dep: ModuleDependency) u64 {
-        if (mod_dep.value.len == 0) {
-            return 0;
-        }
+    pub fn length(mod_dep: ModuleDependency) usize {
         var len: u64 = 6;
         len +%= mod_dep.import.len +% @intFromBool(mod_dep.import.len != 0);
         len +%= mod_dep.name.len +% 1;
@@ -474,19 +471,18 @@ pub const Macro = struct {
         }
         array.writeOne(0);
     }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+    pub fn write(buf: [*]u8, macro: Macro) [*]u8 {
         @setRuntimeSafety(builtin.is_safe);
         buf[0..2].* = "-D".*;
-        var ptr: [*]u8 = fmt.strcpyEqu(buf + 2, format.name);
-        if (format.value) |value| {
+        var ptr: [*]u8 = fmt.strcpyEqu(buf + 2, macro.name);
+        if (macro.value) |value| {
             ptr[0] = '=';
-            ptr += 1;
-            ptr = fmt.strcpyEqu(ptr, value);
+            ptr = fmt.strcpyEqu(ptr + 1, value);
         }
         ptr[0] = 0;
-        return @intFromPtr(ptr + 1) -% @intFromPtr(buf);
+        return ptr + 1;
     }
-    pub fn formatLength(format: Format) usize {
+    pub fn length(format: Format) usize {
         var len: usize = 2 +% format.name.len;
         if (format.value) |value| {
             len +%= 1 +% value.len;
