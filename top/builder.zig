@@ -401,14 +401,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const link = .{ .errors = builder_spec.errors.link, .logging = builder_spec.logging.link };
     const pipe = .{ .errors = builder_spec.errors.pipe, .logging = builder_spec.logging.pipe };
     const open = .{ .errors = builder_spec.errors.open, .logging = builder_spec.logging.open };
+    const copy = .{ .errors = builder_spec.errors.copy, .logging = builder_spec.logging.copy, .return_type = void };
     const read = .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = usize };
     const dup3 = .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
     const poll = .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
     const clock = .{ .errors = builder_spec.errors.clock };
     const sleep = .{ .errors = builder_spec.errors.sleep };
     const mkdir = .{ .errors = builder_spec.errors.mkdir, .logging = builder_spec.logging.mkdir };
-    const write = .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
     const close = .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
+    const write1 = .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
     const create = .{ .errors = builder_spec.errors.create, .logging = builder_spec.logging.create };
     const unlink = .{ .errors = builder_spec.errors.unlink, .logging = builder_spec.logging.unlink };
     const waitpid = .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid };
@@ -521,23 +522,41 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 print: *const @TypeOf(about.print),
             },
             build: struct {
-                formatWriteBuf: *const fn (*tasks.BuildCommand, []const u8, []const types.Path, [*]u8) usize,
-                formatLength: *const fn (*tasks.BuildCommand, []const u8, []const types.Path) usize,
-                formatParseArgs: *const fn (*tasks.BuildCommand, *types.Allocator, [][*:0]u8) void,
+                write: *const fn (
+                    [*]u8,
+                    *tasks.BuildCommand,
+                    []const u8,
+                    []const types.File,
+                    []const file.CompoundPath,
+                    []*tasks.BuildCommand.Module,
+                ) [*]u8,
+                length: *const fn (
+                    *tasks.BuildCommand,
+                    []const u8,
+                    []const types.File,
+                    []const file.CompoundPath,
+                    []*tasks.BuildCommand.Module,
+                ) usize,
+                formatParseArgs: *const fn (
+                    *tasks.BuildCommand,
+                    *types.Allocator,
+                    [][*:0]u8,
+                    []*tasks.BuildCommand.Module,
+                ) void,
             },
             format: struct {
-                formatWriteBuf: *const fn (*tasks.FormatCommand, []const u8, types.Path, [*]u8) usize,
-                formatLength: *const fn (*tasks.FormatCommand, []const u8, types.Path) usize,
+                write: *const fn ([*]u8, *tasks.FormatCommand, []const u8, types.Path) [*]u8,
+                length: *const fn (*tasks.FormatCommand, []const u8, types.Path) usize,
                 formatParseArgs: *const fn (*tasks.FormatCommand, *types.Allocator, [][*:0]u8) void,
             },
             archive: struct {
-                formatWriteBuf: *const fn (*tasks.ArchiveCommand, []const u8, []const types.Path, [*]u8) usize,
-                formatLength: *const fn (*tasks.ArchiveCommand, []const u8, []const types.Path) usize,
+                write: *const fn ([*]u8, *tasks.ArchiveCommand, []const u8, []const types.Path) [*]u8,
+                length: *const fn (*tasks.ArchiveCommand, []const u8, []const types.Path) usize,
                 formatParseArgs: *const fn (*tasks.ArchiveCommand, *types.Allocator, [][*:0]u8) void,
             },
             objcopy: struct {
-                formatWriteBuf: *const fn (*tasks.ObjcopyCommand, []const u8, types.Path, [*]u8) usize,
-                formatLength: *const fn (*tasks.ObjcopyCommand, []const u8, types.Path) usize,
+                write: *const fn ([*]u8, *tasks.ObjcopyCommand, []const u8, types.Path) [*]u8,
+                length: *const fn (*tasks.ObjcopyCommand, []const u8, types.Path) usize,
                 formatParseArgs: *const fn (*tasks.ObjcopyCommand, *types.Allocator, [][*:0]u8) void,
             },
         };
