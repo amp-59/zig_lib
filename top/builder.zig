@@ -779,7 +779,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             /// Stores task information. e.g.
             /// `node.tasks.cmd.build.mode = .ReleaseFast;`
             tasks: Tasks,
-            /// (Internal)
+            /// Stores task options and task state. May be edited directly by the
+            /// user, but editing the factual fields (`is_*`, `have_*`) is UB.
             flags: Flags,
             /// (Internal)
             extra: Extra,
