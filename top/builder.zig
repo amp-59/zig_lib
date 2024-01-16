@@ -1804,16 +1804,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fmt.strcpyEqu(Node.writeNameFull(buf, node, '-'), ".zig")[0] = 0;
             return buf[0 .. name_len +% 4 :0];
         }
-        fn createConfigRoot(allocator: *types.Allocator, node: *Node, pathname: [:0]const u8) void {
+        fn createConfigRoot(allocator: *types.Allocator, node: *Node, dest_root_name: [:0]const u8, src_root_name: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
-            const fd: usize = file.createAt(create, create_truncate_options, node.configRootFd(), pathname, file.mode.regular);
+            const fd: usize = file.createAt(create, create_truncate_options, node.configRootFd(), dest_root_name, file.mode.regular);
             const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(65536, 1));
-            const len: usize = node.formatWriteConfigRoot(buf);
-            file.write(write, fd, buf[0..len]);
+            const end: [*]u8 = Node.writeConfigRoot(buf, node, src_root_name);
+            file.write(write1, fd, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             file.close(close, fd);
-            @memset(buf[0..len], 0);
+            @memset(buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)], 0);
             allocator.restore(@intFromPtr(buf));
-            node.flags.have_config_root = true;
         }
         pub fn outputRelative(allocator: *types.Allocator, node: *Node, tag: types.File.Tag) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -1829,7 +1828,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 else => proc.exitErrorFault(error.InvalidOutput, @tagName(tag), 2),
             });
         }
-        inline fn validateUserPath(pathname: [:0]const u8) void {
+        fn validateUserPath(pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
             var dot_dot: bool = false;
             var sep_sep: bool = false;
@@ -1839,15 +1838,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         proc.exitErrorFault(error.BadPath, pathname);
                     }
                     dot_dot = true;
-                } else {
-                    dot_dot = false;
-                }
-                if (byte == '/') {
+                } else if (byte == '/') {
                     if (sep_sep) {
                         proc.exitErrorFault(error.BadPath, pathname);
                     }
                     sep_sep = true;
                 } else {
+                    dot_dot = false;
                     sep_sep = false;
                 }
             }
@@ -1863,6 +1860,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             node.flags = flags;
             node.lock = lock;
             node.descr = &.{};
+            node.extra.expect_res = .{};
             return node;
         }
         fn initializeExtensions(allocator: *types.Allocator, top: *Node) void {
