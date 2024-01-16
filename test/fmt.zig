@@ -2,6 +2,7 @@ const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const logging_override: zl.debug.Logging.Override = zl.debug.spec.logging.override.verbose;
+pub const show_default_flags: bool = true;
 const AddressSpace = zl.mem.GenericRegularAddressSpace(.{
     .lb_addr = 0x40000000,
     .divisions = 128,
@@ -270,7 +271,7 @@ fn testHexToBytes() !void {
     };
 }
 fn TestFormatAlloc(comptime spec: zl.fmt.RenderSpec, comptime Value: type) type {
-    return struct {
+    const T = struct {
         fn run(allocator: *Allocator, array: *Array, expected: []const u8, comptime value: Value) !void {
             zl.debug.write("run(" ++ comptime zl.fmt.eval(.{ .omit_trailing_comma = true }, spec) ++ ", " ++ @typeName(Value) ++ ")\n");
             try array.appendFormat(allocator, comptime zl.fmt.render(spec, value));
@@ -280,6 +281,7 @@ fn TestFormatAlloc(comptime spec: zl.fmt.RenderSpec, comptime Value: type) type 
             array.undefineAll(allocator.*);
         }
     };
+    return T;
 }
 fn testTypeDescr(allocator: *Allocator, array: *Array, format: anytype) !void {
     try array.appendFormat(allocator, format);
@@ -391,9 +393,7 @@ fn testRenderStruct(allocator: *Allocator, array: *Array) !void {
     zl.testing.announce(@src());
     const tmp = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c";
     const tmp_max_len: usize = tmp.len;
-
     comptime var render: zl.fmt.RenderSpec = .{};
-
     try TestFormatAlloc(render, packed struct(u120) {
         x: u64 = 5,
         y: packed struct(u48) { a: u32 = 1, b: u16 = 2 } = .{},
@@ -561,17 +561,17 @@ fn testIntToStringWithSeparators() !void {
 }
 fn testSystemFlagsFormatters() !void {
     var buf: [4096]u8 = undefined;
-    var len: usize = 0;
-    len = (zl.sys.flags.MemMap{}).formatWriteBuf(&buf);
-    try zl.testing.expectEqualString("flags=private,anonymous,fixed_noreplace", buf[0..len]);
-    len = (zl.sys.flags.FileMap{}).formatWriteBuf(&buf);
-    try zl.testing.expectEqualString("flags=private,fixed", buf[0..len]);
-    len = (zl.sys.flags.MemProt{ .exec = true }).formatWriteBuf(&buf);
-    try zl.testing.expectEqualString("flags=read,write,exec", buf[0..len]);
-    len = (zl.sys.flags.MemFd{ .allow_sealing = true, .close_on_exec = true }).formatWriteBuf(&buf);
-    try zl.testing.expectEqualString("flags=close_on_exec,allow_sealing", buf[0..len]);
-    len = (zl.sys.flags.Clone{ .clear_child_thread_id = true, .detached = false, .fs = true, .files = true }).formatWriteBuf(&buf);
-    try zl.testing.expectEqualString("flags=vm,fs,files,signal_handlers,thread,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
+    var end: [*]u8 = &buf;
+    end = zl.sys.flags.MemMap.write(&buf, .{});
+    try zl.testing.expectEqualString("flags=private,anonymous,fixed_noreplace", zl.fmt.slice(end, &buf));
+    end = zl.sys.flags.FileMap.write(&buf, .{});
+    try zl.testing.expectEqualString("flags=private,fixed", zl.fmt.slice(end, &buf));
+    end = zl.sys.flags.MemProt.write(&buf, .{ .exec = true });
+    try zl.testing.expectEqualString("flags=read,write,exec", zl.fmt.slice(end, &buf));
+    end = zl.sys.flags.MemFd.write(&buf, .{ .close_on_exec = true, .allow_sealing = true });
+    try zl.testing.expectEqualString("flags=close_on_exec,allow_sealing", zl.fmt.slice(end, &buf));
+    end = zl.sys.flags.Clone.write(&buf, .{});
+    try zl.testing.expectEqualString("flags=vm,fs,files,signal_handlers,thread,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", zl.fmt.slice(end, &buf));
 }
 fn stringLiteralChar(byte: u8) []const u8 {
     switch (byte) {
@@ -631,7 +631,7 @@ fn testCaseFormat() !void {
     try zl.testing.expectEqualString("idhiihfgshdfshafisahiffhiaufsuaihf", zl.fmt.slice(end, &buf));
 }
 fn testRenderHighlight() !void {
-    const src: [:0]const u8 = @embedFile(@src().file["test/".len..]);
+    const src: [:0]const u8 = @embedFile(@src().file["zig-build/build_root/test/".len..]);
     var buf: [src.len * 16]u8 = undefined;
     const end: [*]u8 = zl.fmt.SourceCodeFormat.write(&buf, @constCast(src));
     zl.debug.write(zl.fmt.slice(end, &buf));
@@ -692,7 +692,7 @@ pub fn main() !void {
     try testHexToBytes();
     try testCaseFormat();
     try testGenericRangeFormat();
-    //try testGenericChangedRangeFormat();
+    try testGenericChangedRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
     try testChangedBytesFormat();
@@ -701,5 +701,4 @@ pub fn main() !void {
     try @import("fmt/utf8.zig").testUtf8();
     try @import("fmt/ascii.zig").testAscii();
     try testGenericChangedPercentFormat();
-    //try @import("fmt/float.zig").testFloat();
 }
