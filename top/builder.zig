@@ -1258,7 +1258,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (ptr.name == null) {
                     ptr.name = makeModuleName(allocator, pathname);
                     if (builder_spec.logging.show_task_update) {
-                        about.aboutNode(node, null, null, .{ .modname = .{ .from = pathname, .to = ptr.name.? } });
+                        about.aboutNode(node, null, null, .generate_modname);
                     }
                 }
             }
