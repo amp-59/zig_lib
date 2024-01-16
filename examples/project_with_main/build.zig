@@ -14,11 +14,10 @@ pub const Builder: type = build.GenericBuilder(.{});
 /// This is a template compile command to build the target.
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
-    .modules = &.{.{
-        .name = "zig_lib",
-        .path = "zig_lib/zig_lib.zig",
-    }},
-    .dependencies = &.{.{ .name = "zig_lib" }},
+};
+var mod_cmd: build.BuildCommand.Module = .{
+    .mode = .ReleaseFast,
+    .deps = &.{.{ .name = "zig_lib" }},
 };
 
 // zl looks for `buildMain` instead of `build` or `main`, because `main` is
@@ -26,11 +25,7 @@ var build_cmd: build.BuildCommand = .{
 // target (as below), and `build` is the name of import containing build system
 // components.
 pub fn buildMain(allocator: *build.types.Allocator, top: *Builder.Node) !void {
-    const main: *Builder.Node = top.addBuild(
-        allocator,
-        build_cmd,
-        "main",
-        "./src/main.zig",
-    );
+    const main: *Builder.Node = top.addBuild(allocator, build_cmd, mod_cmd, "main", "./src/main.zig");
     main.descr = "Main project binary";
+    main.addModule(allocator, .{ .name = "zig_lib" }, "zig_lib/zig_lib.zig");
 }
