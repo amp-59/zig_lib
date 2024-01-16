@@ -2460,6 +2460,15 @@ pub fn squeeze(dest: [*]u8, src: []const u8, byte: u8) [*]u8 {
     }
     return ptr - @intFromBool(eq2);
 }
+pub fn replace(buf: []u8, dest: u8, src: u8) void {
+    @setRuntimeSafety(builtin.is_safe);
+    var idx: usize = 0;
+    while (idx != buf.len) : (idx +%= 1) {
+        if (buf[idx] == src) {
+            buf[idx] = dest;
+        }
+    }
+}
 pub fn nameToString(comptime name: []const u8) [name.len]u8 {
     var buf: [name.len]u8 = undefined;
     for (name, 0..) |byte, idx| {
