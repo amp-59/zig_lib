@@ -150,7 +150,6 @@ pub fn userGroup(allocator: *zl.builder.types.Allocator, group: *Node) void {
 pub fn exampleGroup(allocator: *zl.builder.types.Allocator, group: *Node) void {
     for ([_]struct { [:0]const u8, [:0]const u8, [:0]const u8 }{
         .{ "imports", "examples/imports.zig", "List files imported from root" },
-        .{ "mca", "examples/mca.zig", "Example program useful for MCA" },
         .{ "itos", "examples/itos.zig", "Example program for integer base conversion" },
         .{ "elfcmp", "examples/elfcmp.zig", "Wrapper for ELF size comparison" },
         .{ "buildgen", "examples/buildgen.zig", "Example WIP program for generating builder statements" },
