@@ -6,12 +6,18 @@ const builtin = @import("../builtin.zig");
 const tasks = @import("tasks.zig");
 const types = @import("types.zig");
 pub usingnamespace @import("../start.zig");
-export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsBuildCommand1(
+    cmd: *tasks.BuildCommand1,
+    allocator: *types.Allocator,
+    args_in: [*][*:0]u8,
+    args_len: usize,
+) void {
     @setRuntimeSafety(false);
-    var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+    const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+    var args: [][*:0]u8 = ptr[0..args_in.len];
     var args_idx: usize = 0;
     var arg: [:0]u8 = undefined;
-    @memcpy(args[0..args_in.len], args_in.ptr);
+    @memcpy(args, args_in.ptr);
     while (args_idx != args.len) {
         arg = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
@@ -909,12 +915,19 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
         proc.shift(&args, args_idx);
     }
 }
-export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsBuildCommand(
+    cmd: *tasks.BuildCommand,
+    allocator: *types.Allocator,
+    args_in: [*][*:0]u8,
+    args_len: usize,
+    mods: []*tasks.BuildCommand.Module,
+) void {
     @setRuntimeSafety(false);
-    var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+    const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+    var args: [][*:0]u8 = ptr[0..args_in.len];
     var args_idx: usize = 0;
     var arg: [:0]u8 = undefined;
-    @memcpy(args[0..args_in.len], args_in.ptr);
+    @memcpy(args, args_in.ptr);
     while (args_idx != args.len) {
         arg = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
@@ -1500,7 +1513,7 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
         } else if (mem.testEqualString("-target", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.mods[0].target = mem.terminate(args[args_idx], 0);
+                mods[0].target = mem.terminate(args[args_idx], 0);
             } else {
                 return;
             }
@@ -1515,13 +1528,13 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
                 arg = arg[2..];
             }
             if (mem.testEqualString("Debug", arg)) {
-                cmd.mods[0].mode = .Debug;
+                mods[0].mode = .Debug;
             } else if (mem.testEqualString("ReleaseSafe", arg)) {
-                cmd.mods[0].mode = .ReleaseSafe;
+                mods[0].mode = .ReleaseSafe;
             } else if (mem.testEqualString("ReleaseFast", arg)) {
-                cmd.mods[0].mode = .ReleaseFast;
+                mods[0].mode = .ReleaseFast;
             } else if (mem.testEqualString("ReleaseSmall", arg)) {
-                cmd.mods[0].mode = .ReleaseSmall;
+                mods[0].mode = .ReleaseSmall;
             }
         } else if (mem.testEqualString("-ofmt", arg)) {
             args_idx +%= 1;
@@ -1530,32 +1543,32 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
             }
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("coff", arg)) {
-                cmd.mods[0].format = .coff;
+                mods[0].format = .coff;
             } else if (mem.testEqualString("dxcontainer", arg)) {
-                cmd.mods[0].format = .dxcontainer;
+                mods[0].format = .dxcontainer;
             } else if (mem.testEqualString("elf", arg)) {
-                cmd.mods[0].format = .elf;
+                mods[0].format = .elf;
             } else if (mem.testEqualString("macho", arg)) {
-                cmd.mods[0].format = .macho;
+                mods[0].format = .macho;
             } else if (mem.testEqualString("spirv", arg)) {
-                cmd.mods[0].format = .spirv;
+                mods[0].format = .spirv;
             } else if (mem.testEqualString("wasm", arg)) {
-                cmd.mods[0].format = .wasm;
+                mods[0].format = .wasm;
             } else if (mem.testEqualString("c", arg)) {
-                cmd.mods[0].format = .c;
+                mods[0].format = .c;
             } else if (mem.testEqualString("hex", arg)) {
-                cmd.mods[0].format = .hex;
+                mods[0].format = .hex;
             } else if (mem.testEqualString("raw", arg)) {
-                cmd.mods[0].format = .raw;
+                mods[0].format = .raw;
             } else if (mem.testEqualString("plan9", arg)) {
-                cmd.mods[0].format = .plan9;
+                mods[0].format = .plan9;
             } else if (mem.testEqualString("nvptx", arg)) {
-                cmd.mods[0].format = .nvptx;
+                mods[0].format = .nvptx;
             }
         } else if (mem.testEqualString("--mcpu", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.mods[0].mcpu = mem.terminate(args[args_idx], 0);
+                mods[0].mcpu = mem.terminate(args[args_idx], 0);
             } else {
                 return;
             }
@@ -1566,81 +1579,81 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
             }
             arg = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("default", arg)) {
-                cmd.mods[0].code_model = .default;
+                mods[0].code_model = .default;
             } else if (mem.testEqualString("tiny", arg)) {
-                cmd.mods[0].code_model = .tiny;
+                mods[0].code_model = .tiny;
             } else if (mem.testEqualString("small", arg)) {
-                cmd.mods[0].code_model = .small;
+                mods[0].code_model = .small;
             } else if (mem.testEqualString("kernel", arg)) {
-                cmd.mods[0].code_model = .kernel;
+                mods[0].code_model = .kernel;
             } else if (mem.testEqualString("medium", arg)) {
-                cmd.mods[0].code_model = .medium;
+                mods[0].code_model = .medium;
             } else if (mem.testEqualString("large", arg)) {
-                cmd.mods[0].code_model = .large;
+                mods[0].code_model = .large;
             }
         } else if (mem.testEqualString("-mred-zone", arg)) {
-            cmd.mods[0].red_zone = true;
+            mods[0].red_zone = true;
         } else if (mem.testEqualString("-mno-red-zone", arg)) {
-            cmd.mods[0].red_zone = false;
+            mods[0].red_zone = false;
         } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
-            cmd.mods[0].omit_frame_pointer = true;
+            mods[0].omit_frame_pointer = true;
         } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
-            cmd.mods[0].omit_frame_pointer = false;
+            mods[0].omit_frame_pointer = false;
         } else if (mem.testEqualString("-fPIC", arg)) {
-            cmd.mods[0].pic = true;
+            mods[0].pic = true;
         } else if (mem.testEqualString("-fno-PIC", arg)) {
-            cmd.mods[0].pic = false;
+            mods[0].pic = false;
         } else if (mem.testEqualString("-fstack-check", arg)) {
-            cmd.mods[0].stack_check = true;
+            mods[0].stack_check = true;
         } else if (mem.testEqualString("-fno-stack-check", arg)) {
-            cmd.mods[0].stack_check = false;
+            mods[0].stack_check = false;
         } else if (mem.testEqualString("-fstack-protector", arg)) {
-            cmd.mods[0].stack_protector = true;
+            mods[0].stack_protector = true;
         } else if (mem.testEqualString("-fno-stack-protector", arg)) {
-            cmd.mods[0].stack_protector = false;
+            mods[0].stack_protector = false;
         } else if (mem.testEqualString("-fsanitize-c", arg)) {
-            cmd.mods[0].sanitize_c = true;
+            mods[0].sanitize_c = true;
         } else if (mem.testEqualString("-fno-sanitize-c", arg)) {
-            cmd.mods[0].sanitize_c = false;
+            mods[0].sanitize_c = false;
         } else if (mem.testEqualString("-fvalgrind", arg)) {
-            cmd.mods[0].valgrind = true;
+            mods[0].valgrind = true;
         } else if (mem.testEqualString("-fno-valgrind", arg)) {
-            cmd.mods[0].valgrind = false;
+            mods[0].valgrind = false;
         } else if (mem.testEqualString("-fsanitize-thread", arg)) {
-            cmd.mods[0].sanitize_thread = true;
+            mods[0].sanitize_thread = true;
         } else if (mem.testEqualString("-fno-sanitize-thread", arg)) {
-            cmd.mods[0].sanitize_thread = false;
+            mods[0].sanitize_thread = false;
         } else if (mem.testEqualString("-funwind-tables", arg)) {
-            cmd.mods[0].unwind_tables = true;
+            mods[0].unwind_tables = true;
         } else if (mem.testEqualString("-fno-unwind-tables", arg)) {
-            cmd.mods[0].unwind_tables = false;
+            mods[0].unwind_tables = false;
         } else if (mem.testEqualString("-ferror-tracing", arg)) {
-            cmd.mods[0].error_tracing = true;
+            mods[0].error_tracing = true;
         } else if (mem.testEqualString("-fno-error-tracing", arg)) {
-            cmd.mods[0].error_tracing = false;
+            mods[0].error_tracing = false;
         } else if (mem.testEqualString("-fsingle-threaded", arg)) {
-            cmd.mods[0].single_threaded = true;
+            mods[0].single_threaded = true;
         } else if (mem.testEqualString("-fno-single-threaded", arg)) {
-            cmd.mods[0].single_threaded = false;
+            mods[0].single_threaded = false;
         } else if (mem.testEqualString("-fstrip", arg)) {
-            cmd.mods[0].strip = true;
+            mods[0].strip = true;
         } else if (mem.testEqualString("-fno-strip", arg)) {
-            cmd.mods[0].strip = false;
+            mods[0].strip = false;
         } else if (mem.testEqualString("-fformatted-panics", arg)) {
-            cmd.mods[0].formatted_panics = true;
+            mods[0].formatted_panics = true;
         } else if (mem.testEqualString("-fno-formatted-panics", arg)) {
-            cmd.mods[0].formatted_panics = false;
+            mods[0].formatted_panics = false;
         } else if (mem.testEqualString("-idirafter", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.mods[0].dirafter = mem.terminate(args[args_idx], 0);
+                mods[0].dirafter = mem.terminate(args[args_idx], 0);
             } else {
                 return;
             }
         } else if (mem.testEqualString("-isystem", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.mods[0].system = mem.terminate(args[args_idx], 0);
+                mods[0].system = mem.terminate(args[args_idx], 0);
             } else {
                 return;
             }
@@ -1654,20 +1667,20 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
             } else {
                 arg = arg[2..];
             }
-            if (cmd.mods[0].include) |src| {
+            if (mods[0].include) |src| {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                 for (dest, src) |*xx, yy| xx.* = yy;
                 dest[src.len] = arg;
-                cmd.mods[0].include = dest[0 .. src.len +% 1];
+                mods[0].include = dest[0 .. src.len +% 1];
             } else {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                 dest[0] = arg;
-                cmd.mods[0].include = dest[0..1];
+                mods[0].include = dest[0..1];
             }
         } else if (mem.testEqualString("-cflags", arg)) {
-            cmd.mods[0].cflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+            mods[0].cflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
         } else if (mem.testEqualString("-rcflags", arg)) {
-            cmd.mods[0].rcflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
+            mods[0].rcflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
         } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
@@ -1678,26 +1691,26 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
             } else {
                 arg = arg[2..];
             }
-            if (cmd.mods[0].macros) |src| {
+            if (mods[0].macros) |src| {
                 const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
                     @sizeOf(types.Macro) *% (src.len +% 1),
                     @alignOf(types.Macro),
                 ));
                 for (dest, src) |*xx, yy| xx.* = yy;
                 dest[src.len] = types.Macro.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
-                cmd.mods[0].macros = dest[0 .. src.len +% 1];
+                mods[0].macros = dest[0 .. src.len +% 1];
             } else {
                 const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
                     @sizeOf(types.Macro),
                     @alignOf(types.Macro),
                 ));
                 dest[0] = types.Macro.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
-                cmd.mods[0].macros = dest[0..1];
+                mods[0].macros = dest[0..1];
             }
         } else if (mem.testEqualString("--library", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
-                cmd.mods[0].library = mem.terminate(args[args_idx], 0);
+                mods[0].library = mem.terminate(args[args_idx], 0);
             } else {
                 return;
             }
@@ -1707,15 +1720,15 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
                 return;
             }
             arg = mem.terminate(args[args_idx], 0);
-            if (cmd.mods[0].needed_library) |src| {
+            if (mods[0].needed_library) |src| {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                 for (dest, src) |*xx, yy| xx.* = yy;
                 dest[src.len] = arg;
-                cmd.mods[0].needed_library = dest[0 .. src.len +% 1];
+                mods[0].needed_library = dest[0 .. src.len +% 1];
             } else {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                 dest[0] = arg;
-                cmd.mods[0].needed_library = dest[0..1];
+                mods[0].needed_library = dest[0..1];
             }
         } else if (mem.testEqualString("-weak_library", arg)) {
             args_idx +%= 1;
@@ -1723,15 +1736,15 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
                 return;
             }
             arg = mem.terminate(args[args_idx], 0);
-            if (cmd.mods[0].weak_library) |src| {
+            if (mods[0].weak_library) |src| {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                 for (dest, src) |*xx, yy| xx.* = yy;
                 dest[src.len] = arg;
-                cmd.mods[0].weak_library = dest[0 .. src.len +% 1];
+                mods[0].weak_library = dest[0 .. src.len +% 1];
             } else {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                 dest[0] = arg;
-                cmd.mods[0].weak_library = dest[0..1];
+                mods[0].weak_library = dest[0..1];
             }
         } else if (mem.testEqualString("--library-directory", arg)) {
             args_idx +%= 1;
@@ -1739,15 +1752,22 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
                 return;
             }
             arg = mem.terminate(args[args_idx], 0);
-            if (cmd.mods[0].library_directory) |src| {
+            if (mods[0].library_directory) |src| {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
                 for (dest, src) |*xx, yy| xx.* = yy;
                 dest[src.len] = arg;
-                cmd.mods[0].library_directory = dest[0 .. src.len +% 1];
+                mods[0].library_directory = dest[0 .. src.len +% 1];
             } else {
                 const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
                 dest[0] = arg;
-                cmd.mods[0].library_directory = dest[0..1];
+                mods[0].library_directory = dest[0..1];
+            }
+        } else if (mem.testEqualString("--mod", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                mods[0].name = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
             }
         } else if (mem.testEqualString("--color", arg)) {
             args_idx +%= 1;
@@ -1800,279 +1820,18 @@ export fn formatParseArgsBuildCommand2(cmd: *tasks.BuildCommand2, allocator: *ty
         proc.shift(&args, args_idx);
     }
 }
-export fn formatParseArgsBuildModule(cmd: *tasks.BuildModule, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsArchiveCommand(
+    cmd: *tasks.ArchiveCommand,
+    allocator: *types.Allocator,
+    args_in: [*][*:0]u8,
+    args_len: usize,
+) void {
     @setRuntimeSafety(false);
-    var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+    const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+    var args: [][*:0]u8 = ptr[0..args_in.len];
     var args_idx: usize = 0;
     var arg: [:0]u8 = undefined;
-    @memcpy(args[0..args_in.len], args_in.ptr);
-    while (args_idx != args.len) {
-        arg = mem.terminate(args[args_idx], 0);
-        if (mem.testEqualString("-target", arg)) {
-            args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.target = mem.terminate(args[args_idx], 0);
-            } else {
-                return;
-            }
-        } else if (mem.testEqualString("-O", arg[0..@min(arg.len, 2)])) {
-            if (arg.len == 2) {
-                args_idx +%= 1;
-                if (args_idx == args_len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-            } else {
-                arg = arg[2..];
-            }
-            if (mem.testEqualString("Debug", arg)) {
-                cmd.mode = .Debug;
-            } else if (mem.testEqualString("ReleaseSafe", arg)) {
-                cmd.mode = .ReleaseSafe;
-            } else if (mem.testEqualString("ReleaseFast", arg)) {
-                cmd.mode = .ReleaseFast;
-            } else if (mem.testEqualString("ReleaseSmall", arg)) {
-                cmd.mode = .ReleaseSmall;
-            }
-        } else if (mem.testEqualString("-ofmt", arg)) {
-            args_idx +%= 1;
-            if (args_idx == args_len) {
-                return;
-            }
-            arg = mem.terminate(args[args_idx], 0);
-            if (mem.testEqualString("coff", arg)) {
-                cmd.format = .coff;
-            } else if (mem.testEqualString("dxcontainer", arg)) {
-                cmd.format = .dxcontainer;
-            } else if (mem.testEqualString("elf", arg)) {
-                cmd.format = .elf;
-            } else if (mem.testEqualString("macho", arg)) {
-                cmd.format = .macho;
-            } else if (mem.testEqualString("spirv", arg)) {
-                cmd.format = .spirv;
-            } else if (mem.testEqualString("wasm", arg)) {
-                cmd.format = .wasm;
-            } else if (mem.testEqualString("c", arg)) {
-                cmd.format = .c;
-            } else if (mem.testEqualString("hex", arg)) {
-                cmd.format = .hex;
-            } else if (mem.testEqualString("raw", arg)) {
-                cmd.format = .raw;
-            } else if (mem.testEqualString("plan9", arg)) {
-                cmd.format = .plan9;
-            } else if (mem.testEqualString("nvptx", arg)) {
-                cmd.format = .nvptx;
-            }
-        } else if (mem.testEqualString("--mcpu", arg)) {
-            args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.mcpu = mem.terminate(args[args_idx], 0);
-            } else {
-                return;
-            }
-        } else if (mem.testEqualString("-mcmodel", arg)) {
-            args_idx +%= 1;
-            if (args_idx == args_len) {
-                return;
-            }
-            arg = mem.terminate(args[args_idx], 0);
-            if (mem.testEqualString("default", arg)) {
-                cmd.code_model = .default;
-            } else if (mem.testEqualString("tiny", arg)) {
-                cmd.code_model = .tiny;
-            } else if (mem.testEqualString("small", arg)) {
-                cmd.code_model = .small;
-            } else if (mem.testEqualString("kernel", arg)) {
-                cmd.code_model = .kernel;
-            } else if (mem.testEqualString("medium", arg)) {
-                cmd.code_model = .medium;
-            } else if (mem.testEqualString("large", arg)) {
-                cmd.code_model = .large;
-            }
-        } else if (mem.testEqualString("-mred-zone", arg)) {
-            cmd.red_zone = true;
-        } else if (mem.testEqualString("-mno-red-zone", arg)) {
-            cmd.red_zone = false;
-        } else if (mem.testEqualString("-fomit-frame-pointer", arg)) {
-            cmd.omit_frame_pointer = true;
-        } else if (mem.testEqualString("-fno-omit-frame-pointer", arg)) {
-            cmd.omit_frame_pointer = false;
-        } else if (mem.testEqualString("-fPIC", arg)) {
-            cmd.pic = true;
-        } else if (mem.testEqualString("-fno-PIC", arg)) {
-            cmd.pic = false;
-        } else if (mem.testEqualString("-fstack-check", arg)) {
-            cmd.stack_check = true;
-        } else if (mem.testEqualString("-fno-stack-check", arg)) {
-            cmd.stack_check = false;
-        } else if (mem.testEqualString("-fstack-protector", arg)) {
-            cmd.stack_protector = true;
-        } else if (mem.testEqualString("-fno-stack-protector", arg)) {
-            cmd.stack_protector = false;
-        } else if (mem.testEqualString("-fsanitize-c", arg)) {
-            cmd.sanitize_c = true;
-        } else if (mem.testEqualString("-fno-sanitize-c", arg)) {
-            cmd.sanitize_c = false;
-        } else if (mem.testEqualString("-fvalgrind", arg)) {
-            cmd.valgrind = true;
-        } else if (mem.testEqualString("-fno-valgrind", arg)) {
-            cmd.valgrind = false;
-        } else if (mem.testEqualString("-fsanitize-thread", arg)) {
-            cmd.sanitize_thread = true;
-        } else if (mem.testEqualString("-fno-sanitize-thread", arg)) {
-            cmd.sanitize_thread = false;
-        } else if (mem.testEqualString("-funwind-tables", arg)) {
-            cmd.unwind_tables = true;
-        } else if (mem.testEqualString("-fno-unwind-tables", arg)) {
-            cmd.unwind_tables = false;
-        } else if (mem.testEqualString("-ferror-tracing", arg)) {
-            cmd.error_tracing = true;
-        } else if (mem.testEqualString("-fno-error-tracing", arg)) {
-            cmd.error_tracing = false;
-        } else if (mem.testEqualString("-fsingle-threaded", arg)) {
-            cmd.single_threaded = true;
-        } else if (mem.testEqualString("-fno-single-threaded", arg)) {
-            cmd.single_threaded = false;
-        } else if (mem.testEqualString("-fstrip", arg)) {
-            cmd.strip = true;
-        } else if (mem.testEqualString("-fno-strip", arg)) {
-            cmd.strip = false;
-        } else if (mem.testEqualString("-fformatted-panics", arg)) {
-            cmd.formatted_panics = true;
-        } else if (mem.testEqualString("-fno-formatted-panics", arg)) {
-            cmd.formatted_panics = false;
-        } else if (mem.testEqualString("-idirafter", arg)) {
-            args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.dirafter = mem.terminate(args[args_idx], 0);
-            } else {
-                return;
-            }
-        } else if (mem.testEqualString("-isystem", arg)) {
-            args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.system = mem.terminate(args[args_idx], 0);
-            } else {
-                return;
-            }
-        } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
-            if (arg.len == 2) {
-                args_idx +%= 1;
-                if (args_idx == args_len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-            } else {
-                arg = arg[2..];
-            }
-            if (cmd.include) |src| {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                for (dest, src) |*xx, yy| xx.* = yy;
-                dest[src.len] = arg;
-                cmd.include = dest[0 .. src.len +% 1];
-            } else {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                dest[0] = arg;
-                cmd.include = dest[0..1];
-            }
-        } else if (mem.testEqualString("-cflags", arg)) {
-            cmd.cflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
-        } else if (mem.testEqualString("-rcflags", arg)) {
-            cmd.rcflags = types.ExtraFlags.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
-        } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
-            if (arg.len == 2) {
-                args_idx +%= 1;
-                if (args_idx == args_len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-            } else {
-                arg = arg[2..];
-            }
-            if (cmd.macros) |src| {
-                const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
-                    @sizeOf(types.Macro) *% (src.len +% 1),
-                    @alignOf(types.Macro),
-                ));
-                for (dest, src) |*xx, yy| xx.* = yy;
-                dest[src.len] = types.Macro.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
-                cmd.macros = dest[0 .. src.len +% 1];
-            } else {
-                const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
-                    @sizeOf(types.Macro),
-                    @alignOf(types.Macro),
-                ));
-                dest[0] = types.Macro.formatParseArgs(allocator, args[0..args_len], &args_idx, arg);
-                cmd.macros = dest[0..1];
-            }
-        } else if (mem.testEqualString("--library", arg)) {
-            args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.library = mem.terminate(args[args_idx], 0);
-            } else {
-                return;
-            }
-        } else if (mem.testEqualString("-needed-library", arg)) {
-            args_idx +%= 1;
-            if (args_idx == args_len) {
-                return;
-            }
-            arg = mem.terminate(args[args_idx], 0);
-            if (cmd.needed_library) |src| {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                for (dest, src) |*xx, yy| xx.* = yy;
-                dest[src.len] = arg;
-                cmd.needed_library = dest[0 .. src.len +% 1];
-            } else {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                dest[0] = arg;
-                cmd.needed_library = dest[0..1];
-            }
-        } else if (mem.testEqualString("-weak_library", arg)) {
-            args_idx +%= 1;
-            if (args_idx == args_len) {
-                return;
-            }
-            arg = mem.terminate(args[args_idx], 0);
-            if (cmd.weak_library) |src| {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                for (dest, src) |*xx, yy| xx.* = yy;
-                dest[src.len] = arg;
-                cmd.weak_library = dest[0 .. src.len +% 1];
-            } else {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                dest[0] = arg;
-                cmd.weak_library = dest[0..1];
-            }
-        } else if (mem.testEqualString("--library-directory", arg)) {
-            args_idx +%= 1;
-            if (args_idx == args_len) {
-                return;
-            }
-            arg = mem.terminate(args[args_idx], 0);
-            if (cmd.library_directory) |src| {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                for (dest, src) |*xx, yy| xx.* = yy;
-                dest[src.len] = arg;
-                cmd.library_directory = dest[0 .. src.len +% 1];
-            } else {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                dest[0] = arg;
-                cmd.library_directory = dest[0..1];
-            }
-        } else {
-            args_idx +%= 1;
-            continue;
-        }
-        proc.shift(&args, args_idx);
-    }
-}
-export fn formatParseArgsArchiveCommand(cmd: *tasks.ArchiveCommand, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(false);
-    var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
-    var args_idx: usize = 0;
-    var arg: [:0]u8 = undefined;
-    @memcpy(args[0..args_in.len], args_in.ptr);
+    @memcpy(args, args_in.ptr);
     while (args_idx != args.len) {
         arg = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--format", arg)) {
@@ -2130,12 +1889,18 @@ export fn formatParseArgsArchiveCommand(cmd: *tasks.ArchiveCommand, allocator: *
         proc.shift(&args, args_idx);
     }
 }
-export fn formatParseArgsObjcopyCommand(cmd: *tasks.ObjcopyCommand, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsObjcopyCommand(
+    cmd: *tasks.ObjcopyCommand,
+    allocator: *types.Allocator,
+    args_in: [*][*:0]u8,
+    args_len: usize,
+) void {
     @setRuntimeSafety(false);
-    var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+    const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+    var args: [][*:0]u8 = ptr[0..args_in.len];
     var args_idx: usize = 0;
     var arg: [:0]u8 = undefined;
-    @memcpy(args[0..args_in.len], args_in.ptr);
+    @memcpy(args, args_in.ptr);
     while (args_idx != args.len) {
         arg = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--output-target", arg)) {
@@ -2186,12 +1951,18 @@ export fn formatParseArgsObjcopyCommand(cmd: *tasks.ObjcopyCommand, allocator: *
         proc.shift(&args, args_idx);
     }
 }
-export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *types.Allocator, args_in: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsFormatCommand(
+    cmd: *tasks.FormatCommand,
+    allocator: *types.Allocator,
+    args_in: [*][*:0]u8,
+    args_len: usize,
+) void {
     @setRuntimeSafety(false);
-    var args: [][*:0]u8 = allocator.allocate([*:0]u8, args_in.len);
+    const ptr: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(@sizeOf([*:0]u8) *% args_in.len, @alignOf([*:0]u8)));
+    var args: [][*:0]u8 = ptr[0..args_in.len];
     var args_idx: usize = 0;
     var arg: [:0]u8 = undefined;
-    @memcpy(args[0..args_in.len], args_in.ptr);
+    @memcpy(args, args_in.ptr);
     while (args_idx != args.len) {
         arg = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--color", arg)) {
@@ -2227,7 +1998,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
         proc.shift(&args, args_idx);
     }
 }
-const build_help: [:0]const u8 =
+const build1_help: [:0]const u8 = 
     \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
     \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
@@ -2378,7 +2149,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const build2_help: [:0]const u8 =
+const build_help: [:0]const u8 = 
     \\    -femit-bin=<string>                                 (default=yes) Output machine code
     \\    -fno-emit-bin
     \\    -femit-asm=<string>                                 (default=no) Output assembly code (.s)
@@ -2486,52 +2257,7 @@ const build2_help: [:0]const u8 =
     \\
     \\
 ;
-const module_help: [:0]const u8 =
-    \\    -target=<string>                <arch><sub>-<os>-<abi> see the targets command
-    \\    -O<tag>                         Choose what to optimize for:
-    \\                                      Debug          Optimizations off, safety on
-    \\                                      ReleaseSafe    Optimizations on, safety on
-    \\                                      ReleaseFast    Optimizations on, safety off
-    \\                                      ReleaseSmall   Size optimizations on, safety off
-    \\    -ofmt=<tag>                     Override target object format:
-    \\                                      elf                    Executable and Linking Format
-    \\                                      c                      C source code
-    \\                                      wasm                   WebAssembly
-    \\                                      coff                   Common Object File Format (Windows)
-    \\                                      macho                  macOS relocatables
-    \\                                      spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
-    \\                                      plan9                  Plan 9 from Bell Labs object format
-    \\                                      hex (planned feature)  Intel IHEX
-    \\                                      raw (planned feature)  Dump machine code directly
-    \\    --mcpu=<string>                 Target a specific cpu type (-mcpu=help for details)
-    \\    -mcmodel=<tag>                  Limit range of code and data virtual addresses
-    \\    -m[no-]red-zone                 Enable or disable the "red-zone"
-    \\    -f[no-]omit-frame-pointer       Omit the stack frame pointer
-    \\    -f[no-]PIC                      Enable Position Independent Code
-    \\    -f[no-]stack-check              Enable stack probing in unsafe builds
-    \\    -f[no-]stack-protector          Enable stack protection in unsafe builds
-    \\    -f[no-]sanitize-c               Enable C undefined behaviour detection in unsafe builds
-    \\    -f[no-]valgrind                 Include valgrind client requests in release builds
-    \\    -f[no-]sanitize-thread          Enable thread sanitizer
-    \\    -f[no-]unwind-tables            Always produce unwind table entries for all functions
-    \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
-    \\    -f[no-]single-threaded          Code assumes there is only one thread
-    \\    -f[no-]strip                    Omit debug symbols
-    \\    -f[no-]formatted-panics         Enable formatted safety panics
-    \\    -idirafter=<string>             Add directory to AFTER include search path
-    \\    -isystem=<string>               Add directory to SYSTEM include search path
-    \\    -I<string>                      Add directories to include search path
-    \\    -cflags=<string>                Set extra flags for the next position C source files
-    \\    -rcflags=<string>               Set extra flags for the next positional .rc source files
-    \\    -D<string>                      Define C macros available within the `@cImport` namespace
-    \\    --library=<string>              Link against system library (only if actually used)
-    \\    -needed-library=<string>        Link against system library (even if unused)
-    \\    -weak_library=<string>          Link against system library marking it and all referenced symbols as weak
-    \\    --library-directory=<string>    Add a directory to the library search path
-    \\
-    \\
-;
-const archive_help: [:0]const u8 =
+const archive_help: [:0]const u8 = 
     \\    --format=<tag>          Archive format to create
     \\    --plugin                Ignored for compatibility
     \\    --output=<string>       Extraction target directory
@@ -2549,7 +2275,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    --output-target=<string>
     \\    --only-section=<string>
     \\    --pad-to=<integer>
@@ -2561,7 +2287,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    --color=<tag>           Enable or disable colored error messages
     \\    --stdin                 Format code from stdin; output to stdout
     \\    --check                 List non-conforming files and exit with an error if the list is non-empty
