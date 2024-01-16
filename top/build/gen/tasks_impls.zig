@@ -24,7 +24,7 @@ pub fn main() !void {
     types.BGTypeDescr.scope = attr.scope;
     for (attr.all) |attributes| {
         common.writeOpenStruct(array, .Zig, attributes);
-        common.writeFields(array, .Zig, attributes);
+        common.writeFields(array, attributes);
         common.writeDeclarations(array, .Zig, attributes);
         extra.* = .{
             .function = .write,
@@ -63,7 +63,7 @@ pub fn main() !void {
     }
     types.BGTypeDescr.scope = attr.scope;
     common.writeOpenStruct(array, .Zig, attr.llvm_llc_command_attributes);
-    common.writeFields(array, .Zig, attr.llvm_llc_command_attributes);
+    common.writeFields(array, attr.llvm_llc_command_attributes);
     common.writeDeclarations(array, .Zig, attr.llvm_llc_command_attributes);
     extra.* = .{
         .function = .write,
