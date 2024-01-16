@@ -1397,18 +1397,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 initializeGroup(allocator, node);
                 return node;
             }
-            pub fn addBuild(group: *Node, allocator: *types.Allocator, build_cmd: tasks.BuildCommand, name: [:0]const u8, root_pathname: []const u8) *Node {
+            pub fn addBuild(
+                group: *Node,
+                allocator: *types.Allocator,
+                cmd: tasks.BuildCommand,
+                mod: tasks.BuildCommand.Module,
+                name: [:0]const u8,
+                root_pathname: [:0]const u8,
+            ) *Node {
                 @setRuntimeSafety(builtin.is_safe);
+                debug.assert(group.flags.is_group);
                 const node: *Node = createNode(allocator, group, name, .{}, .build, obj_lock);
                 node.tasks.cmd.build = @ptrFromInt(allocator.allocateRaw(tasks.BuildCommand.size_of, tasks.BuildCommand.align_of));
-                node.tasks.cmd.build.* = build_cmd;
-                node.addBinaryOutputPath(allocator, @enumFromInt(@intFromEnum(build_cmd.kind)));
-                node.addSourceInputPath(allocator, duplicate(allocator, root_pathname));
+                node.tasks.cmd.build.* = cmd;
+                node.addBinaryOutputPath(allocator, @enumFromInt(@intFromEnum(cmd.kind)));
+                node.addModule(allocator, mod, root_pathname);
                 initializeCommand(allocator, node);
                 return node;
             }
             pub fn addFormat(group: *Node, allocator: *types.Allocator, format_cmd: tasks.FormatCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
+                debug.assert(group.flags.is_group);
                 have_format = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .format, format_lock);
                 node.tasks.cmd.format = @ptrFromInt(allocator.allocateRaw(tasks.FormatCommand.size_of, tasks.FormatCommand.align_of));
@@ -1419,6 +1428,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addFetch(group: *Node, allocator: *types.Allocator, format_cmd: tasks.FormatCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
+                debug.assert(group.flags.is_group);
                 have_fetch = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .fetch, fetch_lock);
                 node.tasks.cmd.format = @ptrFromInt(allocator.allocateRaw(tasks.FormatCommand.size_of, tasks.FormatCommand.align_of));
@@ -1429,6 +1439,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addArchive(group: *Node, allocator: *types.Allocator, archive_cmd: tasks.ArchiveCommand, name: [:0]const u8, depns: []const *Node) *Node {
                 @setRuntimeSafety(builtin.is_safe);
+                debug.assert(group.flags.is_group);
                 have_archive = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .archive, archive_lock);
                 node.tasks.cmd.archive = @ptrFromInt(allocator.allocateRaw(tasks.ArchiveCommand.size_of, tasks.ArchiveCommand.align_of));
@@ -1440,6 +1451,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addObjcopy(group: *Node, allocator: *types.Allocator, objcopy_cmd: tasks.ObjcopyCommand, name: [:0]const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
+                debug.assert(group.flags.is_group);
                 have_objcopy = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .objcopy, objcopy_lock);
                 node.tasks.cmd.objcopy = @ptrFromInt(allocator.allocateRaw(tasks.ObjcopyCommand.size_of, tasks.ObjcopyCommand.align_of));
