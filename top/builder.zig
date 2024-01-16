@@ -205,7 +205,7 @@ pub const BuilderSpec = struct {
         /// Name separators for identifiers, commands, and output file names.
         namespace_separator: struct { id: u8 = '_', cmd: u8 = '.', fs: u8 = '-' } = .{},
         /// Maximum length of node names.
-        max_name_len: usize = 80,
+        check_name_max_len: ?usize = 80,
         /// Name of the top 'builder' node.
         top_node: [:0]const u8 = "top",
         /// Special switch used to split arguments between task command and run command.
