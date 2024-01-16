@@ -1462,18 +1462,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addRun(group: *Node, allocator: *types.Allocator, name: [:0]const u8, args: []const []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
+                debug.assert(group.flags.is_group);
                 have_run = true;
                 const node: *Node = createNode(allocator, group, name, .{}, .run, run_lock);
                 for (args) |arg| node.addRunArg(allocator).* = duplicate(allocator, arg);
                 initializeCommand(allocator, node);
                 return node;
             }
-            fn addSourceInputPath(node: *Node, allocator: *types.Allocator, name: [:0]const u8) void {
+            fn addSourceInputPath(node: *Node, allocator: *types.Allocator, root_pathname: [:0]const u8) void {
                 @setRuntimeSafety(builtin.is_safe);
-                const root_path: *types.Path = node.addPath(allocator, classifySourceInputName(name));
-                root_path.* = .{};
-                root_path.addName(allocator).* = node.buildRoot();
-                root_path.addName(allocator).* = name;
+                const path: *types.Path = node.addPath(allocator, classifySourceInputName(root_pathname));
+                path.* = .{};
+                path.addName(allocator).* = node.buildRoot();
+                path.addName(allocator).* = root_pathname;
                 if (builder_spec.logging.show_task_update) {
                     about.aboutNode(node, null, null, .add_file);
                 }
@@ -1545,12 +1546,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn addBuildAnon(
                 group: *Node,
                 allocator: *types.Allocator,
-                build_cmd: tasks.BuildCommand,
+                cmd: tasks.BuildCommand,
+                mod: tasks.BuildCommand.Module,
                 root_pathname: [:0]const u8,
             ) *Node {
                 const name: [:0]const u8 = makeCommandName(allocator, root_pathname);
-                const node: *Node = group.addBuild(allocator, build_cmd, name, root_pathname);
+                const node: *Node = group.addBuild(allocator, cmd, mod, name, root_pathname);
                 return node;
+            }
+            pub fn getDirFd(node: *Node, tag: types.File.Tag) usize {
+                const ret: u16 = node.getFile(.{ .tag = tag }).?.fd;
+                debug.assert(ret != ~@as(u16, 0));
+                return ret;
             }
             pub fn zigExe(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -1613,13 +1620,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (!node.flags.have_task_data) {
                     return false;
                 }
-                if (node.tasks.cmd.build.strip) |strip| {
+                if (node.lists.mods[0].strip) |strip| {
                     return !strip;
                 } else {
-                    return (node.tasks.cmd.build.mode orelse .Debug) != .ReleaseSmall;
+                    return (node.lists.mods[0].mode orelse .Debug) != .ReleaseSmall;
                 }
             }
-            fn writeNameFull(buf: [*]u8, node: *const Node, sep: u8) [*]u8 {
+            pub fn writeNameFull(buf: [*]u8, node: *const Node, sep: u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (node.flags.is_top) {
                     return buf;
@@ -1635,7 +1642,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ptr;
             }
-            fn lengthNameFull(node: *const Node) usize {
+            pub fn lengthNameFull(node: *const Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 if (node.flags.is_top) {
                     return 0;
