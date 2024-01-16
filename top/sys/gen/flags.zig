@@ -39,8 +39,14 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             }
             return diff +% 1;
         }
-        fn writeEnumField(array: *Array, set: BitFieldSet, shr_amt: usize) void {
-            for (set.pairs) |pair| {
+        fn writeEnumField(array: *Array, sets: []const BitFieldSet, shr_amt: usize) void {
+            if (sets.len == 2) {
+                array.writeFormat(fmt.lazyIdentifier(sets[0].pairs[0].field_name orelse sets[0].pairs[0].decl_name));
+                array.writeMany("=");
+                array.writeFormat(fmt.ux64(sets[0].pairs[0].value >> @intCast(shr_amt)));
+                array.writeMany(",\n");
+            }
+            for (sets[sets.len -% 1].pairs) |pair| {
                 array.writeFormat(fmt.lazyIdentifier(pair.field_name orelse pair.decl_name));
                 array.writeMany("=");
                 array.writeFormat(fmt.ux64(pair.value >> @intCast(shr_amt)));
@@ -53,7 +59,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             array.writeMany(":enum(u");
             array.writeFormat(fmt.id64(bit_size_of_enum));
             array.writeMany("){\n");
-            writeEnumField(array, set, shr_amt);
+            writeEnumField(array, &[1]BitFieldSet{set}, shr_amt);
             array.writeMany("}");
             for (set.pairs) |pair| {
                 if (pair.default_value) {
@@ -156,9 +162,14 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     for (set.pairs) |pair| {
                         array.writeMany("pub const ");
                         array.writeFormat(fmt.lazyIdentifier(pair.decl_name));
-                        array.writeMany("=\\\\");
-                        array.writeFormat(fmt.lowerCase(pair.decl_name));
-                        array.writeMany("\n;\n");
+                        array.writeMany("=\"");
+                        for (pair.decl_name) |byte| {
+                            array.writeMany(fmt.stringLiteralChar(switch (byte) {
+                                'A'...'Z' => byte +% ('a' - 'A'),
+                                else => byte,
+                            }));
+                        }
+                        array.writeMany("\";\n");
                     }
                 }
             }
@@ -275,7 +286,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                         continue;
                     }
                     tmp_mod = true;
-                    array.writeMany("for([_]struct{[]const u8,u8,bool}{\n");
+                    array.writeMany("for([_][]const u8{\n");
                     var start: usize = array.len();
                     for (set.pairs, 0..) |pair, item| {
                         const name: []const u8 = pair.field_name orelse pair.decl_name;
@@ -290,19 +301,20 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                         }
                         shl_rem = @ctz(pair.value) -% shr_amt;
                         shr_amt +%= shl_rem;
-                        array.writeMany(".{");
-                        array.writeFormat(fmt.stringLiteral(name));
-                        array.writeMany(",");
-                        array.writeFormat(fmt.udsize(shl_rem));
-                        array.writeMany(",");
-                        array.writeFormat(fmt.BoolFormat{ .value = pair.default_value });
-                        array.writeMany("}");
+
+                        array.writeMany("\"");
+                        for (name) |byte| {
+                            array.writeMany(fmt.stringLiteralChar(byte));
+                        }
+                        array.writeMany(fmt.stringLiteralChar(@intCast(shl_rem)));
+                        array.writeMany(fmt.stringLiteralChar(@intFromBool(!pair.default_value)));
+                        array.writeMany("\"");
                     }
-                    array.writeMany(",})|pair|{\n");
-                    array.writeMany("tmp>>=@truncate(pair[1]);\n");
-                    array.writeMany("if(tmp&1!=@intFromBool(if(builtin.show_default_flags) true else pair[2])){\n");
+                    array.writeMany(",})|field|{\n");
+                    array.writeMany("tmp>>=@truncate(field[field.len-%2]);\n");
+                    array.writeMany("if(tmp&1==if(builtin.show_default_flags) 1 else field[field.len-%1]){\n");
                     array.writeMany("ptr[0]=',';\n");
-                    array.writeMany("ptr=fmt.strcpyEqu(ptr+@intFromBool(ptr!=buf+6),pair[0]);\n");
+                    array.writeMany("ptr=fmt.strcpyEqu(ptr+@intFromBool(ptr!=buf+6),field[0..field.len-%2]);\n");
                     array.writeMany("}\n");
                     array.writeMany("}\n");
                     shr_amt +%= shl_rem +% 1;
@@ -338,9 +350,10 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                         array.writeMany(@typeName(backing_integer));
                         array.writeMany("=@bitCast(flags);\n");
                     }
-                    array.writeMany("for([_]struct{u8,u8}{\n");
+                    array.writeMany("for([_]struct{u8,u8,u8}{\n");
                     var start: usize = array.len();
                     for (set.pairs, 0..) |pair, item| {
+                        const name: []const u8 = pair.field_name orelse pair.decl_name;
                         if (pair.value == 0) {
                             continue;
                         }
@@ -353,16 +366,16 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                         shl_rem = @ctz(pair.value) -% shr_amt;
                         shr_amt +%= shl_rem;
                         array.writeMany(".{");
-                        array.writeFormat(fmt.ud64(pair.decl_name.len));
+                        array.writeFormat(fmt.ud64(name.len));
                         array.writeMany(",");
                         array.writeFormat(fmt.ud64(shl_rem));
                         array.writeMany(",");
-                        array.writeFormat(fmt.BoolFormat{ .value = pair.default_value });
+                        array.writeFormat(fmt.ud64(@intFromBool(!pair.default_value)));
                         array.writeMany("}");
                     }
                     array.writeMany(",})|pair|{\n");
                     array.writeMany("tmp>>=@truncate(pair[1]);\n");
-                    array.writeMany("if(tmp&1!=@intFromBool(if(builtin.show_default_flags) true else pair[2])){\n");
+                    array.writeMany("if(tmp&1==if(builtin.show_default_flags) 1 else pair[2]){\n");
                     array.writeMany("len+%=@intFromBool(len!=0)+%pair[0];\n");
                     array.writeMany("}\n");
                     shr_amt +%= shl_rem +% 1;
@@ -386,21 +399,27 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             return max;
         }
         fn isEnum(format: Format) bool {
-            return format.value.sets.len == 1 and
-                format.value.sets[0].tag == .E;
+            // Have one enum set.
+            return (format.value.sets.len == 1 and
+                format.value.sets[0].tag == .E) or
+                // Have two sets, and the sole member of the first set is 0
+                (format.value.sets.len == 2 and
+                format.value.sets[0].tag == .F and
+                format.value.sets[0].pairs.len == 1 and
+                format.value.sets[0].pairs[0].value == 0);
         }
         pub fn formatWrite(format: Format, array: *Array) void {
             array.writeMany("pub const ");
             array.writeMany(format.value.type_name);
             if (isEnum(format)) {
                 array.writeMany("=enum(" ++ @typeName(backing_integer) ++ "){\n");
-                writeEnumField(array, format.value.sets[0], 0);
+                writeEnumField(array, format.value.sets, 0);
             } else {
                 array.writeMany("=packed struct(" ++ @typeName(backing_integer) ++ "){\n");
                 format.formatWriteFields(array);
+                format.formatWriteFormatWriteFunction(array);
+                format.formatWriteFormatLengthFunction(array);
             }
-            format.formatWriteFormatWriteFunction(array);
-            format.formatWriteFormatLengthFunction(array);
             array.writeMany("};\n");
         }
         pub fn init(comptime Container: type, type_name: []const u8) Format {

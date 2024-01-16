@@ -234,17 +234,16 @@ pub const AF = struct {
     pub const NETLINK = 16;
     pub usingnamespace extra.AF;
 };
-pub const SOCK = struct {
+pub const Socket = struct {
     pub const STREAM = 1;
     pub const DGRAM = 2;
     pub const RAW = 3;
     pub const NONBLOCK = 2048;
     pub const CLOEXEC = 524288;
-    pub usingnamespace extra.SOCK;
+    pub usingnamespace extra.Socket;
 };
-pub const IPPROTO = struct {
+pub const Protocol = struct {
     pub const IP = 0;
-    pub const HOPOPTS = 0;
     pub const ICMP = 1;
     pub const IGMP = 2;
     pub const IPIP = 4;
@@ -279,9 +278,9 @@ pub const IPPROTO = struct {
     pub const RAW = 255;
     pub const MPTCP = 262;
     pub const MAX = 263;
-    pub usingnamespace extra.IPPROTO;
+    pub usingnamespace extra.Protocol;
 };
-pub const IPPORT = struct {
+pub const Port = struct {
     pub const ECHO = 7;
     pub const DISCARD = 9;
     pub const SYSTAT = 11;
@@ -305,7 +304,7 @@ pub const IPPORT = struct {
     pub const EFSSERVER = 520;
     pub const USERRESERVED = 5000;
     pub const RESERVED = 1024;
-    pub usingnamespace extra.IPPORT;
+    pub usingnamespace extra.Port;
 };
 pub const SignalAction = struct {
     pub const NOCLDSTOP = 1;
@@ -361,7 +360,7 @@ pub const Signal = struct {
     pub const SYS = 31;
     pub usingnamespace extra.Signal;
 };
-pub const TIOC = struct {
+pub const TerminalIOCtl = struct {
     pub const PKT_DATA = 0;
     pub const PKT_FLUSHREAD = 1;
     pub const PKT_FLUSHWRITE = 2;
@@ -410,7 +409,7 @@ pub const TIOC = struct {
     pub const SERSETMULTI = 21595;
     pub const MIWAIT = 21596;
     pub const GICOUNT = 21597;
-    pub usingnamespace extra.TIOC;
+    pub usingnamespace extra.TerminalIOCtl;
 };
 pub const FIO = struct {
     pub const NBIO = 21537;
@@ -449,7 +448,7 @@ pub const StatX = struct {
     pub const MNT_ID = 4096;
     pub usingnamespace extra.StatX;
 };
-pub const STATX_ATTR = struct {
+pub const StatXAttributes = struct {
     pub const COMPRESSED = 4;
     pub const IMMUTABLE = 16;
     pub const APPEND = 32;
@@ -459,7 +458,7 @@ pub const STATX_ATTR = struct {
     pub const MOUNT_ROOT = 8192;
     pub const VERITY = 1048576;
     pub const DAX = 2097152;
-    pub usingnamespace extra.STATX_ATTR;
+    pub usingnamespace extra.StatXAttributes;
 };
 pub const At = struct {
     pub const SYMLINK_NOFOLLOW = 256;
@@ -493,7 +492,7 @@ pub const DN = struct {
     pub const MULTISHOT = 2147483648;
     pub usingnamespace extra.DN;
 };
-pub const AUX = struct {
+pub const AuxiliaryVectorEntry = struct {
     pub const EXECFD = 2;
     pub const PHDR = 3;
     pub const PHENT = 4;
@@ -526,7 +525,7 @@ pub const AUX = struct {
     pub const L2_CACHEGEOMETRY = 45;
     pub const L3_CACHESIZE = 46;
     pub const L3_CACHEGEOMETRY = 47;
-    pub usingnamespace extra.AUX;
+    pub usingnamespace extra.AuxiliaryVectorEntry;
 };
 pub const FLOCK = struct {
     pub const RDLCK = 0;
