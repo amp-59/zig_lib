@@ -1,13 +1,13 @@
 //! Example build program. Use `zig_lib/support/switch_build_runner.sh` to
 //! switch build runner or use `zig build --build-runner zig_lib/build_runner.zig`.
 
-// This has to be public so that the zl build runner can use the build import.
+// This has to be public so that the zl.builder runner can use the build import.
 // The standard does not require this, as it is implicitly available as
 // a module and can import itself from anywhere.
 pub const zl = @import("zig_lib/zig_lib.zig");
 
 const spec = zl.spec;
-const build = zl.build;
+const build = zl.builder;
 
 pub const Builder: type = build.GenericBuilder(.{});
 

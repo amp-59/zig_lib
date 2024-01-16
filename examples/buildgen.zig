@@ -2,22 +2,22 @@ const zl = @import("../zig_lib.zig");
 
 pub usingnamespace zl.start;
 
-pub const Builder = zl.build.GenericBuilder(.{
+pub const Builder = zl.builder.GenericBuilder(.{
     .options = .{ .extensions_policy = .emergency },
 });
 const Node = Builder.Node;
 
-const BuildComamnd = zl.gen.StructEditor(.{}, zl.build.tasks.BuildCommand);
-const FormatComamnd = zl.gen.StructEditor(.{}, zl.build.tasks.FormatCommand);
-const ArchiveComamnd = zl.gen.StructEditor(.{}, zl.build.tasks.ArchiveCommand);
-const ObjcopyComamnd = zl.gen.StructEditor(.{}, zl.build.tasks.ObjcopyCommand);
+const BuildComamnd = zl.gen.StructEditor(.{}, zl.builder.tasks.BuildCommand);
+const FormatComamnd = zl.gen.StructEditor(.{}, zl.builder.tasks.FormatCommand);
+const ArchiveComamnd = zl.gen.StructEditor(.{}, zl.builder.tasks.ArchiveCommand);
+const ObjcopyComamnd = zl.gen.StructEditor(.{}, zl.builder.tasks.ObjcopyCommand);
 
-var build_cmd: zl.build.tasks.BuildCommand = .{ .kind = .exe };
-var format_cmd: zl.build.tasks.FormatCommand = .{};
-var archive_cmd: zl.build.tasks.ArchiveCommand = .{ .operation = .r };
-var objcopy_cmd: zl.build.tasks.ObjcopyCommand = .{};
+var build_cmd: zl.builder.tasks.BuildCommand = .{ .kind = .exe };
+var format_cmd: zl.builder.tasks.FormatCommand = .{};
+var archive_cmd: zl.builder.tasks.ArchiveCommand = .{ .operation = .r };
+var objcopy_cmd: zl.builder.tasks.ObjcopyCommand = .{};
 
-pub fn aboutGroupInternal(node: *Builder.Node, cmds: zl.build.tasks.Command) void {
+pub fn aboutGroupInternal(node: *Builder.Node, cmds: zl.builder.tasks.Command) void {
     var name_buf: [4096]u8 = undefined;
     if (node.flags.is_group) {
         var itr: Node.Iterator = Node.Iterator.init(node);
@@ -27,14 +27,14 @@ pub fn aboutGroupInternal(node: *Builder.Node, cmds: zl.build.tasks.Command) voi
                 var ptr: [*]u8 = &buf;
                 ptr[0..6].* = "const ".*;
                 ptr += 6;
-                ptr += sub_node.formatWriteNameFull('_', ptr);
+                ptr = Node.writeNameFull(ptr, sub_node, '_');
                 ptr[0] = '=';
                 ptr += 1;
                 if (node.flags.is_top) {
                     ptr[0..8].* = "toplevel".*;
                     ptr += 8;
                 } else {
-                    ptr += node.formatWriteNameFull('_', ptr);
+                    ptr = Node.writeNameFull(ptr, node, '_');
                 }
                 ptr[0..20].* = ".addGroup(allocator,".*;
                 ptr += 20;
@@ -52,14 +52,14 @@ pub fn aboutGroupInternal(node: *Builder.Node, cmds: zl.build.tasks.Command) voi
                         cmd_ptr += BuildComamnd.writeFieldEditDistance(&cmd_buf, "build_cmd", cmds.build, sub_node.tasks.cmd.build, true);
                         cmd_ptr[0..6].* = "const ".*;
                         cmd_ptr += 6;
-                        cmd_ptr += sub_node.formatWriteNameFull('_', cmd_ptr);
+                        cmd_ptr = Node.writeNameFull(cmd_ptr, sub_node, '_');
                         cmd_ptr[0] = '=';
                         cmd_ptr += 1;
                         if (node.flags.is_top) {
                             cmd_ptr[0..8].* = "toplevel".*;
                             cmd_ptr += 8;
                         } else {
-                            cmd_ptr += node.formatWriteNameFull('_', cmd_ptr);
+                            cmd_ptr = Node.writeNameFull(cmd_ptr, node, '_');
                         }
                         cmd_ptr[0..20].* = ".addBuild(allocator,".*;
                         cmd_ptr += 20;
@@ -71,7 +71,7 @@ pub fn aboutGroupInternal(node: *Builder.Node, cmds: zl.build.tasks.Command) voi
                             if (sub_node.getFilePath(fs)) |cp| {
                                 cmd_ptr[0] = ',';
                                 cmd_ptr += 1;
-                                cmd_ptr += cp.formatWriteBufDisplayLiteral(cmd_ptr);
+                                cmd_ptr = zl.file.CompoundPath.writeDisplay(cmd_ptr, cp.*);
                                 cmd_ptr[0..3].* = ");\n".*;
                                 cmd_ptr += 3;
                                 zl.debug.write(zl.fmt.slice(cmd_ptr, &cmd_buf));
@@ -103,7 +103,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     if (args.len < 5) {
         zl.proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    var allocator: zl.build.types.Allocator = zl.build.types.Allocator.fromArena(
+    var allocator: zl.builder.types.Allocator = zl.builder.types.Allocator.fromArena(
         Builder.AddressSpace.arena(Builder.specification.options.max_thread_count),
     );
     var address_space: Builder.AddressSpace = .{};
@@ -111,7 +111,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     const top: *Builder.Node = Builder.Node.init(&allocator, args, vars);
     top.sh.as.lock = &address_space;
     top.sh.ts.lock = &thread_space;
-    const cmds: zl.build.tasks.Command = .{
+    const cmds: zl.builder.tasks.Command = .{
         .build = &build_cmd,
         .format = &format_cmd,
         .archive = &archive_cmd,
