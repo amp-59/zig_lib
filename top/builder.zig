@@ -1894,23 +1894,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @alignOf(Extensions),
             ));
             mem.zero(Extensions, top.sh.extns);
-            top.sh.extns.stack_traces = zero.addBuild(allocator, trace_build_cmd, "stack_traces", "top/trace.zig");
+            top.sh.extns.stack_traces = zero.addBuild(allocator, trace_build_cmd, trace_build_mod, "stack_traces", "top/trace.zig");
             if (have_lazy) {
                 const nodes: *[7]*Node = @ptrCast(top.sh.extns);
-                const args: *[24][*:0]u8 = @ptrFromInt(allocator.allocateRaw(24 *% 8, 8));
-                for ([24][*:0]const u8{
+                const args: *[22][*:0]u8 = @ptrFromInt(allocator.allocateRaw(26 *% 8, 8));
+                for ([args.len][*:0]const u8{
                     top.zigExe(),         "build-lib",
                     "--cache-dir",        zero.cacheRoot(),
                     "--global-cache-dir", zero.globalCacheRoot(),
-                    "--main-mod-path",    zero.buildRoot(),
-                    "--mod",              "zl::" ++ builtin.lib_root ++ "/zig_lib.zig",
                     "-dynamic",           "--listen=-",
-                    "--deps",             "zl",
+                    "--dep",              "zl",
                     "-fentry=load",       "-z",
                     "defs",               "-fsingle-threaded",
                     "-fno-compiler-rt",   "-fno-stack-check",
                     "-fno-unwind-tables", "-fno-function-sections",
                     "-fstrip",            "-ODebug",
+                    "--mod",              "root",
                 }, 0..) |src, idx| {
                     args[idx] = @constCast(src);
                 }
@@ -2002,6 +2001,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     dir_fds.build_root,
                     builder_spec.options.config_dir,
                 ));
+                mem.zero(file.Status, &st[0]);
+                file.statusAt(stat, .{}, dir_fds.config_root, builder_spec.options.build_root_link, &st[0]);
+                if (st[0].mode.kind == .unknown) {
+                    file.symbolicLinkAt(link, node.buildRoot(), dir_fds.config_root, builder_spec.options.build_root_link);
+                }
                 node.extra.dir_fds = dir_fds;
             } else {
                 node.extra.dir_fds = node.lists.nodes[0].extra.dir_fds;
@@ -2015,8 +2019,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         pub fn initializeCommand(allocator: *types.Allocator, node: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
-            if (node.sh.mode != .Regen and node.flags.do_init) {
-                node.flags.do_init = false;
+            if (node.sh.mode != .Regen and node.flags.want_init) {
+                node.flags.want_init = false;
                 if (builder_spec.options.init_inherit_special and
                     node.lists.nodes[0].flags.is_special)
                 {
@@ -2042,9 +2046,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 }
                 if (node.tasks.tag == .build) {
-                    if (builder_spec.options.init_main_mod_path) {
-                        node.tasks.cmd.build.main_mod_path = node.buildRoot();
-                    }
                     if (builder_spec.options.init_cache_root) {
                         node.tasks.cmd.build.cache_root = node.cacheRoot();
                     }
@@ -2052,7 +2053,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         node.tasks.cmd.build.global_cache_root = node.globalCacheRoot();
                     }
                     if (builder_spec.options.add_comparison_report_to_elf) {
-                        if (node.tasks.cmd.build.format) |format| {
+                        if (node.lists.mods[0].format) |format| {
                             node.flags.want_binary_analysis = format == .elf;
                         }
                     }
@@ -2121,8 +2122,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return @ptrCast(ret[0..args_len]);
         }
         fn buildTaskArgs(allocator: *types.Allocator, node: *Node) ?[][*:0]u8 {
-            @setRuntimeSafety(false);
-            const paths: []types.Path = node.lists.paths[@as(usize, 1) +% @intFromBool(node.flags.have_config_root) ..];
+            @setRuntimeSafety(builtin.is_safe);
             if (!node.flags.have_task_data) {
                 return taskArgs(allocator, node, @ptrCast(&node.lists.cmd_args), @ptrCast(&node.lists.nodes[0].lists.cmd_args));
             }
@@ -2130,24 +2130,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             defer node.tasks.cmd.build = save;
             if (have_lazy) {
                 if (node.flags.is_primary) {
-                    node.sh.fp.build.formatParseArgs(node.tasks.cmd.build, allocator, node.lists.nodes[0].lists.cmd_args);
+                    node.sh.fp.build.formatParseArgs(node.tasks.cmd.build, allocator, node.lists.nodes[0].lists.cmd_args, node.lists.mods);
                 }
-                const cmd: *tasks.BuildCommand = node.tasks.cmd.build;
-                const max_len: usize = node.sh.fp.build.formatLength(cmd, node.zigExe(), paths);
+                const max_len: usize = node.sh.fp.build.length(node.tasks.cmd.build, node.zigExe(), node.lists.files, node.lists.paths, node.lists.mods);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = node.sh.fp.build.formatWriteBuf(cmd, node.zigExe(), paths, buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = node.sh.fp.build.write(buf, node.tasks.cmd.build, node.zigExe(), node.lists.files, node.lists.paths, node.lists.mods);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             } else {
                 if (node.flags.is_primary) {
-                    node.tasks.cmd.build.formatParseArgs(allocator, node.lists.nodes[0].lists.cmd_args);
+                    node.tasks.cmd.build.formatParseArgs(allocator, node.lists.nodes[0].lists.cmd_args, node.lists.mods);
                 }
-                const cmd: *tasks.BuildCommand = node.tasks.cmd.build;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), paths);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse
+                    tasks.BuildCommand.length(node.tasks.cmd.build, node.zigExe(), node.lists.files, node.lists.paths, node.lists.mods);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), paths, buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = tasks.BuildCommand.write(buf, node.tasks.cmd.build, node.zigExe(), node.lists.files, node.lists.paths, node.lists.mods);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             }
         }
         fn formatTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
@@ -2157,45 +2156,45 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     node.sh.fp.format.formatParseArgs(node.tasks.cmd.format, allocator, node.lists.nodes[0].lists.cmd_args);
                 }
                 const cmd: *tasks.FormatCommand = node.tasks.cmd.format;
-                const max_len: usize = node.sh.fp.format.formatLength(cmd, node.zigExe(), paths[0]);
+                const max_len: usize = node.sh.fp.format.length(cmd, node.zigExe(), paths[0]);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = node.sh.fp.format.formatWriteBuf(cmd, node.zigExe(), paths[0], buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = node.sh.fp.format.write(buf, cmd, node.zigExe(), paths[0]);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             } else {
                 if (node.flags.is_primary) {
                     node.tasks.cmd.format.formatParseArgs(allocator, node.lists.nodes[0].lists.cmd_args);
                 }
                 const cmd: *tasks.FormatCommand = node.tasks.cmd.format;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), paths[0]);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse tasks.FormatCommand.length(cmd, node.zigExe(), paths[0]);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), paths[0], buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = tasks.FormatCommand.write(buf, cmd, node.zigExe(), paths[0]);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             }
         }
         fn fetchTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             if (have_lazy) {
                 if (node.flags.is_primary) {
-                    node.sh.fp.fetch.fetchParseArgs(node.tasks.cmd.fetch, allocator, node.lists.nodes[0].lists.cmd_args);
+                    node.sh.fp.fetch.formatParseArgs(node.tasks.cmd.fetch, allocator, node.lists.nodes[0].lists.cmd_args);
                 }
-                const cmd: *tasks.fetchCommand = node.tasks.cmd.fetch;
-                const max_len: usize = node.sh.fp.fetch.fetchLength(cmd, node.zigExe(), paths[0]);
+                const cmd: *tasks.FetchCommand = node.tasks.cmd.fetch;
+                const max_len: usize = node.sh.fp.fetch.length(cmd, node.zigExe(), paths[1]);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = node.sh.fp.fetch.fetchWriteBuf(cmd, node.zigExe(), paths[0], buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = node.sh.fp.fetch.write(cmd, node.zigExe(), paths[1], buf);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             } else {
                 if (node.flags.is_primary) {
-                    node.tasks.cmd.fetch.fetchParseArgs(allocator, node.lists.nodes[0].lists.cmd_args);
+                    node.tasks.cmd.fetch.formatParseArgs(allocator, node.lists.nodes[0].lists.cmd_args);
                 }
-                const cmd: *tasks.fetchCommand = node.tasks.cmd.fetch;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.fetchLength(node.zigExe(), paths[0]);
+                const cmd: *tasks.FetchCommand = node.tasks.cmd.fetch;
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse tasks.FetchCommand.length(cmd, node.zigExe(), paths[1]);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.fetchWriteBuf(node.zigExe(), paths[0], buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = tasks.FetchCommand.write(cmd, buf, node.zigExe(), paths[1]);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             }
         }
         fn objcopyTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
@@ -2205,21 +2204,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     node.sh.fp.objcopy.formatParseArgs(node.tasks.cmd.objcopy, allocator, node.lists.nodes[0].lists.cmd_args);
                 }
                 const cmd: *tasks.ObjcopyCommand = node.tasks.cmd.objcopy;
-                const max_len: usize = node.sh.fp.objcopy.formatLength(cmd, node.zigExe(), paths[1]);
+                const max_len: usize = node.sh.fp.objcopy.length(cmd, node.zigExe(), paths[1]);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = node.sh.fp.objcopy.formatWriteBuf(cmd, node.zigExe(), paths[1], buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = node.sh.fp.objcopy.write(buf, cmd, node.zigExe(), paths[1]);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             } else {
                 if (node.flags.is_primary) {
                     node.tasks.cmd.objcopy.formatParseArgs(allocator, node.lists.nodes[0].lists.cmd_args);
                 }
                 const cmd: *tasks.ObjcopyCommand = node.tasks.cmd.objcopy;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), paths[1]);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse tasks.ObjcopyCommand.length(cmd, node.zigExe(), paths[1]);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), paths[1], buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = tasks.ObjcopyCommand.write(buf, cmd, node.zigExe(), paths[1]);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             }
         }
         fn archiveTaskArgs(allocator: *types.Allocator, node: *Node, paths: []types.Path) ?[][*:0]u8 {
@@ -2229,46 +2228,51 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     node.sh.fp.archive.formatParseArgs(node.tasks.cmd.archive, allocator, node.lists.nodes[0].lists.cmd_args);
                 }
                 const cmd: *tasks.ArchiveCommand = node.tasks.cmd.archive;
-                const max_len: usize = node.sh.fp.archive.formatLength(cmd, node.zigExe(), paths);
+                const max_len: usize = node.sh.fp.archive.length(cmd, node.zigExe(), paths);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = node.sh.fp.archive.formatWriteBuf(cmd, node.zigExe(), paths, buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: [*]u8 = node.sh.fp.archive.write(buf, cmd, node.zigExe(), paths);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             } else {
                 if (node.flags.is_primary) {
                     node.tasks.cmd.archive.formatParseArgs(allocator, node.lists.nodes[0].lists.cmd_args);
                 }
                 const cmd: *tasks.ArchiveCommand = node.tasks.cmd.archive;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), paths);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse tasks.ArchiveCommand.length(cmd, node.zigExe(), paths);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), paths, buf);
-                buf[len] = 0;
-                return makeArgPtrs(allocator, buf[0..len :0]);
+                const end: usize = tasks.ArchiveCommand.write(buf, cmd, node.zigExe(), paths);
+                end[0] = 0;
+                return makeArgPtrs(allocator, buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)]);
             }
+        }
+        fn saveCommandArgs(node: *Node, buf: []u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            const fd: usize = file.createAt(
+                create,
+                create_truncate_options,
+                node.configRootFd(),
+                builder_spec.options.last_cmd_name,
+                file.mode.regular,
+            );
+            fmt.replace(buf, ' ', 0);
+            file.write(write1, fd, buf);
+            fmt.replace(buf, 0, ' ');
+            file.close(close, fd);
         }
         fn executeRunCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             const args: [][*:0]u8 = taskArgs(allocator, node, @ptrCast(&node.lists.run_args), @ptrCast(&node.lists.nodes[0].lists.run_args));
             system(node, mem.terminate(args[0], 0), args, node.sh.vars);
-            return status(node.extra.execve_res);
+            return node.status(node.extra.execve_res);
         }
         fn executeBuildCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
             if (builder_spec.options.enable_builder_cache) {
                 if (node.flags.have_task_data and about.checkCache(allocator, node)) {
-                    return status(cache_hit);
+                    return node.status(cache_hit);
                 }
             }
             const dest_pathname: [:0]const u8 = node.lists.paths[0].concatenate(allocator);
-            if (node.flags.want_binary_analysis) {
-                const output: *file.Status = node.getFile(.{ .tag = .output_generic }).?.st;
-                file.statusAt(stat, .{}, file.cwd, dest_pathname, output);
-                if (node.extra.binary_analysis.before == null and
-                    output.mode.kind == .regular and output.size != 0)
-                {
-                    node.extra.binary_analysis.before = node.sh.dl.load(dest_pathname);
-                }
-            }
             if (buildTaskArgs(allocator, node)) |args| {
                 const in: file.Pipe = file.makePipe(pipe, pipe_options);
                 const out: file.Pipe = file.makePipe(pipe, pipe_options);
@@ -2281,7 +2285,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     node.sh.dl.load(dest_pathname).entry()(node.sh.fp);
                 }
             }
-            return status(node.extra.execve_res);
+            return node.status(node.extra.execve_res);
         }
         fn executeFormatCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
@@ -2289,7 +2293,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (formatTaskArgs(allocator, node, paths)) |args| {
                 system(node, mem.terminate(args[0], 0), args, node.sh.vars);
             }
-            return status(node.extra.execve_res);
+            return node.status(node.extra.execve_res);
         }
         fn executeFetchCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
@@ -2297,7 +2301,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (fetchTaskArgs(allocator, node, paths)) |args| {
                 system(node, mem.terminate(args[0], 0), args, node.sh.vars);
             }
-            return status(node.extra.execve_res);
+            return node.status(node.extra.execve_res);
         }
         fn executeArchiveCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
@@ -2305,7 +2309,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (archiveTaskArgs(allocator, node, paths)) |args| {
                 system(node, mem.terminate(args[0], 0), args, node.sh.vars);
             }
-            return status(node.extra.execve_res);
+            return node.status(node.extra.execve_res);
         }
         fn executeObjcopyCommand(allocator: *types.Allocator, node: *Node) bool {
             @setRuntimeSafety(builtin.is_safe);
@@ -2313,7 +2317,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (objcopyTaskArgs(allocator, node, paths)) |args| {
                 system(node, mem.terminate(args[0], 0), args, node.sh.vars);
             }
-            return status(node.extra.execve_res);
+            return node.status(node.extra.execve_res);
         }
         fn executeCommand(allocator: *types.Allocator, node: *Node, task: Task, arena_index: AddressSpace.Index) bool {
             @setRuntimeSafety(builtin.is_safe);
@@ -2339,8 +2343,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builtin.is_safe);
             if (node.flags.is_top or !node.flags.is_group) {
                 for (node.lists.depns) |dep| {
-                    if (node.lists.nodes[dep.node] == node and
-                        dep.on_task == task or dep.task != task)
+                    if (dep.task != task or
+                        (node.lists.nodes[dep.node] == node and dep.on_task == task))
                     {
                         continue;
                     }
@@ -2409,8 +2413,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             arena_index: AddressSpace.Index,
         ) bool {
             @setRuntimeSafety(builtin.is_safe);
-            if (node.flags.do_prepare) {
-                node.flags.do_prepare = false;
+            if (node.flags.want_prepare) {
+                node.flags.want_prepare = false;
             } else {
                 return false;
             }
@@ -2422,8 +2426,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     var tag: types.File.Tag = fs.key.tag;
                     if (tag.toggle(.{ .is_cached = true, .is_output = true })) {
                         node.addFile(allocator).* = .{
+                            .path_idx = ~@as(u32, 0),
                             .key = .{ .tag = tag },
                             .st = @ptrFromInt(allocator.allocateRaw(144, 8)),
+                            .fd = ~@as(u16, 0),
                         };
                     }
                 }
@@ -2446,7 +2452,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (builder_spec.options.add_stack_traces_to_debug_executables) {
                 if (node.flags.want_stack_traces) {
                     if (!node.hasDebugInfo()) {
-                        node.tasks.cmd.build.strip = false;
+                        node.lists.mods[0].strip = false;
                     }
                     node.dependOn(allocator, node.sh.extns.stack_traces);
                     if (node.flags.want_build_config) {
@@ -2455,18 +2461,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
             if (node.flags.want_build_config and !node.flags.have_config_root) {
-                const cfg_root_path: *types.Path = node.addPath(allocator, .input_zig);
-                cfg_root_path.addName(allocator).* = node.buildRoot();
-                cfg_root_path.addName(allocator).* = builder_spec.options.config_dir;
-                cfg_root_path.addName(allocator).* = configRootRelative(allocator, node);
+                const cfg_root_name: [:0]u8 = configRootRelative(allocator, node);
                 if (builder_spec.logging.show_task_update) {
                     about.aboutNode(node, null, .want_build_config, .add_file);
-                }
-                if (!node.flags.have_task_data) {
-                    node.addCmdArg(allocator).* = cfg_root_path.concatenate(allocator);
-                    if (builder_spec.logging.show_task_update) {
-                        about.aboutNode(node, null, .have_task_data, .add_cmd_arg);
-                    }
                 }
                 if (node.flags.want_build_context) {
                     node.addBuildContextConfigs(allocator);
@@ -2480,7 +2477,24 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         about.aboutNode(node, null, .want_define_decls, .add_define_decls);
                     }
                 }
-                createConfigRoot(allocator, node, cfg_root_path.names[2]);
+                const root_path: *types.Path = node.getFilePath(node.getFile(.{ .tag = .input_zig }).?).?;
+                debug.assert(root_path.names[0].ptr == node.buildRoot().ptr);
+                const root_name: [:0]const u8 = root_path.names[1];
+                root_path.names_len = 0;
+                root_path.addName(allocator).* = node.buildRoot();
+                root_path.addName(allocator).* = builder_spec.options.config_dir;
+                root_path.addName(allocator).* = cfg_root_name;
+                if (!node.flags.have_task_data) {
+                    node.addCmdArg(allocator).* = root_path.concatenate(allocator);
+                    node.addCmdArg(allocator).* = @constCast("--mod");
+                    node.addCmdArg(allocator).* = @constCast("zl");
+                    node.addCmdArg(allocator).* = @constCast(builtin.lib_root ++ "/zig_lib.zig");
+                    if (builder_spec.logging.show_task_update) {
+                        about.aboutNode(node, null, .have_task_data, .add_cmd_arg);
+                    }
+                }
+                createConfigRoot(allocator, node, cfg_root_name, root_name);
+                node.flags.have_config_root = true;
             }
             if (have_lazy) {
                 if (max_thread_count != 0 and builder_spec.options.eager_multi_threading or
@@ -2498,7 +2512,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                     if (node.flags.have_task_data) {
-                        if (node.tasks.tag == .build and !defined(node.sh.fp.build.formatWriteBuf)) {
+                        if (node.tasks.tag == .build and !defined(node.sh.fp.build.write)) {
                             if (prepareCommand(address_space, thread_space, allocator, node.sh.extns.build, task, arena_index)) {
                                 node.sh.top.dependOn(allocator, node.sh.extns.build);
                             }
@@ -2508,17 +2522,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                                 }
                             }
                         }
-                        if (node.tasks.tag == .format and !defined(node.sh.fp.format.formatWriteBuf)) {
+                        if (node.tasks.tag == .format and !defined(node.sh.fp.format.write)) {
                             if (prepareCommand(address_space, thread_space, allocator, node.sh.extns.format, task, arena_index)) {
                                 node.sh.top.dependOn(allocator, node.sh.extns.format);
                             }
                         }
-                        if (node.tasks.tag == .archive and !defined(node.sh.fp.archive.formatWriteBuf)) {
+                        if (node.tasks.tag == .archive and !defined(node.sh.fp.archive.write)) {
                             if (prepareCommand(address_space, thread_space, allocator, node.sh.extns.archive, task, arena_index)) {
                                 node.sh.top.dependOn(allocator, node.sh.extns.archive);
                             }
                         }
-                        if (node.tasks.tag == .objcopy and !defined(node.sh.fp.objcopy.formatWriteBuf)) {
+                        if (node.tasks.tag == .objcopy and !defined(node.sh.fp.objcopy.write)) {
                             if (prepareCommand(address_space, thread_space, allocator, node.sh.extns.objcopy, task, arena_index)) {
                                 node.sh.top.dependOn(allocator, node.sh.extns.objcopy);
                             }
@@ -2610,7 +2624,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn writeCacheBytes(node: *Node, name: [:0]const u8, buf: [*]u8, len: usize) void {
             @setRuntimeSafety(builtin.is_safe);
             const fd: usize = file.createAt(create, create_truncate_options, node.cacheRootFd(), name, file.mode.regular);
-            file.write(write, fd, buf[0..len]);
+            file.write(write1, fd, buf[0..len]);
             file.close(close, fd);
         }
         fn mapImmediate(allocator: *types.Allocator, node: *Node) void {
@@ -2674,17 +2688,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (have_size and
                     node.flags.want_binary_analysis)
                 {
-                    if (node.extra.binary_analysis.before == null and
-                        output.mode.kind == .regular and output.size != 0)
-                    {
+                    if (output.mode.kind == .regular and output.size != 0) {
                         node.extra.binary_analysis.before = node.sh.dl.load(output_pathname);
                     }
                     if (cached.mode.kind == .regular and cached.size != 0) {
                         node.extra.binary_analysis.after = node.sh.dl.load(cached_pathname);
                     }
                 }
-                file.unlink(unlink, output_pathname);
-                file.link(link, cached_pathname, output_pathname);
+                if (builder_spec.options.hard_link_output) {
+                    file.unlink(unlink, output_pathname);
+                    file.link(link, cached_pathname, output_pathname);
+                } else {
+                    const src_fd: usize = file.open(open, open_options, cached_pathname);
+                    const dest_fd: usize = file.create(create, create_truncate_options, output_pathname, file.mode.executable);
+                    file.copy(copy, dest_fd, null, src_fd, null, cached.size);
+                    file.close(close, src_fd);
+                    file.close(close, dest_fd);
+                }
             } else if (have_size and
                 node.flags.want_binary_analysis)
             {
@@ -2747,7 +2767,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             file.close(close, out.read);
         }
         fn serverLoop(allocator: *types.Allocator, node: *Node, dest_pathname: [:0]const u8, in: file.Pipe, out: file.Pipe) void {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             var hdr: Message.ServerHeader = undefined;
             var fd: [1]file.PollFd = .{.{ .fd = out.read, .expect = .{ .input = true } }};
             while (try meta.wrap(file.poll(poll, &fd, builder_spec.options.timeout_milliseconds))) {
@@ -2903,14 +2923,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn defined(fp: *const anyopaque) bool {
             return @intFromPtr(fp) >= load_prog_lb_addr and @intFromPtr(fp) < load_prog_up_addr;
         }
-        fn status(stats: Node.ExecveResults) bool {
-            if (stats.server == builder_spec.options.compiler_error_status or
-                stats.server == builder_spec.options.compiler_unexpected_status)
-            {
-                return false;
-            }
-            return stats.status == builder_spec.options.system_expected_status;
-        }
         pub fn processCommands(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
@@ -2965,7 +2977,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     want_trace = true;
                     continue;
                 }
-                if (group.find(allocator, name, builder_spec.options.namespace_separator.cmd)) |node| {
+                if (group.findMaybeShow(allocator, name, builder_spec.options.namespace_separator.cmd)) |node| {
                     const task: Task = maybe_task orelse node.tasks.tag;
                     if (node.flags.is_group) {
                         for (node.lists.nodes[1..]) |sub_node| {
@@ -3059,7 +3071,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (node.tasks.tag == .build) {
                     ptr[0..6].* = "const ".*;
                     ptr += 6;
-
                     ptr = Node.writeNameFull(ptr, node, '_');
                 }
                 ptr[0] = '\n';
@@ -3160,7 +3171,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         len +%= 4 +% node.lists.paths[0].lengthDisplay();
                     }
                     if (node.flags.have_task_data) {
-                        len +%= switch (node.tasks.cmd.build.mode orelse .Debug) {
+                        len +%= switch (node.lists.mods[0].mode orelse .Debug) {
                             .Debug => 17,
                             .ReleaseSmall => 24,
                             .ReleaseFast => 23,
@@ -3252,13 +3263,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         builder_spec.options.compiler_expected_status)
                     {
                         ptr[0..4].* = " => ".*;
-                        ptr += 4;
-                        ptr += node.lists.paths[0].formatWriteBufDisplay(ptr);
+                        ptr = file.CompoundPath.writeDisplay(ptr + 4, node.lists.paths[0]);
                     }
                     if (node.flags.have_task_data) {
                         ptr[0..2].* = ", ".*;
                         ptr += 2;
-                        switch (node.tasks.cmd.build.mode orelse .Debug) {
+                        switch (node.lists.mods[0].mode orelse .Debug) {
                             .Debug => {
                                 ptr[0..9].* = "Debug, un".*;
                                 ptr += 7;
@@ -3444,9 +3454,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (node.flags.want_binary_analysis) {
                     if (node.extra.binary_analysis.after) |*after| {
                         if (node.extra.binary_analysis.before) |*before| {
-                            len +%= DynamicLoader.compare.compareElfInfo(&node.extra.binary_analysis.cmp, allocator, before, after, width);
+                            len +%= DynamicLoader.Compare.compareElfInfo(&node.extra.binary_analysis.cmp, allocator, before, after, width);
                         } else {
-                            len +%= DynamicLoader.compare.lengthElf(&node.extra.binary_analysis.cmp, allocator, after, width);
+                            len +%= DynamicLoader.Compare.lengthElf(&node.extra.binary_analysis.cmp, allocator, after, width);
                         }
                     }
                 }
@@ -3469,9 +3479,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (node.flags.want_binary_analysis) {
                     if (node.extra.binary_analysis.after) |*after| {
                         if (node.extra.binary_analysis.before) |*before| {
-                            ptr = DynamicLoader.compare.writeElfDifferences(&node.extra.binary_analysis.cmp, ptr, before, after, width);
+                            ptr = DynamicLoader.Compare.writeElfDifferences(ptr, &node.extra.binary_analysis.cmp, before, after, width);
                         } else {
-                            ptr = DynamicLoader.compare.writeElf(&node.extra.binary_analysis.cmp, ptr, after, width);
+                            ptr = DynamicLoader.Compare.writeElf(ptr, &node.extra.binary_analysis.cmp, after, width);
                         }
                     }
                 }
@@ -3553,12 +3563,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn writeAndWalkColumnWidths(len1: usize, node: *const Node, width: *ColumnWidth, mode: ListMode) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var itr: Node.Iterator = Node.Iterator.init(node);
-                var buf: [4096:0]u8 = undefined;
                 if (mode == .full or mode == .files or node.flags.is_top) {
                     for (node.lists.files) |*fs| {
                         width.cols.file = @intCast(@max(width.cols.file, len1 +% 4 +% @tagName(fs.key.tag).len));
                         if (node.getFilePath(fs)) |path| {
-                            width.cols.path = @intCast(@max(width.cols.path, path.formatWriteBufDisplay(&buf)));
+                            width.cols.path = @intCast(@max(width.cols.path, file.CompoundPath.lengthDisplay(path.*)));
                         }
                     }
                 }
@@ -3605,8 +3614,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             ptr0 = fmt.strsetEqu(ptr0, ' ', width.cols.file -% (len1 +% 4 +% @tagName(fs.key.tag).len));
                             ptr0 = fmt.strcpyEqu(ptr0, @tagName(fs.key.tag));
                             ptr0[0..2].* = ": ".*;
-                            ptr0 += 2;
-                            ptr0 += path.formatWriteBufDisplay(ptr0);
+                            ptr0 = file.CompoundPath.writeDisplay(ptr0 + 2, path.*);
                         }
                         ptr0[0] = '\n';
                         ptr0 += 1;
@@ -3670,6 +3678,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 add_define_decls,
                 enable_flag,
                 disable_flag,
+                generate_modname,
                 simple: []const u8,
                 implicit_depn: *Node,
                 allocate: enum { binary_analysis, perf_events },
@@ -3683,10 +3692,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .Exec => exec_s,
                     .Regen => regen_s,
                 };
-                var buf: [4096]u8 = undefined;
+                var buf: [8192]u8 = undefined;
                 buf[0..about_s.len].* = about_s.*;
                 var ptr: [*]u8 = buf[about_s.len..];
-                ptr += node.formatWriteNameFull('.', ptr);
+                ptr = Node.writeNameFull(ptr, node, '.');
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
                 if (by_spec) |which| {
@@ -3727,7 +3736,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         ptr[0..2].* = "] ".*;
                         ptr += 2;
                         if (node.getFilePath(&files[idx])) |path| {
-                            ptr += path.formatWriteBufDisplay(ptr);
+                            ptr = file.CompoundPath.writeDisplay(ptr, path.*);
                         }
                     },
                     .add_builder_decl => {
@@ -3765,14 +3774,37 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     },
                     .implicit_depn => |extn| {
                         ptr[0..24].* = "execute extension task `".*;
-                        ptr += 24;
-                        ptr = fmt.strcpyEqu(ptr, extn.name);
+                        ptr = fmt.strcpyEqu(ptr + 24, extn.name);
                         ptr[0] = '`';
                         ptr += 1;
+                    },
+                    .generate_modname => {
+                        ptr[0..23].* = "generated module name '".*;
+                        ptr = fmt.strcpyEqu(ptr + 23, node.lists.mods[node.lists.mods.len -% 1].name.?);
+                        ptr[0..6].* = "' for ".*;
+                        ptr = file.CompoundPath.writeDisplay(ptr + 6, node.lists.paths[node.lists.paths.len -% 1]);
                     },
                 }
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+            }
+            fn invalidNameFault(name: []const u8, bad: u8) [*]u8 {
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                if (name.len > builder_spec.options.max_name_len) {
+                    ptr[0..32].* = "node name length above maximum (".*;
+                    ptr = fmt.Udsize.write(ptr + 32, builder_spec.options.max_name_len);
+                    ptr[0..4].* = "): '".*;
+                    ptr = fmt.strcpyEqu(ptr + 4, name);
+                    ptr[0] = '\'';
+                    @panic(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+                }
+                ptr[0..19].* = "invalid character '".*;
+                ptr = fmt.Esc.write(ptr + 19, bad);
+                ptr[0..11].* = "' in name '".*;
+                ptr = fmt.strcpyEqu(ptr + 11, name);
+                ptr[0].* = '\''.*;
+                @panic(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
             pub fn writeTaskDataConfig(node: *Node, buf: [*]u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -3787,15 +3819,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[0..31].* = "pub const dependencies=struct{\n".*;
                 var ptr: [*]u8 = buf + 31;
                 if (node.tasks.tag == .build) {
-                    if (node.tasks.cmd.build.dependencies) |dependencies| {
-                        for (dependencies) |dependency| {
+                    if (node.lists.mods[0].deps) |deps| {
+                        for (deps) |dep| {
                             ptr[0..12].* = "pub const @\"".*;
-                            ptr = fmt.strcpyEqu(ptr + 12, dependency.name);
+                            ptr = fmt.strcpyEqu(ptr + 12, dep.name);
                             ptr[0..16].* = "\":?[:0]const u8=".*;
                             ptr += 16;
-                            if (dependency.import.len != 0) {
+                            if (dep.import.len != 0) {
                                 ptr[0] = '"';
-                                ptr = fmt.strcpyEqu(ptr + 1, dependency.import);
+                                ptr = fmt.strcpyEqu(ptr + 1, dep.import);
                                 ptr[0..3].* = "\";\n".*;
                                 ptr += 3;
                             } else {
@@ -3806,15 +3838,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     ptr[0..29].* = "};\npub const modules=struct{\n".*;
                     ptr += 29;
-                    if (node.tasks.cmd.build.modules) |modules| {
-                        for (modules) |module| {
-                            ptr[0..12].* = "pub const @\"".*;
-                            ptr = fmt.strcpyEqu(ptr + 12, module.name);
-                            ptr[0..15].* = "\":[:0]const u8=".*;
-                            ptr[15] = '"';
-                            ptr = fmt.strcpyEqu(ptr + 16, module.path);
-                            ptr[0..3].* = "\";\n".*;
-                            ptr += 3;
+                    var fs_idx: usize = 0;
+                    mods: for (node.lists.mods[1..]) |mod| {
+                        for (node.lists.files[fs_idx..], fs_idx..) |fs, next| {
+                            if (fs.key.tag == .input_zig) {
+                                ptr[0..12].* = "pub const @\"".*;
+                                if (mod.name) |name| {
+                                    ptr = fmt.strcpyEqu(ptr + 12, name);
+                                } else {
+                                    ptr = Node.writeNameFull(ptr + 12, node, '_');
+                                }
+                                ptr[0..15].* = "\":[:0]const u8=".*;
+                                ptr = file.CompoundPath.writeLiteral(ptr + 15, node.lists.paths[fs.path_idx]);
+                                ptr[0..2].* = ";\n".*;
+                                ptr += 2;
+                                fs_idx = next +% 1;
+                                continue :mods;
+                            }
                         }
                     }
                 }
