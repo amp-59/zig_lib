@@ -6,7 +6,7 @@ const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const attr = @import("attr.zig");
 const types = @import("types.zig");
-const build = @import("../../build.zig");
+const build = @import("../../builder.zig");
 const config = @import("config.zig");
 const common = @import("common_impls.zig");
 pub usingnamespace @import("../../start.zig");
@@ -537,8 +537,8 @@ pub fn main() !void {
         .perf = "zl.builtin.root.Builder.PerfEvents",
         .generic = "zl.builtin.root.Builder.about",
     });
-    try writeLoadFromSources(array, FunctionPointers, "build", "zl.build.BuildCommand");
-    try writeLoadFromSources(array, FunctionPointers, "format", "zl.build.FormatCommand");
-    try writeLoadFromSources(array, FunctionPointers, "archive", "zl.build.ArchiveCommand");
-    try writeLoadFromSources(array, FunctionPointers, "objcopy", "zl.build.ObjcopyCommand");
+    try writeLoadFromSources(array, FunctionPointers, "build", "zl.builder.BuildCommand");
+    try writeLoadFromSources(array, FunctionPointers, "format", "zl.builder.FormatCommand");
+    try writeLoadFromSources(array, FunctionPointers, "archive", "zl.builder.ArchiveCommand");
+    try writeLoadFromSources(array, FunctionPointers, "objcopy", "zl.builder.ObjcopyCommand");
 }
