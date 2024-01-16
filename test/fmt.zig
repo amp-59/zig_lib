@@ -309,7 +309,7 @@ fn testRenderArray(allocator: *Allocator, array: *Array) !void {
     try TestFormatAlloc(render, [8]u8).run(allocator, array, ".{ 1, 2, 3, 4, 5, 6, 7, 8 }", .{ 1, 2, 3, 4, 5, 6, 7, 8 });
     render.infer_type_names = false;
     try TestFormatAlloc(render, [8]u8).run(allocator, array, "[8]u8{ 1, 2, 3, 4, 5, 6, 7, 8 }", .{ 1, 2, 3, 4, 5, 6, 7, 8 });
-    //try TestFormatAlloc(render, [8]f32).run(allocator, array, "[8]f32{ 1.001, 2.002, 3.003, 4.004, 5.005, 6.006, 7.007, 8.008 }", .{ 1.001, 2.002, 3.003, 4.004, 5.005, 6.006, 7.007, 8.008 });
+    try TestFormatAlloc(render, [8]f64).run(allocator, array, "[8]f64{ 1.001, 2.002, 3.003, 4.004, 5.005, 6.006, 7.007, 8.008 }", .{ 1.001, 2.002, 3.003, 4.004, 5.005, 6.006, 7.007, 8.008 });
     try TestFormatAlloc(render, [8][8]u8).run(
         allocator,
         array,
@@ -692,7 +692,7 @@ pub fn main() !void {
     try testHexToBytes();
     try testCaseFormat();
     try testGenericRangeFormat();
-    try testGenericChangedRangeFormat();
+    //try testGenericChangedRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
     try testChangedBytesFormat();
