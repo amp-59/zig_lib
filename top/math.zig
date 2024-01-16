@@ -346,6 +346,7 @@ pub fn overflowLimit(comptime Int: type, i: anytype) ?Int {
     return null;
 }
 pub fn order(a: anytype, b: anytype) Order {
+    @setRuntimeSafety(false);
     if (a == b) {
         return .eq;
     } else if (a < b) {
@@ -504,7 +505,6 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
 pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
     return @as(builtin.ShiftAmount(T), @intCast((@typeInfo(T).Int.bits -% 1) -% @clz(x)));
 }
-
 pub const float = struct {
     pub const F16 = packed union {
         bits: u16,
@@ -513,6 +513,7 @@ pub const float = struct {
             exponent: i5,
             negative: bool,
         },
+        pub const implicit_bit: u16 = 1 << 5;
         pub const bias = 15;
     };
     pub const F32 = packed union {
@@ -522,6 +523,7 @@ pub const float = struct {
             exponent: i8,
             negative: bool,
         },
+        pub const implicit_bit: u32 = 1 << 23;
         pub const bias = 127;
     };
     pub const F64 = packed union {
@@ -531,6 +533,7 @@ pub const float = struct {
             exponent: i11,
             negative: bool,
         },
+        pub const implicit_bit: u64 = 1 << 52;
         pub const bias = 1023;
     };
     pub const F80 = packed union {
@@ -541,6 +544,7 @@ pub const float = struct {
             exponent: i15,
             negative: bool,
         },
+        pub const implicit_bit: u64 = 0;
         pub const bias = 16383;
     };
     pub const F128 = packed union {
@@ -550,7 +554,8 @@ pub const float = struct {
             exponent: i15,
             negative: bool,
         },
-        pub const bias = 16383;
+        pub const implicit_bit: u128 = 1 << 112;
+        pub const bias: i16 = 16383;
     };
     pub fn Bits(comptime Float: type) type {
         switch (@typeInfo(Float).Float.bits) {
@@ -662,7 +667,7 @@ pub const float = struct {
             .signedness = .unsigned,
             .bits = @typeInfo(T).Float.bits,
         } });
-        const remove_sign = ~@as(TBits, 0) >> 1;
+        const remove_sign: TBits = ~@as(TBits, 0) >> 1;
         return @as(TBits, @bitCast(x)) & remove_sign == @as(TBits, @bitCast(inf(T)));
     }
     pub inline fn isPositiveInf(x: anytype) bool {
@@ -676,5 +681,141 @@ pub const float = struct {
             .signedness = .unsigned,
             .bits = @typeInfo(T).Float.bits,
         } }), @bitCast(value)) >> (@bitSizeOf(T) -% 1) != 0;
+    }
+    pub fn intFromFloat(comptime I: type, a: anytype) I {
+        @setRuntimeSafety(false);
+        const FF = Bits(@TypeOf(a));
+        const tmp: FF = @bitCast(a);
+        const exp_bits = @bitSizeOf(@TypeOf(tmp.elems.exponent));
+        const fractional_bits = @bitSizeOf(@TypeOf(tmp.elems.fraction));
+        const exp: i32 = (tmp.elems.exponent -% FF.bias);
+        if (exp < 0) {
+            return 0;
+        }
+        const max_exp: u32 = 1 << (exp_bits -% 1);
+        if (@typeInfo(I).Int.signedness == .unsigned) {
+            if (tmp.elems.negative) {
+                return extrema(I).min;
+            }
+            if (exp >= @min(@bitSizeOf(FF), max_exp)) {
+                return extrema(I).max;
+            }
+        } else {
+            if (exp >= @min(@bitSizeOf(FF) -% 1, max_exp)) {
+                if (tmp.elems.negative) {
+                    return extrema(I).min;
+                } else {
+                    return extrema(I).max;
+                }
+            }
+        }
+        const result: I = if (exp < fractional_bits)
+            @intCast(@as(@TypeOf(tmp.bits), tmp.elems.fraction | FF.implicit_bit) >>
+                @intCast(fractional_bits -% exp))
+        else
+            @intCast(@as(@TypeOf(tmp.bits), tmp.elems.fraction | FF.implicit_bit) <<
+                @intCast(exp -% fractional_bits));
+        if (@typeInfo(I).Int.signedness == .signed) {
+            if (tmp.elems.negative) {
+                return ~result +% 1;
+            }
+        }
+        return result;
+    }
+    pub fn Frexp(comptime T: type) type {
+        return struct {
+            significand: T,
+            exponent: i32,
+        };
+    }
+    pub fn frexp(x: anytype) Frexp(@TypeOf(x)) {
+        const T = @TypeOf(x);
+        return switch (T) {
+            f32 => frexp32(x),
+            f64 => frexp64(x),
+            f128 => frexp128(x),
+            else => @compileError("frexp not implemented for " ++ @typeName(T)),
+        };
+    }
+    fn frexp32(x: f32) Frexp(f32) {
+        var result: Frexp(f32) = undefined;
+        var y: u32 = @bitCast(x);
+        const e: i32 = @as(i32, @intCast(y >> 23)) & 0xFF;
+        if (e == 0) {
+            if (x != 0) {
+                result = frexp32(x * 0x1.0p64);
+                result.exponent -= 64;
+            } else {
+                result.significand = x;
+                result.exponent = 0;
+            }
+            return result;
+        } else if (e == 0xFF) {
+            result.significand = x;
+            result.exponent = undefined;
+            if (isInf(x)) {
+                result.exponent = 0;
+            }
+            return result;
+        }
+        result.exponent = e -% 0x7E;
+        y &= 0x807FFFFF;
+        y |= 0x3F000000;
+        result.significand = @bitCast(y);
+        return result;
+    }
+    fn frexp64(x: f64) Frexp(f64) {
+        var result: Frexp(f64) = undefined;
+        var y: u64 = @bitCast(x);
+        const e: i32 = @as(i32, @intCast(y >> 52)) & 0x7FF;
+        if (e == 0) {
+            if (x != 0) {
+                result = frexp64(x * 0x1.0p64);
+                result.exponent -= 64;
+            } else {
+                result.significand = x;
+                result.exponent = 0;
+            }
+            return result;
+        } else if (e == 0x7FF) {
+            result.significand = x;
+            result.exponent = undefined;
+            if (isInf(x)) {
+                result.exponent = 0;
+            }
+            return result;
+        }
+        result.exponent = e -% 0x3FE;
+        y &= 0x800FFFFFFFFFFFFF;
+        y |= 0x3FE0000000000000;
+        result.significand = @bitCast(y);
+        return result;
+    }
+    fn frexp128(x: f128) Frexp(f128) {
+        var result: Frexp(f128) = undefined;
+        var y: u128 = @bitCast(x);
+        const e: i32 = @as(i32, @intCast(y >> 112)) & 0x7FFF;
+        if (e == 0) {
+            if (x != 0) {
+                result = frexp128(x * 0x1.0p120);
+                result.exponent -= 120;
+            } else {
+                result.significand = x;
+                result.exponent = 0;
+            }
+            return result;
+        } else if (e == 0x7FFF) {
+            result.significand = x;
+            result.exponent = undefined;
+            if (isInf(x)) {
+                result.exponent = 0;
+            }
+            return result;
+        }
+        result.exponent = e -% 0x3FFE;
+        y &= 0x8000FFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+        y |= 0x3FFE0000000000000000000000000000;
+        result.significand = @bitCast(y);
+        return result;
     }
 };
