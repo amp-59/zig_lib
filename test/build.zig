@@ -8,7 +8,7 @@ const spec = zl.spec;
 const file = zl.file;
 const meta = zl.meta;
 const debug = zl.debug;
-const build = zl.build;
+const build = zl.builder;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
