@@ -2695,8 +2695,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         node.extra.binary_analysis.after = node.sh.dl.load(cached_pathname);
                     }
                 }
+                file.unlink(unlink, output_pathname);
                 if (builder_spec.options.hard_link_output) {
-                    file.unlink(unlink, output_pathname);
                     file.link(link, cached_pathname, output_pathname);
                 } else {
                     const src_fd: usize = file.open(open, open_options, cached_pathname);
