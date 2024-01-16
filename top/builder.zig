@@ -3953,21 +3953,35 @@ pub const Message = struct {
 };
 pub fn duplicate(allocator: *types.Allocator, values: []const u8) [:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
-    if (@intFromPtr(values.ptr) < 0x40000000) {
-        return @constCast(values.ptr)[0..values.len :0];
-    }
     const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(values.len +% 1, 1));
     @memcpy(buf, values);
     buf[values.len] = 0;
     return buf[0..values.len :0];
 }
-fn makeCommandName(allocator: *types.Allocator, root: [:0]const u8) [:0]const u8 {
+fn basename(pathname: [:0]u8) [:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
-    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(root.len +% 1, 1));
-    @memcpy(buf, root);
-    buf[root.len] = 0;
+    var idx: usize = pathname.len;
+    while (idx != 0) {
+        idx -%= 1;
+        if (pathname[idx] == '/') {
+            return pathname[idx +% 1 ..];
+        }
+    }
+    return pathname;
+}
+fn makeModuleName(allocator: *types.Allocator, root_pathname: [:0]const u8) [:0]const u8 {
+    @setRuntimeSafety(builtin.is_safe);
+    const name: [:0]u8 = duplicate(allocator, basename(@constCast(root_pathname)));
+    name[name.len -% 4] = 0;
+    return name[0 .. name.len -% 4 :0];
+}
+fn makeCommandName(allocator: *types.Allocator, root_pathname: [:0]const u8) [:0]const u8 {
+    @setRuntimeSafety(builtin.is_safe);
+    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(root_pathname.len +% 1, 1));
+    @memcpy(buf, root_pathname);
+    buf[root_pathname.len] = 0;
     var idx: usize = 0;
-    while (idx != root.len and buf[idx] != 0x2e) : (idx +%= 1) {
+    while (idx != root_pathname.len and buf[idx] != 0x2e) : (idx +%= 1) {
         if (buf[idx] == 0x2f) {
             buf[idx] = 0x2d;
         }
@@ -3990,7 +4004,7 @@ pub fn concatenate(allocator: *types.Allocator, values: []const []const u8) [:0]
     buf[len] = 0;
     return buf[0..len :0];
 }
-pub fn makeArgPtrs(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
+pub fn makeArgPtrs(allocator: *types.Allocator, args: []u8) [][*:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
     var count: usize = 0;
     for (args) |value| {
@@ -4077,6 +4091,7 @@ pub const spec = struct {
                 .close = .{ .abort = file.spec.close.errors.all },
                 .unlink = .{ .abort = file.spec.unlink.errors.all_noent },
                 .link = .{ .abort = file.spec.link.errors.all },
+                .copy = .{ .abort = file.spec.copy_file_range.errors.all },
                 .getcwd = .{ .abort = file.spec.getcwd.errors.all },
                 .perf_event_open = .{ .abort = perf.spec.perf_event_open.errors.all },
             };
