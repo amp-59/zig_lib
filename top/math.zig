@@ -515,6 +515,8 @@ pub const float = struct {
         },
         pub const implicit_bit: u16 = 1 << 5;
         pub const bias = 15;
+        pub const fractional_bits = 10;
+        pub const exponent_bits = 5;
     };
     pub const F32 = packed union {
         bits: u32,
@@ -525,6 +527,8 @@ pub const float = struct {
         },
         pub const implicit_bit: u32 = 1 << 23;
         pub const bias = 127;
+        pub const fractional_bits = 23;
+        pub const exponent_bits = 8;
     };
     pub const F64 = packed union {
         bits: u64,
@@ -535,6 +539,8 @@ pub const float = struct {
         },
         pub const implicit_bit: u64 = 1 << 52;
         pub const bias = 1023;
+        pub const fractional_bits = 52;
+        pub const exponent_bits = 11;
     };
     pub const F80 = packed union {
         bits: u80,
@@ -546,6 +552,8 @@ pub const float = struct {
         },
         pub const implicit_bit: u64 = 0;
         pub const bias = 16383;
+        pub const fractional_bits = 63;
+        pub const exponent_bits = 15;
     };
     pub const F128 = packed union {
         bits: u128,
@@ -555,7 +563,9 @@ pub const float = struct {
             negative: bool,
         },
         pub const implicit_bit: u128 = 1 << 112;
-        pub const bias: i16 = 16383;
+        pub const bias = 16383;
+        pub const fractional_bits = 112;
+        pub const exponent_bits = 15;
     };
     pub fn Bits(comptime Float: type) type {
         switch (@typeInfo(Float).Float.bits) {
@@ -685,16 +695,14 @@ pub const float = struct {
     pub fn intFromFloat(comptime I: type, a: anytype) I {
         @setRuntimeSafety(false);
         const FF = Bits(@TypeOf(a));
-        const tmp: FF = @bitCast(a);
-        const exp_bits = @bitSizeOf(@TypeOf(tmp.elems.exponent));
-        const fractional_bits = @bitSizeOf(@TypeOf(tmp.elems.fraction));
-        const exp: i32 = (tmp.elems.exponent -% FF.bias);
+        const rep: FF = @bitCast(a);
+        const exp: i32 = rep.elems.exponent -% FF.bias;
         if (exp < 0) {
             return 0;
         }
-        const max_exp: u32 = 1 << (exp_bits -% 1);
+        const max_exp: u32 = 1 << (FF.exponent_bits -% 1);
         if (@typeInfo(I).Int.signedness == .unsigned) {
-            if (tmp.elems.negative) {
+            if (rep.elems.negative) {
                 return extrema(I).min;
             }
             if (exp >= @min(@bitSizeOf(FF), max_exp)) {
@@ -702,21 +710,21 @@ pub const float = struct {
             }
         } else {
             if (exp >= @min(@bitSizeOf(FF) -% 1, max_exp)) {
-                if (tmp.elems.negative) {
+                if (rep.elems.negative) {
                     return extrema(I).min;
                 } else {
                     return extrema(I).max;
                 }
             }
         }
-        const result: I = if (exp < fractional_bits)
-            @intCast(@as(@TypeOf(tmp.bits), tmp.elems.fraction | FF.implicit_bit) >>
-                @intCast(fractional_bits -% exp))
+        const result: I = if (exp < FF.fractional_bits)
+            @intCast(@as(@TypeOf(rep.bits), rep.elems.fraction | FF.implicit_bit) >>
+                @intCast(FF.fractional_bits -% exp))
         else
-            @intCast(@as(@TypeOf(tmp.bits), tmp.elems.fraction | FF.implicit_bit) <<
-                @intCast(exp -% fractional_bits));
+            @intCast(@as(@TypeOf(rep.bits), rep.elems.fraction | FF.implicit_bit) <<
+                @intCast(exp -% FF.fractional_bits));
         if (@typeInfo(I).Int.signedness == .signed) {
-            if (tmp.elems.negative) {
+            if (rep.elems.negative) {
                 return ~result +% 1;
             }
         }
