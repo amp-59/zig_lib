@@ -1191,7 +1191,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             file.makeDirAt(mkdir, node.buildRootFd(), pathname, file.mode.directory);
                         }
                         fs.fd = file.openAt(open, dir_options, node.buildRootFd(), pathname);
-                        debug.assert(fs.fd != ~@as(u16, 0));
                     },
                     .bin_output_root,
                     .lib_output_root,
