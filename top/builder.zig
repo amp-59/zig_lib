@@ -1086,7 +1086,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ));
                 len = 0;
                 while (idx != files.len) : (idx +%= 1) {
-                    if (@intFromEnum(files[idx].tag) & key.id != 0) {
+                    if (files[idx].key.id & key.id != 0) {
                         buf[len] = files[idx];
                         len +%= 1;
                     }
@@ -1107,7 +1107,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ));
                 len = 0;
                 while (idx != files.len) : (idx +%= 1) {
-                    if (@intFromEnum(files[idx].key.tag) & key.id != 0) {
+                    if (files[idx].key.id & key.id != 0) {
                         if (getFilePath(node, @ptrCast(files.ptr + idx))) |path| {
                             buf[len] = path.*;
                             len +%= 1;
@@ -1143,8 +1143,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn getModule(node: *const Node, name: [:0]const u8) ?*tasks.BuildCommand.Module {
                 for (node.lists.mods) |mod| {
-                    if (mem.testEqualString(name, mod.name)) {
-                        return mod;
+                    if (mod.name) |mod_name| {
+                        if (mem.testEqualString(name, mod_name)) {
+                            return mod;
+                        }
                     }
                 }
                 return null;
