@@ -6,53 +6,41 @@ const zl = blk: {
     if (@hasDecl(root, "zig_lib")) {
         break :blk root.zig_lib;
     }
-    if (@hasDecl(root, "srg")) {
-        break :blk root.srg;
-    }
-    if (@hasDecl(root, "top")) {
-        break :blk root.top;
-    }
 };
-
-const mem = zl.mem;
-const sys = zl.sys;
-const proc = zl.proc;
-const file = zl.file;
-const meta = zl.meta;
-const debug = zl.debug;
-const build = zl.build;
-const builtin = zl.builtin;
+pub usingnamespace zl.start;
+pub const is_safe: bool = enable_debugging;
+pub const runtime_assertions: bool = enable_debugging;
+pub const want_stack_traces: bool = enable_debugging;
+pub const have_stack_traces: bool = false;
 pub const AbsoluteState = struct {
     home: [:0]u8,
     cwd: [:0]u8,
     proj: [:0]u8,
     pid: u16,
 };
-pub usingnamespace zl.start;
+pub const debug_write_fd = 2;
+pub const Builder =
+    if (@hasDecl(root, "Builder")) root.Builder else zl.builder.GenericBuilder(.{});
 pub const message_style: [:0]const u8 =
-    if (@hasDecl(root, "message_style"))
-    root.message_style
-else
-    "\x1b[3m";
-pub const enable_debugging: bool = false;
-pub const logging_override: debug.Logging.Override =
-    if (@hasDecl(root, "logging_override")) root.logging_override else .{
+    if (@hasDecl(root, "message_style")) root.message_style else "\x1b[2m";
+pub const enable_debugging: bool = true;
+pub const trace: zl.debug.Trace =
+    if (@hasDecl(root, "trace")) root.trace else zl.builtin.zl_trace;
+pub const logging_override: zl.debug.Logging.Override = .{
     .Attempt = enable_debugging,
     .Success = enable_debugging,
     .Acquire = enable_debugging,
     .Release = enable_debugging,
-    .Error = enable_debugging,
-    .Fault = enable_debugging,
+    .Error = true,
+    .Fault = true,
 };
-pub const exec_mode = .Run;
-pub const want_stack_traces: bool = enable_debugging;
-pub const logging_default: debug.Logging.Default = .{
+pub const logging_default: zl.debug.Logging.Default = .{
     .Attempt = enable_debugging,
     .Success = enable_debugging,
     .Acquire = enable_debugging,
     .Release = enable_debugging,
-    .Error = enable_debugging,
-    .Fault = enable_debugging,
+    .Error = true,
+    .Fault = true,
 };
 pub const signal_handlers = .{
     .IllegalInstruction = enable_debugging,
@@ -61,13 +49,6 @@ pub const signal_handlers = .{
     .Trap = enable_debugging,
     .SegmentationFault = enable_debugging,
 };
-pub const trace: debug.Trace = .{
-    .Error = enable_debugging,
-    .Fault = enable_debugging,
-    .Signal = enable_debugging,
-    .options = .{},
-};
-pub const Builder = build.GenericBuilder(.{});
 pub const BuildConfig = struct {
     packages: []Pkg,
     include_dirs: []const []const u8,
@@ -83,7 +64,7 @@ const tab = .{
     .include_dirs = "\"include_dirs\":",
 };
 fn jsonLength(cfg: *const BuildConfig) usize {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(zl.builtin.is_safe);
     var len: usize = 1 +% tab.packages.len;
     if (cfg.packages.len == 0) {
         len +%= 3;
@@ -113,7 +94,7 @@ fn jsonLength(cfg: *const BuildConfig) usize {
     return len +% 1;
 }
 fn writePackage(pkg: BuildConfig.Pkg, buf: [*]u8) usize {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(zl.builtin.is_safe);
     var ptr: [*]u8 = buf;
     ptr[0] = '{';
     ptr += 1;
@@ -137,7 +118,7 @@ fn writePackage(pkg: BuildConfig.Pkg, buf: [*]u8) usize {
     return @intFromPtr(ptr - @intFromPtr(buf)) +% 2;
 }
 fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(zl.builtin.is_safe);
     var ptr: [*]u8 = buf;
     ptr[0] = '{';
     ptr += 1;
@@ -188,7 +169,7 @@ fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
     return @intFromPtr(ptr - @intFromPtr(buf)) +% 1;
 }
 fn lengthModules(node: *Builder.Node) usize {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(zl.builtin.is_safe);
     var itr: Builder.Node.Iterator = Builder.Node.Iterator.init(node);
     var len: usize = 0;
     while (itr.next()) |sub_node| {
@@ -197,26 +178,30 @@ fn lengthModules(node: *Builder.Node) usize {
         } else if (sub_node.tasks.tag == .build and
             sub_node.flags.have_task_data)
         {
-            if (sub_node.tasks.cmd.build.modules) |mods| {
-                len +%= mods.len;
+            if (sub_node.lists.mods.len != 1) {
+                len +%= sub_node.lists.mods.len;
             }
         }
     }
     return len;
 }
-fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Builder.Node) usize {
-    @setRuntimeSafety(builtin.is_safe);
+fn writeModulesBuf(allocator: *zl.builder.types.Allocator, pkgs: [*]BuildConfig.Pkg, node: *Builder.Node) usize {
+    @setRuntimeSafety(zl.builtin.is_safe);
     var itr: Builder.Node.Iterator = Builder.Node.Iterator.init(node);
     var len: usize = 0;
     while (itr.next()) |sub_node| {
         if (sub_node.flags.is_group) {
-            len +%= writeModulesBuf(pkgs, sub_node);
+            len +%= writeModulesBuf(allocator, pkgs, sub_node);
         } else if (sub_node.tasks.tag == .build and
             sub_node.flags.have_task_data)
         {
-            if (sub_node.tasks.cmd.build.modules) |mods| {
-                for (mods) |mod| {
-                    pkgs[len] = .{ .name = mod.name, .path = mod.path };
+            const paths = sub_node.modulePathLists(allocator);
+            if (sub_node.lists.mods.len != 1) {
+                for (sub_node.lists.mods[1..], paths[1..]) |mod, path| {
+                    pkgs[len] = .{
+                        .name = mod.name orelse "anonymous",
+                        .path = path.concatenate(allocator)[node.buildRoot().len +% 1 ..],
+                    };
                     len +%= 1;
                 }
             }
@@ -225,24 +210,33 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Builder.Node) usize {
     return len;
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
-    var allocator: build.Allocator = build.Allocator.fromArena(
-        Builder.AddressSpace.arena(Builder.max_thread_count),
-    );
-    if (args.len < 5) {
-        zl.proc.exitError(error.MissingEnvironmentPaths, 2);
-    }
-    const top: *Builder.Node = Builder.Node.init(&allocator, "toplevel", args, vars);
-    root.buildMain(&allocator, top);
+    @setRuntimeSafety(false);
+    const arena = Builder.AddressSpace.arena(Builder.specification.options.max_thread_count);
+    zl.mem.map(.{
+        .errors = .{},
+        .logging = .{ .Acquire = false },
+    }, .{}, .{}, arena.lb_addr, 4096);
+    var allocator: zl.builder.types.Allocator = .{
+        .start = arena.lb_addr,
+        .next = arena.lb_addr,
+        .finish = arena.lb_addr +% 4096,
+    };
+    var address_space: Builder.AddressSpace = .{};
+    var thread_space: Builder.ThreadSpace = .{};
+    const top: *Builder.Node = Builder.Node.init(&allocator, args, vars);
+    top.sh.as.lock = &address_space;
+    top.sh.ts.lock = &thread_space;
+    try zl.meta.wrap(root.buildMain(&allocator, top));
     const pkgs_len: usize = lengthModules(top);
-    const pkgs: []BuildConfig.Pkg = try meta.wrap(
+    const pkgs: []BuildConfig.Pkg = try zl.meta.wrap(
         allocator.allocate(BuildConfig.Pkg, pkgs_len),
     );
     const cfg: BuildConfig = .{
-        .packages = pkgs[0..writeModulesBuf(pkgs.ptr, top)],
+        .packages = pkgs[0..writeModulesBuf(&allocator, pkgs.ptr, top)],
         .include_dirs = &.{},
     };
-    const buf: []u8 = try meta.wrap(
+    const buf: []u8 = try zl.meta.wrap(
         allocator.allocate(u8, jsonLength(&cfg)),
     );
-    file.write(.{ .errors = .{} }, 1, buf[0..jsonWriteBuf(&cfg, buf.ptr)]);
+    zl.file.write(.{ .errors = .{} }, 1, buf[0..jsonWriteBuf(&cfg, buf.ptr)]);
 }
