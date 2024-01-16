@@ -100,9 +100,10 @@ const Tag = union(enum) {
         repeatable_formatter,
         repeatable_task: *const Attributes,
     },
-    literal: enum {
+    literal: union(enum) {
         string,
         integer,
+        repeatable_task: *const Attributes,
     },
 };
 pub const ParamSpec = struct {
