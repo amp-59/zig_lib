@@ -844,15 +844,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// (Internal) Whether to execute `autoLoad` functions on
                 /// completion of build tasks.
                 is_dynamic_extension: bool = false,
-                /// (Internal) Whether a node will be initialised before being
-                /// returned to `buildMain`.
-                do_init: bool = true,
-                /// (Internal) Whether a node will be prepared before executing
-                /// from command line.
-                do_prepare: bool = true,
-                /// (Internal) Whether a node will be printed on request to
-                /// regenerate the build program.
-                do_regenerate: bool = true,
                 /// (Internal) Whether a node stores a valid pointer to a task
                 /// struct matching its task type. Raw commands set this flag
                 /// to false.
@@ -860,6 +851,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// (Internal) Whether the configuration root source for a
                 /// build task exists.
                 have_config_root: bool = false,
+                /// Whether a node will be initialised before being
+                /// returned to `buildMain`.
+                want_init: bool = true,
+                /// Whether a node will be prepared before executing
+                /// from command line.
+                want_prepare: bool = true,
+                /// Whether a node will be printed on request to
+                /// regenerate the build program.
+                want_regenerate: bool = true,
                 /// Whether to create a configuration root. Enables usage of
                 /// configuration constants.
                 want_build_config: bool = false,
