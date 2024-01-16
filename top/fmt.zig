@@ -1680,6 +1680,12 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             new_lower: NewIntFormat.Int,
             new_upper: NewIntFormat.Int,
         ) [*]u8 {
+            if (old_lower > old_upper) {
+                return write(buf, old_upper, old_lower, new_lower, new_upper);
+            }
+            if (new_lower > new_upper) {
+                return write(buf, old_lower, old_upper, new_upper, new_lower);
+            }
             var ol_buf: [OldIntFormat.max_len.?]u8 = undefined;
             var ou_buf: [OldIntFormat.max_len.?]u8 = undefined;
             var nl_buf: [NewIntFormat.max_len.?]u8 = undefined;
@@ -1738,6 +1744,12 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             new_lower: NewIntFormat.Int,
             new_upper: NewIntFormat.Int,
         ) usize {
+            if (old_lower > old_upper) {
+                return length(old_upper, old_lower, new_lower, new_upper);
+            }
+            if (new_lower > new_upper) {
+                return length(old_upper, old_lower, new_upper, new_lower);
+            }
             var ol_buf: [OldIntFormat.max_len.?]u8 = undefined;
             var ou_buf: [OldIntFormat.max_len.?]u8 = undefined;
             var nl_buf: [NewIntFormat.max_len.?]u8 = undefined;
