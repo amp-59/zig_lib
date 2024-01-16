@@ -1167,6 +1167,46 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return paths[0..paths_len];
             }
+            fn addDirectory(node: *Node, allocator: *types.Allocator, tag: types.File.Tag, pathname: [:0]const u8) void {
+                @setRuntimeSafety(builtin.is_safe);
+                const paths: []types.Path = node.lists.paths;
+                const fs: *types.File = node.addFile(allocator);
+                fs.* = .{
+                    .path_idx = @intCast(paths.len),
+                    .key = .{ .tag = tag },
+                    .st = @ptrFromInt(8),
+                    .fd = ~@as(u16, 0),
+                };
+                if (!fs.key.flags.is_cached) {
+                    fs.st = @ptrFromInt(allocator.allocateRaw(144, 8));
+                }
+                switch (tag) {
+                    .cache_root,
+                    .global_cache_root,
+                    .output_root,
+                    .config_root,
+                    => {
+                        file.statusAt(stat, .{}, node.buildRootFd(), pathname, fs.st);
+                        if (fs.st.mode.kind == .unknown) {
+                            file.makeDirAt(mkdir, node.buildRootFd(), pathname, file.mode.directory);
+                        }
+                        fs.fd = file.openAt(open, dir_options, node.buildRootFd(), pathname);
+                        debug.assert(fs.fd != ~@as(u16, 0));
+                    },
+                    .bin_output_root,
+                    .lib_output_root,
+                    .aux_output_root,
+                    => {
+                        file.statusAt(stat, .{}, node.outputRootFd(), pathname, fs.st);
+                        if (fs.st.mode.kind == .unknown) {
+                            file.makeDirAt(mkdir, node.outputRootFd(), pathname, file.mode.directory);
+                        }
+                    },
+                    else => @panic("unknown directory"),
+                }
+                defer node.lists.paths.len +%= 1;
+                return @ptrFromInt(allocator.addGeneric(@sizeOf(types.Path), @alignOf(types.Path), 2, @ptrCast(&node.lists.paths.ptr), &node.lists.paths_max_len, node.lists.paths.len));
+            }
             fn addPath(node: *Node, allocator: *types.Allocator, tag: types.File.Tag) *types.Path {
                 @setRuntimeSafety(builtin.is_safe);
                 const paths: []types.Path = node.lists.paths;
