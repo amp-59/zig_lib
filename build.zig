@@ -1,6 +1,9 @@
 pub const zl = @import("zig_lib.zig");
 pub const Builder = zl.builder.GenericBuilder(.{
-    .options = .{ .extensions_policy = .emergency },
+    .options = .{
+        .extensions_policy = .emergency,
+        .add_stack_traces_to_debug_executables = false,
+    },
 });
 const build_cmd = .{
     .kind = .exe,
@@ -18,7 +21,7 @@ const build_mod = .{
     .single_threaded = true,
     .valgrind = false,
     .unwind_tables = false,
-    .strip = true,
+    .strip = false,
 };
 const format_cmd = .{
     .ast_check = true,
