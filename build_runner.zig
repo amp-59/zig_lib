@@ -17,7 +17,7 @@ pub const AbsoluteState = struct {
     pid: u16,
 };
 pub const Builder =
-    if (@hasDecl(root, "Builder")) root.Builder else zl.build.GenericBuilder(.{});
+    if (@hasDecl(root, "Builder")) root.Builder else zl.builder.GenericBuilder(.{});
 pub const message_style: [:0]const u8 =
     if (@hasDecl(root, "message_style")) root.message_style else "\x1b[2m";
 pub const enable_debugging: bool =
@@ -30,7 +30,7 @@ pub const logging_override: zl.debug.Logging.Override = .{
     .Acquire = enable_debugging,
     .Release = enable_debugging,
     .Error = true,
-    .Fault = enable_debugging,
+    .Fault = true,
 };
 pub const logging_default: zl.debug.Logging.Default = .{
     .Attempt = enable_debugging,
@@ -38,7 +38,7 @@ pub const logging_default: zl.debug.Logging.Default = .{
     .Acquire = enable_debugging,
     .Release = enable_debugging,
     .Error = true,
-    .Fault = enable_debugging,
+    .Fault = true,
 };
 pub const signal_handlers = .{
     .IllegalInstruction = enable_debugging,
@@ -57,7 +57,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .errors = .{},
         .logging = .{ .Acquire = false },
     }, .{}, .{}, arena.lb_addr, 4096);
-    var allocator: zl.build.types.Allocator = .{
+    var allocator: zl.builder.types.Allocator = .{
         .start = arena.lb_addr,
         .next = arena.lb_addr,
         .finish = arena.lb_addr +% 4096,
