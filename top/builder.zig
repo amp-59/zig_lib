@@ -1651,11 +1651,31 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len +%= @intFromBool(len != 0) +% node.name.len;
                 return len;
             }
+            fn checkName(name: []const u8, sep: u8) void {
+                @setRuntimeSafety(builtin.is_safe);
+                if (name.len > builder_spec.options.max_name_len) {
+                    about.invalidNameFault(name, sep);
+                }
+                const bad: u8 = for (name) |byte| {
+                    if (byte == sep) {
+                        break byte;
+                    }
+                    switch (byte) {
+                        '@', '0'...'9', 'a'...'z', 'A'...'Z', '_' => {},
+                        else => {
+                            break byte;
+                        },
+                    }
+                } else {
+                    return;
+                };
+                about.invalidNameFault(name, bad);
+            }
             pub fn writeNameRelative(buf: [*]u8, node: *const Node, group: *const Node, sep: u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
                 if (node != group) {
-                    ptr = writeNameRelative(ptr, node.lists.nodes[0], sep);
+                    ptr = writeNameRelative(ptr, node, node.lists.nodes[0], sep);
                     if (ptr != buf) {
                         ptr[0] = sep;
                         ptr += 1;
@@ -1673,53 +1693,44 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            pub fn formatWriteConfigRoot(node: *Node, buf: [*]u8) usize {
+            pub fn writeConfigRoot(buf: [*]u8, node: *Node, src_root_name: [:0]const u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                const paths: []types.Path = node.lists.paths;
                 var ptr: [*]u8 = buf;
                 if (node.flags.want_absolute_state_decl) {
-                    ptr[0..99].* =
-                        \\pub const AbsoluteState=struct{
-                        \\home:[:0]const u8,
-                        \\cwd:[:0]const u8,
-                        \\proj:[:0]const u8,
-                        \\pid:u16,};
-                        \\
-                    .*;
-                    ptr += 99;
+                    ptr[0..32].* = "pub const AbsoluteState=struct{\n".*;
+                    ptr[32..50].* = "home:[:0]const u8,".*;
+                    ptr[50..67].* = "cwd:[:0]const u8,".*;
+                    ptr[67..85].* = "prog:[:0]const u8,".*;
+                    ptr[85..93].* = "pid:u16,".*;
+                    ptr[93..97].* = "\n};\n".*;
+                    ptr += 97;
                 }
                 if (have_lazy and node.flags.want_builder_decl) {
-                    ptr[0..24].* =
-                        \\const zl=@import("zl");
-                        \\
-                    .*;
-                    ptr += 24;
-                    ptr = fmt.strcpyEqu(ptr, "pub const Builder=zl.build.GenericBuilder(.{.options=");
-                    ptr = fmt.strcpyEqu(ptr, options_s);
-                    ptr -= 1;
+                    ptr[0..24].* = "const zl=@import(\"zl\");\n".*;
+                    ptr = fmt.strcpyEqu(ptr + 24, "pub const Builder=zl.builder.GenericBuilder(.{.options=");
+                    ptr = fmt.strcpyEqu(ptr, options_s) - 1;
                     ptr[0..2].* = ",}".*;
-                    ptr += 2;
-                    ptr = fmt.strcpyEqu(ptr, ",.logging=");
-                    ptr = fmt.strcpyEqu(ptr, logging_s);
-                    ptr -= 1;
+                    ptr = fmt.strcpyEqu(ptr + 2, ",.logging=");
+                    ptr = fmt.strcpyEqu(ptr, logging_s) - 1;
                     ptr[0..2].* = ",}".*;
-                    ptr += 2;
-                    ptr = fmt.strcpyEqu(ptr, ",.errors=zl.build.spec.errors.kill(),});\n");
+                    ptr = fmt.strcpyEqu(ptr + 2, ",.errors=zl.builder.spec.errors.kill(),});\n");
                 }
-                ptr[0..31].* = "pub usingnamespace @import(\"../".*;
-                ptr += 31;
-                ptr = fmt.strcpyEqu(ptr, paths[1].names[1]);
+                ptr[0..39].* = "pub usingnamespace @import(\"build_root/".*;
+                ptr = fmt.strcpyEqu(ptr + 39, src_root_name);
                 ptr[0..4].* = "\");\n".*;
                 ptr += 4;
                 for (node.lists.confs) |cfg| {
-                    ptr += cfg.formatWriteBuf(ptr);
+                    ptr = Conf.write(ptr, cfg);
                 }
                 if (node.flags.have_task_data) {
                     ptr = about.writeTaskDataConfig(node, ptr);
                 }
-                return @intFromPtr(ptr) -% @intFromPtr(buf);
+                return ptr;
             }
-            pub fn find(group: *Node, allocator: *types.Allocator, name: []const u8, sep: u8) ?*Node {
+            pub fn find(group: *Node, name: []const u8) *Node {
+                return group.findMaybeShow(null, name, '_').?;
+            }
+            fn findMaybeShow(group: *Node, mb_allocator: ?*types.Allocator, name: []const u8, sep: u8) ?*Node {
                 @setRuntimeSafety(builtin.is_safe);
                 blk: {
                     var idx: usize = 0;
@@ -1747,14 +1758,43 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         if (node.flags.is_group and
                             mem.testEqualString(group_name, node.name))
                         {
-                            return node.find(allocator, sub_name, sep);
+                            return node.findMaybeShow(mb_allocator, sub_name, sep);
                         }
                     }
                 }
                 if (have_list) {
-                    about.writeAndWalk(allocator, group, .depns);
+                    if (mb_allocator) |allocator| {
+                        about.writeAndWalk(allocator, group, .depns);
+                    }
                 }
                 return null;
+            }
+            fn status(node: *Node, res: Node.ExecveResults) bool {
+                @setRuntimeSafety(builtin.is_safe);
+                if (node.extra.expect_res.signal != 255) {
+                    if (node.extra.expect_res.signal != res.signal) {
+                        return false;
+                    }
+                }
+                if (node.extra.expect_res.server == 255) {
+                    if (res.server == builder_spec.options.compiler_error_status or
+                        res.server == builder_spec.options.compiler_unexpected_status)
+                    {
+                        return false;
+                    }
+                } else {
+                    if (node.extra.expect_res.server != res.server) {
+                        return false;
+                    }
+                }
+                if (node.extra.expect_res.status == 255) {
+                    return res.status == builder_spec.options.system_expected_status;
+                } else {
+                    if (node.extra.expect_res.status != res.status) {
+                        return false;
+                    }
+                }
+                return true;
             }
         };
         pub fn configRootRelative(allocator: *types.Allocator, node: *Node) [:0]u8 {
