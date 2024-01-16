@@ -3966,7 +3966,9 @@ pub fn FloatFormat(comptime Float: type) type {
                 return len +% 1;
             }
             var tmp: [32]u8 = undefined;
-            return len + errol.writeErrol3(&tmp, abs).len;
+            const res: errol.FloatDecimal = errol.writeErrol3(&tmp, abs);
+            const exp: usize = @intCast(res.exp);
+            return len +% exp +% 1 +% (res.len -% exp);
         }
         pub usingnamespace Interface(Format);
     };
